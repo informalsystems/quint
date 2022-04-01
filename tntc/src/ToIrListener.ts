@@ -76,6 +76,16 @@ export class ToIrListener implements TntListener {
     this.rootModule = module
   }
 
+  exitNameCall (ctx: p.NameCallContext) {
+    const id = this.nextId()
+    this.sourceMap.set(id, this.loc(ctx))
+    this.exprStack.push({
+      id: id,
+      kind: 'name',
+      name: ctx.name().IDENTIFIER().map(a => a.text),
+    })
+  }
+
   // translate: const x: type
   exitConst (ctx: p.ConstContext) {
     const typeTag = this.popType()
@@ -286,17 +296,8 @@ export class ToIrListener implements TntListener {
 
   // an identifier or a literal, e.g., foo, 42, "hello", false
   exitLiteralOrId (ctx: p.LiteralOrIdContext) {
-    const ident = ctx.IDENTIFIER()
-
     const id = this.nextId()
     this.sourceMap.set(id, this.loc(ctx))
-    if (ident) { // identifier
-      this.exprStack.push({
-        id: id,
-        kind: 'name',
-        name: ident.text,
-      })
-    }
     const intNode = ctx.INT()
     if (intNode) { // integer literal
       this.exprStack.push({

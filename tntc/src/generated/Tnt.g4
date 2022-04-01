@@ -96,6 +96,7 @@ expr:           // apply a built-in operator via the dot notation
         |       '(' ('|')? expr '|' expr ('|' expr)* ')'            # orExpr
         |       '{' ('&')? expr '&' expr ('&' expr)* '}'            # andAction
         |       '{' ('|')? expr '|' expr ('|' expr)* '}'            # orAction
+        |       name                                                # nameCall
         |       ( IDENTIFIER | INT | BOOL | STRING)                 # literalOrId
         //      a tuple constructor, the form tup(...) is just an operator call
         |       '(' expr ',' expr (',' expr)* ')'                   # tuple
@@ -141,7 +142,7 @@ argList :      lambdaOrExpr (',' lambdaOrExpr)*
         ;
 
 // operators in the normal call may use some reserved names
-normalCallName :   IDENTIFIER
+normalCallName :   name
         |       op=(IN | NOTIN | AND | OR | IFF | IMPLIES | SET | SEQ | SUBSETEQ)
         ;
 
@@ -196,8 +197,8 @@ LPAREN          :   '(' ;
 RPAREN          :   ')' ;
 
 // other TLA+ identifiers
-IDENTIFIER             : SIMPLE_IDENTIFIER | SIMPLE_IDENTIFIER '::' IDENTIFIER ;
-SIMPLE_IDENTIFIER      : ([a-zA-Z][a-zA-Z0-9_]*|[_][a-zA-Z0-9_]+) ;
+name            : IDENTIFIER ('::' IDENTIFIER)*;
+IDENTIFIER      : ([a-zA-Z][a-zA-Z0-9_]*|[_][a-zA-Z0-9_]+) ;
 
 // comments and whitespaces
 LINE_COMMENT    :   '//' .*? '\n'   -> skip ;

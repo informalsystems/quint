@@ -43,6 +43,7 @@ import { AndExprContext } from "./TntParser";
 import { OrExprContext } from "./TntParser";
 import { AndActionContext } from "./TntParser";
 import { OrActionContext } from "./TntParser";
+import { NameCallContext } from "./TntParser";
 import { LiteralOrIdContext } from "./TntParser";
 import { TupleContext } from "./TntParser";
 import { RecordContext } from "./TntParser";
@@ -68,6 +69,7 @@ import { NormalCallNameContext } from "./TntParser";
 import { NameAfterDotContext } from "./TntParser";
 import { OperatorContext } from "./TntParser";
 import { LiteralContext } from "./TntParser";
+import { NameContext } from "./TntParser";
 
 
 /**
@@ -596,6 +598,19 @@ export interface TntListener extends ParseTreeListener {
 	exitOrAction?: (ctx: OrActionContext) => void;
 
 	/**
+	 * Enter a parse tree produced by the `nameCall`
+	 * labeled alternative in `TntParser.expr`.
+	 * @param ctx the parse tree
+	 */
+	enterNameCall?: (ctx: NameCallContext) => void;
+	/**
+	 * Exit a parse tree produced by the `nameCall`
+	 * labeled alternative in `TntParser.expr`.
+	 * @param ctx the parse tree
+	 */
+	exitNameCall?: (ctx: NameCallContext) => void;
+
+	/**
 	 * Enter a parse tree produced by the `literalOrId`
 	 * labeled alternative in `TntParser.expr`.
 	 * @param ctx the parse tree
@@ -883,5 +898,16 @@ export interface TntListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitLiteral?: (ctx: LiteralContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `TntParser.name`.
+	 * @param ctx the parse tree
+	 */
+	enterName?: (ctx: NameContext) => void;
+	/**
+	 * Exit a parse tree produced by `TntParser.name`.
+	 * @param ctx the parse tree
+	 */
+	exitName?: (ctx: NameContext) => void;
 }
 

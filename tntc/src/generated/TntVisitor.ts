@@ -43,6 +43,7 @@ import { AndExprContext } from "./TntParser";
 import { OrExprContext } from "./TntParser";
 import { AndActionContext } from "./TntParser";
 import { OrActionContext } from "./TntParser";
+import { NameCallContext } from "./TntParser";
 import { LiteralOrIdContext } from "./TntParser";
 import { TupleContext } from "./TntParser";
 import { RecordContext } from "./TntParser";
@@ -68,6 +69,7 @@ import { NormalCallNameContext } from "./TntParser";
 import { NameAfterDotContext } from "./TntParser";
 import { OperatorContext } from "./TntParser";
 import { LiteralContext } from "./TntParser";
+import { NameContext } from "./TntParser";
 
 
 /**
@@ -399,6 +401,14 @@ export interface TntVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitOrAction?: (ctx: OrActionContext) => Result;
 
 	/**
+	 * Visit a parse tree produced by the `nameCall`
+	 * labeled alternative in `TntParser.expr`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitNameCall?: (ctx: NameCallContext) => Result;
+
+	/**
 	 * Visit a parse tree produced by the `literalOrId`
 	 * labeled alternative in `TntParser.expr`.
 	 * @param ctx the parse tree
@@ -579,5 +589,12 @@ export interface TntVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitLiteral?: (ctx: LiteralContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `TntParser.name`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitName?: (ctx: NameContext) => Result;
 }
 

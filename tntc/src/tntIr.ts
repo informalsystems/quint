@@ -63,7 +63,7 @@ export type OpQualifier = 'val' | 'def' | 'pred' | 'action' | 'temporal'
  */
 export type TntEx =
   // A name of: a variable, constant, parameter, user-defined operator
-  | { kind: 'name', name: string } & WithId & WithType
+  | { kind: 'name', name: string[] } & WithId & WithType
   // A Boolean literal
   | { kind: 'bool', value: boolean } & WithId & WithType
   // An integer literal
@@ -71,7 +71,7 @@ export type TntEx =
   // A string literal
   | { kind: 'str', value: string } & WithId & WithType
   // Operator application by its name, supplying the arguments in `args`
-  | { kind: 'app', opcode: string, args: TntEx[] } & WithId & WithType
+  | { kind: 'app', opcode: string[], args: TntEx[] } & WithId & WithType
   // Operator abstraction: an anonymous operator (lambda) over a list of parameters.
   | {
     kind: 'lambda',
