@@ -26,7 +26,7 @@ export interface NameError {
   /* Either a 'type' or 'value' name error */
   kind: 'type' | 'value';
   /* The name that couldn't be resolved */
-  name: string;
+  name: string[];
   /* The module-level definition containing the error */
   definitionName: string;
   /* The identifier of the IR node where the error occurs */
@@ -87,13 +87,13 @@ function resolveInType (
     case 'const':
     case 'var':
       // Type is a name, check that it is defined
-      if (typeDefinitions.some(def => def.identifier === type.name)) {
+      if (typeDefinitions.some(def => def.identifier.join('') === type.name)) {
         return { kind: 'ok' }
       } else {
         return {
           kind: 'error',
           errors: [
-            { kind: 'type', name: type.name, definitionName: definitionName, reference: id },
+            { kind: 'type', name: [type.name], definitionName: definitionName, reference: id },
           ],
         }
       }
@@ -160,7 +160,7 @@ function checkNamesInExpr (
       // The list of scopes containing the expression is accumulated in param scopes
       const valueDefinitionsForScope = filterScope(table.valueDefinitions, scopes)
 
-      if (!valueDefinitionsForScope.some(name => name.identifier === expr.name)) {
+      if (!valueDefinitionsForScope.some(name => name.identifier.join('') === expr.name.join(''))) {
         results.push({
           kind: 'error',
           errors: [{ kind: 'value', name: expr.name, definitionName: defName, reference: expr.id }],
@@ -173,7 +173,7 @@ function checkNamesInExpr (
       // Application, check that the operator being applied is defined
       const valueDefinitionsForScope = filterScope(table.valueDefinitions, scopes)
 
-      if (!valueDefinitionsForScope.some(name => name.identifier === expr.opcode)) {
+      if (!valueDefinitionsForScope.some(name => name.identifier.join('') === expr.opcode.join(''))) {
         results.push({
           kind: 'error',
           errors: [{ kind: 'value', name: expr.opcode, definitionName: defName, reference: expr.id }],

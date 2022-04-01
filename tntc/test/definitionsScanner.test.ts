@@ -7,13 +7,13 @@ import { ScopeTree } from '../src/scoping'
 describe('scanConflicts', () => {
   it('finds top-level name conflicts', () => {
     const valueDefinitions: ValueDefinition[] = [
-      { kind: 'const', identifier: 'TEST_CONSTANT', reference: BigInt(1) },
-      { kind: 'def', identifier: 'conflicting_name', reference: BigInt(2) },
-      { kind: 'val', identifier: 'conflicting_name', reference: BigInt(3), scope: BigInt(3) },
+      { kind: 'const', identifier: ['TEST_CONSTANT'], reference: BigInt(1) },
+      { kind: 'def', identifier: ['conflicting_name'], reference: BigInt(2) },
+      { kind: 'val', identifier: ['conflicting_name'], reference: BigInt(3), scope: BigInt(3) },
     ]
 
     const typeDefinitions: TypeDefinition[] = [
-      { identifier: 'MY_TYPE', type: { kind: 'int' }, reference: BigInt(1) },
+      { identifier: ['MY_TYPE'], type: { kind: 'int' }, reference: BigInt(1) },
     ]
 
     const table: DefinitionTable = { valueDefinitions: valueDefinitions, typeDefinitions: typeDefinitions }
@@ -36,18 +36,18 @@ describe('scanConflicts', () => {
 
     assert.deepEqual(result, {
       kind: 'error',
-      conflicts: [{ kind: 'value', identifier: 'conflicting_name', sources: expectedSources }],
+      conflicts: [{ kind: 'value', identifier: ['conflicting_name'], sources: expectedSources }],
     })
   })
 
   it('finds type alias conflicts', () => {
     const valueDefinitions: ValueDefinition[] = [
-      { kind: 'const', identifier: 'TEST_CONSTANT', reference: BigInt(1) },
+      { kind: 'const', identifier: ['TEST_CONSTANT'], reference: BigInt(1) },
     ]
 
     const typeDefinitions: TypeDefinition[] = [
-      { identifier: 'MY_TYPE', type: { kind: 'int' }, reference: BigInt(2) },
-      { identifier: 'MY_TYPE', type: { kind: 'str' }, reference: BigInt(3) },
+      { identifier: ['MY_TYPE'], type: { kind: 'int' }, reference: BigInt(2) },
+      { identifier: ['MY_TYPE'], type: { kind: 'str' }, reference: BigInt(3) },
     ]
 
     const table: DefinitionTable = { valueDefinitions: valueDefinitions, typeDefinitions: typeDefinitions }
@@ -70,18 +70,18 @@ describe('scanConflicts', () => {
 
     assert.deepEqual(result, {
       kind: 'error',
-      conflicts: [{ kind: 'type', identifier: 'MY_TYPE', sources: expectedSources }],
+      conflicts: [{ kind: 'type', identifier: ['MY_TYPE'], sources: expectedSources }],
     })
   })
 
   it('finds name conflicts within nested scopes', () => {
     const valueDefinitions: ValueDefinition[] = [
-      { kind: 'def', identifier: 'conflicting_name', reference: BigInt(1), scope: BigInt(1) },
-      { kind: 'val', identifier: 'conflicting_name', reference: BigInt(2), scope: BigInt(2) },
+      { kind: 'def', identifier: ['conflicting_name'], reference: BigInt(1), scope: BigInt(1) },
+      { kind: 'val', identifier: ['conflicting_name'], reference: BigInt(2), scope: BigInt(2) },
     ]
 
     const typeDefinitions: TypeDefinition[] = [
-      { identifier: 'MY_TYPE', type: { kind: 'int' }, reference: BigInt(1) },
+      { identifier: ['MY_TYPE'], type: { kind: 'int' }, reference: BigInt(1) },
     ]
 
     const table: DefinitionTable = { valueDefinitions: valueDefinitions, typeDefinitions: typeDefinitions }
@@ -97,19 +97,19 @@ describe('scanConflicts', () => {
 
     assert.deepEqual(result, {
       kind: 'error',
-      conflicts: [{ kind: 'value', identifier: 'conflicting_name', sources: expectedSources }],
+      conflicts: [{ kind: 'value', identifier: ['conflicting_name'], sources: expectedSources }],
     })
   })
 
   it('finds conflicts with built-in definitions', () => {
     const valueDefinitions: ValueDefinition[] = [
-      { kind: 'def', identifier: 'conflicting_name' },
-      { kind: 'val', identifier: 'conflicting_name', reference: BigInt(2) },
+      { kind: 'def', identifier: ['conflicting_name'] },
+      { kind: 'val', identifier: ['conflicting_name'], reference: BigInt(2) },
     ]
 
     const typeDefinitions: TypeDefinition[] = [
-      { identifier: 'MY_TYPE', type: { kind: 'int' } },
-      { identifier: 'MY_TYPE', type: { kind: 'int' }, reference: BigInt(1) },
+      { identifier: ['MY_TYPE'], type: { kind: 'int' } },
+      { identifier: ['MY_TYPE'], type: { kind: 'int' }, reference: BigInt(1) },
     ]
 
     const table: DefinitionTable = { valueDefinitions: valueDefinitions, typeDefinitions: typeDefinitions }
@@ -136,22 +136,22 @@ describe('scanConflicts', () => {
     assert.deepEqual(result, {
       kind: 'error',
       conflicts: [
-        { kind: 'value', identifier: 'conflicting_name', sources: expectedSources },
-        { kind: 'type', identifier: 'MY_TYPE', sources: expectedTypeSources },
+        { kind: 'value', identifier: ['conflicting_name'], sources: expectedSources },
+        { kind: 'type', identifier: ['MY_TYPE'], sources: expectedTypeSources },
       ],
     })
   })
 
   it('finds no conflicts when there are none', () => {
     const valueDefinitions: ValueDefinition[] = [
-      { kind: 'const', identifier: 'TEST_CONSTANT', reference: BigInt(1) },
-      { kind: 'def', identifier: 'conflicting_name', reference: BigInt(2), scope: BigInt(2) },
-      { kind: 'val', identifier: 'conflicting_name', reference: BigInt(3), scope: BigInt(3) },
+      { kind: 'const', identifier: ['TEST_CONSTANT'], reference: BigInt(1) },
+      { kind: 'def', identifier: ['conflicting_name'], reference: BigInt(2), scope: BigInt(2) },
+      { kind: 'val', identifier: ['conflicting_name'], reference: BigInt(3), scope: BigInt(3) },
     ]
 
     const typeDefinitions: TypeDefinition[] = [
-      { identifier: 'MY_TYPE', type: { kind: 'int' }, reference: BigInt(4) },
-      { identifier: 'OTHER_TYPE', type: { kind: 'int' }, reference: BigInt(5) },
+      { identifier: ['MY_TYPE'], type: { kind: 'int' }, reference: BigInt(4) },
+      { identifier: ['OTHER_TYPE'], type: { kind: 'int' }, reference: BigInt(5) },
     ]
 
     const table: DefinitionTable = { valueDefinitions: valueDefinitions, typeDefinitions: typeDefinitions }

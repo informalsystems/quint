@@ -336,7 +336,7 @@ export class ToIrListener implements TntListener {
     this.exprStack.push({
       id: id,
       kind: 'app',
-      opcode: 'of',
+      opcode: ['of'],
       args: args,
     })
   }
@@ -362,7 +362,7 @@ export class ToIrListener implements TntListener {
     this.exprStack.push({
       id: id,
       kind: 'app',
-      opcode: name,
+      opcode: [name],
       args: args,
     })
   }
@@ -373,13 +373,13 @@ export class ToIrListener implements TntListener {
     const wrappedArgs = this.exprStack.pop()
     const firstArg = this.exprStack.pop()
     if (firstArg && wrappedArgs && wrappedArgs.kind === 'app' &&
-      wrappedArgs.opcode === 'wrappedArgs') {
+      wrappedArgs.opcode.join('') === 'wrappedArgs') {
       const id = this.nextId()
       this.sourceMap.set(id, this.loc(ctx))
       this.exprStack.push({
         id: id,
         kind: 'app',
-        opcode: name,
+        opcode: [name],
         args: [firstArg].concat(wrappedArgs.args),
       })
     } else {
@@ -407,13 +407,13 @@ export class ToIrListener implements TntListener {
       if (wrappedArgs) {
         // n >= 2: there is at least one argument in parentheses
         if (wrappedArgs.kind === 'app' &&
-          wrappedArgs.opcode === 'wrappedArgs') {
+          wrappedArgs.opcode.join('') === 'wrappedArgs') {
           args = [callee!].concat(wrappedArgs.args)
         } else {
           const ls = this.locStr(ctx)
           // istanbul ignore next
           assert(false,
-            `exitDotCall: ${ls} expected wrappedArgs, found: ${wrappedArgs.kind}`)
+            `exitDotCall: ${ls} expected wrappedArgs, found: ${wrappedArgs.kind} ${wrappedArgs.kind === 'app' ? wrappedArgs.opcode : ''} `)
         }
       } // else: no arguments, as in e.g., s.head()
       // apply the operator to the arguments
@@ -423,7 +423,7 @@ export class ToIrListener implements TntListener {
       this.exprStack.push({
         id: id,
         kind: 'app',
-        opcode: name,
+        opcode: [name],
         args: args!,
       })
     } else {
@@ -445,7 +445,7 @@ export class ToIrListener implements TntListener {
         this.exprStack.push({
           id: appId,
           kind: 'app',
-          opcode: 'item',
+          opcode: ['item'],
           args: [callee!, idx],
         })
       } else {
@@ -470,7 +470,7 @@ export class ToIrListener implements TntListener {
         this.exprStack.push({
           id: appId,
           kind: 'app',
-          opcode: 'field',
+          opcode: ['field'],
           args: [callee!, field],
         })
       }
@@ -486,7 +486,7 @@ export class ToIrListener implements TntListener {
     this.exprStack.push({
       id: 0n,
       kind: 'app',
-      opcode: 'wrappedArgs',
+      opcode: ['wrappedArgs'],
       args: args,
     })
   }
@@ -550,7 +550,7 @@ export class ToIrListener implements TntListener {
     this.exprStack.push({
       id: id,
       kind: 'app',
-      opcode: 'tuple',
+      opcode: ['tup'],
       args: args,
     })
   }
@@ -564,7 +564,7 @@ export class ToIrListener implements TntListener {
     this.exprStack.push({
       id: id,
       kind: 'app',
-      opcode: 'seq',
+      opcode: ['seq'],
       args: args,
     })
   }
@@ -591,7 +591,7 @@ export class ToIrListener implements TntListener {
     this.exprStack.push({
       id: id,
       kind: 'app',
-      opcode: 'record',
+      opcode: ['rec'],
       args: namesAndValues,
     })
   }
@@ -606,7 +606,7 @@ export class ToIrListener implements TntListener {
     this.exprStack.push({
       id: id,
       kind: 'app',
-      opcode: opcode,
+      opcode: [opcode],
       args: args,
     })
   }
@@ -628,7 +628,7 @@ export class ToIrListener implements TntListener {
       this.exprStack.push({
         id: id,
         kind: 'app',
-        opcode: opcode,
+        opcode: [opcode],
         args: args,
       })
     }
@@ -643,7 +643,7 @@ export class ToIrListener implements TntListener {
     this.exprStack.push({
       id: id,
       kind: 'app',
-      opcode: 'ipow',
+      opcode: ['ipow'],
       args: args,
     })
   }
@@ -657,7 +657,7 @@ export class ToIrListener implements TntListener {
       this.exprStack.push({
         id: id,
         kind: 'app',
-        opcode: 'iuminus',
+        opcode: ['iuminus'],
         args: [arg],
       })
     }
@@ -686,7 +686,7 @@ export class ToIrListener implements TntListener {
       this.exprStack.push({
         id: id,
         kind: 'app',
-        opcode: opcode,
+        opcode: [opcode],
         args: args,
       })
     }
@@ -700,7 +700,7 @@ export class ToIrListener implements TntListener {
     this.exprStack.push({
       id: id,
       kind: 'app',
-      opcode: 'and',
+      opcode: ['and'],
       args: args,
     })
   }
@@ -713,7 +713,7 @@ export class ToIrListener implements TntListener {
     this.exprStack.push({
       id: id,
       kind: 'app',
-      opcode: 'or',
+      opcode: ['or'],
       args: args,
     })
   }
@@ -726,7 +726,7 @@ export class ToIrListener implements TntListener {
     this.exprStack.push({
       id: id,
       kind: 'app',
-      opcode: 'implies',
+      opcode: ['implies'],
       args: args,
     })
   }
@@ -739,7 +739,7 @@ export class ToIrListener implements TntListener {
     this.exprStack.push({
       id: id,
       kind: 'app',
-      opcode: 'iff',
+      opcode: ['iff'],
       args: args,
     })
   }
@@ -752,7 +752,7 @@ export class ToIrListener implements TntListener {
     this.exprStack.push({
       id: id,
       kind: 'app',
-      opcode: 'andExpr',
+      opcode: ['andExpr'],
       args: args,
     })
   }
@@ -765,7 +765,7 @@ export class ToIrListener implements TntListener {
     this.exprStack.push({
       id: id,
       kind: 'app',
-      opcode: 'orExpr',
+      opcode: ['orExpr'],
       args: args,
     })
   }
@@ -778,7 +778,7 @@ export class ToIrListener implements TntListener {
     this.exprStack.push({
       id: id,
       kind: 'app',
-      opcode: 'andAction',
+      opcode: ['andAction'],
       args: args,
     })
   }
@@ -791,7 +791,7 @@ export class ToIrListener implements TntListener {
     this.exprStack.push({
       id: id,
       kind: 'app',
-      opcode: 'orAction',
+      opcode: ['orAction'],
       args: args,
     })
   }
@@ -804,7 +804,7 @@ export class ToIrListener implements TntListener {
     this.exprStack.push({
       id: id,
       kind: 'app',
-      opcode: 'ite',
+      opcode: ['ite'],
       args: args,
     })
   }
@@ -850,7 +850,7 @@ export class ToIrListener implements TntListener {
     const matchExpr: TntEx = {
       id: id,
       kind: 'app',
-      opcode: 'match',
+      opcode: ['match'],
       args: matchArgs,
     }
     this.exprStack.push(matchExpr)

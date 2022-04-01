@@ -31,7 +31,7 @@ export interface Conflict {
   /* Either a 'type' or 'value' conflict */
   kind: 'value' | 'type';
   /* The name that has a conflict */
-  identifier: string;
+  identifier: string[];
   /* Sources of the occurrences of the conflicting name */
   sources: ConflictSource[];
 }
@@ -57,14 +57,15 @@ export type DefinitionsConflictResult =
 export function scanConflicts (table: DefinitionTable, tree: ScopeTree): DefinitionsConflictResult {
   const conflicts: Conflict[] = []
   table.valueDefinitions.reduce((reportedConflicts: Set<string>, def: ValueDefinition) => {
-    if (reportedConflicts.has(def.identifier)) {
+    const stringId = def.identifier.join('::')
+    if (reportedConflicts.has(stringId)) {
       // Already reported, skip it
       return reportedConflicts
     }
 
-    const conflictingDefinitions = table.valueDefinitions.filter(d => d.identifier === def.identifier && canConflict(tree, d, def))
+    const conflictingDefinitions = table.valueDefinitions.filter(d => d.identifier.join('') === def.identifier.join('') && canConflict(tree, d, def))
     if (conflictingDefinitions.length > 1) {
-      reportedConflicts.add(def.identifier)
+      reportedConflicts.add(stringId)
 
       const sources: ConflictSource[] = conflictingDefinitions.map(d => d.reference ? { kind: 'user', reference: d.reference } : { kind: 'builtin' })
       conflicts.push({ kind: 'value', identifier: def.identifier, sources: sources })
@@ -76,14 +77,15 @@ export function scanConflicts (table: DefinitionTable, tree: ScopeTree): Definit
     // Types don't have scopes at the moment
     // With type quantification, they should have scopes and this code can be refactor
     // into a more generalized form
-    if (reportedConflicts.has(def.identifier)) {
+    const stringId = def.identifier.join('::')
+    if (reportedConflicts.has(stringId)) {
       // Already reported, skip it
       return reportedConflicts
     }
 
-    const conflictingDefinitions = table.typeDefinitions.filter(d => d.identifier === def.identifier)
+    const conflictingDefinitions = table.typeDefinitions.filter(d => d.identifier.join('') === def.identifier.join(''))
     if (conflictingDefinitions.length > 1) {
-      reportedConflicts.add(def.identifier)
+      reportedConflicts.add(stringId)
 
       const sources: ConflictSource[] = conflictingDefinitions.map(d => d.reference ? { kind: 'user', reference: d.reference } : { kind: 'builtin' })
       conflicts.push({ kind: 'type', identifier: def.identifier, sources: sources })
