@@ -19,6 +19,9 @@ export interface WithId {
   id: bigint;
 }
 
+export interface TntTypeVar extends WithId { kind: 'var', name: string }
+export interface TntTypeConst extends WithId { kind: 'const', name: string }
+
 /**
  * A type in Type System 1.2.
  */
@@ -26,8 +29,8 @@ export type TntType =
   | { kind: 'bool' } & WithId
   | { kind: 'int' } & WithId
   | { kind: 'str' } & WithId
-  | { kind: 'const', name: string } & WithId
-  | { kind: 'var', name: string } & WithId
+  | TntTypeConst
+  | TntTypeVar
   | { kind: 'set', elem: TntType } & WithId
   | { kind: 'seq', elem: TntType } & WithId
   | { kind: 'fun', arg: TntType, res: TntType } & WithId

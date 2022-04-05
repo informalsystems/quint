@@ -15,9 +15,10 @@
  * @module
  */
 
-import { TntModule, TntEx } from './tntIr'
-import { TntType } from './tntTypes'
-import { DefinitionTable, ValueDefinition, TypeDefinition } from './definitionsCollector'
+import { TntModule, TntName } from './tntIr'
+import { TntTypeConst, TntTypeVar } from './tntTypes'
+import { DefinitionTable, ValueDefinition } from './definitionsCollector'
+import { IRVisitor, walkModule } from './IRVisitor'
 
 /**
  * A single name resolution error
@@ -42,6 +43,56 @@ export type NameResolutionResult =
   /* Error, at least one name couldn't be resolved. All errors are listed in errors */
   | { kind: 'error', errors: NameError[] }
 
+export class NameResolverVisitor implements IRVisitor {
+  constructor (table: DefinitionTable, scopes: BigInt[]) {
+    this.table = table
+    this.scopes = scopes
+  }
+
+  results: NameResolutionResult[] = []
+
+  private table: DefinitionTable = { valueDefinitions: [], typeDefinitions: [] }
+  private scopes: BigInt[] = []
+
+  visitName (nameExpr: TntName): void {
+    // This is a name expression, the name must be defined
+    // either globally or under a scope that contains the expression
+    // The list of scopes containing the expression is accumulated in param scopes
+    const valueDefinitionsForScope = filterScope(this.table.valueDefinitions, this.scopes)
+
+    if (!valueDefinitionsForScope.some(name => name.identifier === nameExpr.name)) {
+      this.results.push({
+        kind: 'error',
+        errors: [{ kind: 'value', name: nameExpr.name, definitionName: 'defName', reference: nameExpr.id }],
+      })
+    }
+  }
+
+  visitTypeVar (type: TntTypeVar): void {
+    // Type is a name, check that it is defined
+    if (!this.table.typeDefinitions.some(def => def.identifier === type.name)) {
+      this.results.push({
+        kind: 'error',
+        errors: [
+          { kind: 'type', name: type.name, definitionName: 'defName', reference: type.id },
+        ],
+      })
+    }
+  }
+
+  visitTypeConst (type: TntTypeConst): void {
+    // Type is a name, check that it is defined
+    if (!this.table.typeDefinitions.some(def => def.identifier === type.name)) {
+      this.results.push({
+        kind: 'error',
+        errors: [
+          { kind: 'type', name: type.name, definitionName: 'defName', reference: type.id },
+        ],
+      })
+    }
+  }
+}
+
 /**
  * Explore the IR checking all name expressions for undefined names
  *
@@ -51,162 +102,9 @@ export type NameResolutionResult =
  * @returns a successful result in case all names are resolved, or an aggregation of errors otherwise
  */
 export function resolveNames (tntModule: TntModule, table: DefinitionTable): NameResolutionResult {
-  const results: NameResolutionResult[] = tntModule.defs.reduce((res: NameResolutionResult[], def) => {
-    switch (def.kind) {
-      // Possibly typed definitions
-      case 'const':
-      case 'var':
-      case 'typedef':
-      case 'def':
-        if (def.type) {
-          res.push(resolveInType(table.typeDefinitions, def.name, def.type))
-        }
-        break
-      // Untyped definitions
-      default:
-    }
-
-    if (def.kind === 'def') {
-      res.push(checkNamesInExpr(table, def.name, def.expr, [def.expr.id]))
-    }
-    return res
-  }, [])
-
-  return mergeNameResults(results)
-}
-
-function resolveInType (
-  typeDefinitions: TypeDefinition[],
-  definitionName: string,
-  type: TntType
-): NameResolutionResult {
-  let results: NameResolutionResult[] = []
-
-  switch (type.kind) {
-    case 'const':
-    case 'var':
-      // Type is a name, check that it is defined
-      if (typeDefinitions.some(def => def.identifier === type.name)) {
-        return { kind: 'ok' }
-      } else {
-        return {
-          kind: 'error',
-          errors: [
-            { kind: 'type', name: type.name, definitionName: definitionName, reference: type.id },
-          ],
-        }
-      }
-
-    case 'set':
-    case 'seq':
-      // Generic constructors, check parameter
-      return resolveInType(typeDefinitions, definitionName, type.elem)
-
-    case 'fun':
-      // Functions, check both argument and result
-      results = [
-        resolveInType(typeDefinitions, definitionName, type.arg),
-        resolveInType(typeDefinitions, definitionName, type.res),
-      ]
-      break
-
-    case 'oper':
-      // Operators, check all arguments and result
-      results = type.args.map(arg => resolveInType(typeDefinitions, definitionName, arg))
-      results.push(resolveInType(typeDefinitions, definitionName, type.res))
-      break
-
-    case 'tuple':
-      // Tuples, check all elements
-      results = type.elems.map(elem => resolveInType(typeDefinitions, definitionName, elem))
-      break
-
-    case 'record':
-      // Records, check all fields
-      results = type.fields.map(field => resolveInType(typeDefinitions, definitionName, field.fieldType))
-      break
-
-    case 'union':
-      // Variants, check all fields for all records
-      results = type.records.flatMap(record => {
-        return record.fields.map(
-          field => resolveInType(typeDefinitions, definitionName, field.fieldType)
-        )
-      })
-      break
-  }
-
-  return mergeNameResults(results)
-}
-
-/* Recursively navigate expressions, resolving both operator names and type aliases */
-function checkNamesInExpr (
-  table: DefinitionTable,
-  defName: string,
-  expr: TntEx,
-  scopes: BigInt[]
-): NameResolutionResult {
-  const results: NameResolutionResult[] = []
-  // Any expression can have a type. If that's the case, check it.
-  if (expr.type) {
-    results.push(resolveInType(table.typeDefinitions, defName, expr.type))
-  }
-
-  switch (expr.kind) {
-    case 'name': {
-      // This is a name expression, the name must be defined
-      // either globally or under a scope that contains the expression
-      // The list of scopes containing the expression is accumulated in param scopes
-      const valueDefinitionsForScope = filterScope(table.valueDefinitions, scopes)
-
-      if (!valueDefinitionsForScope.some(name => name.identifier === expr.name)) {
-        results.push({
-          kind: 'error',
-          errors: [{ kind: 'value', name: expr.name, definitionName: defName, reference: expr.id }],
-        })
-      }
-      break
-    }
-
-    case 'app': {
-      // Application, check that the operator being applied is defined
-      const valueDefinitionsForScope = filterScope(table.valueDefinitions, scopes)
-
-      if (!valueDefinitionsForScope.some(name => name.identifier === expr.opcode)) {
-        results.push({
-          kind: 'error',
-          errors: [{ kind: 'value', name: expr.opcode, definitionName: defName, reference: expr.id }],
-        })
-      }
-
-      // Resolve names for each of the arguments
-      results.push(...expr.args.flatMap(arg => {
-        return checkNamesInExpr(table, defName, arg, scopes.concat(arg.id))
-      }))
-      break
-    }
-
-    case 'lambda':
-      // Lambda expression, check names in the body expression
-      results.push(checkNamesInExpr(table, defName, expr.expr, scopes.concat(expr.expr.id)))
-      break
-
-    case 'let':
-      // Let epressions, check names in body of the operator definition and in the body of the result expression
-      results.push(
-        checkNamesInExpr(table, defName, expr.opdef.expr, scopes.concat(expr.opdef.expr.id)),
-        checkNamesInExpr(table, defName, expr.expr, scopes.concat(expr.expr.id))
-      )
-      // Also, the operator definition can be typed, check for type aliases
-      if (expr.opdef.type) {
-        results.push(resolveInType(table.typeDefinitions, defName, expr.opdef.type))
-      }
-      break
-
-    default:
-    // Other expressions don't have any names to resolve
-  }
-
+  const visitor = new NameResolverVisitor(table, [])
+  walkModule(visitor, tntModule)
+  const results: NameResolutionResult[] = visitor.results
   return mergeNameResults(results)
 }
 

@@ -51,12 +51,19 @@ export interface WithType {
  */
 export type OpQualifier = 'val' | 'def' | 'pred' | 'action' | 'temporal'
 
+export interface TntName extends WithId, WithType {
+  /** expressions kind ('name' -- name reference) */
+  kind: 'name',
+  /** A name of: a variable, constant, parameter, user-defined operator */
+  name: string,
+}
+
 /**
  * Discriminated union of TNT expressions.
  */
 export type TntEx =
   // A name of: a variable, constant, parameter, user-defined operator
-  | { kind: 'name', name: string } & WithId & WithType
+  | TntName
   // A Boolean literal
   | { kind: 'bool', value: boolean } & WithId & WithType
   // An integer literal
@@ -94,17 +101,19 @@ export interface TntOpDef extends WithId, WithType {
   expr: TntEx
 }
 
+export interface TntConst extends WithId, WithType {
+  /** definition kind ('const') */
+  kind: 'const',
+  /** name of the constant */
+  name: string
+}
+
 /**
  * Definition: constant, state variable, operator definition, assumption, instance, module.
  */
 export type TntDef =
   | TntOpDef
-  | {
-    /** definition kind ('const') */
-    kind: 'const',
-    /** name of the constant */
-    name: string
-  } & WithId & WithType
+  | TntConst
   | {
     /** definition kind ('var') */
     kind: 'var',
