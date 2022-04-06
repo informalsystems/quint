@@ -43,7 +43,22 @@ export type NameResolutionResult =
   /* Error, at least one name couldn't be resolved. All errors are listed in errors */
   | { kind: 'error', errors: NameError[] }
 
-export class NameResolverVisitor implements IRVisitor {
+/**
+ * Explore the IR checking all name expressions for undefined names
+ *
+ * @param tntModule the TNT module to be checked
+ * @param table lists of names and type aliases defined for that module, including their scope when not global
+ *
+ * @returns a successful result in case all names are resolved, or an aggregation of errors otherwise
+ */
+export function resolveNames (tntModule: TntModule, table: DefinitionTable): NameResolutionResult {
+  const visitor = new NameResolverVisitor(table, [])
+  walkModule(visitor, tntModule)
+  const results: NameResolutionResult[] = visitor.results
+  return mergeNameResults(results)
+}
+
+class NameResolverVisitor implements IRVisitor {
   constructor (table: DefinitionTable, scopes: BigInt[]) {
     this.table = table
     this.scopes = scopes
@@ -103,21 +118,6 @@ export class NameResolverVisitor implements IRVisitor {
       })
     }
   }
-}
-
-/**
- * Explore the IR checking all name expressions for undefined names
- *
- * @param tntModule the TNT module to be checked
- * @param table lists of names and type aliases defined for that module, including their scope when not global
- *
- * @returns a successful result in case all names are resolved, or an aggregation of errors otherwise
- */
-export function resolveNames (tntModule: TntModule, table: DefinitionTable): NameResolutionResult {
-  const visitor = new NameResolverVisitor(table, [])
-  walkModule(visitor, tntModule)
-  const results: NameResolutionResult[] = visitor.results
-  return mergeNameResults(results)
 }
 
 function mergeNameResults (results: NameResolutionResult[]): NameResolutionResult {
