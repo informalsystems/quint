@@ -15,7 +15,7 @@
  * @module
  */
 
-import { TntModule, TntName } from './tntIr'
+import { TntModule, TntName, TntApp } from './tntIr'
 import { TntTypeConst, TntTypeVar } from './tntTypes'
 import { DefinitionTable, ValueDefinition } from './definitionsCollector'
 import { IRVisitor, walkModule } from './IRVisitor'
@@ -64,6 +64,18 @@ export class NameResolverVisitor implements IRVisitor {
       this.results.push({
         kind: 'error',
         errors: [{ kind: 'value', name: nameExpr.name, definitionName: 'defName', reference: nameExpr.id }],
+      })
+    }
+  }
+
+  visitApp (appExpr: TntApp): void {
+    // Application, check that the operator being applied is defined
+    const valueDefinitionsForScope = filterScope(this.table.valueDefinitions, this.scopes)
+
+    if (!valueDefinitionsForScope.some(name => name.identifier === appExpr.opcode)) {
+      this.results.push({
+        kind: 'error',
+        errors: [{ kind: 'value', name: appExpr.opcode, definitionName: 'defName', reference: appExpr.id }],
       })
     }
   }

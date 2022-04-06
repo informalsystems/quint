@@ -1,4 +1,4 @@
-import { TntEx, TntDef, TntModule, TntConst, TntName } from './tntIr'
+import { TntEx, TntDef, TntModule, TntConst, TntName, TntApp } from './tntIr'
 import { TntType, TntTypeVar, TntTypeConst } from './tntTypes'
 
 export interface IRVisitor {
@@ -9,47 +9,87 @@ export interface IRVisitor {
   visitConst?: (cons: TntConst) => void
 
   visitName?: (nameExpr: TntName) => void
+  visitApp?: (appExpr: TntApp) => void
 
   visitTypeVar?: (typeVar: TntTypeVar) => void
   visitTypeConst?: (typeConst: TntTypeConst) => void
 }
 
 export function walkModule (visitor: IRVisitor, tntModule: TntModule): void {
-  tntModule.defs.forEach(def => {
-    if (visitor.visitDef) {
-      visitor.visitDef(def)
+  tntModule.defs.forEach(def => walkDefinition(visitor, def))
+}
+
+function walkDefinition (visitor: IRVisitor, def: TntDef) {
+  if (visitor.visitDef) {
+    visitor.visitDef(def)
+  }
+
+  switch (def.kind) {
+    case 'const':
+      if (visitor.visitConst) {
+        visitor.visitConst(def)
+      }
+      if (def.type) {
+        walkType(visitor, def.type)
+      }
+      break
+    case 'var':
+      if (def.type) {
+        walkType(visitor, def.type)
+      }
+      break
+    case 'def':
+      if (def.type) {
+        walkType(visitor, def.type)
+      }
+      walkExpression(visitor, def.expr)
+      break
+    case 'typedef':
+      if (def.type) {
+        walkType(visitor, def.type)
+      }
+      break
+    case 'instance':
+    case 'module':
+    case 'import':
+    case 'assume':
+  }
+}
+
+function walkExpression (visitor: IRVisitor, expr: TntEx) {
+  if (visitor.visitExpr) {
+    visitor.visitExpr(expr)
+  }
+
+  switch (expr.kind) {
+    case 'name':
+      if (visitor.visitName) {
+        visitor.visitName(expr)
+      }
+      break
+
+    case 'app': {
+      if (visitor.visitApp) {
+        visitor.visitApp(expr)
+      }
+
+      expr.args.forEach(arg => walkExpression(visitor, arg))
+      break
     }
 
-    switch (def.kind) {
-      case 'const':
-        if (visitor.visitConst) {
-          visitor.visitConst(def)
-        }
-        if (def.type) {
-          walkType(visitor, def.type)
-        }
-        break
-      case 'var':
-        if (def.type) {
-          walkType(visitor, def.type)
-        }
-        break
-      case 'def':
-        if (def.type) {
-          walkType(visitor, def.type)
-        }
-        break
-      case 'typedef':
-        if (def.type) {
-          walkType(visitor, def.type)
-        }
-        break
-      case 'instance':
-      case 'module':
-      case 'import':
-      case 'assume':
-    }
-  })
+    case 'lambda':
+      walkExpression(visitor, expr.expr)
+      break
+
+    case 'let':
+      walkDefinition(visitor, expr.opdef)
+      walkExpression(visitor, expr.expr)
+      break
+
+    case 'bool':
+    case 'int':
+    case 'str':
+  }
 }
 
 function walkType (visitor: IRVisitor, tntType: TntType) {

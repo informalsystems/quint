@@ -58,6 +58,11 @@ export interface TntName extends WithId, WithType {
   name: string,
 }
 
+export interface TntApp extends WithId, WithType {
+  kind: 'app',
+  opcode: string, args: TntEx[],
+}
+
 /**
  * Discriminated union of TNT expressions.
  */
@@ -71,7 +76,7 @@ export type TntEx =
   // A string literal
   | { kind: 'str', value: string } & WithId & WithType
   // Operator application by its name, supplying the arguments in `args`
-  | { kind: 'app', opcode: string, args: TntEx[] } & WithId & WithType
+  | TntApp
   // Operator abstraction: an anonymous operator (lambda) over a list of parameters.
   | {
     kind: 'lambda',
@@ -80,7 +85,6 @@ export type TntEx =
     expr: TntEx
   } & WithId & WithType
   // A let-in binding (defined via 'def', 'val', etc.).
-  // eslint-disable-next-line no-use-before-define
   | { kind: 'let', opdef: TntOpDef, expr: TntEx } & WithId & WithType
 
 /**
@@ -160,7 +164,6 @@ export type TntDef =
     /** definition kind ('module') */
     kind: 'module',
     /** nested module */
-    // eslint-disable-next-line no-use-before-define
     module: TntModule
   } & WithId
 
