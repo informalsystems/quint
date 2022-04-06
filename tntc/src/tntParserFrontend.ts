@@ -126,7 +126,7 @@ export function parsePhase2 (tntModule: TntModule, sourceMap: Map<BigInt, Loc>):
     })
   }
 
-  const result = resolveNames(tntModule, definitions)
+  const result = resolveNames(tntModule, definitions, scopeTree)
 
   if (result.kind === 'error') {
     // Build error message with resolution explanation and the location obtained from sourceMap

@@ -17,6 +17,7 @@
 
 import { TntModule, TntName, TntApp } from './tntIr'
 import { TntTypeConst, TntTypeVar } from './tntTypes'
+import { ScopeTree, scopesForId } from './scoping'
 import { DefinitionTable, ValueDefinition } from './definitionsCollector'
 import { IRVisitor, walkModule } from './IRVisitor'
 
@@ -51,29 +52,29 @@ export type NameResolutionResult =
  *
  * @returns a successful result in case all names are resolved, or an aggregation of errors otherwise
  */
-export function resolveNames (tntModule: TntModule, table: DefinitionTable): NameResolutionResult {
-  const visitor = new NameResolverVisitor(table, [])
+export function resolveNames (tntModule: TntModule, table: DefinitionTable, scopeTree: ScopeTree): NameResolutionResult {
+  const visitor = new NameResolverVisitor(table, scopeTree)
   walkModule(visitor, tntModule)
   const results: NameResolutionResult[] = visitor.results
   return mergeNameResults(results)
 }
 
 class NameResolverVisitor implements IRVisitor {
-  constructor (table: DefinitionTable, scopes: BigInt[]) {
+  constructor (table: DefinitionTable, scopeTree: ScopeTree) {
     this.table = table
-    this.scopes = scopes
+    this.scopeTree = scopeTree
   }
 
   results: NameResolutionResult[] = []
 
   private table: DefinitionTable = { valueDefinitions: [], typeDefinitions: [] }
-  private scopes: BigInt[] = []
+  private scopeTree: ScopeTree
 
   visitName (nameExpr: TntName): void {
     // This is a name expression, the name must be defined
     // either globally or under a scope that contains the expression
     // The list of scopes containing the expression is accumulated in param scopes
-    const valueDefinitionsForScope = filterScope(this.table.valueDefinitions, this.scopes)
+    const valueDefinitionsForScope = filterScope(this.table.valueDefinitions, scopesForId(this.scopeTree, nameExpr.id))
 
     if (!valueDefinitionsForScope.some(name => name.identifier === nameExpr.name)) {
       this.results.push({
@@ -85,7 +86,7 @@ class NameResolverVisitor implements IRVisitor {
 
   visitApp (appExpr: TntApp): void {
     // Application, check that the operator being applied is defined
-    const valueDefinitionsForScope = filterScope(this.table.valueDefinitions, this.scopes)
+    const valueDefinitionsForScope = filterScope(this.table.valueDefinitions, scopesForId(this.scopeTree, appExpr.id))
 
     if (!valueDefinitionsForScope.some(name => name.identifier === appExpr.opcode)) {
       this.results.push({
