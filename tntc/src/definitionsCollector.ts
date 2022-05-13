@@ -17,6 +17,7 @@
 import { IRVisitor, walkModule } from './IRVisitor'
 import { TntModule, TntVar, TntModuleDef, TntConst, TntOpDef, TntTypeDef, TntAssume, TntLambda, TntLet } from './tntIr'
 import { TntType } from './tntTypes'
+import { Identifier } from './identifier'
 
 /**
  * A named operator defined. Can be scoped or module-wide (unscoped).
@@ -25,11 +26,19 @@ export interface ValueDefinition {
   /* Same as TntDef kinds */
   kind: string
   /* The name given to the defined operator */
-  identifier: string
+  identifier: Identifier
   /* Expression or definition id from where the name was collected */
   reference?: BigInt
   /* Optional scope, an id pointing to the TntIr node that introduces the name */
   scope?: bigint
+}
+
+// function valueDefinition(kind: string, identifier: string[], reference?: BigInt, scope?: bigint): ValueDefinition {
+//   return {kind, identifier: new Identifier(...identifier), reference, scope}
+// }
+
+function defaultDef (identifier: string): ValueDefinition {
+  return { kind: 'def', identifier: new Identifier(identifier) }
 }
 
 /**
@@ -37,7 +46,7 @@ export interface ValueDefinition {
  */
 export interface TypeDefinition {
   /* The alias given to the type */
-  identifier: string
+  identifier: Identifier
   /* The type that is aliased (none for uninterpreted type) */
   type?: TntType
   /* Expression or definition id from where the type was collected */
@@ -72,100 +81,100 @@ export function emptyTable (): DefinitionTable {
 export function defaultDefinitions (): DefinitionTable {
   return {
     valueDefinitions: [
-      { kind: 'def', identifier: 'not' },
-      { kind: 'def', identifier: 'and' },
-      { kind: 'def', identifier: 'or' },
-      { kind: 'def', identifier: 'iff' },
-      { kind: 'def', identifier: 'implies' },
-      { kind: 'def', identifier: 'exists' },
-      { kind: 'def', identifier: 'guess' },
-      { kind: 'def', identifier: 'forall' },
-      { kind: 'def', identifier: 'in' },
-      { kind: 'def', identifier: 'notin' },
-      { kind: 'def', identifier: 'union' },
-      { kind: 'def', identifier: 'contains' },
-      { kind: 'def', identifier: 'fold' },
-      { kind: 'def', identifier: 'intersect' },
-      { kind: 'def', identifier: 'exclude' },
-      { kind: 'def', identifier: 'subseteq' },
-      { kind: 'def', identifier: 'map' },
-      { kind: 'def', identifier: 'applyTo' },
-      { kind: 'def', identifier: 'filter' },
-      { kind: 'def', identifier: 'powerset' },
-      { kind: 'def', identifier: 'flatten' },
-      { kind: 'def', identifier: 'seqs' },
-      { kind: 'def', identifier: 'chooseSome' },
-      { kind: 'def', identifier: 'isFinite' },
-      { kind: 'def', identifier: 'cardinality' },
-      { kind: 'def', identifier: 'get' },
-      { kind: 'def', identifier: 'put' },
-      { kind: 'def', identifier: 'keys' },
-      { kind: 'def', identifier: 'mapOf' },
-      { kind: 'def', identifier: 'setOfMaps' },
-      { kind: 'def', identifier: 'update' },
-      { kind: 'def', identifier: 'updateAs' },
-      { kind: 'def', identifier: 'fields' },
-      { kind: 'def', identifier: 'with' },
-      { kind: 'def', identifier: 'tuples' },
-      { kind: 'def', identifier: 'append' },
-      { kind: 'def', identifier: 'concat' },
-      { kind: 'def', identifier: 'head' },
-      { kind: 'def', identifier: 'tail' },
-      { kind: 'def', identifier: 'length' },
-      { kind: 'def', identifier: 'nth' },
-      { kind: 'def', identifier: 'indices' },
-      { kind: 'def', identifier: 'replaceAt' },
-      { kind: 'def', identifier: 'slice' },
-      { kind: 'def', identifier: 'select' },
-      { kind: 'def', identifier: 'foldl' },
-      { kind: 'def', identifier: 'foldr' },
-      { kind: 'def', identifier: 'to' },
-      { kind: 'def', identifier: 'always' },
-      { kind: 'def', identifier: 'eventually' },
-      { kind: 'def', identifier: 'next' },
-      { kind: 'def', identifier: 'stutter' },
-      { kind: 'def', identifier: 'nostutter' },
-      { kind: 'def', identifier: 'enabled' },
-      { kind: 'def', identifier: 'weakFair' },
-      { kind: 'def', identifier: 'strongFair' },
-      { kind: 'def', identifier: 'guarantees' },
-      { kind: 'def', identifier: 'existsConst' },
-      { kind: 'def', identifier: 'forallConst' },
-      { kind: 'def', identifier: 'chooseConst' },
-      { kind: 'def', identifier: 'Bool' },
-      { kind: 'def', identifier: 'Int' },
-      { kind: 'def', identifier: 'Nat' },
-      { kind: 'def', identifier: 'set' },
-      { kind: 'def', identifier: 'seq' },
-      { kind: 'def', identifier: 'tup' },
-      { kind: 'def', identifier: 'tuple' },
-      { kind: 'def', identifier: 'rec' },
-      { kind: 'def', identifier: 'record' },
-      { kind: 'def', identifier: 'igt' },
-      { kind: 'def', identifier: 'ilt' },
-      { kind: 'def', identifier: 'igte' },
-      { kind: 'def', identifier: 'ilte' },
-      { kind: 'def', identifier: 'iadd' },
-      { kind: 'def', identifier: 'isub' },
-      { kind: 'def', identifier: 'iuminus' },
-      { kind: 'def', identifier: 'imul' },
-      { kind: 'def', identifier: 'idiv' },
-      { kind: 'def', identifier: 'imod' },
-      { kind: 'def', identifier: 'ipow' },
-      { kind: 'def', identifier: 'andAction' },
-      { kind: 'def', identifier: 'orAction' },
-      { kind: 'def', identifier: 'andExpr' },
-      { kind: 'def', identifier: 'orExpr' },
-      { kind: 'def', identifier: 'field' },
-      { kind: 'def', identifier: 'item' },
-      { kind: 'def', identifier: 'match' },
-      { kind: 'def', identifier: 'assign' },
-      { kind: 'def', identifier: 'of' },
-      { kind: 'def', identifier: 'eq' },
-      { kind: 'def', identifier: 'neq' },
-      { kind: 'def', identifier: 'ite' },
-      { kind: 'def', identifier: 'cross' },
-      { kind: 'def', identifier: 'difference' },
+      defaultDef('not'),
+      defaultDef('and'),
+      defaultDef('or'),
+      defaultDef('iff'),
+      defaultDef('implies'),
+      defaultDef('exists'),
+      defaultDef('guess'),
+      defaultDef('forall'),
+      defaultDef('in'),
+      defaultDef('notin'),
+      defaultDef('union'),
+      defaultDef('contains'),
+      defaultDef('fold'),
+      defaultDef('intersect'),
+      defaultDef('exclude'),
+      defaultDef('subseteq'),
+      defaultDef('map'),
+      defaultDef('applyTo'),
+      defaultDef('filter'),
+      defaultDef('powerset'),
+      defaultDef('flatten'),
+      defaultDef('seqs'),
+      defaultDef('chooseSome'),
+      defaultDef('isFinite'),
+      defaultDef('cardinality'),
+      defaultDef('get'),
+      defaultDef('put'),
+      defaultDef('keys'),
+      defaultDef('mapOf'),
+      defaultDef('setOfMaps'),
+      defaultDef('update'),
+      defaultDef('updateAs'),
+      defaultDef('fields'),
+      defaultDef('with'),
+      defaultDef('tuples'),
+      defaultDef('append'),
+      defaultDef('concat'),
+      defaultDef('head'),
+      defaultDef('tail'),
+      defaultDef('length'),
+      defaultDef('nth'),
+      defaultDef('indices'),
+      defaultDef('replaceAt'),
+      defaultDef('slice'),
+      defaultDef('select'),
+      defaultDef('foldl'),
+      defaultDef('foldr'),
+      defaultDef('to'),
+      defaultDef('always'),
+      defaultDef('eventually'),
+      defaultDef('next'),
+      defaultDef('stutter'),
+      defaultDef('nostutter'),
+      defaultDef('enabled'),
+      defaultDef('weakFair'),
+      defaultDef('strongFair'),
+      defaultDef('guarantees'),
+      defaultDef('existsConst'),
+      defaultDef('forallConst'),
+      defaultDef('chooseConst'),
+      defaultDef('Bool'),
+      defaultDef('Int'),
+      defaultDef('Nat'),
+      defaultDef('set'),
+      defaultDef('seq'),
+      defaultDef('tup'),
+      defaultDef('tuple'),
+      defaultDef('rec'),
+      defaultDef('record'),
+      defaultDef('igt'),
+      defaultDef('ilt'),
+      defaultDef('igte'),
+      defaultDef('ilte'),
+      defaultDef('iadd'),
+      defaultDef('isub'),
+      defaultDef('iuminus'),
+      defaultDef('imul'),
+      defaultDef('idiv'),
+      defaultDef('imod'),
+      defaultDef('ipow'),
+      defaultDef('andAction'),
+      defaultDef('orAction'),
+      defaultDef('andExpr'),
+      defaultDef('orExpr'),
+      defaultDef('field'),
+      defaultDef('item'),
+      defaultDef('match'),
+      defaultDef('assign'),
+      defaultDef('of'),
+      defaultDef('eq'),
+      defaultDef('neq'),
+      defaultDef('ite'),
+      defaultDef('cross'),
+      defaultDef('difference'),
     ],
     typeDefinitions: [],
   }
@@ -184,7 +193,7 @@ export function collectDefinitions (tntModule: TntModule): DefinitionTableByModu
   const fullTable = visitor.tables
 
   fullTable.forEach(table => {
-    table.valueDefinitions = table.valueDefinitions.filter(d => d.identifier !== '_')
+    table.valueDefinitions = table.valueDefinitions.filter(d => !d.identifier.isWildCard())
     table.valueDefinitions.push(...defaultDefinitions().valueDefinitions)
   })
   return fullTable
@@ -209,7 +218,7 @@ class DefinitionsCollectorVisitor implements IRVisitor {
     const namespacedDefinitions = this.currentTable.valueDefinitions
       .filter(d => !d.scope)
       .map(d => {
-        return { kind: d.kind, identifier: `${def.module.name}::${d.identifier}`, reference: d.reference }
+        return { kind: d.kind, identifier: d.identifier.toChildOf(def.module.name), reference: d.reference }
       })
 
     this.moduleStack.pop()
@@ -239,7 +248,7 @@ class DefinitionsCollectorVisitor implements IRVisitor {
 
   enterTypeDef (def: TntTypeDef): void {
     this.currentTable.typeDefinitions.push({
-      identifier: def.name,
+      identifier: new Identifier(def.name),
       type: def.type,
       reference: def.id,
     })
@@ -263,10 +272,10 @@ class DefinitionsCollectorVisitor implements IRVisitor {
     this.scopeStack.pop()
   }
 
-  private collectValueDefinition (kind: string, identifier: string, reference: bigint, scope?: bigint): void {
+  private collectValueDefinition (kind: string, name: string, reference: bigint, scope?: bigint): void {
     this.currentTable.valueDefinitions.push({
       kind: kind,
-      identifier: identifier,
+      identifier: new Identifier(name),
       reference: reference,
       scope: scope,
     })
