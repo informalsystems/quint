@@ -11,6 +11,8 @@
  * @author Igor Konnov
  */
 
+import { Identifier } from './identifier'
+
 /**
  * TNT expressions, declarations and types carry a unique identifier, which can be used
  * to recover expression metadata such as source information, annotations, etc.
@@ -33,12 +35,12 @@ export interface TntStrType extends WithId {
 
 export interface TntConstType extends WithId {
   kind: 'const',
-  name: string,
+  name: Identifier,
 }
 
 export interface TntVarType extends WithId {
   kind: 'var',
-  name: string,
+  name: Identifier,
 }
 
 export interface TntSetType extends WithId {

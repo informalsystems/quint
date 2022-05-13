@@ -12,6 +12,7 @@
  */
 
 import { TntType, WithId } from './tntTypes'
+import { Identifier } from './identifier'
 
 /**
  * TNT expressions and declarations carry an optional type tag.
@@ -55,7 +56,7 @@ export interface TntName extends WithId, WithType {
   /** Expressions kind ('name' -- name reference) */
   kind: 'name',
   /** A name of: a variable, constant, parameter, user-defined operator */
-  name: string,
+  name: Identifier,
 }
 
 export interface TntBool extends WithId, WithType {
@@ -83,7 +84,7 @@ export interface TntApp extends WithId, WithType {
   /** Expressions kind ('app' -- operator application) */
   kind: 'app',
   /** The name of the operator being applied */
-  opcode: string,
+  opcode: Identifier,
   /** A list of arguments to the operator */
   args: TntEx[],
 }
