@@ -72,7 +72,7 @@ export function definitionToString (def: TntDef): string {
 export function expressionToString (expr: TntEx): string {
   switch (expr.kind) {
     case 'name':
-      return expr.name
+      return expr.name.toString()
     case 'bool':
     case 'int':
       return expr.value.toString()
@@ -102,7 +102,7 @@ export function typeToString (type: TntType): string {
       return type.kind
     case 'const':
     case 'var':
-      return type.name
+      return type.name.toString()
     case 'set':
     case 'seq':
       return `${type.kind}(${typeToString(type.elem)})`

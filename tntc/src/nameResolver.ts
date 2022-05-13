@@ -20,6 +20,7 @@ import { TntConstType, TntVarType } from './tntTypes'
 import { ScopeTree, scopesForId } from './scoping'
 import { DefinitionTable, DefinitionTableByModule, ValueDefinition, emptyTable } from './definitionsCollector'
 import { IRVisitor, walkModule } from './IRVisitor'
+import { Identifier } from './identifier'
 
 /**
  * A single name resolution error
@@ -105,7 +106,7 @@ class NameResolverVisitor implements IRVisitor {
     // The list of scopes containing the expression is accumulated in param scopes
     const valueDefinitionsForScope = filterScope(this.currentTable.valueDefinitions, scopesForId(this.scopeTree, nameExpr.id))
 
-    if (!valueDefinitionsForScope.some(name => name.identifier === nameExpr.name)) {
+    if (!valueDefinitionsForScope.some(name => name.identifier.equals(nameExpr.name))) {
       this.recordError('value', nameExpr.name, nameExpr.id)
     }
   }
@@ -114,21 +115,21 @@ class NameResolverVisitor implements IRVisitor {
     // Application, check that the operator being applied is defined
     const valueDefinitionsForScope = filterScope(this.currentTable.valueDefinitions, scopesForId(this.scopeTree, appExpr.id))
 
-    if (!valueDefinitionsForScope.some(name => name.identifier === appExpr.opcode)) {
+    if (!valueDefinitionsForScope.some(name => name.identifier.equals(appExpr.opcode))) {
       this.recordError('value', appExpr.opcode, appExpr.id)
     }
   }
 
   enterVarType (type: TntVarType): void {
     // Type is a name, check that it is defined
-    if (!this.currentTable.typeDefinitions.some(def => def.identifier === type.name)) {
+    if (!this.currentTable.typeDefinitions.some(def => def.identifier.equals(type.name))) {
       this.recordError('type', type.name, type.id)
     }
   }
 
   enterConstType (type: TntConstType): void {
     // Type is a name, check that it is defined
-    if (!this.currentTable.typeDefinitions.some(def => def.identifier === type.name)) {
+    if (!this.currentTable.typeDefinitions.some(def => def.identifier.equals(type.name))) {
       this.recordError('type', type.name, type.id)
     }
   }
@@ -146,10 +147,10 @@ class NameResolverVisitor implements IRVisitor {
     }
   }
 
-  private recordError (kind: 'type' | 'value', name: string, id: bigint) {
+  private recordError (kind: 'type' | 'value', name: Identifier, id: bigint) {
     this.errors.push({
       kind: kind,
-      name: name,
+      name: name.toString(),
       definitionName: this.lastDefName,
       moduleName: this.currentModuleName,
       reference: id,
