@@ -36,12 +36,22 @@ ${text}
 }`
   // parse the module text
   const parseResult = parsePhase1(moduleText, '<input>')
-  if (parseResult.kind === 'error') {
+  if (parseResult.kind === 'ok') {
+    // TODO: call name resolution later
+
+    const visitor = new CompilerVisitor()
+    walkModule(visitor, parseResult.module)
+    return visitor.topExpr()
+  } else {
+    // report error messages
     parseResult.messages.forEach(function (err: ErrorMessage) {
-      const loc =
-        (err.locs.length > 0)
-          ? `${err.locs[0].start.line - 2}:${err.locs[0].start.col}`
-          : '<unknown>'
+      let loc
+      if (err.locs.length > 0) {
+        const start = err.locs[0].start
+        loc = `${start.line - 2}:${start.col}`
+      } else {
+        loc = '<unknown>'
+      }
 
       errorHandler({
         msg: err.explanation,
@@ -56,11 +66,5 @@ ${text}
         return none<any>()
       },
     }
-  } else {
-    // TODO: call name resolution later
-
-    const visitor = new CompilerVisitor()
-    walkModule(visitor, parseResult.module)
-    return visitor.topExpr()
   }
 }
