@@ -24,7 +24,7 @@ export interface Computable {
    * This method may return none, if a computation error happens during
    * evaluation.
    */
-  get: () => Maybe<any>
+  eval: () => Maybe<any>
 }
 
 /**

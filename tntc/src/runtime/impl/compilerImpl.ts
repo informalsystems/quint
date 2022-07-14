@@ -8,7 +8,7 @@
  * See License.txt in the project root for license information.
  */
 
-import { just } from '@sweet-monads/maybe'
+import { just, merge } from '@sweet-monads/maybe'
 
 import { IRVisitor } from '../../IRVisitor'
 import { Computable } from '../runtime'
@@ -24,11 +24,90 @@ export class CompilerVisitor implements IRVisitor {
 
   enterLiteral (expr: ir.TntBool | ir.TntInt | ir.TntStr) {
     const comp = {
-      get: function () {
+      eval: function () {
         return just<any>(expr.value)
       },
     }
 
     this.exprStack.push(comp)
+  }
+
+  exitApp (app: ir.TntApp) {
+    switch (app.opcode) {
+      case 'iuminus':
+        this.onUnaryMinus()
+        break
+
+      case 'iadd':
+        this.onBinArith((i, j) => i + j)
+        break
+
+      case 'isub':
+        this.onBinArith((i, j) => i - j)
+        break
+
+      case 'imul':
+        this.onBinArith((i, j) => i * j)
+        break
+
+      case 'idiv':
+        this.onBinArith((i, j) => i / j)
+        break
+
+      case 'imod':
+        this.onBinArith((i, j) => i % j)
+        break
+
+      case 'ipow':
+        this.onBinArith((i, j) => i ** j)
+        break
+
+      case 'igt':
+        this.onBinArith((i, j) => i > j)
+        break
+
+      case 'ilt':
+        this.onBinArith((i, j) => i < j)
+        break
+
+      case 'igte':
+        this.onBinArith((i, j) => i >= j)
+        break
+
+      case 'ilte':
+        this.onBinArith((i, j) => i <= j)
+        break
+
+      default:
+    }
+  }
+
+  // pop two arithmetic values, combine them, and push the outcome
+  private onBinArith (combine: (i: bigint, j: bigint) => (bigint | Boolean)) {
+    const rhs = this.exprStack.pop()
+    const lhs = this.exprStack.pop()
+    if (lhs !== undefined && rhs !== undefined) {
+      const comp = {
+        eval: function () {
+          return merge([lhs.eval(), rhs.eval()]).map(args =>
+            combine(args[0], args[1])
+          )
+        },
+      }
+      this.exprStack.push(comp)
+    }
+  }
+
+  // pop an arithmetic value and negate
+  private onUnaryMinus () {
+    const arg = this.exprStack.pop()
+    if (arg !== undefined) {
+      const comp = {
+        eval: function () {
+          return arg.eval().map(a => -a)
+        },
+      }
+      this.exprStack.push(comp)
+    }
   }
 }

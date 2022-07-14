@@ -59,10 +59,9 @@ ${text}
       })
     })
 
-    // return none
+    // the default implementation returns none
     return {
-      // the default implementation that returns undefined
-      get: function () {
+      eval: function () {
         return none<any>()
       },
     }
