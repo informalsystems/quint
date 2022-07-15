@@ -15,11 +15,11 @@ import { Computable } from '../runtime'
 import * as ir from '../../tntIr'
 
 export class CompilerVisitor implements IRVisitor {
-  // the stack of expressions
-  private exprStack: Computable[] = []
+  // the stack of computable values
+  private compStack: Computable[] = []
 
   topExpr () {
-    return this.exprStack[0]
+    return this.compStack[0]
   }
 
   enterLiteral (expr: ir.TntBool | ir.TntInt | ir.TntStr) {
@@ -29,85 +29,77 @@ export class CompilerVisitor implements IRVisitor {
       },
     }
 
-    this.exprStack.push(comp)
+    this.compStack.push(comp)
   }
 
   exitApp (app: ir.TntApp) {
     switch (app.opcode) {
       case 'iuminus':
-        this.onUnaryMinus()
+        this.combineExprs(1, (n: bigint) => -n)
         break
 
       case 'iadd':
-        this.onBinArith((i, j) => i + j)
+        this.combineExprs(2, (i: bigint, j: bigint) => i + j)
         break
 
       case 'isub':
-        this.onBinArith((i, j) => i - j)
+        this.combineExprs(2, (i: bigint, j: bigint) => i - j)
         break
 
       case 'imul':
-        this.onBinArith((i, j) => i * j)
+        this.combineExprs(2, (i: bigint, j: bigint) => i * j)
         break
 
       case 'idiv':
-        this.onBinArith((i, j) => i / j)
+        this.combineExprs(2, (i: bigint, j: bigint) => i / j)
         break
 
       case 'imod':
-        this.onBinArith((i, j) => i % j)
+        this.combineExprs(2, (i: bigint, j: bigint) => i % j)
         break
 
       case 'ipow':
-        this.onBinArith((i, j) => i ** j)
+        this.combineExprs(2, (i: bigint, j: bigint) => i ** j)
         break
 
       case 'igt':
-        this.onBinArith((i, j) => i > j)
+        this.combineExprs(2, (i: bigint, j: bigint) => i > j)
         break
 
       case 'ilt':
-        this.onBinArith((i, j) => i < j)
+        this.combineExprs(2, (i: bigint, j: bigint) => i < j)
         break
 
       case 'igte':
-        this.onBinArith((i, j) => i >= j)
+        this.combineExprs(2, (i: bigint, j: bigint) => i >= j)
         break
 
       case 'ilte':
-        this.onBinArith((i, j) => i <= j)
+        this.combineExprs(2, (i: bigint, j: bigint) => i <= j)
         break
 
       default:
     }
   }
 
-  // pop two arithmetic values, combine them, and push the outcome
-  private onBinArith (combine: (i: bigint, j: bigint) => (bigint | Boolean)) {
-    const rhs = this.exprStack.pop()
-    const lhs = this.exprStack.pop()
-    if (lhs !== undefined && rhs !== undefined) {
+  // pop nargs computable values, pass them the 'fun' function, and
+  // push the combined computable value on the stack
+  private combineExprs (nargs: number, fun: (...args: any[]) => any) {
+    if (this.compStack.length >= nargs) {
+      // pop nargs elements of the compStack
+      const args = this.compStack.splice(-nargs, nargs)
+      // produce the new computable value
       const comp = {
         eval: function () {
-          return merge([lhs.eval(), rhs.eval()]).map(args =>
-            combine(args[0], args[1])
+          // compute the values of the arguments at this point
+          const values = args.map(a => a.eval())
+          // if they are all defined, apply the function 'fun' to the arguments
+          return merge(values).map(vs =>
+            fun(...vs)
           )
         },
       }
-      this.exprStack.push(comp)
-    }
-  }
-
-  // pop an arithmetic value and negate
-  private onUnaryMinus () {
-    const arg = this.exprStack.pop()
-    if (arg !== undefined) {
-      const comp = {
-        eval: function () {
-          return arg.eval().map(a => -a)
-        },
-      }
-      this.exprStack.push(comp)
-    }
+      this.compStack.push(comp)
+    } // else TODO: report an error to the listener
   }
 }
