@@ -21,6 +21,10 @@ import * as ir from '../../tntIr'
  * computation to the JavaScript engine. Since many of TNT operators may be
  * computationally expensive, it is crucial to maintain this separation of
  * compilation vs. computation.
+ *
+ * This class does not do any dynamic type checking, assuming that the type checker
+ * will be run before the translation in the future. As we do not have the type
+ * checker yet, computations may fail with weird JavaScript errors.
  */
 export class CompilerVisitor implements IRVisitor {
   // the stack of computable values
@@ -55,6 +59,27 @@ export class CompilerVisitor implements IRVisitor {
         // For the moment, we are using the JS inequality.
         // In the future, we should negate the more general form of equality.
         this.combineExprs(2, (x: any, y: any) => x !== y)
+        break
+
+      // Booleans
+      case 'not':
+        this.combineExprs(1, (p: Boolean) => !p)
+        break
+
+      case 'and':
+        this.combineExprs(2, (p: Boolean, q: Boolean) => p && q)
+        break
+
+      case 'or':
+        this.combineExprs(2, (p: Boolean, q: Boolean) => p || q)
+        break
+
+      case 'implies':
+        this.combineExprs(2, (p: Boolean, q: Boolean) => !p || q)
+        break
+
+      case 'iff':
+        this.combineExprs(2, (p: Boolean, q: Boolean) => p === q)
         break
 
       // integers
