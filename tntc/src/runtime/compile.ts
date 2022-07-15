@@ -29,16 +29,6 @@ export interface Executable extends Computable {
   exec: () => (any | undefined)
 }
 
-function makeExecutable (comp: Computable): Executable {
-  return {
-    ...comp,
-    exec () : any | undefined {
-      const val = comp.eval()
-      return val.isJust() ? val.value : undefined
-    },
-  }
-}
-
 /**
  * Parse a string that contains a TNT expression and compile it to an executable
  * object. This is a user-facing function. In case of an error, the error
@@ -93,4 +83,17 @@ ${text}
   })
 
   return makeExecutable(uncomputable)
+}
+
+// module-private functions go here
+
+// make an Executable out of Computable
+function makeExecutable (comp: Computable): Executable {
+  return {
+    ...comp,
+    exec () : any | undefined {
+      const { value } = comp.eval()
+      return value
+    },
+  }
 }
