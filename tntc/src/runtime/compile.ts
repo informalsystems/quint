@@ -24,6 +24,12 @@ const consoleHandler = function (err: ExecError) {
  * Parse a string that contains a TNT expression and compile it to an executable
  * object. This is a user-facing function. In case of an error, the error
  * messages are passed to an error handler and the function returns undefined.
+ *
+ * @param text that stores a TNT expression,
+ *        which should be parseable without any context
+ * @param errorHandler error handler, which defaults to console output
+ * @returns a computable value that encodes the expression, which may evaluate to none,
+ *          in case a parsing or evaluation error occurs
  */
 export function
 compileExpr (text: String, errorHandler: ExecErrorHandler = consoleHandler): Computable {
