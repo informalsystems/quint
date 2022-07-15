@@ -53,7 +53,7 @@ export class CompilerVisitor implements IRVisitor {
 
   enterLiteral (expr: ir.TntBool | ir.TntInt | ir.TntStr) {
     const comp = {
-      eval: function () {
+      eval: () => {
         return just<any>(expr.value)
       },
     }
@@ -155,7 +155,7 @@ export class CompilerVisitor implements IRVisitor {
         break
 
       default:
-        assert(false, `Translation of ${app.opcode} is not implemented`)
+        throw new Error(`Translation of ${app.opcode} is not implemented`)
     }
   }
 
@@ -167,7 +167,7 @@ export class CompilerVisitor implements IRVisitor {
       const args = this.compStack.splice(-nargs, nargs)
       // produce the new computable value
       const comp = {
-        eval: function () {
+        eval: () => {
           // compute the values of the arguments at this point
           const values = args.map(a => a.eval())
           // if they are all defined, apply the function 'fun' to the arguments
@@ -176,7 +176,7 @@ export class CompilerVisitor implements IRVisitor {
       }
       this.compStack.push(comp)
     } else {
-      assert(false, 'Not enough arguments on the stack')
+      throw new Error('Not enough arguments on the stack')
     }
   }
 
@@ -188,7 +188,7 @@ export class CompilerVisitor implements IRVisitor {
       const [cond, thenArm, elseArm] = this.compStack.splice(-3, 3)
       // produce the new computable value
       const comp = {
-        eval: function () {
+        eval: () => {
           // compute the values of the arguments at this point
           const v =
             cond.eval().map(pred => pred ? thenArm.eval() : elseArm.eval())
@@ -197,7 +197,7 @@ export class CompilerVisitor implements IRVisitor {
       }
       this.compStack.push(comp)
     } else {
-      assert(false, 'Not enough arguments on the stack')
+      throw new Error('Not enough arguments on the stack')
     }
   }
 }

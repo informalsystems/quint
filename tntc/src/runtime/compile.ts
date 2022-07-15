@@ -16,7 +16,7 @@ import { walkModule } from '../IRVisitor'
 /**
  * The default error handler, which simply prints the error on the console.
  */
-const consoleHandler = function (err: ExecError) {
+const consoleHandler = (err: ExecError) => {
   console.error(`${err.sourceAndLoc}: ${err.msg}`)
 }
 
@@ -47,7 +47,7 @@ function makeExecutable (comp: Computable): Executable {
  * @param text that stores a TNT expression,
  *        which should be parseable without any context
  * @param errorHandler error handler, which defaults to console output
- * @returns a computable value that encodes the expression, which may evaluate to none,
+ * @returns a computable value that encodes the expression, which may evaluate to undefined,
  *          in case a parsing or evaluation error occurs
  */
 export function
@@ -77,7 +77,7 @@ ${text}
   }
 
   // report error messages
-  errors.forEach(function (err: ErrorMessage) {
+  errors.forEach((err: ErrorMessage) => {
     let loc
     if (err.locs.length > 0) {
       const start = err.locs[0].start
