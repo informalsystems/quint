@@ -11,7 +11,7 @@ function assertResult<T> (input: string, result: T) {
   assertDefined(
     compileExpr(input)
       .eval()
-      .map(v => assert(v === result))
+      .map(v => assert(v === result, `Expected ${v} equal to ${result}`))
   )
 }
 
@@ -139,6 +139,18 @@ describe('compiling specs to runtime values', () => {
       assertResult('true  != true', false)
       assertResult('false != true', true)
       assertResult('true  != false', true)
+    })
+  })
+
+  describe('compileExpr over other operators', () => {
+    it('computes Boolean if-then-else', () => {
+      assertResult('if (false) false else true', true)
+      assertResult('if (true) false else true', false)
+    })
+
+    it('computes integer if-then-else', () => {
+      assertResult('if (false) 1 else 2', 2n)
+      assertResult('if (true) 1 else 2', 1n)
     })
   })
 })

@@ -61,6 +61,11 @@ export class CompilerVisitor implements IRVisitor {
         this.combineExprs(2, (x: any, y: any) => x !== y)
         break
 
+      // conditional
+      case 'ite':
+        this.translateIfThenElse()
+        break
+
       // Booleans
       case 'not':
         this.combineExprs(1, (p: Boolean) => !p)
@@ -143,9 +148,26 @@ export class CompilerVisitor implements IRVisitor {
           // compute the values of the arguments at this point
           const values = args.map(a => a.eval())
           // if they are all defined, apply the function 'fun' to the arguments
-          return merge(values).map(vs =>
-            fun(...vs)
-          )
+          return merge(values).map(vs => fun(...vs))
+        },
+      }
+      this.compStack.push(comp)
+    } // else TODO: report an error to the error listener
+  }
+
+  // if-then-else requires special treatment,
+  // as it should not evaluate both arms
+  private translateIfThenElse () {
+    if (this.compStack.length >= 3) {
+      // pop 3 elements of the compStack
+      const [cond, thenArm, elseArm] = this.compStack.splice(-3, 3)
+      // produce the new computable value
+      const comp = {
+        eval: function () {
+          // compute the values of the arguments at this point
+          const v =
+            cond.eval().map(pred => pred ? thenArm.eval() : elseArm.eval())
+          return v.join()
         },
       }
       this.compStack.push(comp)
