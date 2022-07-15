@@ -3,7 +3,7 @@ import { assert } from 'chai'
 import { Maybe } from '@sweet-monads/maybe'
 import { compileExpr } from '../../src/runtime/compile'
 
-function assertDefined<T>(m: Maybe<T>) {
+function assertDefined<T> (m: Maybe<T>) {
   assert(m.isJust(), 'undefined value')
 }
 
@@ -163,6 +163,32 @@ describe('compiling specs to runtime values', () => {
         compileExpr('4 <= 5')
           .eval()
           .map(v => assert(v === true))
+      )
+    })
+
+    it('computes integer equality', () => {
+      assertDefined(
+        compileExpr('5 == 4')
+          .eval()
+          .map(v => assert(v === false))
+      )
+      assertDefined(
+        compileExpr('4 == 4')
+          .eval()
+          .map(v => assert(v === true))
+      )
+    })
+
+    it('computes integer inequality', () => {
+      assertDefined(
+        compileExpr('5 != 4')
+          .eval()
+          .map(v => assert(v === true))
+      )
+      assertDefined(
+        compileExpr('4 != 4')
+          .eval()
+          .map(v => assert(v === false))
       )
     })
   })

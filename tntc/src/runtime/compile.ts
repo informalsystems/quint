@@ -41,7 +41,7 @@ ${text}
 
     const visitor = new CompilerVisitor()
     walkModule(visitor, parseResult.module)
-    return visitor.topExpr()
+    return visitor.topComputable()
   } else {
     // report error messages
     parseResult.messages.forEach(function (err: ErrorMessage) {

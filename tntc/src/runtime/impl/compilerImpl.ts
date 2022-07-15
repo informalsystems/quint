@@ -1,5 +1,5 @@
 /*
- * Compiler to runtime objects.
+ * Compiler to Computable values (in the runtime).
  *
  * Igor Konnov, 2022
  *
@@ -14,11 +14,21 @@ import { IRVisitor } from '../../IRVisitor'
 import { Computable } from '../runtime'
 import * as ir from '../../tntIr'
 
+/**
+ * Compiler visitor turns TNT definitions and expressions into Computable
+ * objects, essentially, lazy JavaScript functions. Importantly, it does not do
+ * any evaluation during the translation and thus delegates the actual
+ * computation to the JavaScript engine. Since many of TNT operators may be
+ * computationally expensive, it is crucial to maintain this separation of
+ * compilation vs. computation.
+ */
 export class CompilerVisitor implements IRVisitor {
   // the stack of computable values
   private compStack: Computable[] = []
 
-  topExpr () {
+  // Temporary kludge to access the expression on the top.
+  // It should be replaced with proper handling of definitions.
+  topComputable () {
     return this.compStack[0]
   }
 
@@ -34,6 +44,20 @@ export class CompilerVisitor implements IRVisitor {
 
   exitApp (app: ir.TntApp) {
     switch (app.opcode) {
+      case 'eq':
+        // Equality is a very general operator.
+        // In the current implementation,
+        // it would only work for scalar values: Booleans and integers.
+        this.combineExprs(2, (x: any, y: any) => x === y)
+        break
+
+      case 'neq':
+        // For the moment, we are using the JS inequality.
+        // In the future, we should negate the more general form of equality.
+        this.combineExprs(2, (x: any, y: any) => x !== y)
+        break
+
+      // integers
       case 'iuminus':
         this.combineExprs(1, (n: bigint) => -n)
         break
@@ -100,6 +124,6 @@ export class CompilerVisitor implements IRVisitor {
         },
       }
       this.compStack.push(comp)
-    } // else TODO: report an error to the listener
+    } // else TODO: report an error to the error listener
   }
 }
