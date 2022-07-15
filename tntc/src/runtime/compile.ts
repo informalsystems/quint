@@ -21,6 +21,25 @@ const consoleHandler = function (err: ExecError) {
 }
 
 /**
+ * A convenience interface over Computable which unwraps Maybe into any | undefined.
+ * The users do not have to worry about us using Maybe and they can use the standard
+ * TypeScript idioms instead.
+ */
+export interface Executable extends Computable {
+  exec: () => (any | undefined)
+}
+
+function makeExecutable (comp: Computable): Executable {
+  return {
+    ...comp,
+    exec () : any | undefined {
+      const val = comp.eval()
+      return val.isJust() ? val.value : undefined
+    },
+  }
+}
+
+/**
  * Parse a string that contains a TNT expression and compile it to an executable
  * object. This is a user-facing function. In case of an error, the error
  * messages are passed to an error handler and the function returns undefined.
@@ -32,7 +51,7 @@ const consoleHandler = function (err: ExecError) {
  *          in case a parsing or evaluation error occurs
  */
 export function
-compileExpr (text: String, errorHandler: ExecErrorHandler = consoleHandler): Computable {
+compileExpr (text: String, errorHandler: ExecErrorHandler = consoleHandler): Executable {
   // embed expression text into a module definition
   const moduleText =
 `module __Runtime {
@@ -51,7 +70,9 @@ ${text}
     } else {
       const visitor = new CompilerVisitor()
       walkModule(visitor, parseRes.module)
-      return visitor.findByName('__exprToCompile') ?? uncomputable
+      // add a helper function to the computable value to unwrap Maybe
+      const comp = visitor.findByName('__exprToCompile') ?? uncomputable
+      return makeExecutable(comp)
     }
   }
 
@@ -71,5 +92,5 @@ ${text}
     })
   })
 
-  return uncomputable
+  return makeExecutable(uncomputable)
 }
