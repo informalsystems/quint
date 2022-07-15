@@ -8,6 +8,7 @@
  * See License.txt in the project root for license information.
  */
 
+import { strict as assert } from 'assert'
 import { just, merge } from '@sweet-monads/maybe'
 
 import { IRVisitor } from '../../IRVisitor'
@@ -34,6 +35,11 @@ export class CompilerVisitor implements IRVisitor {
   // It should be replaced with proper handling of definitions.
   topComputable () {
     return this.compStack[0]
+  }
+
+  exitOpDef (opdef: ir.TntOpDef) {
+    // for now, we handle only 'val'
+    assert(opdef.qualifier === 'val', `Expected 'val', found: ${opdef.qualifier}`)
   }
 
   enterLiteral (expr: ir.TntBool | ir.TntInt | ir.TntStr) {
@@ -133,6 +139,7 @@ export class CompilerVisitor implements IRVisitor {
         break
 
       default:
+        assert(false, `Translation of ${app.opcode} is not implemented`)
     }
   }
 
@@ -152,7 +159,9 @@ export class CompilerVisitor implements IRVisitor {
         },
       }
       this.compStack.push(comp)
-    } // else TODO: report an error to the error listener
+    } else {
+      assert(false, 'Not enough arguments on the stack')
+    }
   }
 
   // if-then-else requires special treatment,
@@ -171,6 +180,8 @@ export class CompilerVisitor implements IRVisitor {
         },
       }
       this.compStack.push(comp)
-    } // else TODO: report an error to the error listener
+    } else {
+      assert(false, 'Not enough arguments on the stack')
+    }
   }
 }
