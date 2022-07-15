@@ -149,8 +149,8 @@ describe('compiling specs to runtime values', () => {
     })
 
     it('computes integer if-then-else', () => {
-      assertResult('if (false) 1 else 2', 2n)
-      assertResult('if (true) 1 else 2', 1n)
+      assertResult('if (3 > 5) 1 else 2', 2n)
+      assertResult('if (5 > 3) 1 else 2', 1n)
     })
   })
 })
