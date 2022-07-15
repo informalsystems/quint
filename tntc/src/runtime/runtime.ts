@@ -12,7 +12,7 @@
  * See License.txt in the project root for license information.
  */
 
-import { Maybe } from '@sweet-monads/maybe'
+import { Maybe, none } from '@sweet-monads/maybe'
 
 /**
  * An object that can be evaluated by the runtime. Normally, it is constructed
@@ -25,6 +25,15 @@ export interface Computable {
    * evaluation.
    */
   eval: () => Maybe<any>
+}
+
+/**
+ * An implementation of Computable that always fails.
+ */
+export const uncomputable = {
+  eval: function () {
+    return none<any>()
+  },
 }
 
 /**

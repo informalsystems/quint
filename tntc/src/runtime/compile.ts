@@ -8,9 +8,8 @@
  * See License.txt in the project root for license information.
  */
 
-import { none } from '@sweet-monads/maybe'
-import { parsePhase1, ErrorMessage } from '../tntParserFrontend'
-import { Computable, ExecError, ExecErrorHandler } from './runtime'
+import { parsePhase1, parsePhase2, ErrorMessage } from '../tntParserFrontend'
+import { Computable, uncomputable, ExecError, ExecErrorHandler } from './runtime'
 import { CompilerVisitor } from './impl/compilerImpl'
 import { walkModule } from '../IRVisitor'
 
@@ -30,40 +29,41 @@ export function
 compileExpr (text: String, errorHandler: ExecErrorHandler = consoleHandler): Computable {
   // embed expression text into a module definition
   const moduleText =
-`module Runtime {
-   val fun =
+`module __Runtime {
+   val __exprToCompile =
 ${text}
 }`
   // parse the module text
-  const parseResult = parsePhase1(moduleText, '<input>')
-  if (parseResult.kind === 'ok') {
-    // TODO: call name resolution later
-
-    const visitor = new CompilerVisitor()
-    walkModule(visitor, parseResult.module)
-    return visitor.topComputable()
+  const parseRes = parsePhase1(moduleText, '<input>')
+  let errors = []
+  if (parseRes.kind === 'error') {
+    errors = parseRes.messages
   } else {
-    // report error messages
-    parseResult.messages.forEach(function (err: ErrorMessage) {
-      let loc
-      if (err.locs.length > 0) {
-        const start = err.locs[0].start
-        loc = `${start.line - 2}:${start.col}`
-      } else {
-        loc = '<unknown>'
-      }
-
-      errorHandler({
-        msg: err.explanation,
-        sourceAndLoc: loc,
-      })
-    })
-
-    // the default implementation returns none
-    return {
-      eval: function () {
-        return none<any>()
-      },
+    const resolutionRes = parsePhase2(parseRes.module, parseRes.sourceMap)
+    if (resolutionRes.kind === 'error') {
+      errors = resolutionRes.messages
+    } else {
+      const visitor = new CompilerVisitor()
+      walkModule(visitor, parseRes.module)
+      return visitor.findByName('__exprToCompile') ?? uncomputable
     }
   }
+
+  // report error messages
+  errors.forEach(function (err: ErrorMessage) {
+    let loc
+    if (err.locs.length > 0) {
+      const start = err.locs[0].start
+      loc = `${start.line - 2}:${start.col}`
+    } else {
+      loc = '<unknown>'
+    }
+
+    errorHandler({
+      msg: err.explanation,
+      sourceAndLoc: loc,
+    })
+  })
+
+  return uncomputable
 }

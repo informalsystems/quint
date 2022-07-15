@@ -153,4 +153,14 @@ describe('compiling specs to runtime values', () => {
       assertResult('if (5 > 3) 1 else 2', 1n)
     })
   })
+
+  describe('compileExpr over definitions', () => {
+    it('computes value definitions', () => {
+      const input =
+        `val x = 3 + 4
+         val y = 2 * x
+         y - x`
+      assertResult(input, 7n)
+    })
+  })
 })

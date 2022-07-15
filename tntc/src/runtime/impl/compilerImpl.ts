@@ -30,16 +30,25 @@ import * as ir from '../../tntIr'
 export class CompilerVisitor implements IRVisitor {
   // the stack of computable values
   private compStack: Computable[] = []
+  // the map of definition and variable names to translated values
+  private nameToComputable: Map<string, Computable> = new Map<string, Computable>()
 
-  // Temporary kludge to access the expression on the top.
-  // It should be replaced with proper handling of definitions.
-  topComputable () {
-    return this.compStack[0]
+  /**
+   * Get a computable assigned to a name.
+   *
+   * @param name the definition name
+   * @return the Computable value assigned to the name, or undefined
+   */
+  findByName (name: string) {
+    return this.nameToComputable.get(name)
   }
 
   exitOpDef (opdef: ir.TntOpDef) {
     // for now, we handle only 'val'
     assert(opdef.qualifier === 'val', `Expected 'val', found: ${opdef.qualifier}`)
+    const defBody = this.compStack.pop()
+    assert(defBody, `No expression for ${opdef.name} on compStack`)
+    this.nameToComputable.set(opdef.name, defBody)
   }
 
   enterLiteral (expr: ir.TntBool | ir.TntInt | ir.TntStr) {
@@ -49,6 +58,13 @@ export class CompilerVisitor implements IRVisitor {
       },
     }
 
+    this.compStack.push(comp)
+  }
+
+  enterName (name: ir.TntName) {
+    const comp = this.nameToComputable.get(name.name)
+    // this may happen, see: https://github.com/informalsystems/tnt/issues/129
+    assert(comp, `Name ${name.name} not found (out of order?)`)
     this.compStack.push(comp)
   }
 
