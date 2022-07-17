@@ -71,7 +71,9 @@ ${text}
     let loc
     if (err.locs.length > 0) {
       const start = err.locs[0].start
-      loc = `${start.line - 2}:${start.col}`
+      // compensate for 2 lines in moduleText,
+      // make lines and columns start with 1
+      loc = `${start.line - 1}:${start.col + 1}`
     } else {
       loc = '<unknown>'
     }
