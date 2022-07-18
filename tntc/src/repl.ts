@@ -57,7 +57,7 @@ export function tntRepl () {
       case '.help':
         out('.exit\tExit the REPL')
         out('.help\tPrint this help message')
-        out('\nType and expression and press Enter to evaluate it.')
+        out('\nType an expression and press Enter to evaluate it.')
         out('When the REPL switches to multiline mode "...", finish it with an empty line.')
         out('\nPress Ctrl+C to abort current expression, Ctrl+D to exit the REPL')
         break
