@@ -17,7 +17,7 @@ import { ExecError } from './runtime/runtime'
 export function tntRepl () {
   const out = console.log
   out(chalk.gray('TNT REPL v0.0.1'))
-  out(chalk.gray('Type ".help" for more information'))
+  out(chalk.gray('Type ".exit" to exit, or ".help" for more information'))
   // create a readline interface
   const rl = readline.createInterface({
     input: process.stdin,

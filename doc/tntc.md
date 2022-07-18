@@ -32,22 +32,8 @@ See [README](../tntc/README.md).
 tntc repl
 ```
 
-Starts the [REPL][]. This shell
-is especially useful for learning the language. The interaction looks as
-follows:
-
-```sh
-$ tntc repl       
-TNT REPL v0.0.1
-Type ".help" for more information
->>> 5 * 3 > 11
-true
->>> val x = 3 + 4
-... x > 10
-... 
-false
->>> 
-```
+Starts the [REPL][]: read-evaluate-print loop. REPL is especially useful for
+learning the language. See the [repl](./repl.md) for more details.
 
 ## Command parse
 
