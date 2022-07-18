@@ -7,8 +7,7 @@
 **WARNING**: This is very much work in progress. A tiny subset of the language
 is supported.
 
-[REPL][] is a read-eval-print loop, which is a fancy name for an interactive
-shell. REPL is usually a good way to start learning languages.
+[REPL][] is a read-eval-print loop. A REPL is usually a good way to start learning a language.
 
 ## Installation
 
