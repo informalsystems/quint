@@ -9,7 +9,7 @@
  */
 
 import { parsePhase1, parsePhase2, ErrorMessage } from '../tntParserFrontend'
-import { Computable, uncomputable, ExecError, ExecErrorHandler } from './runtime'
+import { Computable, fail, ExecError, ExecErrorHandler } from './runtime'
 import { CompilerVisitor } from './impl/compilerImpl'
 import { walkModule } from '../IRVisitor'
 
@@ -61,7 +61,7 @@ ${text}
       const visitor = new CompilerVisitor()
       walkModule(visitor, parseRes.module)
       // add a helper function to the computable value to unwrap Maybe
-      const comp = visitor.findByName('__exprToCompile') ?? uncomputable
+      const comp = visitor.findByName('__exprToCompile') ?? fail
       return makeExecutable(comp)
     }
   }
@@ -84,7 +84,7 @@ ${text}
     })
   })
 
-  return makeExecutable(uncomputable)
+  return makeExecutable(fail)
 }
 
 // module-private functions go here
