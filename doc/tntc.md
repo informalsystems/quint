@@ -32,7 +32,7 @@ See [README](../tntc/README.md).
 tntc repl
 ```
 
-Starts the [REPL][], that is, an interactive language shell. This shell
+Starts the [REPL][]. This shell
 is especially useful for learning the language. The interaction looks as
 follows:
 
