@@ -3,7 +3,7 @@
  *
  * Igor Konnov, 2022
  *
- * Copyright (c) Informal Systems 2021. All rights reserved.
+ * Copyright (c) Informal Systems 2022. All rights reserved.
  * Licensed under the Apache 2.0.
  * See License.txt in the project root for license information.
  */
