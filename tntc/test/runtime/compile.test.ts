@@ -1,18 +1,35 @@
 import { describe, it } from 'mocha'
 import { assert } from 'chai'
 import { Maybe } from '@sweet-monads/maybe'
-import { EvalResult } from '../../src/runtime/runtime'
+import { Set } from 'immutable'
+import { EvalResult, toTntEx } from '../../src/runtime/runtime'
+import { expressionToString } from '../../src/IRprinting'
 import { compileExpr } from '../../src/runtime/compile'
 
 function assertDefined<T> (m: Maybe<T>) {
   assert(m.isJust(), 'undefined value')
 }
 
+// Compile an expression, evaluate it and compare the result.
+// This only works reliably for literals.
+// For collections, use assertResultText.
 function assertResult<T extends EvalResult> (input: string, result: T) {
   assertDefined(
     compileExpr(input)
       .eval()
       .map(v => assert(v === result, `Expected ${v} equal to ${result}`))
+  )
+}
+
+// Compile an expression, evaluate it, convert to TlaEx, then to a string,
+// compare the result. This is the easiest path to test the results.
+function assertResultAsString (input: string, result: string) {
+  assertDefined(
+    compileExpr(input)
+      .eval()
+      .map(toTntEx)
+      .map(expressionToString)
+      .map(s => assert(s === result, `Expected ${s} equal to ${result}`))
   )
 }
 
@@ -162,6 +179,28 @@ describe('compiling specs to runtime values', () => {
          val y = 2 * x
          y - x`
       assertResult(input, 7n)
+    })
+  })
+
+  describe('compileExpr over sets', () => {
+    it('computes a flat set', () => {
+      const input = 'set(1, 3 - 1, 3)'
+      assertResultAsString(input, 'set(1, 2, 3)')
+    })
+
+    it('computes a flat set without duplicates', () => {
+      const input = 'set(1, 2, 3 - 1, 3, 1)'
+      assertResultAsString(input, 'set(1, 2, 3)')
+    })
+
+    it('computes a set of sets', () => {
+      const input = 'set(set(1, 2), set(2, 3), set(1, 3))'
+      assertResultAsString(input, 'set(set(1, 2), set(1, 3), set(2, 3))')
+    })
+
+    it('computes a set of sets without duplicates', () => {
+      const input = 'set(set(1, 2), set(2, 3), set(1, 3), set(2 - 1, 2 + 1))'
+      assertResultAsString(input, 'set(set(1, 2), set(1, 3), set(2, 3))')
     })
   })
 })

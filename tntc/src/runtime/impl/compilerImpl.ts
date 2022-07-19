@@ -10,9 +10,10 @@
 
 import { strict as assert } from 'assert'
 import { just, merge } from '@sweet-monads/maybe'
+import { Set } from 'immutable'
 
 import { IRVisitor } from '../../IRVisitor'
-import { Computable } from '../runtime'
+import { Computable, EvalResult } from '../runtime'
 import * as ir from '../../tntIr'
 
 /**
@@ -155,6 +156,10 @@ export class CompilerVisitor implements IRVisitor {
 
       case 'ilte':
         this.applyFun(2, (i: bigint, j: bigint) => i <= j)
+        break
+
+      case 'set':
+        this.applyFun(app.args.length, (...values: any[]) => Set.of(...values))
         break
 
       default:
