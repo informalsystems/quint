@@ -69,13 +69,18 @@ export function toTntEx (result: EvalResult): TntEx {
         __str: expressionToString(e),
       }
     }
-    const elems = result
-      .map(e => toTntEx(e))
-      .map(cacheStr)
-      .toArray()
-      .sort((e1, e2) =>
-        // can we do that with one comparison instead of two?
-        e1.__str < e2.__str ? -1 : (e1.__str === e2.__str ? 0 : 1))
+    // Normalize the elements by sorting them
+    const elems: (TntEx & { __str?: string })[] =
+      result
+        .map(e => toTntEx(e))
+        .map(cacheStr)
+        .toArray()
+        .sort((e1, e2) =>
+          // can we do that with one comparison instead of two?
+          e1.__str < e2.__str ? -1 : (e1.__str === e2.__str ? 0 : 1))
+    // erase the string cache
+    elems.forEach(e => delete e.__str)
+    // return the expression set(...elems)
     return {
       id: 0n,
       kind: 'app',
