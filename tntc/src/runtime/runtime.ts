@@ -15,6 +15,11 @@
 import { Maybe, none } from '@sweet-monads/maybe'
 
 /**
+ * The type of a value that can be computed by the runtime.
+ */
+export type EvalResult = Boolean | bigint
+
+/**
  * An object that can be evaluated by the runtime. Normally, it is constructed
  * from a TNT expression, but it does not have to.
  */
@@ -24,7 +29,7 @@ export interface Computable {
    * This method may return none, if a computation error happens during
    * evaluation.
    */
-  eval: () => Maybe<any>
+  eval: () => Maybe<EvalResult>
 }
 
 /**
@@ -32,7 +37,7 @@ export interface Computable {
  */
 export const fail = {
   eval: () => {
-    return none<any>()
+    return none<Boolean>()
   },
 }
 

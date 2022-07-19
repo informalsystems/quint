@@ -1,13 +1,14 @@
 import { describe, it } from 'mocha'
 import { assert } from 'chai'
 import { Maybe } from '@sweet-monads/maybe'
+import { EvalResult } from '../../src/runtime/runtime'
 import { compileExpr } from '../../src/runtime/compile'
 
 function assertDefined<T> (m: Maybe<T>) {
   assert(m.isJust(), 'undefined value')
 }
 
-function assertResult<T> (input: string, result: T) {
+function assertResult<T extends EvalResult> (input: string, result: T) {
   assertDefined(
     compileExpr(input)
       .eval()

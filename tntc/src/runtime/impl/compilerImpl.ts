@@ -52,6 +52,9 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   enterLiteral (expr: ir.TntBool | ir.TntInt | ir.TntStr) {
+    if (expr.kind === 'str') {
+      throw new Error(`Found ${expr}, strings are not supported`)
+    }
     const comp = {
       eval: () => {
         return just<any>(expr.value)
@@ -74,13 +77,13 @@ export class CompilerVisitor implements IRVisitor {
         // Equality is a very general operator.
         // In the current implementation,
         // it would only work for scalar values: Booleans and integers.
-        this.combineExprs(2, (x: any, y: any) => x === y)
+        this.applyFun(2, (x: any, y: any) => x === y)
         break
 
       case 'neq':
         // For the moment, we are using the JS inequality.
         // In the future, we should negate the more general form of equality.
-        this.combineExprs(2, (x: any, y: any) => x !== y)
+        this.applyFun(2, (x: any, y: any) => x !== y)
         break
 
       // conditional
@@ -90,68 +93,68 @@ export class CompilerVisitor implements IRVisitor {
 
       // Booleans
       case 'not':
-        this.combineExprs(1, (p: Boolean) => !p)
+        this.applyFun(1, (p: Boolean) => !p)
         break
 
       case 'and':
-        this.combineExprs(2, (p: Boolean, q: Boolean) => p && q)
+        this.applyFun(2, (p: Boolean, q: Boolean) => p && q)
         break
 
       case 'or':
-        this.combineExprs(2, (p: Boolean, q: Boolean) => p || q)
+        this.applyFun(2, (p: Boolean, q: Boolean) => p || q)
         break
 
       case 'implies':
-        this.combineExprs(2, (p: Boolean, q: Boolean) => !p || q)
+        this.applyFun(2, (p: Boolean, q: Boolean) => !p || q)
         break
 
       case 'iff':
-        this.combineExprs(2, (p: Boolean, q: Boolean) => p === q)
+        this.applyFun(2, (p: Boolean, q: Boolean) => p === q)
         break
 
       // integers
       case 'iuminus':
-        this.combineExprs(1, (n: bigint) => -n)
+        this.applyFun(1, (n: bigint) => -n)
         break
 
       case 'iadd':
-        this.combineExprs(2, (i: bigint, j: bigint) => i + j)
+        this.applyFun(2, (i: bigint, j: bigint) => i + j)
         break
 
       case 'isub':
-        this.combineExprs(2, (i: bigint, j: bigint) => i - j)
+        this.applyFun(2, (i: bigint, j: bigint) => i - j)
         break
 
       case 'imul':
-        this.combineExprs(2, (i: bigint, j: bigint) => i * j)
+        this.applyFun(2, (i: bigint, j: bigint) => i * j)
         break
 
       case 'idiv':
-        this.combineExprs(2, (i: bigint, j: bigint) => i / j)
+        this.applyFun(2, (i: bigint, j: bigint) => i / j)
         break
 
       case 'imod':
-        this.combineExprs(2, (i: bigint, j: bigint) => i % j)
+        this.applyFun(2, (i: bigint, j: bigint) => i % j)
         break
 
       case 'ipow':
-        this.combineExprs(2, (i: bigint, j: bigint) => i ** j)
+        this.applyFun(2, (i: bigint, j: bigint) => i ** j)
         break
 
       case 'igt':
-        this.combineExprs(2, (i: bigint, j: bigint) => i > j)
+        this.applyFun(2, (i: bigint, j: bigint) => i > j)
         break
 
       case 'ilt':
-        this.combineExprs(2, (i: bigint, j: bigint) => i < j)
+        this.applyFun(2, (i: bigint, j: bigint) => i < j)
         break
 
       case 'igte':
-        this.combineExprs(2, (i: bigint, j: bigint) => i >= j)
+        this.applyFun(2, (i: bigint, j: bigint) => i >= j)
         break
 
       case 'ilte':
-        this.combineExprs(2, (i: bigint, j: bigint) => i <= j)
+        this.applyFun(2, (i: bigint, j: bigint) => i <= j)
         break
 
       default:
@@ -161,7 +164,7 @@ export class CompilerVisitor implements IRVisitor {
 
   // pop nargs computable values, pass them the 'fun' function, and
   // push the combined computable value on the stack
-  private combineExprs (nargs: number, fun: (...args: any[]) => any) {
+  private applyFun (nargs: number, fun: (...args: any[]) => any) {
     if (this.compStack.length >= nargs) {
       // pop nargs elements of the compStack
       const args = this.compStack.splice(-nargs, nargs)
