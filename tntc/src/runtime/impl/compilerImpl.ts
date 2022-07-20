@@ -10,11 +10,10 @@
 
 import { strict as assert } from 'assert'
 import { Maybe, none, just, merge } from '@sweet-monads/maybe'
-import { Set, isSet } from 'immutable'
-import isEqual from 'lodash.isequal'
+import { Set, isSet, is as immutableIs } from 'immutable'
 
 import { IRVisitor } from '../../IRVisitor'
-import { Computable, fail } from '../runtime'
+import { Computable, EvalResult, fail } from '../runtime'
 
 import * as ir from '../../tntIr'
 
@@ -73,16 +72,11 @@ export class CompilerVisitor implements IRVisitor {
   exitApp (app: ir.TntApp) {
     switch (app.opcode) {
       case 'eq':
-        // Equality is a very general operator.
-        // In the current implementation,
-        // it would only work for scalar values: Booleans and integers.
-        this.applyFun(2, (x: any, y: any) => x === y)
+        this.applyFun(2, (x: any, y: any) => this.eq(x, y))
         break
 
       case 'neq':
-        // For the moment, we are using the JS inequality.
-        // In the future, we should negate the more general form of equality.
-        this.applyFun(2, (x: any, y: any) => x !== y)
+        this.applyFun(2, (x: any, y: any) => !this.eq(x, y))
         break
 
       // conditional
@@ -168,38 +162,72 @@ export class CompilerVisitor implements IRVisitor {
         this.applyFun(2, (value: any, set: any) => set.includes(value))
         break
 
+      case 'subseteq':
+        this.applyFun(2,
+          function<A> (lhs: Set<A>, rhs: Set<A>): boolean {
+            return lhs.isSubset(rhs)
+          }
+        )
+        break
+
+      case 'union':
+        this.applyFun(2,
+          function<A> (lhs: Set<A>, rhs: Set<A>): Set<A> {
+            return lhs.union(rhs)
+          }
+        )
+        break
+
+      case 'intersect':
+        this.applyFun(2,
+          function<A> (lhs: Set<A>, rhs: Set<A>): Set<A> {
+            return lhs.intersect(rhs)
+          }
+        )
+        break
+
+      case 'exclude':
+        this.applyFun(2,
+          function<A> (lhs: Set<A>, rhs: Set<A>): Set<A> {
+            return lhs.subtract(rhs)
+          }
+        )
+        break
+
       case 'exists':
-        this.translateExists()
+        this.applyLambdaToSet(
+          e => e,
+          set => set.find(e => e === true) !== undefined
+        )
+        break
+
+      case 'forall':
+        this.applyLambdaToSet(
+          e => e,
+          set => set.find(e => e === false) === undefined
+        )
+        break
+
+      case 'map':
+        this.applyLambdaToSet(
+          e => e,
+          set => set.map(e => e)
+        )
+        break
+
+      case 'filter':
+        this.applyLambdaToSet(
+          (r, e) => [e, r],
+          (set) =>
+            set
+              .filter(([e, r]) => r === true)
+              .map(([e, r]) => e)
+        )
         break
 
       default:
         throw new Error(`Translation of ${app.opcode} is not implemented`)
     }
-  }
-
-  private translateExists () {
-    if (this.compStack.length <= 2) {
-      throw new Error('Not enough parameters on compStack')
-    }
-    // the predicate parameter, which we iteratively set to each element
-    const param = this.compStack.pop() as Computable & WithRegister<any>
-    // the body of the predicate, usually, a lambda
-    const pred = this.compStack.pop() ?? fail
-    // the iterator body
-    const exists = function (elem: any): boolean {
-      // store the set element on the register
-      param.register = just(elem)
-      // Evaluate the predicate using the register.
-      // We need deep equality here, as just is an object.
-      return isEqual(pred.eval(), just(true))
-    }
-    this.applyFun(1, (set: any) => {
-      if (isSet(set)) {
-        return set.find(exists) !== undefined
-      } else {
-        throw new Error('Expected a set')
-      }
-    })
   }
 
   enterLambda (lam: ir.TntLambda) {
@@ -234,6 +262,59 @@ export class CompilerVisitor implements IRVisitor {
     })
   }
 
+  /**
+    * A generalized application of a one-argument lambda expression
+    * to a set, as required by `exists`, `forall`, `map`, and `filter`.
+    *
+    * This method expects `compStack` to look like follows:
+    *
+    * - `(top)` the register object, as `Computable & WithRegister`.
+    * - `(top - 1)`: the lambda body, as `Computable`.
+    * - `(top - 2)`: the set to iterate over, as `Computable`.
+    *
+    * The method evaluates the lambda body against each set
+    * element and maps the result and the element with `evalAndElemMap`.
+    * The resulting set is further transformed by `resultsMap`
+    * and then it is saved on `compStack`.
+    */
+  private applyLambdaToSet<E, R, T>
+  (evalAndElemMap: (res: EvalResult, elem: E) => R,
+    resultsMap: (set: Set<R>) => T) {
+    if (this.compStack.length <= 2) {
+      throw new Error('Not enough parameters on compStack')
+    }
+    // the lambda parameter, which we iteratively set to each element
+    const param = this.compStack.pop() as Computable & WithRegister<any>
+    // the body of the lambda to apply
+    const lambdaBody = this.compStack.pop() ?? fail
+    // evaluate lambda against a single element of the set
+    const evaluateElem = function (elem: E): Maybe<R> {
+      // store the set element on the register
+      param.register = just(elem)
+      // Evaluate the predicate using the register.
+      // We need deep equality here, as just is an object.
+      return lambdaBody.eval().map(r => evalAndElemMap(r, elem))
+    }
+    this.applyFun(1, (set: Set<E>) => {
+      if (isSet(set)) {
+        // Evaluate all elements using `elemMap`.
+        // For some of them, evaluation may fail. Hence, we map them to `Maybe`.
+        // Is there other way to compose iterators of immutable-js with `Maybe`?
+        const results = set.map(evaluateElem)
+        if (results.find(e => e.isNone()) !== undefined) {
+          // one of the results is undefined
+          return none()
+        } else {
+          // all results are defined, call the set transformation
+          return resultsMap(results.map(maybeGet) as Set<R>)
+        }
+      } else {
+        throw new Error('Expected a set')
+      }
+    })
+  }
+
+  // make a `Computable` that always returns a given literal
   private mkLiteral (value: any) {
     return {
       eval: () => {
@@ -263,6 +344,18 @@ export class CompilerVisitor implements IRVisitor {
     }
   }
 
+  // equality over evaluation results,
+  // as defined in TNT, not JavaScript
+  private eq (lhs: EvalResult, rhs: EvalResult): boolean {
+    if (typeof lhs === 'bigint' || typeof lhs === 'boolean') {
+      return lhs === rhs
+    } else if (isSet(lhs) && isSet(rhs)) {
+      return immutableIs(lhs, rhs)
+    } else {
+      return false
+    }
+  }
+
   // if-then-else requires special treatment,
   // as it should not evaluate both arms
   private translateIfThenElse () {
@@ -282,6 +375,18 @@ export class CompilerVisitor implements IRVisitor {
     } else {
       throw new Error('Not enough arguments on the stack')
     }
+  }
+}
+
+// Unpack Maybe, when we know that it's defined.
+// We need it to compose with the code that is not aware of Maybe.
+// And it is annoying that Maybe does not have this function.
+function maybeGet<T> (maybe: Maybe<T>): T {
+  if (maybe.isJust()) {
+    const { value } = maybe
+    return value
+  } else {
+    throw new Error('Applied maybeGet to none()')
   }
 }
 

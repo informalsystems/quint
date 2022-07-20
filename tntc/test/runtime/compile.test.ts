@@ -198,6 +198,16 @@ describe('compiling specs to runtime values', () => {
       assertResultAsString(input, 'set(set(1, 2), set(1, 3), set(2, 3))')
     })
 
+    it('computes equality over sets', () => {
+      assertResult('set(1, 2) == set(1, 3 - 1)', true)
+      assertResult('set(1, 2) == set(1, 3 - 3)', false)
+    })
+
+    it('computes inequality over sets', () => {
+      assertResult('set(1, 2) != set(1, 3 - 1)', false)
+      assertResult('set(1, 2) != set(1, 3 - 3)', true)
+    })
+
     it('computes a set of sets without duplicates', () => {
       const input = 'set(set(1, 2), set(2, 3), set(1, 3), set(2 - 1, 2 + 1))'
       assertResultAsString(input, 'set(set(1, 2), set(1, 3), set(2, 3))')
@@ -213,11 +223,83 @@ describe('compiling specs to runtime values', () => {
       assertResult('4.in(set(1, 2, 3))', false)
     })
 
+    it('computes in over nested sets', () => {
+      assertResult('set(1, 2) in set(set(1, 2), set(2, 3))', true)
+      assertResult('set(1, 3) in set(set(1, 2), set(2, 3))', false)
+    })
+
+    it('computes subseteq', () => {
+      assertResult('set(1, 2).subseteq(set(1, 2, 3))', true)
+      assertResult('set(1, 2, 4).subseteq(set(1, 2, 3))', false)
+    })
+
+    it('computes union', () => {
+      assertResultAsString(
+        'set(1, 2).union(set(1, 3))',
+        'set(1, 2, 3)'
+      )
+    })
+
+    it('computes intersect', () => {
+      assertResultAsString(
+        'set(1, 2, 4).intersect(set(1, 3, 4))',
+        'set(1, 4)'
+      )
+    })
+
+    it('computes exclude', () => {
+      assertResultAsString(
+        'set(1, 2, 4).exclude(set(1, 3))',
+        'set(2, 4)'
+      )
+    })
+
     it('computes exists', () => {
       assertResult('set(1, 2, 3).exists(x => true)', true)
       assertResult('set(1, 2, 3).exists(x => false)', false)
       assertResult('set(1, 2, 3).exists(x => x >= 2)', true)
       assertResult('set(1, 2, 3).exists(x => x >= 5)', false)
+    })
+
+    it('computes forall', () => {
+      assertResult('set(1, 2, 3).forall(x => true)', true)
+      assertResult('set(1, 2, 3).forall(x => false)', false)
+      assertResult('set(1, 2, 3).forall(x => x >= 2)', false)
+      assertResult('set(1, 2, 3).forall(x => x >= 0)', true)
+    })
+
+    it('computes forall over nested sets', () => {
+      const input =
+        'set(set(1, 2), set(2, 3)).forall(s => 2 in s)'
+      assertResult(input, true)
+    })
+
+    it('computes map', () => {
+      // a bijection
+      assertResultAsString(
+        'set(1, 2, 3).map(x => 2 * x)',
+        'set(2, 4, 6)'
+      )
+      // not an injection: 2 and 3 are mapped to 1
+      assertResultAsString(
+        'set(1, 2, 3).map(x => x / 2)',
+        'set(0, 1)'
+      )
+    })
+
+    it('computes filter', () => {
+      assertResultAsString(
+        'set(1, 2, 3, 4).filter(x => false)',
+        'set()'
+      )
+      assertResultAsString(
+        'set(1, 2, 3, 4).filter(x => true)',
+        'set(1, 2, 3, 4)'
+      )
+      assertResultAsString(
+        'set(1, 2, 3, 4).filter(x => x % 2 == 0)',
+        'set(2, 4)'
+      )
     })
   })
 })
