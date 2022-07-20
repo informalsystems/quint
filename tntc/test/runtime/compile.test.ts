@@ -17,7 +17,7 @@ function assertResult<T extends EvalResult> (input: string, result: T) {
   assertDefined(
     compileExpr(input)
       .eval()
-      .map(v => assert(v === result, `Expected ${v} equal to ${result}`))
+      .map(v => assert(v === result, `Expected ${result}, found ${v}`))
   )
 }
 
@@ -29,7 +29,7 @@ function assertResultAsString (input: string, result: string) {
       .eval()
       .map(toTntEx)
       .map(expressionToString)
-      .map(s => assert(s === result, `Expected ${s} equal to ${result}`))
+      .map(s => assert(s === result, `Expected ${result}, found ${s}`))
   )
 }
 
@@ -201,6 +201,23 @@ describe('compiling specs to runtime values', () => {
     it('computes a set of sets without duplicates', () => {
       const input = 'set(set(1, 2), set(2, 3), set(1, 3), set(2 - 1, 2 + 1))'
       assertResultAsString(input, 'set(set(1, 2), set(1, 3), set(2, 3))')
+    })
+
+    it('computes contains', () => {
+      assertResult('set(1, 2, 3).contains(2)', true)
+      assertResult('set(1, 2, 3).contains(4)', false)
+    })
+
+    it('computes in', () => {
+      assertResult('2 in set(1, 2, 3)', true)
+      assertResult('4.in(set(1, 2, 3))', false)
+    })
+
+    it('computes exists', () => {
+      assertResult('set(1, 2, 3).exists(x => true)', true)
+      assertResult('set(1, 2, 3).exists(x => false)', false)
+      assertResult('set(1, 2, 3).exists(x => x >= 2)', true)
+      assertResult('set(1, 2, 3).exists(x => x >= 5)', false)
     })
   })
 })

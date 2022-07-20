@@ -9,11 +9,13 @@
  */
 
 import { strict as assert } from 'assert'
-import { just, merge } from '@sweet-monads/maybe'
-import { Set } from 'immutable'
+import { Maybe, none, just, merge } from '@sweet-monads/maybe'
+import { Set, isSet } from 'immutable'
+import isEqual from 'lodash.isequal'
 
 import { IRVisitor } from '../../IRVisitor'
-import { Computable, EvalResult } from '../runtime'
+import { Computable, fail } from '../runtime'
+
 import * as ir from '../../tntIr'
 
 /**
@@ -31,8 +33,9 @@ import * as ir from '../../tntIr'
 export class CompilerVisitor implements IRVisitor {
   // the stack of computable values
   private compStack: Computable[] = []
-  // the map of definition and variable names to translated values
-  private nameToComputable: Map<string, Computable> = new Map<string, Computable>()
+  // the map of definition and variable names
+  // as well as of definition parameters to translated values
+  private context: Map<string, Computable> = new Map<string, Computable>()
 
   /**
    * Get a computable assigned to a name.
@@ -41,7 +44,7 @@ export class CompilerVisitor implements IRVisitor {
    * @return the Computable value assigned to the name, or undefined
    */
   findByName (name: string) {
-    return this.nameToComputable.get(name)
+    return this.context.get(name)
   }
 
   exitOpDef (opdef: ir.TntOpDef) {
@@ -49,24 +52,19 @@ export class CompilerVisitor implements IRVisitor {
     assert(opdef.qualifier === 'val', `Expected 'val', found: ${opdef.qualifier}`)
     const defBody = this.compStack.pop()
     assert(defBody, `No expression for ${opdef.name} on compStack`)
-    this.nameToComputable.set(opdef.name, defBody)
+    this.context.set(opdef.name, defBody)
   }
 
   enterLiteral (expr: ir.TntBool | ir.TntInt | ir.TntStr) {
     if (expr.kind === 'str') {
       throw new Error(`Found ${expr}, strings are not supported`)
     }
-    const comp = {
-      eval: () => {
-        return just<any>(expr.value)
-      },
-    }
 
-    this.compStack.push(comp)
+    this.compStack.push(this.mkLiteral(expr.value))
   }
 
   enterName (name: ir.TntName) {
-    const comp = this.nameToComputable.get(name.name)
+    const comp = this.context.get(name.name)
     // this may happen, see: https://github.com/informalsystems/tnt/issues/129
     assert(comp, `Name ${name.name} not found (out of order?)`)
     this.compStack.push(comp)
@@ -162,8 +160,85 @@ export class CompilerVisitor implements IRVisitor {
         this.applyFun(app.args.length, (...values: any[]) => Set.of(...values))
         break
 
+      case 'contains':
+        this.applyFun(2, (set: any, value: any) => set.includes(value))
+        break
+
+      case 'in':
+        this.applyFun(2, (value: any, set: any) => set.includes(value))
+        break
+
+      case 'exists':
+        this.translateExists()
+        break
+
       default:
         throw new Error(`Translation of ${app.opcode} is not implemented`)
+    }
+  }
+
+  private translateExists () {
+    if (this.compStack.length <= 2) {
+      throw new Error('Not enough parameters on compStack')
+    }
+    // the predicate parameter, which we iteratively set to each element
+    const param = this.compStack.pop() as Computable & WithRegister<any>
+    // the body of the predicate, usually, a lambda
+    const pred = this.compStack.pop() ?? fail
+    // the iterator body
+    const exists = function (elem: any): boolean {
+      // store the set element on the register
+      param.register = just(elem)
+      // Evaluate the predicate using the register.
+      // We need deep equality here, as just is an object.
+      return isEqual(pred.eval(), just(true))
+    }
+    this.applyFun(1, (set: any) => {
+      if (isSet(set)) {
+        return set.find(exists) !== undefined
+      } else {
+        throw new Error('Expected a set')
+      }
+    })
+  }
+
+  enterLambda (lam: ir.TntLambda) {
+    // introduce a register for every parameter
+    lam.params.forEach(p => {
+      const withRegister = {
+        // register is a placeholder where iterators can store their values
+        register: none<any>(),
+        eval: function () {
+          return this.register
+        },
+      }
+      this.context.set(p, withRegister)
+    })
+    // After this point, the body of lambda gets compiled.
+    // The body of lambda may refer to the parameters via names,
+    // which are translated to computables with registers.
+  }
+
+  exitLambda (lam: ir.TntLambda) {
+    // The expression on the stack is the body of lambda.
+    // However, we have to populate the registers to evaluate the expression.
+    // Move the registers on the computation stack.
+    lam.params.forEach(p => {
+      const comp = this.context.get(p)
+      if (comp !== undefined) {
+        this.compStack.push(comp)
+        this.context.delete(p)
+      } else {
+        throw new Error(`Corrupted lambda context, parameter ${p} not found`)
+      }
+    })
+  }
+
+  private mkLiteral (value: any) {
+    return {
+      eval: () => {
+        return just<any>(value)
+      },
     }
   }
 
@@ -208,4 +283,10 @@ export class CompilerVisitor implements IRVisitor {
       throw new Error('Not enough arguments on the stack')
     }
   }
+}
+
+// a computable value with register
+interface WithRegister<T> {
+  // register is a placeholder where iterators can put their values
+  register: Maybe<T>
 }
