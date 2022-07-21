@@ -195,33 +195,29 @@ export class CompilerVisitor implements IRVisitor {
         break
 
       case 'exists':
-        this.applyLambdaToSet(
-          e => e,
-          set => set.find(e => e === true) !== undefined
+        this.mapLambdaThenReduce(
+          set => set.find(([result, _]) => result === true) !== undefined
         )
         break
 
       case 'forall':
-        this.applyLambdaToSet(
-          e => e,
-          set => set.find(e => e === false) === undefined
+        this.mapLambdaThenReduce(
+          set => set.find(([result, _]) => result === false) === undefined
         )
         break
 
       case 'map':
-        this.applyLambdaToSet(
-          e => e,
-          set => set
+        this.mapLambdaThenReduce(
+          array => Set.of(...array.map(([result, _]) => result))
         )
         break
 
       case 'filter':
-        this.applyLambdaToSet(
-          (r: EvalResult, e: any) => [r, e],
-          (set) =>
-            set
+        this.mapLambdaThenReduce(
+          arr =>
+            Set.of(...arr
               .filter(([r, e]) => r === true)
-              .map(([r, e]) => e)
+              .map(([r, e]) => e))
         )
         break
 
@@ -264,23 +260,26 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   /**
-    * A generalized application of a one-argument lambda expression
-    * to a set, as required by `exists`, `forall`, `map`, and `filter`.
+    * A generalized application of a one-argument lambda expression to a set,
+    * as required by `exists`, `forall`, `map`, and `filter`.
     *
     * This method expects `compStack` to look like follows:
     *
-    * - `(top)` the register object, of type `Computable & WithRegister`, is used to hold each value to which the lambda will be applied as we iterate through the set elements .
-    * - `(top - 1)`: the lambda body, as `Computable`.
-    * - `(top - 2)`: the set to iterate over, as `Computable`.
+    *  - `(top)` the register object, of type `Computable & WithRegister`, is
+    *    used to hold each value to which the lambda will be applied as we iterate
+    *    through the set elements .
     *
-    * The method evaluates the lambda body for each element of the set
-    * and maps the result and the element with `evalAndElemMap`.
-    * The resulting set is further transformed by `resultsMap`
-    * and then it is saved on `compStack`.
+    *  - `(top - 1)`: the lambda body, as `Computable`.
+    *
+    *  - `(top - 2)`: the set to iterate over, as `Computable`.
+    *
+    * The method evaluates the lambda body for each element of the set and
+    * either produces `none`, if evaluation failed for one of the elements,
+    * or it applies `mapResultAndElems` to the pairs that consists of the lambda result
+    * and the original set element. The final result is stored on the stack.
     */
-  private applyLambdaToSet<E, R>
-  (evalAndElemMap: (res: EvalResult, elem: E) => R,
-    resultsMap: (set: Set<R>) => EvalResult): void {
+  private mapLambdaThenReduce
+  (mapResultAndElems: (array: Array<[EvalResult, EvalResult]>) => EvalResult): void {
     if (this.compStack.length <= 2) {
       throw new Error('Not enough parameters on compStack')
     }
@@ -289,15 +288,15 @@ export class CompilerVisitor implements IRVisitor {
     // the body of the lambda
     const lambdaBody = this.compStack.pop() ?? fail
     // apply the lambda to a single element of the set
-    const evaluateElem = function (elem: E): Maybe<R> {
+    const evaluateElem = function (elem: EvalResult): Maybe<[EvalResult, EvalResult]> {
       // store the set element in the register
       param.register = just(elem)
       // evaluate the predicate using the register
-      return lambdaBody.eval().map(r => evalAndElemMap(r, elem))
+      return lambdaBody.eval().map(result => [result, elem])
     }
-    this.applyFun(1, (set: Set<E>): Maybe<EvalResult> => {
+    this.applyFun(1, (set: Set<EvalResult>): Maybe<EvalResult> => {
       if (isSet(set)) {
-        return flatMap(set, evaluateElem).map(r => resultsMap(Set<R>(r)))
+        return flatMap(set, evaluateElem).map(rs => mapResultAndElems(rs))
       } else {
         throw new Error('Expected a set')
       }
@@ -374,12 +373,12 @@ export class CompilerVisitor implements IRVisitor {
  *  - return `none`, if one of the results in `none`, or
  *  - return `just` of the unpacked results.
  */
-function flatMap<T, R> (iterable: Iterable<T>, f: (arg: T) => Maybe<R>): Maybe<Iterable<R>> {
+function flatMap<T, R> (iterable: Iterable<T>, f: (arg: T) => Maybe<R>): Maybe<Array<R>> {
   const results: R[] = []
   for (const arg of iterable) {
     const res = f(arg)
     if (res.isNone()) {
-      return none<Iterable<R>>()
+      return none<Array<R>>()
     } else {
       const { value } = res
       results.push(value)
