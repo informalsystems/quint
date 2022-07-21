@@ -58,7 +58,7 @@ export function tntRepl () {
     nOpenBraces += nob
     nOpenParen += nop
     if (multilineText === '') {
-      if (line.indexOf('val ') >= 0 || nOpenBraces > 0 || nOpenParen > 0) {
+      if (nOpenBraces > 0 || nOpenParen > 0) {
         // enter a multiline mode
         multilineText += '\n' + line
         rl.setPrompt(settings.continuePrompt)
