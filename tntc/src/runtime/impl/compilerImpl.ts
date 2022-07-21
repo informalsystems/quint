@@ -72,11 +72,11 @@ export class CompilerVisitor implements IRVisitor {
   exitApp (app: ir.TntApp) {
     switch (app.opcode) {
       case 'eq':
-        this.applyFun(2, (x: any, y: any) => this.eq(x, y))
+        this.applyFun(2, (x: any, y: any) => just(this.eq(x, y)))
         break
 
       case 'neq':
-        this.applyFun(2, (x: any, y: any) => !this.eq(x, y))
+        this.applyFun(2, (x: any, y: any) => just(!this.eq(x, y)))
         break
 
       // conditional
@@ -86,110 +86,110 @@ export class CompilerVisitor implements IRVisitor {
 
       // Booleans
       case 'not':
-        this.applyFun(1, (p: Boolean) => !p)
+        this.applyFun(1, (p: boolean) => just(!p))
         break
 
       case 'and':
-        this.applyFun(2, (p: Boolean, q: Boolean) => p && q)
+        this.applyFun(2, (p: boolean, q: boolean) => just(p && q))
         break
 
       case 'or':
-        this.applyFun(2, (p: Boolean, q: Boolean) => p || q)
+        this.applyFun(2, (p: boolean, q: boolean) => just(p || q))
         break
 
       case 'implies':
-        this.applyFun(2, (p: Boolean, q: Boolean) => !p || q)
+        this.applyFun(2, (p: boolean, q: boolean) => just(!p || q))
         break
 
       case 'iff':
-        this.applyFun(2, (p: Boolean, q: Boolean) => p === q)
+        this.applyFun(2, (p: boolean, q: boolean) => just(p === q))
         break
 
       // integers
       case 'iuminus':
-        this.applyFun(1, (n: bigint) => -n)
+        this.applyFun(1, (n: bigint) => just(-n))
         break
 
       case 'iadd':
-        this.applyFun(2, (i: bigint, j: bigint) => i + j)
+        this.applyFun(2, (i: bigint, j: bigint) => just(i + j))
         break
 
       case 'isub':
-        this.applyFun(2, (i: bigint, j: bigint) => i - j)
+        this.applyFun(2, (i: bigint, j: bigint) => just(i - j))
         break
 
       case 'imul':
-        this.applyFun(2, (i: bigint, j: bigint) => i * j)
+        this.applyFun(2, (i: bigint, j: bigint) => just(i * j))
         break
 
       case 'idiv':
-        this.applyFun(2, (i: bigint, j: bigint) => i / j)
+        this.applyFun(2, (i: bigint, j: bigint) => just(i / j))
         break
 
       case 'imod':
-        this.applyFun(2, (i: bigint, j: bigint) => i % j)
+        this.applyFun(2, (i: bigint, j: bigint) => just(i % j))
         break
 
       case 'ipow':
-        this.applyFun(2, (i: bigint, j: bigint) => i ** j)
+        this.applyFun(2, (i: bigint, j: bigint) => just(i ** j))
         break
 
       case 'igt':
-        this.applyFun(2, (i: bigint, j: bigint) => i > j)
+        this.applyFun(2, (i: bigint, j: bigint) => just(i > j))
         break
 
       case 'ilt':
-        this.applyFun(2, (i: bigint, j: bigint) => i < j)
+        this.applyFun(2, (i: bigint, j: bigint) => just(i < j))
         break
 
       case 'igte':
-        this.applyFun(2, (i: bigint, j: bigint) => i >= j)
+        this.applyFun(2, (i: bigint, j: bigint) => just(i >= j))
         break
 
       case 'ilte':
-        this.applyFun(2, (i: bigint, j: bigint) => i <= j)
+        this.applyFun(2, (i: bigint, j: bigint) => just(i <= j))
         break
 
       case 'set':
-        this.applyFun(app.args.length, (...values: any[]) => Set.of(...values))
+        this.applyFun(app.args.length, (...values: any[]) => just(Set.of(...values)))
         break
 
       case 'contains':
-        this.applyFun(2, (set: any, value: any) => set.includes(value))
+        this.applyFun(2, (set: any, value: any) => just(set.includes(value)))
         break
 
       case 'in':
-        this.applyFun(2, (value: any, set: any) => set.includes(value))
+        this.applyFun(2, (value: any, set: any) => just(set.includes(value)))
         break
 
       case 'subseteq':
         this.applyFun(2,
-          function<A> (lhs: Set<A>, rhs: Set<A>): boolean {
-            return lhs.isSubset(rhs)
+          function<A> (lhs: Set<A>, rhs: Set<A>): Maybe<boolean> {
+            return just(lhs.isSubset(rhs))
           }
         )
         break
 
       case 'union':
         this.applyFun(2,
-          function<A> (lhs: Set<A>, rhs: Set<A>): Set<A> {
-            return lhs.union(rhs)
+          function<A> (lhs: Set<A>, rhs: Set<A>): Maybe<Set<A>> {
+            return just(lhs.union(rhs))
           }
         )
         break
 
       case 'intersect':
         this.applyFun(2,
-          function<A> (lhs: Set<A>, rhs: Set<A>): Set<A> {
-            return lhs.intersect(rhs)
+          function<A> (lhs: Set<A>, rhs: Set<A>): Maybe<Set<A>> {
+            return just(lhs.intersect(rhs))
           }
         )
         break
 
       case 'exclude':
         this.applyFun(2,
-          function<A> (lhs: Set<A>, rhs: Set<A>): Set<A> {
-            return lhs.subtract(rhs)
+          function<A> (lhs: Set<A>, rhs: Set<A>): Maybe<Set<A>> {
+            return just(lhs.subtract(rhs))
           }
         )
         break
@@ -217,11 +217,11 @@ export class CompilerVisitor implements IRVisitor {
 
       case 'filter':
         this.applyLambdaToSet(
-          (r, e) => [e, r],
+          (r: EvalResult, e: any) => [r, e],
           (set) =>
             set
-              .filter(([e, r]) => r === true)
-              .map(([e, r]) => e)
+              .filter(([r, e]) => r === true)
+              .map(([r, e]) => e)
         )
         break
 
@@ -241,7 +241,7 @@ export class CompilerVisitor implements IRVisitor {
           return this.register
         },
       }
-      this.context.set(p, withRegister)
+      this.context.set(p, paramRegister)
     })
     // After this point, the body of the lambda gets compiled.
     // The body of the lambda may refer to the parameter via names,
@@ -278,38 +278,26 @@ export class CompilerVisitor implements IRVisitor {
     * The resulting set is further transformed by `resultsMap`
     * and then it is saved on `compStack`.
     */
-  private applyLambdaToSet<E, R, T>
+  private applyLambdaToSet<E, R>
   (evalAndElemMap: (res: EvalResult, elem: E) => R,
-    resultsMap: (set: Set<R>) => T) {
+    resultsMap: (set: Set<R>) => EvalResult): void {
     if (this.compStack.length <= 2) {
       throw new Error('Not enough parameters on compStack')
     }
     // the lambda parameter, which is a register that we iteratively set to each element of the set as the lambda is applied
     const param = this.compStack.pop() as Computable & WithRegister<any>
     // the body of the lambda
-    
     const lambdaBody = this.compStack.pop() ?? fail
     // apply the lambda to a single element of the set
     const evaluateElem = function (elem: E): Maybe<R> {
       // store the set element in the register
       param.register = just(elem)
-      // Evaluate the predicate using the register.
-      // We need deep equality here, as just is an object.
+      // evaluate the predicate using the register
       return lambdaBody.eval().map(r => evalAndElemMap(r, elem))
     }
-    this.applyFun(1, (set: Set<E>) => {
+    this.applyFun(1, (set: Set<E>): Maybe<EvalResult> => {
       if (isSet(set)) {
-        // Evaluate all elements using `elemMap`.
-        // For some of them, evaluation may fail. Hence, we map them to `Maybe`.
-        const reducer: = (results: Maybe<Set<T>>, elem: T): Maybe<Set<T>> => evaluateElem(elem).bind(results.add)
-        const maybeResults: Maybe<Set<T>> = set.reduce(reducer, just(set()))
-        if (results.find(e => e.isNone()) !== undefined) {
-          // one of the results is undefined
-          return none()
-        } else {
-          // all results are defined, call the set transformation
-          return resultsMap(results.map(maybeGet) as Set<R>)
-        }
+        return flatMap(set, evaluateElem).map(r => resultsMap(Set<R>(r)))
       } else {
         throw new Error('Expected a set')
       }
@@ -327,17 +315,17 @@ export class CompilerVisitor implements IRVisitor {
 
   // pop nargs computable values, pass them the 'fun' function, and
   // push the combined computable value on the stack
-  private applyFun (nargs: number, fun: (...args: any[]) => any) {
+  private applyFun (nargs: number, fun: (...args: any[]) => Maybe<EvalResult>) {
     if (this.compStack.length >= nargs) {
       // pop nargs elements of the compStack
       const args = this.compStack.splice(-nargs, nargs)
       // produce the new computable value
       const comp = {
-        eval: () => {
+        eval: (): Maybe<EvalResult> => {
           // compute the values of the arguments at this point
           const values = args.map(a => a.eval())
           // if they are all defined, apply the function 'fun' to the arguments
-          return merge(values).map(vs => fun(...vs))
+          return merge(values).map(vs => fun(...vs)).join()
         },
       }
       this.compStack.push(comp)
@@ -380,16 +368,25 @@ export class CompilerVisitor implements IRVisitor {
   }
 }
 
-// Unpack Maybe, when we know that it's defined.
-// We need it to compose with the code that is not aware of Maybe.
-// And it is annoying that Maybe does not have this function.
-function maybeGet<T> (maybe: Maybe<T>): T {
-  if (maybe.isJust()) {
-    const { value } = maybe
-    return value
-  } else {
-    throw new Error('Applied maybeGet to none()')
+/**
+ * Apply `f` to every element of `iterable` and either:
+ *
+ *  - return `none`, if one of the results in `none`, or
+ *  - return `just` of the unpacked results.
+ */
+function flatMap<T, R> (iterable: Iterable<T>, f: (arg: T) => Maybe<R>): Maybe<Iterable<R>> {
+  const results: R[] = []
+  for (const arg of iterable) {
+    const res = f(arg)
+    if (res.isNone()) {
+      return none<Iterable<R>>()
+    } else {
+      const { value } = res
+      results.push(value)
+    }
   }
+
+  return just(results)
 }
 
 // a computable value with register

@@ -75,7 +75,7 @@ export function toTntEx (result: EvalResult): TntEx {
         .map(e => toTntEx(e))
         .map(cacheStr)
         .toArray()
-        .sort((e1, e2) => e1.__str.localCompare(e2.__str)
+        .sort((e1, e2) => e1.__str.localeCompare(e2.__str))
     // erase the string cache
     elems.forEach(e => delete e.__str)
     // return the expression set(...elems)
