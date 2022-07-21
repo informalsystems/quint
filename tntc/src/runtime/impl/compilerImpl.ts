@@ -211,7 +211,7 @@ export class CompilerVisitor implements IRVisitor {
       case 'map':
         this.applyLambdaToSet(
           e => e,
-          set => set.map(e => e)
+          set => set
         )
         break
 
@@ -233,24 +233,25 @@ export class CompilerVisitor implements IRVisitor {
   enterLambda (lam: ir.TntLambda) {
     // introduce a register for every parameter
     lam.params.forEach(p => {
-      const withRegister = {
+      const paramRegister = {
         // register is a placeholder where iterators can store their values
         register: none<any>(),
+        // computing a register just evaluates to the contents that it stores
         eval: function () {
           return this.register
         },
       }
       this.context.set(p, withRegister)
     })
-    // After this point, the body of lambda gets compiled.
-    // The body of lambda may refer to the parameters via names,
-    // which are translated to computables with registers.
+    // After this point, the body of the lambda gets compiled.
+    // The body of the lambda may refer to the parameter via names,
+    // which are stored in the registers we've just created.
   }
 
   exitLambda (lam: ir.TntLambda) {
-    // The expression on the stack is the body of lambda.
-    // However, we have to populate the registers to evaluate the expression.
-    // Move the registers on the computation stack.
+    // The expression on the stack is the body of the lambda.
+    // However, we have to populate the registers before we can evaluate the expression.
+    // Move each parameter register from the context to the computation stack.
     lam.params.forEach(p => {
       const comp = this.context.get(p)
       if (comp !== undefined) {
@@ -268,12 +269,12 @@ export class CompilerVisitor implements IRVisitor {
     *
     * This method expects `compStack` to look like follows:
     *
-    * - `(top)` the register object, as `Computable & WithRegister`.
+    * - `(top)` the register object, of type `Computable & WithRegister`, is used to hold each value to which the lambda will be applied as we iterate through the set elements .
     * - `(top - 1)`: the lambda body, as `Computable`.
     * - `(top - 2)`: the set to iterate over, as `Computable`.
     *
-    * The method evaluates the lambda body against each set
-    * element and maps the result and the element with `evalAndElemMap`.
+    * The method evaluates the lambda body for each element of the set
+    * and maps the result and the element with `evalAndElemMap`.
     * The resulting set is further transformed by `resultsMap`
     * and then it is saved on `compStack`.
     */
@@ -283,13 +284,14 @@ export class CompilerVisitor implements IRVisitor {
     if (this.compStack.length <= 2) {
       throw new Error('Not enough parameters on compStack')
     }
-    // the lambda parameter, which we iteratively set to each element
+    // the lambda parameter, which is a register that we iteratively set to each element of the set as the lambda is applied
     const param = this.compStack.pop() as Computable & WithRegister<any>
-    // the body of the lambda to apply
+    // the body of the lambda
+    
     const lambdaBody = this.compStack.pop() ?? fail
-    // evaluate lambda against a single element of the set
+    // apply the lambda to a single element of the set
     const evaluateElem = function (elem: E): Maybe<R> {
-      // store the set element on the register
+      // store the set element in the register
       param.register = just(elem)
       // Evaluate the predicate using the register.
       // We need deep equality here, as just is an object.
@@ -299,8 +301,8 @@ export class CompilerVisitor implements IRVisitor {
       if (isSet(set)) {
         // Evaluate all elements using `elemMap`.
         // For some of them, evaluation may fail. Hence, we map them to `Maybe`.
-        // Is there other way to compose iterators of immutable-js with `Maybe`?
-        const results = set.map(evaluateElem)
+        const reducer: = (results: Maybe<Set<T>>, elem: T): Maybe<Set<T>> => evaluateElem(elem).bind(results.add)
+        const maybeResults: Maybe<Set<T>> = set.reduce(reducer, just(set()))
         if (results.find(e => e.isNone()) !== undefined) {
           // one of the results is undefined
           return none()

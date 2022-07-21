@@ -59,7 +59,7 @@ export function toTntEx (result: EvalResult): TntEx {
       value: result,
     }
   } else if (isSet(result)) {
-    // Sets are a tricky, as we have to normalize them when producing TntEx.
+    // Sets are tricky, as we have to normalize them when producing TntEx.
     // The most common normal form is the one that sorts sets according
     // to their string representation. Instead of computing the string
     // representation multiple times, we cache it in `__str` and then forget it.
@@ -75,9 +75,7 @@ export function toTntEx (result: EvalResult): TntEx {
         .map(e => toTntEx(e))
         .map(cacheStr)
         .toArray()
-        .sort((e1, e2) =>
-          // can we do that with one comparison instead of two?
-          e1.__str < e2.__str ? -1 : (e1.__str === e2.__str ? 0 : 1))
+        .sort((e1, e2) => e1.__str.localCompare(e2.__str)
     // erase the string cache
     elems.forEach(e => delete e.__str)
     // return the expression set(...elems)
