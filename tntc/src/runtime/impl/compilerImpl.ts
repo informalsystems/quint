@@ -189,6 +189,11 @@ export class CompilerVisitor implements IRVisitor {
         this.applyFun(2, (i: bigint, j: bigint) => just(makeInterval(i, j)))
         break
 
+      case 'flatten':
+        this.applyFun(1, (set: Set<Set<EvalResult>>) =>
+          just(set.flatten(1) as Set<EvalResult>))
+        break
+
       case 'exists':
         this.mapLambdaThenReduce(
           set => set.find(([result, _]) => result === true) !== undefined
