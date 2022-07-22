@@ -251,6 +251,7 @@ describe('compiling specs to runtime values', () => {
     it('computes in an interval', () => {
       assertResult('2 in 1.to(3)', true)
       assertResult('4.in(1.to(3))', false)
+      assertResult('1.to(3).in(set(1.to(3), 2.to(4)))', true)
     })
 
     it('computes in over nested sets', () => {

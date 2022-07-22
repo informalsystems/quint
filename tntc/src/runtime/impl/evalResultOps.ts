@@ -66,7 +66,7 @@ export function
 contains (iterable: Iterable<EvalResult>, elem: EvalResult): boolean {
   if (isSet(iterable)) {
     // do a (hopefully) less expensive test
-    return iterable.includes(elem)
+    return iterable.includes(toSetIfIterable(elem))
   } else {
     let found = false
     for (const other of iterable) {
