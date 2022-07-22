@@ -125,9 +125,10 @@ export function eq
     return lhs.first === rhsInt.first && lhs.last === rhsInt.last
   } else if (isIterable(lhs) && isIterable(rhs)) {
     // The worst case, e.g., comparing an interval to a set.
-    // TS is smart enough to see the first condition, but not the second one
-    const rhsIter = rhs as Iterable<EvalResult>
-    return isSubset(lhs, rhsIter) && isSubset(rhsIter, lhs)
+    // First, convert both iterables to sets and then compare them as sets.
+    // (We have found that it is faster, though it consumes more memory.)
+    // TS is smart enough to figure out the type of lhs, but not of rhs.
+    return immutableIs(toSet(lhs), toSet(rhs as Iterable<EvalResult>))
   } else {
     return false
   }
