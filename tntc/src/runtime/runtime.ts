@@ -164,45 +164,6 @@ export function isIterable (obj: any): boolean {
   return obj != null && typeof obj[Symbol.iterator] === 'function'
 }
 
-/**
- * If a set is represented with a special form, e.g., intervals,
- * transform it to an immutable set via iteration.
- *
- * @param iterable an iterable collection of results
- * @return an immutable set of results
- * (probably much larger than the original object)
- */
-export const toSet = (iterable: Iterable<EvalResult>): Set<EvalResult> => {
-  if (isSet(iterable)) {
-    return iterable as Set<EvalResult>
-  } else {
-    let set = Set.of<EvalResult>()
-    for (const e of iterable as Iterable<EvalResult>) {
-      set = set.add(e)
-    }
-    return set
-  }
-}
-
-/**
-  * If a value is iterable, convert it to an immutable set via toSet.
-  *
-  * @param value an evaluation result, maybe not Iterable
-  * @return either the original value, if it is not iterable, or
-  * an immutable set of results (probably much larger than the original object)
-  */
-export const toSetIfIterable = (value: EvalResult): EvalResult => {
-  if (isSet(value) || !isIterable(value)) {
-    return value
-  } else {
-    let set = Set.of<EvalResult>()
-    for (const e of value as Iterable<EvalResult>) {
-      set = set.add(e)
-    }
-    return set
-  }
-}
-
 // private definitions
 
 // an iterator over intervals

@@ -14,8 +14,7 @@ import { Set } from 'immutable'
 
 import { IRVisitor } from '../../IRVisitor'
 import {
-  Computable, EvalResult, fail, makeInterval,
-  isIterable, toSet, toSetIfIterable
+  Computable, EvalResult, fail, makeInterval, isIterable
 } from '../runtime'
 
 import * as er from './evalResultOps'
@@ -159,7 +158,7 @@ export class CompilerVisitor implements IRVisitor {
         // Construct a set from an array of value.
         // Importantly, expand the special data structures such as intervals.
         this.applyFun(app.args.length, (...values: any[]) =>
-          just(Set.of(...values.map(toSetIfIterable))))
+          just(Set.of(...values.map(er.toSetIfIterable))))
         break
 
       case 'contains':
@@ -175,15 +174,15 @@ export class CompilerVisitor implements IRVisitor {
         break
 
       case 'union':
-        this.applyFun(2, (l, r) => just(toSet(l).union(toSet(r))))
+        this.applyFun(2, (l, r) => just(er.toSet(l).union(er.toSet(r))))
         break
 
       case 'intersect':
-        this.applyFun(2, (l, r) => just(toSet(l).intersect(toSet(r))))
+        this.applyFun(2, (l, r) => just(er.toSet(l).intersect(er.toSet(r))))
         break
 
       case 'exclude':
-        this.applyFun(2, (l, r) => just(toSet(l).subtract(toSet(r))))
+        this.applyFun(2, (l, r) => just(er.toSet(l).subtract(er.toSet(r))))
         break
 
       case 'to':

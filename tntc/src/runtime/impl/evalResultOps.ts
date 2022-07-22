@@ -10,11 +10,50 @@
  */
 
 import { Maybe, none, just } from '@sweet-monads/maybe'
-import { isSet, is as immutableIs } from 'immutable'
+import { Set, isSet, is as immutableIs } from 'immutable'
 
 import {
   EvalResult, Interval, isInterval, isIterable
 } from '../runtime'
+
+/**
+ * If a set is represented with a special form, e.g., intervals,
+ * transform it to an immutable set via iteration.
+ *
+ * @param iterable an iterable collection of results
+ * @return an immutable set of results
+ * (probably much larger than the original object)
+ */
+export const toSet = (iterable: Iterable<EvalResult>): Set<EvalResult> => {
+  if (isSet(iterable)) {
+    return iterable as Set<EvalResult>
+  } else {
+    let set = Set.of<EvalResult>()
+    for (const e of iterable as Iterable<EvalResult>) {
+      set = set.add(e)
+    }
+    return set
+  }
+}
+
+/**
+  * If a value is iterable, convert it to an immutable set via toSet.
+  *
+  * @param value an evaluation result, maybe not Iterable
+  * @return either the original value, if it is not iterable, or
+  * an immutable set of results (probably much larger than the original object)
+  */
+export const toSetIfIterable = (value: EvalResult): EvalResult => {
+  if (isSet(value) || !isIterable(value)) {
+    return value
+  } else {
+    let set = Set.of<EvalResult>()
+    for (const e of value as Iterable<EvalResult>) {
+      set = set.add(e)
+    }
+    return set
+  }
+}
 
 // does a set (as an iterable) contain an element?
 export function
