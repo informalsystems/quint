@@ -10,13 +10,15 @@
 
 import { strict as assert } from 'assert'
 import { Maybe, none, just, merge } from '@sweet-monads/maybe'
-import { Set, isSet, is as immutableIs } from 'immutable'
+import { Set } from 'immutable'
 
 import { IRVisitor } from '../../IRVisitor'
 import {
-  Computable, EvalResult, fail, makeInterval, Interval, isInterval,
+  Computable, EvalResult, fail, makeInterval,
   isIterable, toSet, toSetIfIterable
 } from '../runtime'
+
+import * as er from './evalResultOps'
 
 import * as ir from '../../tntIr'
 
@@ -75,11 +77,11 @@ export class CompilerVisitor implements IRVisitor {
   exitApp (app: ir.TntApp) {
     switch (app.opcode) {
       case 'eq':
-        this.applyFun(2, (x: any, y: any) => just(eq(x, y)))
+        this.applyFun(2, (x: any, y: any) => just(er.eq(x, y)))
         break
 
       case 'neq':
-        this.applyFun(2, (x: any, y: any) => just(!eq(x, y)))
+        this.applyFun(2, (x: any, y: any) => just(!er.eq(x, y)))
         break
 
       // conditional
@@ -161,15 +163,15 @@ export class CompilerVisitor implements IRVisitor {
         break
 
       case 'contains':
-        this.applyFun(2, (set, value) => just(contains(set, value)))
+        this.applyFun(2, (set, value) => just(er.contains(set, value)))
         break
 
       case 'in':
-        this.applyFun(2, (value, set) => just(contains(set, value)))
+        this.applyFun(2, (value, set) => just(er.contains(set, value)))
         break
 
       case 'subseteq':
-        this.applyFun(2, (l, r) => just(isSubset(l, r)))
+        this.applyFun(2, (l, r) => just(er.isSubset(l, r)))
         break
 
       case 'union':
@@ -290,7 +292,7 @@ export class CompilerVisitor implements IRVisitor {
     }
     this.applyFun(1, (set: Iterable<EvalResult>): Maybe<EvalResult> => {
       if (isIterable(set)) {
-        return flatMap(set, evaluateElem).map(rs => mapResultAndElems(rs))
+        return er.flatMap(set, evaluateElem).map(rs => mapResultAndElems(rs))
       } else {
         throw new Error('Expected a set')
       }
@@ -347,84 +349,6 @@ export class CompilerVisitor implements IRVisitor {
       throw new Error('Not enough arguments on the stack')
     }
   }
-}
-
-// does a set (as an iterable) contain an element?
-function contains (iterable: Iterable<EvalResult>, elem: EvalResult): boolean {
-  if (isSet(iterable)) {
-    // do a (hopefully) less expensive test
-    return iterable.includes(elem)
-  } else {
-    let found = false
-    for (const other of iterable) {
-      if (eq(elem, other)) {
-        found = true
-      }
-    }
-
-    return found
-  }
-}
-
-// Is one set a subset of another (as iterables)?
-function isSubset (from: Iterable<EvalResult>, to: Iterable<EvalResult>): boolean {
-  if (isSet(from) && isSet(to)) {
-    // do a (hopefully) less expensive test
-    return from.isSubset(to)
-  } else {
-    // Do O(m * n) tests, where m and n are the cardinalities of lhs and rhs.
-    // Maybe we should use a cardinality test, when it's possible.
-    for (const l of from) {
-      if (!contains(to, l)) {
-        return false
-      }
-    }
-
-    return true
-  }
-}
-
-// equality over evaluation results,
-// as defined in TNT, not JavaScript
-function eq (lhs: EvalResult, rhs: EvalResult): boolean {
-  if (typeof lhs === 'bigint' || typeof lhs === 'boolean') {
-    return lhs === rhs
-  } else if (isSet(lhs) && isSet(rhs)) {
-    // delegate equality to immutable-js
-    return immutableIs(lhs, rhs)
-  } else if (isInterval(lhs) && isInterval(rhs)) {
-    // TS is smart enough to see the first condition, but not the second one
-    const rhsInt = rhs as Interval
-    return lhs.first === rhsInt.first && lhs.last === rhsInt.last
-  } else if (isIterable(lhs) && isIterable(rhs)) {
-    // The worst case, e.g., comparing an interval to a set.
-    // TS is smart enough to see the first condition, but not the second one
-    const rhsIter = rhs as Iterable<EvalResult>
-    return isSubset(lhs, rhsIter) && isSubset(rhsIter, lhs)
-  } else {
-    return false
-  }
-}
-
-/**
- * Apply `f` to every element of `iterable` and either:
- *
- *  - return `none`, if one of the results in `none`, or
- *  - return `just` of the unpacked results.
- */
-function flatMap<T, R> (iterable: Iterable<T>, f: (arg: T) => Maybe<R>): Maybe<Array<R>> {
-  const results: R[] = []
-  for (const arg of iterable) {
-    const res = f(arg)
-    if (res.isNone()) {
-      return none<Array<R>>()
-    } else {
-      const { value } = res
-      results.push(value)
-    }
-  }
-
-  return just(results)
 }
 
 // a computable value with register
