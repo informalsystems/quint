@@ -1,7 +1,6 @@
 import { describe, it } from 'mocha'
 import { assert } from 'chai'
 import { Maybe } from '@sweet-monads/maybe'
-import { Set } from 'immutable'
 import { EvalResult, toTntEx } from '../../src/runtime/runtime'
 import { expressionToString } from '../../src/IRprinting'
 import { compileExpr } from '../../src/runtime/compile'
@@ -183,6 +182,11 @@ describe('compiling specs to runtime values', () => {
   })
 
   describe('compileExpr over sets', () => {
+    it('computes an interval', () => {
+      const input = '2.to(5)'
+      assertResultAsString(input, 'set(2, 3, 4, 5)')
+    })
+
     it('computes a flat set', () => {
       const input = 'set(1, 3 - 1, 3)'
       assertResultAsString(input, 'set(1, 2, 3)')
@@ -198,14 +202,35 @@ describe('compiling specs to runtime values', () => {
       assertResultAsString(input, 'set(set(1, 2), set(1, 3), set(2, 3))')
     })
 
+    it('computes a set of intervals', () => {
+      const input = 'set(1.to(3), 3.to(4))'
+      assertResultAsString(input, 'set(set(1, 2, 3), set(3, 4))')
+    })
+
     it('computes equality over sets', () => {
       assertResult('set(1, 2) == set(1, 3 - 1)', true)
       assertResult('set(1, 2) == set(1, 3 - 3)', false)
     })
 
+    it('computes equality over intervals', () => {
+      assertResult('1.to(3) == 1.to(4 - 1)', true)
+      assertResult('1.to(3) == set(1, 2, 3)', true)
+      assertResult('set(1, 2, 3) == 1.to(3)', true)
+      assertResult('1.to(3) == 1.to(4)', false)
+      assertResult('2.to(4) == 1.to(4)', false)
+    })
+
     it('computes inequality over sets', () => {
       assertResult('set(1, 2) != set(1, 3 - 1)', false)
       assertResult('set(1, 2) != set(1, 3 - 3)', true)
+    })
+
+    it('computes inequality over intervals', () => {
+      assertResult('1.to(3) != 1.to(4 - 1)', false)
+      assertResult('1.to(3) != set(1, 2, 3)', false)
+      assertResult('set(1, 2, 3) != 1.to(3)', false)
+      assertResult('1.to(3) != 1.to(4)', true)
+      assertResult('2.to(4) != 1.to(4)', true)
     })
 
     it('computes a set of sets without duplicates', () => {
@@ -223,6 +248,11 @@ describe('compiling specs to runtime values', () => {
       assertResult('4.in(set(1, 2, 3))', false)
     })
 
+    it('computes in an interval', () => {
+      assertResult('2 in 1.to(3)', true)
+      assertResult('4.in(1.to(3))', false)
+    })
+
     it('computes in over nested sets', () => {
       assertResult('set(1, 2) in set(set(1, 2), set(2, 3))', true)
       assertResult('set(1, 3) in set(set(1, 2), set(2, 3))', false)
@@ -233,25 +263,32 @@ describe('compiling specs to runtime values', () => {
       assertResult('set(1, 2, 4).subseteq(set(1, 2, 3))', false)
     })
 
+    it('computes subseteq over intervals', () => {
+      assertResult('2.to(4).subseteq(1.to(10))', true)
+      assertResult('set(2, 3, 4).subseteq(1.to(10))', true)
+      assertResult('2.to(4).subseteq(1.to(3))', false)
+      assertResult('2.to(4).subseteq(set(1, 2, 3))', false)
+    })
+
     it('computes union', () => {
-      assertResultAsString(
-        'set(1, 2).union(set(1, 3))',
-        'set(1, 2, 3)'
-      )
+      assertResultAsString('set(1, 2).union(set(1, 3))', 'set(1, 2, 3)')
+      assertResultAsString('1.to(3).union(2.to(4))', 'set(1, 2, 3, 4)')
+      assertResultAsString('set(1, 2, 3).union(2.to(4))', 'set(1, 2, 3, 4)')
+      assertResultAsString('1.to(3).union(set(2, 3, 4))', 'set(1, 2, 3, 4)')
     })
 
     it('computes intersect', () => {
-      assertResultAsString(
-        'set(1, 2, 4).intersect(set(1, 3, 4))',
-        'set(1, 4)'
-      )
+      assertResultAsString('set(1, 2).intersect(set(1, 3))', 'set(1)')
+      assertResultAsString('1.to(3).intersect(2.to(4))', 'set(2, 3)')
+      assertResultAsString('set(1, 2, 3).intersect(2.to(4))', 'set(2, 3)')
+      assertResultAsString('1.to(3).intersect(set(2, 3, 4))', 'set(2, 3)')
     })
 
     it('computes exclude', () => {
-      assertResultAsString(
-        'set(1, 2, 4).exclude(set(1, 3))',
-        'set(2, 4)'
-      )
+      assertResultAsString('set(1, 2, 4).exclude(set(1, 3))', 'set(2, 4)')
+      assertResultAsString('1.to(3).exclude(2.to(4))', 'set(1)')
+      assertResultAsString('set(1, 2, 3).exclude(2.to(4))', 'set(1)')
+      assertResultAsString('1.to(3).exclude(set(2, 3, 4))', 'set(1)')
     })
 
     it('computes exists', () => {
@@ -259,6 +296,13 @@ describe('compiling specs to runtime values', () => {
       assertResult('set(1, 2, 3).exists(x => false)', false)
       assertResult('set(1, 2, 3).exists(x => x >= 2)', true)
       assertResult('set(1, 2, 3).exists(x => x >= 5)', false)
+    })
+
+    it('computes exists over intervals', () => {
+      assertResult('1.to(3).exists(x => true)', true)
+      assertResult('1.to(3).exists(x => false)', false)
+      assertResult('1.to(3).exists(x => x >= 2)', true)
+      assertResult('1.to(3).exists(x => x >= 5)', false)
     })
 
     it('computes forall', () => {
@@ -274,32 +318,37 @@ describe('compiling specs to runtime values', () => {
       assertResult(input, true)
     })
 
+    it('computes forall over intervals', () => {
+      assertResult('1.to(3).forall(x => true)', true)
+      assertResult('1.to(3).forall(x => false)', false)
+      assertResult('1.to(3).forall(x => x >= 2)', false)
+      assertResult('1.to(3).forall(x => x >= 0)', true)
+    })
+
     it('computes map', () => {
       // a bijection
-      assertResultAsString(
-        'set(1, 2, 3).map(x => 2 * x)',
-        'set(2, 4, 6)'
-      )
+      assertResultAsString('set(1, 2, 3).map(x => 2 * x)', 'set(2, 4, 6)')
       // not an injection: 2 and 3 are mapped to 1
-      assertResultAsString(
-        'set(1, 2, 3).map(x => x / 2)',
-        'set(0, 1)'
-      )
+      assertResultAsString('set(1, 2, 3).map(x => x / 2)', 'set(0, 1)')
+    })
+
+    it('computes map over intervals', () => {
+      // a bijection
+      assertResultAsString('1.to(3).map(x => 2 * x)', 'set(2, 4, 6)')
+      // not an injection: 2 and 3 are mapped to 1
+      assertResultAsString('1.to(3).map(x => x / 2)', 'set(0, 1)')
     })
 
     it('computes filter', () => {
-      assertResultAsString(
-        'set(1, 2, 3, 4).filter(x => false)',
-        'set()'
-      )
-      assertResultAsString(
-        'set(1, 2, 3, 4).filter(x => true)',
-        'set(1, 2, 3, 4)'
-      )
-      assertResultAsString(
-        'set(1, 2, 3, 4).filter(x => x % 2 == 0)',
-        'set(2, 4)'
-      )
+      assertResultAsString('set(1, 2, 3, 4).filter(x => false)', 'set()')
+      assertResultAsString('set(1, 2, 3, 4).filter(x => true)', 'set(1, 2, 3, 4)')
+      assertResultAsString('set(1, 2, 3, 4).filter(x => x % 2 == 0)', 'set(2, 4)')
+    })
+
+    it('computes filter over intervals', () => {
+      assertResultAsString('1.to(4).filter(x => false)', 'set()')
+      assertResultAsString('1.to(4).filter(x => true)', 'set(1, 2, 3, 4)')
+      assertResultAsString('1.to(4).filter(x => x % 2 == 0)', 'set(2, 4)')
     })
   })
 })

@@ -19,16 +19,34 @@ import { TntEx } from '../tntIr'
 import { expressionToString } from '../IRprinting'
 
 /**
- * The type of a value that can be computed by the runtime.
- * We carefully avoid (mutable) wrapper objects such as `{ kind: ..., ... }`,
- * since immutable sets and maps have their own definition of equality.
- * The users should convert this result to TntExpr via `toTntExpr`
- * and interpret the expression.
+ * The type of a value that can be computed by the runtime. This data structure
+ * may unpredictable change, when we are updating the simulator.
+ * Hence, the users should convert this result to TntExpr via `toTntExpr`
+ * and interpret the TNT expression.
  */
-export type EvalResult =
-  | boolean
-  | bigint
-  | Set<EvalResult>
+export type EvalResult = | boolean | bigint | Set<EvalResult> | Interval
+
+// an interval left.to(right), both inclusive
+export type Interval = { first: bigint, last: bigint} & Iterable<bigint>
+
+// does an object behave as an interval
+export function isInterval (obj: any): boolean {
+  return obj.first !== undefined && typeof obj.first === 'bigint' &&
+    obj.last !== undefined && typeof obj.last === 'bigint'
+}
+
+// create an immutable record that represents intervals
+export function makeInterval (first: bigint, last: bigint): Interval {
+  return {
+    first: first,
+    last: last,
+    // that is what makes the interval iterable
+    [Symbol.iterator]: () => {
+      // return the iterator (defined in the end of this file)
+      return new IntervalIterator(first, last)
+    },
+  }
+}
 
 /**
  * Convert an evaluation result to TNT. This is the preferred way for the
@@ -85,6 +103,19 @@ export function toTntEx (result: EvalResult): TntEx {
       opcode: 'set',
       args: elems,
     }
+  } else if (isInterval(result)) {
+    // simply enumerate the values in the interval first..last
+    const elems: TntEx[] = []
+    for (let i = result.first; i <= result.last; i++) {
+      elems.push({ id: 0n, kind: 'int', value: i })
+    }
+    // return the expression set(...elems)
+    return {
+      id: 0n,
+      kind: 'app',
+      opcode: 'set',
+      args: elems,
+    }
   } else {
     throw new Error(`Unexpected argument to toTnt: ${result}`)
   }
@@ -126,3 +157,69 @@ export interface ExecError {
  * during execution.
  */
 export type ExecErrorHandler = (error: ExecError) => void;
+
+// Test whether in object is Iterable.
+// https://stackoverflow.com/a/24099583
+export function isIterable (obj: any): boolean {
+  return obj != null && typeof obj[Symbol.iterator] === 'function'
+}
+
+/**
+ * If a set is represented with a special form, e.g., intervals,
+ * transform it to an immutable set via iteration.
+ *
+ * @param iterable an iterable collection of results
+ * @return an immutable set of results
+ * (probably much larger than the original object)
+ */
+export const toSet = (iterable: Iterable<EvalResult>): Set<EvalResult> => {
+  if (isSet(iterable)) {
+    return iterable as Set<EvalResult>
+  } else {
+    let set = Set.of<EvalResult>()
+    for (const e of iterable as Iterable<EvalResult>) {
+      set = set.add(e)
+    }
+    return set
+  }
+}
+
+/**
+  * If a value is iterable, convert it to an immutable set via toSet.
+  *
+  * @param value an evaluation result, maybe not Iterable
+  * @return either the original value, if it is not iterable, or
+  * an immutable set of results (probably much larger than the original object)
+  */
+export const toSetIfIterable = (value: EvalResult): EvalResult => {
+  if (isSet(value) || !isIterable(value)) {
+    return value
+  } else {
+    let set = Set.of<EvalResult>()
+    for (const e of value as Iterable<EvalResult>) {
+      set = set.add(e)
+    }
+    return set
+  }
+}
+
+// private definitions
+
+// an iterator over intervals
+class IntervalIterator implements Iterator<bigint> {
+  private current: bigint
+  private end: bigint
+
+  constructor (first: bigint, last: bigint) {
+    this.current = first
+    this.end = last
+  }
+
+  next (): IteratorResult<bigint> {
+    if (this.current <= this.end) {
+      return { done: false, value: this.current++ }
+    } else {
+      return { done: true, value: undefined }
+    }
+  }
+}
