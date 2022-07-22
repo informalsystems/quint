@@ -55,7 +55,13 @@ export const toSetIfIterable = (value: EvalResult): EvalResult => {
   }
 }
 
-// does a set (as an iterable) contain an element?
+/**
+  * Does an iterable collection (a set or an interval) contain an element?
+  *
+  * @param iterable iterable collection, e.g., a set or an interval
+  * @param elem evaluation result to check for membership
+  * @return true, if `elem` appears in `iterable`
+  */
 export function
 contains (iterable: Iterable<EvalResult>, elem: EvalResult): boolean {
   if (isSet(iterable)) {
@@ -73,17 +79,23 @@ contains (iterable: Iterable<EvalResult>, elem: EvalResult): boolean {
   }
 }
 
-// Is one set a subset of another (as iterables)?
+/**
+  * Is one set a subset of another (as iterables)?
+  *
+  * @param smaller collection of results the should be included in the larger one
+  * @param larger collection of results that should include the smaller one
+  * @result true if `smaller` is included or equal to the `larger`
+  */
 export function isSubset
-(from: Iterable<EvalResult>, to: Iterable<EvalResult>): boolean {
-  if (isSet(from) && isSet(to)) {
+(smaller: Iterable<EvalResult>, larger: Iterable<EvalResult>): boolean {
+  if (isSet(smaller) && isSet(larger)) {
     // do a (hopefully) less expensive test
-    return from.isSubset(to)
+    return smaller.isSubset(larger)
   } else {
     // Do O(m * n) tests, where m and n are the cardinalities of lhs and rhs.
     // Maybe we should use a cardinality test, when it's possible.
-    for (const l of from) {
-      if (!contains(to, l)) {
+    for (const e of smaller) {
+      if (!contains(larger, e)) {
         return false
       }
     }
@@ -92,8 +104,14 @@ export function isSubset
   }
 }
 
-// equality over evaluation results,
-// as defined in TNT, not JavaScript
+/**
+ * Check equality over evaluation results.
+ * as defined in TNT, not in JavaScript.
+ *
+ * @param lhs left element of equality
+ * @param rhs right element of equality
+ * @return true, if `lhs` equals to `rhs`
+ */
 export function eq
 (lhs: EvalResult, rhs: EvalResult): boolean {
   if (typeof lhs === 'bigint' || typeof lhs === 'boolean') {
