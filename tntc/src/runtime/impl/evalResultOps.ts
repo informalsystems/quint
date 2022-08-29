@@ -70,7 +70,7 @@ contains (iterable: Iterable<EvalResult>, elem: EvalResult): boolean {
   } else {
     let found = false
     for (const other of iterable) {
-      if (eq(elem, other)) {
+      if (evalResultIs(elem, other)) {
         found = true
       }
     }
@@ -105,14 +105,13 @@ export function isSubset
 }
 
 /**
- * Check equality over evaluation results.
- * as defined in TNT, not in JavaScript.
+ * Check equality over evaluation results. As defined in TNT, not in JavaScript.
  *
  * @param lhs left element of equality
  * @param rhs right element of equality
  * @return true, if `lhs` equals to `rhs`
  */
-export function eq
+export function evalResultIs
 (lhs: EvalResult, rhs: EvalResult): boolean {
   if (typeof lhs === 'bigint' || typeof lhs === 'boolean') {
     return lhs === rhs

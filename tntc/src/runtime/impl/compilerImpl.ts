@@ -76,11 +76,11 @@ export class CompilerVisitor implements IRVisitor {
   exitApp (app: ir.TntApp) {
     switch (app.opcode) {
       case 'eq':
-        this.applyFun(2, (x: any, y: any) => just(er.eq(x, y)))
+        this.applyFun(2, (x: any, y: any) => just(er.evalResultIs(x, y)))
         break
 
       case 'neq':
-        this.applyFun(2, (x: any, y: any) => just(!er.eq(x, y)))
+        this.applyFun(2, (x: any, y: any) => just(!er.evalResultIs(x, y)))
         break
 
       // conditional
@@ -158,7 +158,7 @@ export class CompilerVisitor implements IRVisitor {
         // Construct a set from an array of value.
         // Importantly, expand the special data structures such as intervals.
         this.applyFun(app.args.length, (...values: any[]) =>
-          just(Set.of(...values.map(er.iterableToSet))))
+          just(Set.of(...values.map(er.toSetIfIterable))))
         break
 
       case 'contains':
