@@ -67,16 +67,16 @@ contains (iterable: Iterable<EvalResult>, elem: EvalResult): boolean {
   if (isSet(iterable)) {
     // do a (hopefully) less expensive test
     return iterable.includes(iterableToSet(elem))
-  } else {
-    let found = false
-    for (const other of iterable) {
-      if (evalResultIs(elem, other)) {
-        found = true
-      }
-    }
-
-    return found
   }
+
+  let found = false
+  for (const other of iterable) {
+    if (evalResultIs(elem, other)) {
+      found = true
+    }
+  }
+
+  return found
 }
 
 /**
