@@ -158,7 +158,7 @@ export class CompilerVisitor implements IRVisitor {
         // Construct a set from an array of value.
         // Importantly, expand the special data structures such as intervals.
         this.applyFun(app.args.length, (...values: any[]) =>
-          just(Set.of(...values.map(evalResultOps.toSetIfIterable))))
+          just(Set.of(...values.map(evalResultOps.iterableToSet))))
         break
 
       case 'contains':

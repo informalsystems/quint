@@ -106,7 +106,7 @@ export function toTntEx (result: EvalResult): TntEx {
   } else if (isInterval(result)) {
     // simply enumerate the values in the interval first..last
     const elems: TntEx[] = []
-    for (let i = result.first; i <= result.last; i++) {
+    for (const i of result) {
       elems.push({ id: 0n, kind: 'int', value: i })
     }
     // return the expression set(...elems)
