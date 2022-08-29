@@ -29,7 +29,7 @@ export const toSet = (iterable: Iterable<EvalResult>): Set<EvalResult> => {
     return iterable as Set<EvalResult>
   } else {
     let set = Set.of<EvalResult>()
-    for (const e of iterable as Iterable<EvalResult>) {
+    for (const e of iterable) {
       set = set.add(e)
     }
     return set
@@ -43,7 +43,7 @@ export const toSet = (iterable: Iterable<EvalResult>): Set<EvalResult> => {
   * @return either the original value, if it is not iterable, or
   * an immutable set of results (probably much larger than the original object)
   */
-export const toSetIfIterable = (value: EvalResult): EvalResult => {
+export const iterableToSet = (value: EvalResult): EvalResult => {
   if (isSet(value) || !isIterable(value)) {
     return value
   } else {
@@ -66,7 +66,7 @@ export function
 contains (iterable: Iterable<EvalResult>, elem: EvalResult): boolean {
   if (isSet(iterable)) {
     // do a (hopefully) less expensive test
-    return iterable.includes(toSetIfIterable(elem))
+    return iterable.includes(iterableToSet(elem))
   } else {
     let found = false
     for (const other of iterable) {
