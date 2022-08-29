@@ -82,7 +82,7 @@ contains (iterable: Iterable<EvalResult>, elem: EvalResult): boolean {
 /**
   * Is one set a subset of another (as iterables)?
   *
-  * @param smaller collection of results the should be included in the larger one
+  * @param smaller collection of results that should be included in the larger one
   * @param larger collection of results that should include the smaller one
   * @result true if `smaller` is included or equal to the `larger`
   */
