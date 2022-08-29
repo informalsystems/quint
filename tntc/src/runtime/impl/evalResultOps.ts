@@ -120,8 +120,8 @@ export function evalResultIs
     return immutableIs(lhs, rhs)
   } else if (isInterval(lhs) && isInterval(rhs)) {
     // TS is smart enough to see the first condition, but not the second one
-    const rhsInt = rhs as Interval
-    return lhs.first === rhsInt.first && lhs.last === rhsInt.last
+    const rhsInterval = rhs as Interval
+    return lhs.first === rhsInterval.first && lhs.last === rhsInterval.last
   } else if (isIterable(lhs) && isIterable(rhs)) {
     // The worst case, e.g., comparing an interval to a set.
     // First, convert both iterables to sets and then compare them as sets.

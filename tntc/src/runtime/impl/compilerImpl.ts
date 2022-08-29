@@ -17,7 +17,7 @@ import {
   Computable, EvalResult, fail, makeInterval, isIterable
 } from '../runtime'
 
-import * as er from './evalResultOps'
+import * as evalResultOps from './evalResultOps'
 
 import * as ir from '../../tntIr'
 
@@ -76,11 +76,11 @@ export class CompilerVisitor implements IRVisitor {
   exitApp (app: ir.TntApp) {
     switch (app.opcode) {
       case 'eq':
-        this.applyFun(2, (x: any, y: any) => just(er.evalResultIs(x, y)))
+        this.applyFun(2, (x: any, y: any) => just(evalResultOps.evalResultIs(x, y)))
         break
 
       case 'neq':
-        this.applyFun(2, (x: any, y: any) => just(!er.evalResultIs(x, y)))
+        this.applyFun(2, (x: any, y: any) => just(!evalResultOps.evalResultIs(x, y)))
         break
 
       // conditional
@@ -158,31 +158,31 @@ export class CompilerVisitor implements IRVisitor {
         // Construct a set from an array of value.
         // Importantly, expand the special data structures such as intervals.
         this.applyFun(app.args.length, (...values: any[]) =>
-          just(Set.of(...values.map(er.toSetIfIterable))))
+          just(Set.of(...values.map(evalResultOps.toSetIfIterable))))
         break
 
       case 'contains':
-        this.applyFun(2, (set, value) => just(er.contains(set, value)))
+        this.applyFun(2, (set, value) => just(evalResultOps.contains(set, value)))
         break
 
       case 'in':
-        this.applyFun(2, (value, set) => just(er.contains(set, value)))
+        this.applyFun(2, (value, set) => just(evalResultOps.contains(set, value)))
         break
 
       case 'subseteq':
-        this.applyFun(2, (l, r) => just(er.isSubset(l, r)))
+        this.applyFun(2, (l, r) => just(evalResultOps.isSubset(l, r)))
         break
 
       case 'union':
-        this.applyFun(2, (l, r) => just(er.toSet(l).union(er.toSet(r))))
+        this.applyFun(2, (l, r) => just(evalResultOps.toSet(l).union(evalResultOps.toSet(r))))
         break
 
       case 'intersect':
-        this.applyFun(2, (l, r) => just(er.toSet(l).intersect(er.toSet(r))))
+        this.applyFun(2, (l, r) => just(evalResultOps.toSet(l).intersect(evalResultOps.toSet(r))))
         break
 
       case 'exclude':
-        this.applyFun(2, (l, r) => just(er.toSet(l).subtract(er.toSet(r))))
+        this.applyFun(2, (l, r) => just(evalResultOps.toSet(l).subtract(evalResultOps.toSet(r))))
         break
 
       case 'to':
@@ -296,7 +296,7 @@ export class CompilerVisitor implements IRVisitor {
     }
     this.applyFun(1, (set: Iterable<EvalResult>): Maybe<EvalResult> => {
       if (isIterable(set)) {
-        return er.flatMap(set, evaluateElem).map(rs => mapResultAndElems(rs))
+        return evalResultOps.flatMap(set, evaluateElem).map(rs => mapResultAndElems(rs))
       } else {
         throw new Error('Expected a set')
       }
