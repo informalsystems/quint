@@ -17,8 +17,8 @@ import {
 } from '../runtime'
 
 /**
- * If a set is represented with a special form, e.g., intervals,
- * transform it to an immutable set via iteration.
+ * Transform an Iterable to an immutable set via iteration.
+ * This is useful for special sets such as intervals.
  *
  * @param iterable an iterable collection of results
  * @return an immutable set of results
