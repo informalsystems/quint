@@ -117,14 +117,14 @@ function chalkTntEx (ex: TntEx): string {
     case 'app':
       if (ex.opcode !== 'set') {
         // instead of throwing, show it in red
-        return chalk.red(`unexpected(${ex.opcode}(...))`)
+        return chalk.red(`unsupported operator: ${ex.opcode}(...))`)
       } else {
         const as = ex.args.map(chalkTntEx).join(', ')
         return chalk.green('set') + chalk.black(`(${as})`)
       }
 
     default:
-      return chalk.red(`unexpected(${ex.kind})`)
+      return chalk.red(`unsupported operator: ${ex.kind}`)
   }
 }
 
