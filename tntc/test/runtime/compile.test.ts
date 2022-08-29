@@ -216,8 +216,13 @@ describe('compiling specs to runtime values', () => {
       assertResult('1.to(3) == 1.to(4 - 1)', true)
       assertResult('1.to(3) == set(1, 2, 3)', true)
       assertResult('set(1, 2, 3) == 1.to(3)', true)
+      assertResult('(-3).to(4) == set(-3, -2, -1, 0, 1, 2, 3, 4)', true)
+      assertResult('(-2).to(-4) == set()', true)
+      assertResult('3.to(-2) == set()', true)
       assertResult('1.to(3) == 1.to(4)', false)
+      assertResult('(-1).to(3) == 1.to(3)', false)
       assertResult('2.to(4) == 1.to(4)', false)
+      assertResult('(-4).to(-2) == (-2).to(-4)', false)
     })
 
     it('computes inequality over sets', () => {
@@ -364,6 +369,13 @@ describe('compiling specs to runtime values', () => {
       assertResultAsString('1.to(4).filter(x => false)', 'set()')
       assertResultAsString('1.to(4).filter(x => true)', 'set(1, 2, 3, 4)')
       assertResultAsString('1.to(4).filter(x => x % 2 == 0)', 'set(2, 4)')
+    })
+
+    it('computes filter over sets of intervals', () => {
+      assertResultAsString('set(1.to(4), 2.to(3)).filter(S => S.contains(1))',
+        'set(set(1, 2, 3, 4))')
+      assertResultAsString('set(1.to(4), 2.to(3)).filter(S => S.contains(0))',
+        'set()')
     })
   })
 })
