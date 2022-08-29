@@ -30,9 +30,8 @@ export type EvalResult = | boolean | bigint | Set<EvalResult> | Interval
 export type Interval = { first: bigint, last: bigint} & Iterable<bigint>
 
 // does an object behave as an interval
-export function isInterval (obj: any): boolean {
-  return obj.first !== undefined && typeof obj.first === 'bigint' &&
-    obj.last !== undefined && typeof obj.last === 'bigint'
+export function isInterval (res: EvalResult): res is Interval {
+  return typeof res !== 'boolean' && typeof res !== 'bigint' && !isSet(res)
 }
 
 // create an immutable record that represents intervals
