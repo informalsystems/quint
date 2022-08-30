@@ -161,9 +161,8 @@ export class CompilerVisitor implements IRVisitor {
 
       case 'set':
         // Construct a set from an array of values.
-        // Importantly, normalize special data structures such as intervals.
-        this.applyFun(app.args.length, (...values: RuntimeValue[]) =>
-          just(rv.mkSet(Set.of(...values.map(v => v.normalForm())))))
+        this.applyFun(app.args.length,
+          (...values: RuntimeValue[]) => just(rv.mkSet(values)))
         break
 
       case 'contains':
