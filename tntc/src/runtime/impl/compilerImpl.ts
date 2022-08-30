@@ -218,16 +218,16 @@ export class CompilerVisitor implements IRVisitor {
 
       case 'map':
         this.mapLambdaThenReduce(
-          array => rv.mkSet(Set.of(...array.map(([result, _]) => result)))
+          array => rv.mkSet(array.map(([result, _]) => result))
         )
         break
 
       case 'filter':
         this.mapLambdaThenReduce(
           arr =>
-            rv.mkSet(Set.of(...arr
+            rv.mkSet(arr
               .filter(([r, e]) => r.toBool())
-              .map(([r, e]) => e)))
+              .map(([r, e]) => e))
         )
         break
 
