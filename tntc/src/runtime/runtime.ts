@@ -19,13 +19,12 @@ import { ValueObject } from 'immutable'
 import { TntEx } from '../tntIr'
 
 /**
- * Evaluation result. The users should not look inside the actual implementation.
- * We may change it as much as we like.
+ * Evaluation result.
+ * The implementation details are hidden behind this interface.
  */
 export interface EvalResult extends ValueObject {
   /**
-   * Convert an evaluation result to TNT. This is the preferred way for the
-   * users.
+   * Convert an evaluation result to TNT.
    *
    * This function always returns sets in the normalized representation,
    * that is, in `set(elements)`, the elements are ordered according to their

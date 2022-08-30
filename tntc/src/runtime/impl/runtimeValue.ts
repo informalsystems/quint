@@ -1,5 +1,7 @@
 /*
- * Implementation of evaluation results in the runtime.
+ * Runtime values that are internally produced by the simulator.
+ * This is an internal implementation module. Everything in it
+ * may change in the future versions.
  *
  * Igor Konnov, 2022
  *
@@ -21,27 +23,62 @@ export default rv
 /**
  * A factory of runtime values that should be used to instantiate new values.
  */
-
 export const rv = {
+  /**
+   * Make a runtime value that represents a Boolean.
+   *
+   * @param value a Boolean value
+   * @return a new runtime value that carries the Boolean value
+   */
   mkBool: (value: boolean): RuntimeValue => {
     return new RuntimeValueBool(value)
   },
 
+  /**
+   * Make a runtime value that represents an integer.
+   *
+   * @param value an integer value
+   * @return a new runtime value that carries the integer value
+   */
   mkInt: (value: bigint): RuntimeValue => {
     return new RuntimeValueInt(value)
   },
 
+  /**
+   * Make a runtime value that represents a set via an immutable set.
+   *
+   * @param elems an iterable collection of runtime values
+   * @return a new runtime value that represents
+   * the immutable set of normalized elements
+   */
   mkSet: (elems: Iterable<RuntimeValue>): RuntimeValue => {
-    return new RuntimeValueSet(Set(elems))
+    // Normalize the elements, before adding them to the set.
+    // Otherwise, it may not behave as a set.
+    // For example, set(set(1, 2), 1.to(2)) should be treated as set(set(1, 2)).
+    let set = Set.of<RuntimeValue>()
+    for (const e of elems) {
+      set = set.add(e.normalForm())
+    }
+
+    return new RuntimeValueSet(set)
   },
 
+  /**
+   * Make a runtime value that represents an integer interval as a pair
+   * of big integers. This interval may be converted to an immutable set
+   * via `this#toSet()`.
+   *
+   * @param first the minimal point of the interval (inclusive)
+   * @param last the maximal poitn of the interval (inclusive)
+   * @return a new runtime value that the interval
+   */
   mkInterval: (first: bigint, last: bigint): RuntimeValue => {
     return new RuntimeValueInterval(first, last)
   },
 }
 
 /**
- * A runtime value produced and consumed by the simulator.  The structure of
+ * A runtime value produced and consumed by the simulator. The structure of
  * the runtime values is not exposed to the users.
  *
  * Since runtime values are internal to the simulator, we implement the
@@ -65,7 +102,7 @@ export interface RuntimeValue
    *
    *  - integers and literals are already in the normal form,
    *  - immutable sets are in the normal form,
-   *  - intervals and powers set are converted to immutable sets.
+   *  - intervals and powersets are converted to immutable sets.
    */
   normalForm (): RuntimeValue
 
@@ -115,7 +152,7 @@ export interface RuntimeValue
 
 /**
  * The default implementation of the common methods.
- * This implementation is hidden from the module user.
+ * This implementation is internal to the module.
  */
 abstract class RuntimeValueBase implements RuntimeValue {
   isSetLike: boolean
@@ -234,6 +271,9 @@ abstract class RuntimeValueBase implements RuntimeValue {
   }
 }
 
+/**
+ * A Boolean runtime value. This is an internal class.
+ */
 class RuntimeValueBool extends RuntimeValueBase implements RuntimeValue {
   value: boolean
 
@@ -255,6 +295,9 @@ class RuntimeValueBool extends RuntimeValueBase implements RuntimeValue {
   }
 }
 
+/**
+ * An integer (bigint) runtime value. This is an internal class.
+ */
 class RuntimeValueInt extends RuntimeValueBase implements ValueObject {
   value: bigint
 
@@ -277,6 +320,10 @@ class RuntimeValueInt extends RuntimeValueBase implements ValueObject {
   }
 }
 
+/**
+ * A set of runtime values represented via an immutable set.
+ * This is an internal class.
+ */
 class RuntimeValueSet extends RuntimeValueBase implements RuntimeValue {
   set: Set<RuntimeValue>
 
@@ -342,6 +389,10 @@ class RuntimeValueSet extends RuntimeValueBase implements RuntimeValue {
   }
 }
 
+/**
+ * A set of runtime values represented via an integer interval.
+ * This is an internal class.
+ */
 class RuntimeValueInterval extends RuntimeValueBase implements RuntimeValue {
   first: bigint
   last: bigint
@@ -385,7 +436,10 @@ class RuntimeValueInterval extends RuntimeValueBase implements RuntimeValue {
   }
 }
 
-// an iterator over intervals
+/**
+ * An iterator over integer runtime values from a range.
+ * This is an internal class.
+ */
 class IntervalIterator implements Iterator<RuntimeValue> {
   private current: bigint
   private end: bigint
