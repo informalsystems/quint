@@ -313,7 +313,8 @@ abstract class RuntimeValueBase implements RuntimeValue {
   }
 
   hashCode (): number {
-    // the default implementation, to make it compatible with RuntimeValue
+    // The default implementation,
+    // to make it compatible with RuntimeValue and ValueObject.
     return 0
   }
 
