@@ -211,6 +211,7 @@ describe('compiling specs to runtime values', () => {
       assertResultAsString('(-1).to(3) == 1.to(3)', 'false')
       assertResultAsString('2.to(4) == 1.to(4)', 'false')
       assertResultAsString('(-4).to(-2) == (-2).to(-4)', 'false')
+      assertResultAsString('3.to(0) == 4.to(-1)', 'true')
     })
 
     it('computes inequality over sets', () => {
