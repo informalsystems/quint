@@ -259,6 +259,7 @@ describe('compiling specs to runtime values', () => {
 
     it('computes subseteq over intervals', () => {
       assertResultAsString('2.to(4).subseteq(1.to(10))', 'true')
+      assertResultAsString('2.to(0).subseteq(3.to(0))', 'true')
       assertResultAsString('set(2, 3, 4).subseteq(1.to(10))', 'true')
       assertResultAsString('2.to(4).subseteq(1.to(3))', 'false')
       assertResultAsString('2.to(4).subseteq(set(1, 2, 3))', 'false')

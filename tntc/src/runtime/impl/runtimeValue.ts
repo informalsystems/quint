@@ -455,8 +455,14 @@ class RuntimeValueInterval extends RuntimeValueBase implements RuntimeValue {
 
   constructor (first: bigint, last: bigint) {
     super(true)
-    this.first = first
-    this.last = last
+    if (last >= first) {
+      this.first = first
+      this.last = last
+    } else {
+      // the interval is empty, normalize it
+      this.first = 1n
+      this.last = 0n
+    }
   }
 
   [Symbol.iterator] () {
@@ -473,6 +479,15 @@ class RuntimeValueInterval extends RuntimeValueBase implements RuntimeValue {
       return this.first <= elem.value && elem.value <= this.last
     } else {
       return false
+    }
+  }
+
+  isSubset (superset: RuntimeValue): boolean {
+    if (superset instanceof RuntimeValueInterval) {
+      return this.first >= superset.first && this.last <= superset.last
+    } else {
+      // fall back to the general implementation
+      return super.isSubset(superset)
     }
   }
 
