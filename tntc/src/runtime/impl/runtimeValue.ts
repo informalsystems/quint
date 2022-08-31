@@ -1,13 +1,67 @@
 /*
  * Runtime values that are internally produced by the simulator.
- * This is an internal implementation module. Everything in it
- * may change in the future versions.
+  *
+  * This is an internal implementation module. Everything in it may change in
+  * the future versions. The discussion below is intended for the developers of
+  * the simulator, not for its end users.
+ *
+ * In case of Boolean and integer values, runtime values are simply wrappers
+ * around boolean and bigint. The difference becomes noticeable when we are
+ * dealing with data structures such as: sets, intervals, powersets, and sets
+ * of maps. At the surface level, they all behave as iterable collections.
+ * However, all combinations of these data structures are admitted, e.g.,
+ * `set(1, 2, 3) == 1.to(3)` is a legal TNT expression. Although we could
+ * always expand all set operators into sets represented via an immutable set
+ * (provided by immutable.Set), this may lead to extremely inefficient
+ * computations. For example, `1.to(2^64).contains(25)` should be trivial to
+ * compute, since we know that 25 lies within the interval `[1, 2^64]`. A naive
+ * simulator would first expand `1.to(2^64)` to the set of 2^64 elements, which
+ * would simply run out of memory.
+ *
+ * To this end, we introduce different classes for various set representations:
+ *
+ *  - RuntimeValueSet is the "normal-form" representation via enumeration. It
+ *  is implemented with Set of immutable-js, which is a perfect fit for this
+ *  task.
+ *
+ *  - RuntimeValueInterval is the interval representation via a pair of
+ *  integers [first, last]. This class behaves as a set wherever possible. It
+ *  has optimized implementations of `contains`, `isSubset`, and `equals`
+ *  (technically, `equals` is implemented in RuntimeValueBase).
+ *
+ *  - RuntimeValuePowerset: TBD
+ *
+ *  - RuntimeValueMapSet: TBD
+ *
+ *
+ * Importantly, it should be always possible to convert other set
+ * representations to enumerative sets (backed with `RuntimeValueSet`): Many
+ * set operators have meaningful semantics only in enumerative sets. For
+ * example, consider `1.to(3).union(10.to(15))` can be only defined by
+ * enumeration, not in terms of intervals. Hence, every runtime value has the
+ * method `toSet()` that produces an immutable.Set. The algebraic set
+ * operations can be easily performed via the corresponding methods of
+ * `immutable.Set`.
+ *
+ * Moreover, some TNT expressions force us to fall back on the enumerative set
+ * representation. For example, set(set(1, 2, 3), 1.to(3)) is equivalent to the
+ * set `set(set(1, 2, 3))`. If we did not normalize `1.to(3)` to `set(1, 2,
+ * 3)`, we would produce a set that would not be considered equal to
+ * `set(set(1, 2, 3))`. This is because implementations of sets utilize hashes,
+ * which would be different in the enumerative and interval representations.
+ *
+ * The operator `contains` may seem to be too specialized for introducing the
+ * whole new layer of abstraction. However, it is deeply rooted in the
+ * semantics of TNT, which, similar to TLA+, heavily utilizes set operators.
+ * In the future, we will extend runtime values with the method `guess`, which
+ * would draw a random value from a set. There, the efficiency of special
+ * representations will become obvious.
  *
  * Igor Konnov, 2022
  *
- * Copyright (c) Informal Systems 2022. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright (c) Informal Systems 2022. All rights reserved. Licensed under
+ * the Apache 2.0. See License.txt in the project root for license
+ * information.
  */
 
 import { Set, ValueObject, is as immutableIs } from 'immutable'
@@ -91,10 +145,10 @@ export interface RuntimeValue
   extends EvalResult, ValueObject, Iterable<RuntimeValue> {
 
   /**
-   * Can the runtime value behave like a set? Effectively, this means
-   * that the value returns a sequence of elements, when it is iterated.
+   * Can the runtime value behave like a set? Effectively, this means that the
+   * value returns a sequence of elements, when it is iterated over.
    */
-  isSetLike: boolean
+isSetLike: boolean
 
   /**
    * Transform this runtime value into the normal form, so it can be
@@ -162,6 +216,7 @@ abstract class RuntimeValueBase implements RuntimeValue {
   }
 
   [Symbol.iterator] () {
+    // produce an empty iterator by default
     return {
       next (): IteratorResult<RuntimeValue> {
         return { done: true, value: undefined }
@@ -171,6 +226,7 @@ abstract class RuntimeValueBase implements RuntimeValue {
 
   normalForm (): RuntimeValue {
     if (!this.isSetLike) {
+      // Booleans and integers are in the normal form
       return this
     } else {
       return new RuntimeValueSet(this.toSet())
