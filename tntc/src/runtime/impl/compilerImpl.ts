@@ -34,9 +34,9 @@ import { rv, RuntimeValue } from './runtimeValue'
 export class CompilerVisitor implements IRVisitor {
   // the stack of computable values
   private compStack: Computable[] = []
-  // the map of definition and variable names
-  // as well as of definition parameters to translated values
-  private context: Map<string, Computable> = new Map<string, Computable>()
+  // the map of names to their computable values and accompanying register
+  private context: Map<string, [Computable, Register<any>[]]> =
+    new Map<string, [Computable, Register<any>[]]>()
 
   /**
    * Get a computable assigned to a name.
@@ -44,16 +44,33 @@ export class CompilerVisitor implements IRVisitor {
    * @param name the definition name
    * @return the Computable value assigned to the name, or undefined
    */
-  findByName (name: string) {
-    return this.context.get(name)
+  findByName (name: string): Computable | undefined {
+    const pair = this.context.get(name)
+    if (pair) {
+      return pair[0]
+    } else {
+      return undefined
+    }
   }
 
   exitOpDef (opdef: ir.TntOpDef) {
-    // for now, we handle only 'val'
-    assert(opdef.qualifier === 'val', `Expected 'val', found: ${opdef.qualifier}`)
+    // for now, we handle only 'val' and 'def'
+    assert(opdef.qualifier === 'val' || opdef.qualifier === 'def',
+           `Expected 'val' or 'def', found: ${opdef.qualifier}`)
+    // When a definition has n parameters, then the stack looks like follows:
+    // [top]:         register_N
+    // [top - N + 1]: register 1
+    // [top - N]:     compiled body of the definition
+    //
+    // Pack all registers into an array
+    let registers: Register<any>[] = []
+    if (opdef.expr.kind === 'lambda') {
+      const nparams = opdef.expr.params.length
+      registers = this.compStack.splice(-nparams) as Register<any>[]
+    }
     const defBody = this.compStack.pop()
     assert(defBody, `No expression for ${opdef.name} on compStack`)
-    this.context.set(opdef.name, defBody)
+    this.context.set(opdef.name, [defBody, registers])
   }
 
   enterLiteral (expr: ir.TntBool | ir.TntInt | ir.TntStr) {
@@ -72,9 +89,11 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   enterName (name: ir.TntName) {
-    const comp = this.context.get(name.name)
+    const pair = this.context.get(name.name)
     // this may happen, see: https://github.com/informalsystems/tnt/issues/129
-    assert(comp, `Name ${name.name} not found (out of order?)`)
+    assert(pair, `Name ${name.name} not found (out of order?)`)
+    const [comp, registers] = pair
+    assert(registers.length === 0)
     this.compStack.push(comp)
   }
 
@@ -231,24 +250,29 @@ export class CompilerVisitor implements IRVisitor {
         )
         break
 
-      default:
-        throw new Error(`Translation of ${app.opcode} is not implemented`)
+      default: {
+        // maybe it is a user-defined operator
+        const bodyAndRegisters = this.context.get(app.opcode)
+        if (bodyAndRegisters === undefined) {
+          throw new Error(`Translation of ${app.opcode} is not implemented`)
+        } else {
+          const [body, registers] = bodyAndRegisters
+          this.applyFun(registers.length,
+            (...args: RuntimeValue[]) => {
+              for (let i = 0; i < args.length; i++) {
+                registers[i].registerValue = just(args[i])
+              }
+              return body.eval() as Maybe<RuntimeValue>
+            }
+          )
+        }
+      }
     }
   }
 
   enterLambda (lam: ir.TntLambda) {
     // introduce a register for every parameter
-    lam.params.forEach(p => {
-      const paramRegister = {
-        // register is a placeholder where iterators can store their values
-        register: none<any>(),
-        // computing a register just evaluates to the contents that it stores
-        eval: function () {
-          return this.register
-        },
-      }
-      this.context.set(p, paramRegister)
-    })
+    lam.params.forEach(p => this.addNewRegister(p))
     // After this point, the body of the lambda gets compiled.
     // The body of the lambda may refer to the parameter via names,
     // which are stored in the registers we've just created.
@@ -259,9 +283,10 @@ export class CompilerVisitor implements IRVisitor {
     // However, we have to populate the registers before we can evaluate the expression.
     // Move each parameter register from the context to the computation stack.
     lam.params.forEach(p => {
-      const comp = this.context.get(p)
-      if (comp !== undefined) {
-        this.compStack.push(comp)
+      const valueAndRegisters = this.context.get(p)
+      if (valueAndRegisters) {
+        assert(valueAndRegisters[1].length === 0)
+        this.compStack.push(valueAndRegisters[0])
         this.context.delete(p)
       } else {
         throw new Error(`Corrupted lambda context, parameter ${p} not found`)
@@ -275,7 +300,7 @@ export class CompilerVisitor implements IRVisitor {
     *
     * This method expects `compStack` to look like follows:
     *
-    *  - `(top)` the register object, of type `Computable & WithRegister`, is
+    *  - `(top)` the register object, of type `Register`, is
     *    used to hold each value to which the lambda will be applied as we iterate
     *    through the elements .
     *
@@ -297,7 +322,7 @@ export class CompilerVisitor implements IRVisitor {
     }
     // the lambda parameter, which is a register that we iteratively
     // set to each element of the set as the lambda is applied
-    const param = this.compStack.pop() as Computable & WithRegister<any>
+    const param = this.compStack.pop() as Register<any>
     // the body of the lambda
     const lambdaBody = this.compStack.pop()
     if (lambdaBody !== undefined) {
@@ -305,7 +330,7 @@ export class CompilerVisitor implements IRVisitor {
       const evaluateElem = function (elem: RuntimeValue):
           Maybe<[RuntimeValue, RuntimeValue]> {
         // store the set element in the register
-        param.register = just(elem)
+        param.registerValue = just(elem)
         // evaluate the predicate using the register
         // (cast the result to RuntimeValue, as we use runtime values)
         const result = lambdaBody.eval().map(e => e as RuntimeValue)
@@ -371,12 +396,26 @@ export class CompilerVisitor implements IRVisitor {
       throw new Error('Not enough arguments on the stack')
     }
   }
+
+  // Introduce a computable value that behaves like a register.
+  // Add the fresh register to the context.
+  private addNewRegister (name: string) {
+    const paramRegister = {
+      // register is a placeholder where iterators can store their values
+      registerValue: none<any>(),
+      // computing a register just evaluates to the contents that it stores
+      eval: function () {
+        return this.registerValue
+      },
+    }
+    this.context.set(name, [paramRegister, []])
+  }
 }
 
-// a computable value with register
-interface WithRegister<T> {
+// a computable value that evaluates to the value of a register
+interface Register<T> extends Computable {
   // register is a placeholder where iterators can put their values
-  register: Maybe<T>
+  registerValue: Maybe<T>
 }
 
 /**

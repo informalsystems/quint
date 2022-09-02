@@ -167,6 +167,13 @@ describe('compiling specs to runtime values', () => {
          y - x`
       assertResultAsString(input, '7')
     })
+
+    it('computes multi-arg definitions', () => {
+      const input =
+        `def mult(x, y) = (x * y)
+         mult(2, mult(3, 4))`
+      assertResultAsString(input, '24')
+    })
   })
 
   describe('compileExpr over sets', () => {
