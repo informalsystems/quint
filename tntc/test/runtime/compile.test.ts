@@ -174,6 +174,13 @@ describe('compiling specs to runtime values', () => {
          mult(2, mult(3, 4))`
       assertResultAsString(input, '24')
     })
+
+    it('use def instead of lambda', () => {
+      const input =
+        `def positive(x) = x > 0
+         (-3).to(3).filter(positive)`
+      assertResultAsString(input, 'set(1, 2, 3)')
+    })
   })
 
   describe('compileExpr over sets', () => {
