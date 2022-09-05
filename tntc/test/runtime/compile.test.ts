@@ -175,7 +175,7 @@ describe('compiling specs to runtime values', () => {
       assertResultAsString(input, '24')
     })
 
-    it('use def instead of lambda', () => {
+    it('uses named def instead of lambda', () => {
       const input =
         `def positive(x) = x > 0
          (-3).to(3).filter(positive)`
