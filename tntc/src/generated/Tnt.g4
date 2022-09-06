@@ -113,11 +113,6 @@ expr:           // apply a built-in operator via the dot notation
         |       '{' expr '}'                                        # braces
         ;
 
-// REPL feature: recognize a unit or an expression
-unitOrExpr:     unit
-          |     expr
-          ;
-
 // This rule parses anonymous functions, e.g.:
 // 1. Non-action lambdas:
 //   x, y, z => e
