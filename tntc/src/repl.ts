@@ -11,10 +11,12 @@
 import * as readline from 'readline'
 import chalk from 'chalk'
 
+import { just, none } from '@sweet-monads/maybe'
+
 import { TntEx } from './tntIr'
-import { compileExpr } from './runtime/compile'
+import { compile } from './runtime/compile'
 import { ExecError } from './runtime/runtime'
-import { probeParse, ParseProbeResult, ErrorMessage } from './tntParserFrontend'
+import { probeParse, ErrorMessage } from './tntParserFrontend'
 
 // tunable settings
 export const settings = {
@@ -36,6 +38,8 @@ export function tntRepl () {
 
   rl.prompt()
 
+  // input history
+  let history = ''
   // we let the user type a multiline string, which is collected here:
   let multilineText = ''
   // when the number of open braces or parentheses is positive,
@@ -65,12 +69,12 @@ export function tntRepl () {
         multilineText += '\n' + line
         rl.setPrompt(settings.continuePrompt)
       } else {
-        line.trim() === '' || tryEval(line)
+        line.trim() === '' || (history += tryEval(history, line))
       }
     } else {
       if (line.trim() === '' && nOpenBraces <= 0 && nOpenParen <= 0) {
         // end the multiline mode
-        tryEval(multilineText)
+        history += tryEval(history, multilineText)
         multilineText = ''
         rl.setPrompt(settings.prompt)
       } else {
@@ -130,19 +134,36 @@ function chalkTntEx (ex: TntEx): string {
 }
 
 // try to evaluate the expression in a string and print it, if successful
-function tryEval (text: string) {
-  const probeResult = probeParse(text, '<input>')
+function tryEval (history: string, newInput: string) {
+  const probeResult = probeParse(newInput, '<input>')
   if (probeResult.kind === 'error') {
-    printErrorMessages(text, probeResult.messages)
-  } else {
+    printErrorMessages(newInput, probeResult.messages)
+    // nothing to collect in history
+    return ''
+  }
+  if (probeResult.kind === 'expr') {
+    // embed expression text into a module definition
+    const moduleText = `module __Runtime {
+${history}
+       val __exprToCompile =
+${newInput}
+}`
     // compile the expression or definition and evaluate it
-    const val = compileExpr(text, chalkHandler).exec()
-    if (val) {
-      // Print on success, similar to node repl.
-      console.log(chalkTntEx(val.toTntEx()))
-    } else {
+    const computable = compile(moduleText, chalkHandler).get('__exprToCompile')
+    const resultDefined =
+      (computable)
+        ? computable
+          .eval()
+          .map(value => console.log(chalkTntEx(value.toTntEx())))
+        : none()
+    if (resultDefined.isNone()) {
       console.error(chalk.red('<result undefined>'))
     }
+    // nothing to collect in history
+    return ''
+  }
+  if (probeResult.kind === 'unit') {
+    console.log('unit not supported yet')
   }
 }
 
