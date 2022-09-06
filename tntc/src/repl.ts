@@ -69,12 +69,12 @@ export function tntRepl () {
         multilineText += '\n' + line
         rl.setPrompt(settings.continuePrompt)
       } else {
-        line.trim() === '' || (history += tryEval(history, line))
+        line.trim() === '' || (history = tryEval(history, line))
       }
     } else {
       if (line.trim() === '' && nOpenBraces <= 0 && nOpenParen <= 0) {
         // end the multiline mode
-        history += tryEval(history, multilineText)
+        history = tryEval(history, multilineText)
         multilineText = ''
         rl.setPrompt(settings.prompt)
       } else {
@@ -90,6 +90,7 @@ export function tntRepl () {
       case '.help':
         out('.exit\tExit the REPL')
         out('.help\tPrint this help message')
+        out('.clear\tClear the history')
         out('\nType an expression and press Enter to evaluate it.')
         out('When the REPL switches to multiline mode "...", finish it with an empty line.')
         out('\nPress Ctrl+C to abort current expression, Ctrl+D to exit the REPL')
@@ -98,12 +99,17 @@ export function tntRepl () {
       case '.exit':
         process.exit(0)
 
+      case '.clear':
+        history = ''
+        break
+
       default:
         nextLine(line)
         break
     }
     rl.prompt()
   }).on('close', () => {
+    console.log('')
     process.exit(0)
   })
 }
@@ -134,22 +140,21 @@ function chalkTntEx (ex: TntEx): string {
 }
 
 // try to evaluate the expression in a string and print it, if successful
-function tryEval (history: string, newInput: string) {
+function tryEval (history: string, newInput: string): string {
+  let newHistory = history
   const probeResult = probeParse(newInput, '<input>')
   if (probeResult.kind === 'error') {
     printErrorMessages(newInput, probeResult.messages)
-    // nothing to collect in history
-    return ''
   }
   if (probeResult.kind === 'expr') {
-    // embed expression text into a module definition
-    const moduleText = `module __Runtime {
+    // embed expression text into a value definition inside a module
+    const moduleText = `module __REPL {
 ${history}
-       val __exprToCompile =
+  val __input =
 ${newInput}
 }`
     // compile the expression or definition and evaluate it
-    const computable = compile(moduleText, chalkHandler).get('__exprToCompile')
+    const computable = compile(moduleText, chalkHandler).get('__input')
     const resultDefined =
       (computable)
         ? computable
@@ -159,12 +164,24 @@ ${newInput}
     if (resultDefined.isNone()) {
       console.error(chalk.red('<result undefined>'))
     }
-    // nothing to collect in history
-    return ''
   }
   if (probeResult.kind === 'unit') {
-    console.log('unit not supported yet')
+    // embed expression text into a module at the top level
+    const moduleText = `module __REPL {
+${history}
+${newInput}
+}`
+    // compile the module and add it to history if everything worked
+    const context = compile(moduleText, chalkHandler)
+    if (context.size === 0) {
+      console.error(chalk.red('<compilation failed>'))
+    } else {
+      // add the new input to the history
+      newHistory = history + '\n' + newInput
+    }
   }
+
+  return newHistory
 }
 
 // output errors to the console in red
