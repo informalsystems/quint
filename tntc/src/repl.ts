@@ -11,7 +11,7 @@
 import * as readline from 'readline'
 import chalk from 'chalk'
 
-import { just, none } from '@sweet-monads/maybe'
+import { none } from '@sweet-monads/maybe'
 
 import { TntEx } from './tntIr'
 import { compile } from './runtime/compile'
@@ -100,6 +100,7 @@ export function tntRepl () {
         process.exit(0)
 
       case '.clear':
+        console.log('') // be nice to external programs
         history = ''
         break
 
@@ -145,6 +146,7 @@ function tryEval (history: string, newInput: string): string {
   const probeResult = probeParse(newInput, '<input>')
   if (probeResult.kind === 'error') {
     printErrorMessages(newInput, probeResult.messages)
+    console.log('') // be nice to external programs
   }
   if (probeResult.kind === 'expr') {
     // embed expression text into a value definition inside a module
@@ -163,6 +165,7 @@ ${newInput}
         : none()
     if (resultDefined.isNone()) {
       console.error(chalk.red('<result undefined>'))
+      console.log('') // be nice to external programs
     }
   }
   if (probeResult.kind === 'unit') {
@@ -175,9 +178,10 @@ ${newInput}
     const context = compile(moduleText, chalkHandler)
     if (context.size === 0) {
       console.error(chalk.red('<compilation failed>'))
+      console.log('') // be nice to external programs
     } else {
-      // add the new input to the history
-      newHistory = history + '\n' + newInput
+      console.log('') // be nice to external programs
+      newHistory = history + '\n' + newInput // update the history
     }
   }
 
