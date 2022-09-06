@@ -14,6 +14,7 @@ import chalk from 'chalk'
 import { TntEx } from './tntIr'
 import { compileExpr } from './runtime/compile'
 import { ExecError } from './runtime/runtime'
+import { probeParse, ParseProbeResult, ErrorMessage } from './tntParserFrontend'
 
 // tunable settings
 export const settings = {
@@ -130,16 +131,66 @@ function chalkTntEx (ex: TntEx): string {
 
 // try to evaluate the expression in a string and print it, if successful
 function tryEval (text: string) {
-  const val = compileExpr(text, chalkHandler).exec()
-  if (val !== undefined) {
-    // Print on success, similar to node repl.
-    console.log(chalkTntEx(val.toTntEx()))
+  const probeResult = probeParse(text, '<input>')
+  if (probeResult.kind === 'error') {
+    printErrorMessages(text, probeResult.messages)
+  } else {
+    // compile the expression or definition and evaluate it
+    const val = compileExpr(text, chalkHandler).exec()
+    if (val) {
+      // Print on success, similar to node repl.
+      console.log(chalkTntEx(val.toTntEx()))
+    } else {
+      console.error(chalk.red('<result undefined>'))
+    }
   }
 }
 
 // output errors to the console in red
 function chalkHandler (err: ExecError) {
   console.error(chalk.red(`${err.sourceAndLoc}: ${err.msg}`))
+}
+
+// print error messages with proper colors
+function printErrorMessages (text: string, messages: ErrorMessage[]) {
+  // display the error messages and highlight the error places
+  for (const e of messages) {
+    console.error(`Syntax error: ${chalk.red(e.explanation)}`)
+    const lines = text.split('\n')
+    let lineno = 0
+    for (const line of lines) {
+      // try highlighting the first error location
+      if (e.locs[0]) {
+        const loc = e.locs[0]
+        if (lineno < loc.start.line) {
+          // outside of the error region, no highlighting
+          console.error(line)
+        } else {
+          // starting or continuing the error region
+          let col1 = (loc.start.line === lineno) ? loc.start.col : 0
+          let col2 = line.length
+          if (loc.end) {
+            if (lineno <= loc.end.line) {
+              // inside the region, maybe part of the string to highlight
+              col2 = (loc.end.line === lineno) ? loc.end.col + 1 : line.length
+            } else {
+              // outside of the error region, no highlighting
+              col1 = line.length
+              col2 = line.length
+            }
+          } else {
+            // the region end is not defined, highlight the rest of the line
+            col2 = line.length
+          }
+          const before = line.slice(0, col1)
+          const error = chalk.red(line.slice(col1, col2))
+          const after = line.slice(col2)
+          console.error(`${before}${error}${after}`)
+        }
+      }
+      lineno += 1
+    }
+  }
 }
 
 // count the difference between the number of '{' and '}'
