@@ -168,7 +168,7 @@ ${newInput}
       console.log('') // be nice to external programs
     }
   }
-  if (probeResult.kind === 'unit') {
+  if (probeResult.kind === 'toplevel') {
     // embed expression text into a module at the top level
     const moduleText = `module __REPL {
 ${history}

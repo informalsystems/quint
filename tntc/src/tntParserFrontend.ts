@@ -42,7 +42,7 @@ export type Phase2Result =
  * The result of probing.
  */
 export type ParseProbeResult =
-  | { kind: 'unit' }
+  | { kind: 'toplevel' }
   | { kind: 'expr' }
   | { kind: 'error', messages: ErrorMessage[] }
 
@@ -252,7 +252,7 @@ class ProbeListener implements TntListener {
 
   exitUnitOrExpr (ctx: p.UnitOrExprContext) {
     if (ctx.unit()) {
-      this.result = { kind: 'unit' }
+      this.result = { kind: 'toplevel' }
     } else {
       this.result = { kind: 'expr' }
     }
