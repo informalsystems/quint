@@ -33,12 +33,9 @@ const withIO = async (inputText: string): Promise<string> => {
   chalk.level = 0
   // setup:
   //  - the output that writes to a string
-  //  - the input that echoes to the output
+  //  - the input that consumes events
   const output = new ToStringWritable()
   const input = new PassThrough()
-  input.on('data', (d) => {
-    output.write(d)
-  })
 
   const rl = tntRepl(input, output, () => {})
 
@@ -62,7 +59,7 @@ Type ".exit" to exit, or ".help" for more information`
 async function assertRepl (input: string, output: string) {
   const expected =
 `${banner}
-${input}${output}
+${output}
 `
 
   const result = await withIO(input)
