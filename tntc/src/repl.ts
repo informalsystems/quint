@@ -9,6 +9,7 @@
  */
 
 import * as readline from 'readline'
+import { Readable, Writable } from 'stream'
 import chalk from 'chalk'
 
 import { none } from '@sweet-monads/maybe'
@@ -24,15 +25,26 @@ export const settings = {
   continuePrompt: '... ',
 }
 
+type writer = (text: string) => void
+
+// The default exit terminates the process.
+// Since it is inconvenient for testing, do not use it in tests :)
+function defaultExit () {
+  process.exit(0)
+}
+
 // the entry point to the REPL
-export function tntRepl () {
-  const out = console.log
+export function tntRepl
+(input: Readable, output: Writable, exit: () => void = defaultExit) {
+  function out (text: string) {
+    output.write(text + '\n')
+  }
   out(chalk.gray('TNT REPL v0.0.1'))
   out(chalk.gray('Type ".exit" to exit, or ".help" for more information'))
   // create a readline interface
   const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
+    input: input,
+    output: output,
     prompt: settings.prompt,
   })
 
@@ -69,12 +81,12 @@ export function tntRepl () {
         multilineText += '\n' + line
         rl.setPrompt(settings.continuePrompt)
       } else {
-        line.trim() === '' || (history = tryEval(history, line))
+        line.trim() === '' || (history = tryEval(out, history, line))
       }
     } else {
       if (line.trim() === '' && nOpenBraces <= 0 && nOpenParen <= 0) {
         // end the multiline mode
-        history = tryEval(history, multilineText)
+        history = tryEval(out, history, multilineText)
         multilineText = ''
         rl.setPrompt(settings.prompt)
       } else {
@@ -97,10 +109,11 @@ export function tntRepl () {
         break
 
       case '.exit':
-        process.exit(0)
+        exit()
+        break
 
       case '.clear':
-        console.log('') // be nice to external programs
+        out('') // be nice to external programs
         history = ''
         break
 
@@ -110,9 +123,11 @@ export function tntRepl () {
     }
     rl.prompt()
   }).on('close', () => {
-    console.log('')
-    process.exit(0)
+    out('')
+    exit()
   })
+
+  return rl
 }
 
 // private definitions
@@ -141,12 +156,17 @@ function chalkTntEx (ex: TntEx): string {
 }
 
 // try to evaluate the expression in a string and print it, if successful
-function tryEval (history: string, newInput: string): string {
+function tryEval (out: writer, history: string, newInput: string): string {
+  // output errors to the console in red
+  function chalkHandler (err: ExecError) {
+    out(chalk.red(`${err.sourceAndLoc}: ${err.msg}`))
+  }
+
   let newHistory = history
   const probeResult = probeParse(newInput, '<input>')
   if (probeResult.kind === 'error') {
-    printErrorMessages(newInput, probeResult.messages)
-    console.log('') // be nice to external programs
+    printErrorMessages(out, newInput, probeResult.messages)
+    out('') // be nice to external programs
   }
   if (probeResult.kind === 'expr') {
     // embed expression text into a value definition inside a module
@@ -161,11 +181,11 @@ ${newInput}
       (computable)
         ? computable
           .eval()
-          .map(value => console.log(chalkTntEx(value.toTntEx())))
+          .map(value => out(chalkTntEx(value.toTntEx())))
         : none()
     if (resultDefined.isNone()) {
-      console.error(chalk.red('<result undefined>'))
-      console.log('') // be nice to external programs
+      out(chalk.red('<result undefined>'))
+      out('') // be nice to external programs
     }
   }
   if (probeResult.kind === 'toplevel') {
@@ -177,10 +197,10 @@ ${newInput}
     // compile the module and add it to history if everything worked
     const context = compile(moduleText, chalkHandler)
     if (context.size === 0) {
-      console.error(chalk.red('<compilation failed>'))
-      console.log('') // be nice to external programs
+      out(chalk.red('<compilation failed>'))
+      out('') // be nice to external programs
     } else {
-      console.log('') // be nice to external programs
+      out('') // be nice to external programs
       newHistory = history + '\n' + newInput // update the history
     }
   }
@@ -188,16 +208,12 @@ ${newInput}
   return newHistory
 }
 
-// output errors to the console in red
-function chalkHandler (err: ExecError) {
-  console.error(chalk.red(`${err.sourceAndLoc}: ${err.msg}`))
-}
-
 // print error messages with proper colors
-function printErrorMessages (text: string, messages: ErrorMessage[]) {
+function printErrorMessages
+(out: writer, text: string, messages: ErrorMessage[]) {
   // display the error messages and highlight the error places
   for (const e of messages) {
-    console.error(`Syntax error: ${chalk.red(e.explanation)}`)
+    out(`Syntax error: ${chalk.red(e.explanation)}`)
     const lines = text.split('\n')
     let lineno = 0
     for (const line of lines) {
@@ -206,7 +222,7 @@ function printErrorMessages (text: string, messages: ErrorMessage[]) {
         const loc = e.locs[0]
         if (lineno < loc.start.line) {
           // outside of the error region, no highlighting
-          console.error(line)
+          out(line)
         } else {
           // starting or continuing the error region
           let col1 = (loc.start.line === lineno) ? loc.start.col : 0
@@ -227,7 +243,7 @@ function printErrorMessages (text: string, messages: ErrorMessage[]) {
           const before = line.slice(0, col1)
           const error = chalk.red(line.slice(col1, col2))
           const after = line.slice(col2)
-          console.error(`${before}${error}${after}`)
+          out(`${before}${error}${after}`)
         }
       }
       lineno += 1
