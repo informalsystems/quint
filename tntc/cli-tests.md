@@ -163,7 +163,7 @@ tntc typecheck ../examples/BinSearch/BinSearch.tnt
 
 #### Basic expressions
 
-When we type type basic expressions in REPL:
+When we type basic expressions in REPL:
 
 <!-- !test in repl basic expressions -->
 
