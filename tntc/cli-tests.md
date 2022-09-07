@@ -221,29 +221,25 @@ Even better, we can write top-level definitions:
 
 <!-- !test in repl top-level definitions -->
 
-```
-val n = 4
-def mult(x, y) = x * y
-mult(100, n)
-def powpow(x, y) = x^y
-mult(100, powpow(2, 3))
-```
+    val n = 4
+    def mult(x, y) = x * y
+    mult(100, n)
+    def powpow(x, y) = x^y
+    mult(100, powpow(2, 3))
 
 REPL remembers them in its internal history and uses in the follow-up
 expressions:
 
 <!-- !test out repl top-level definitions -->
 
-```
-TNT REPL v0.0.1
-Type ".exit" to exit, or ".help" for more information
->>> 
->>> 
->>> 400
->>> 
->>> 800
->>> 
-```
+    TNT REPL v0.0.1
+    Type ".exit" to exit, or ".help" for more information
+    >>> 
+    >>> 
+    >>> 400
+    >>> 
+    >>> 800
+    >>> 
 
 #### Clear history
 
