@@ -139,6 +139,16 @@ export const rv = {
   mkInterval: (first: bigint, last: bigint): RuntimeValue => {
     return new RuntimeValueInterval(first, last)
   },
+
+  /**
+   * Make a runtime value that represents a cross product of sets.
+   *
+   * @param value an iterable collection of runtime values
+   * @return a new runtime value that carries the tuple
+   */
+  mkCrossProd: (sets: RuntimeValue[]): RuntimeValue => {
+    return new RuntimeValueCrossProd(sets)
+  },
 }
 
 /**
@@ -334,6 +344,20 @@ abstract class RuntimeValueBase implements RuntimeValue {
     if (this instanceof RuntimeValueInterval &&
         other instanceof RuntimeValueInterval) {
       return this.first === other.first && this.last === other.last
+    }
+    if (this instanceof RuntimeValueCrossProd &&
+        other instanceof RuntimeValueCrossProd) {
+      const size = this.sets.length
+      if (size !== other.sets.length) {
+        return false
+      } else {
+        for (let i = 0; i < size; i++) {
+          if (!this.sets[i].equals(other.sets[i])) {
+            return false
+          }
+        }
+        return true
+      }
     }
     if (this.isSetLike && other.isSetLike) {
       // for instance, an interval and an explicit set
@@ -573,6 +597,136 @@ class RuntimeValueInterval extends RuntimeValueBase implements RuntimeValue {
 
   toTntEx (): TntEx {
     // simply enumerate the values in the interval first..last
+    const elems: TntEx[] = []
+    for (const i of this) {
+      elems.push(i.toTntEx())
+    }
+    // return the expression set(...elems)
+    return {
+      id: 0n,
+      kind: 'app',
+      opcode: 'set',
+      args: elems,
+    }
+  }
+}
+
+/**
+ * A set of runtime values represented via a cross-product of sets.
+ * This is an internal class.
+ */
+class RuntimeValueCrossProd
+  extends RuntimeValueBase implements RuntimeValue {
+  // components of the cross-product, must be set-like
+  sets: RuntimeValue[]
+
+  constructor (sets: RuntimeValue[]) {
+    super(true)
+    this.sets = sets
+  }
+
+  [Symbol.iterator] () {
+    // convert every set-like value to an array
+    const arrays: RuntimeValue[][] = []
+    let existsEmptySet = false
+    for (const set of this.sets) {
+      const setAsArray = []
+      for (const e of set) {
+        setAsArray.push(e)
+      }
+      arrays.push(setAsArray)
+      existsEmptySet = existsEmptySet || setAsArray.length === 0
+    }
+
+    const nindices = arrays.length
+    function * gen () {
+      if (existsEmptySet) {
+        // yield nothing as an empty set produces the empty product
+        return
+      }
+      // Our iterator is an array of indices.
+      // An ith index must be in the range [0, arrays[i].length).
+      const indices: number[] = Array(nindices).fill(0)
+      indices[0] = -1
+      let done = false
+      while (!done) {
+        // try to increment one of the counters, starting with the first one
+        done = true
+        for (let i = 0; i < nindices; i++) {
+          // similar to how we do increment in binary,
+          // try to increase a position, wrapping to 0, if overfull
+          if (++indices[i] >= arrays[i].length) {
+            // wrap around and continue
+            indices[i] = 0
+          } else {
+            // increment worked, there is a next element
+            done = false
+            break
+          }
+        }
+
+        if (!done) {
+          // yield a tuple that is produced with the counters
+          const nextElem: RuntimeValue[] = []
+          for (let i = 0; i < nindices; i++) {
+            nextElem.push(arrays[i][indices[i]])
+          }
+          yield new RuntimeValueTuple(List(nextElem))
+        }
+      }
+    }
+
+    return gen()
+  }
+
+  hashCode (): number {
+    let hash = 0
+    for (const c of this.sets) {
+      hash += c.hashCode()
+    }
+    return hash
+  }
+
+  contains (elem: RuntimeValue): boolean {
+    if (elem instanceof RuntimeValueTuple) {
+      if (elem.list.size !== this.sets.length) {
+        return false
+      } else {
+        let i = 0
+        for (const e of elem.list) {
+          if (!this.sets[i].contains(e)) {
+            return false
+          }
+          i++
+        }
+        return true
+      }
+    } else {
+      return false
+    }
+  }
+
+  isSubset (superset: RuntimeValue): boolean {
+    if (superset instanceof RuntimeValueCrossProd) {
+      const size = this.sets.length
+      if (superset.sets.length !== size) {
+        return false
+      } else {
+        for (let i = 0; i < size; i++) {
+          if (!this.sets[i].isSubset(superset.sets[i])) {
+            return false
+          }
+        }
+        return true
+      }
+    } else {
+      // fall back to the general implementation
+      return super.isSubset(superset)
+    }
+  }
+
+  toTntEx (): TntEx {
+    // simply enumerate the values
     const elems: TntEx[] = []
     for (const i of this) {
       elems.push(i.toTntEx())

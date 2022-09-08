@@ -178,6 +178,12 @@ export class CompilerVisitor implements IRVisitor {
         })
         break
 
+      case 'tuples':
+        // Construct a cross product
+        this.applyFun(app.args.length,
+          (...sets: RuntimeValue[]) => just(rv.mkCrossProd(sets)))
+        break
+
       case 'set':
         // Construct a set from an array of values.
         this.applyFun(app.args.length,
