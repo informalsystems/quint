@@ -15,7 +15,7 @@ function assertResultAsString (input: string, result: string) {
   const context = compile(moduleText)
   const value = context.get('__expr')
   if (value === undefined) {
-    assert(false, `Missing value for ${result}`)
+    assert(false, `Missing value for ${input}`)
   } else {
     assertDefined(
       value
@@ -387,6 +387,11 @@ describe('compiling specs to runtime values', () => {
         'set(set(1, 2, 3, 4))')
       assertResultAsString('set(1.to(4), 2.to(3)).filter(S => S.contains(0))',
         'set()')
+    })
+
+    it('computes fold', () => {
+      // sum
+      assertResultAsString('set(1, 2, 3).fold(10, (v, x => v + x))', '16')
     })
   })
 })

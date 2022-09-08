@@ -14,7 +14,7 @@ import { Maybe, none, just, merge } from '@sweet-monads/maybe'
 import { Set } from 'immutable'
 
 import { IRVisitor } from '../../IRVisitor'
-import { Computable } from '../runtime'
+import { Computable, fail } from '../runtime'
 
 import * as ir from '../../tntIr'
 
@@ -66,7 +66,9 @@ export class CompilerVisitor implements IRVisitor {
         break
 
       case 'str':
-        throw new Error(`Found ${expr}, strings are not supported`)
+        // TODO: https://github.com/informalsystems/tnt/issues/191
+        console.error(`Found ${expr}, strings are not supported`)
+        this.compStack.push(fail)
     }
   }
 
@@ -234,7 +236,9 @@ export class CompilerVisitor implements IRVisitor {
         // maybe it is a user-defined operator
         const callable = this.context.get(app.opcode) as Callable
         if (callable === undefined) {
-          throw new Error(`Translation of ${app.opcode} is not implemented`)
+          // TODO: https://github.com/informalsystems/tnt/issues/191
+          console.error(`Translation of ${app.opcode} is not implemented`)
+          this.compStack.push(fail)
         } else {
           this.applyFun(callable.registers.length,
             (...args: RuntimeValue[]) => {
