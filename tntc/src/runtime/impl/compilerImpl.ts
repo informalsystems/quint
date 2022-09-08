@@ -14,7 +14,7 @@ import { Maybe, none, just, merge } from '@sweet-monads/maybe'
 import { Set } from 'immutable'
 
 import { IRVisitor } from '../../IRVisitor'
-import { Computable, fail } from '../runtime'
+import { Computable, EvalResult, fail } from '../runtime'
 
 import * as ir from '../../tntIr'
 
@@ -194,6 +194,10 @@ export class CompilerVisitor implements IRVisitor {
         this.applyFun(2, (i, j) => just(rv.mkInterval(i.toInt(), j.toInt())))
         break
 
+      case 'fold':
+        this.applyFold()
+        break
+
       case 'flatten':
         this.applyFun(1, set => {
           // unpack the sets from runtime values
@@ -297,7 +301,7 @@ export class CompilerVisitor implements IRVisitor {
   private mapLambdaThenReduce
   (mapResultAndElems:
       (array: Array<[RuntimeValue, RuntimeValue]>) => RuntimeValue): void {
-    if (this.compStack.length <= 1) {
+    if (this.compStack.length < 2) {
       throw new Error('Not enough parameters on compStack')
     }
     // lambda translated to Callable
@@ -316,6 +320,40 @@ export class CompilerVisitor implements IRVisitor {
     }
     this.applyFun(1, (set: Iterable<RuntimeValue>): Maybe<RuntimeValue> => {
       return flatMap(set, evaluateElem).map(rs => mapResultAndElems(rs))
+    })
+  }
+
+  /**
+   * Translate the fold operator.
+   */
+  private applyFold (): void {
+    if (this.compStack.length < 3) {
+      throw new Error('Not enough parameters on compStack')
+    }
+    // extract two arguments from the call stack and keep the set
+    const callable = this.compStack.pop() as Callable
+    // this method supports only 2-argument callables
+    assert(callable.registers.length === 2)
+    // compile the computation of the initial value
+    const initialComp = this.compStack.pop() ?? fail
+    // apply the lambda to a single element of the set
+    const evaluateElem = function (elem: RuntimeValue): Maybe<EvalResult> {
+      // The accumulator should have been set in the previous iteration.
+      // Set the first register to the element.
+      callable.registers[1].registerValue = just(elem)
+      const result = callable.eval()
+      // save the result for the next iteration
+      callable.registers[0].registerValue = result
+      return result
+    }
+    // iterate over the set
+    this.applyFun(1, (set: Iterable<RuntimeValue>): Maybe<any> => {
+      return initialComp.eval().map(initialValue => {
+        // save the initial value on the 0th register
+        callable.registers[0].registerValue = just(initialValue)
+        // fold the set
+        return flatForEach(set, evaluateElem)
+      }).join()
     })
   }
 
@@ -412,7 +450,7 @@ function mkCallable (registers: Register[], body: Computable): Callable {
 /**
  * Apply `f` to every element of `iterable` and either:
  *
- *  - return `none`, if one of the results in `none`, or
+ *  - return `none`, if one of the results is `none`, or
  *  - return `just` of the unpacked results.
  */
 function flatMap<T, R>
@@ -429,4 +467,23 @@ function flatMap<T, R>
   }
 
   return just(results)
+}
+
+/**
+ * Apply `f` to every element of `iterable` and either:
+ *
+ *  - return `none`, if one of the results is `none`, or
+ *  - return `just` of the last result.
+ */
+function flatForEach<T, R>
+(iterable: Iterable<T>, f: (arg: T) => Maybe<R>): Maybe<R> {
+  let result: Maybe<R> = none()
+  for (const arg of iterable) {
+    result = f(arg)
+    if (result.isNone()) {
+      return result
+    }
+  }
+
+  return result
 }
