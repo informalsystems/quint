@@ -64,7 +64,7 @@
  * information.
  */
 
-import { Set, ValueObject, is as immutableIs } from 'immutable'
+import { Set, List, ValueObject, is as immutableIs } from 'immutable'
 
 import { expressionToString } from '../../IRprinting'
 
@@ -96,6 +96,16 @@ export const rv = {
    */
   mkInt: (value: bigint): RuntimeValue => {
     return new RuntimeValueInt(value)
+  },
+
+  /**
+   * Make a runtime value that represents a tuple.
+   *
+   * @param value an iterable collection of runtime values
+   * @return a new runtime value that carries the tuple
+   */
+  mkTuple: (elems: Iterable<RuntimeValue>): RuntimeValue => {
+    return new RuntimeValueTuple(List(elems))
   },
 
   /**
@@ -148,7 +158,7 @@ export interface RuntimeValue
    * Can the runtime value behave like a set? Effectively, this means that the
    * value returns a sequence of elements, when it is iterated over.
    */
-isSetLike: boolean
+  isSetLike: boolean
 
   /**
    * Transform this runtime value into the normal form, so it can be
@@ -169,6 +179,14 @@ isSetLike: boolean
    * (probably much larger than the original object)
    */
   toSet (): Set<RuntimeValue>
+
+  /**
+   * If the result is a tuple, transform it to an immutable list of values.
+   * Otherwise, return an empty list.
+   *
+   * @return an immutable list of results
+   */
+  toList (): List<RuntimeValue>
 
   /**
    * If the result contains a Boolean value, return it. Otherwise, return false.
@@ -225,6 +243,7 @@ abstract class RuntimeValueBase implements RuntimeValue {
   }
 
   normalForm (): RuntimeValue {
+    // tuples override this method
     if (!this.isSetLike) {
       // Booleans and integers are in the normal form
       return this
@@ -240,6 +259,14 @@ abstract class RuntimeValueBase implements RuntimeValue {
       set = set.add(e.normalForm())
     }
     return set
+  }
+
+  toList (): List<RuntimeValue> {
+    if (this instanceof RuntimeValueTuple) {
+      return this.list
+    } else {
+      return List()
+    }
   }
 
   toBool (): boolean {
@@ -296,6 +323,10 @@ abstract class RuntimeValueBase implements RuntimeValue {
     }
     if (this instanceof RuntimeValueInt && other instanceof RuntimeValueInt) {
       return this.value === other.value
+    }
+    if (this instanceof RuntimeValueTuple &&
+        other instanceof RuntimeValueTuple) {
+      return this.list === other.list
     }
     if (this instanceof RuntimeValueSet && other instanceof RuntimeValueSet) {
       return immutableIs(this.set, other.set)
@@ -373,6 +404,46 @@ class RuntimeValueInt extends RuntimeValueBase implements ValueObject {
       id: 0n,
       kind: 'int',
       value: this.value,
+    }
+  }
+}
+
+/**
+ * A set of runtime values represented via an immutable List.
+ * This is an internal class.
+ */
+class RuntimeValueTuple extends RuntimeValueBase implements RuntimeValue {
+  list: List<RuntimeValue>
+
+  constructor (values: List<RuntimeValue>) {
+    super(true)
+    this.list = values
+  }
+
+  normalForm (): RuntimeValue {
+    const normalizedValues: RuntimeValue[] = []
+    for (const e of this.list) {
+      normalizedValues.push(e.normalForm())
+    }
+    return new RuntimeValueTuple(List(normalizedValues))
+  }
+
+  hashCode (): number {
+    return this.list.hashCode()
+  }
+
+  toTntEx (): TntEx {
+    // simply enumerate the values
+    const elems: TntEx[] = []
+    for (const e of this.list) {
+      elems.push(e.toTntEx())
+    }
+    // return the expression tup(...elems)
+    return {
+      id: 0n,
+      kind: 'app',
+      opcode: 'tup',
+      args: elems,
     }
   }
 }

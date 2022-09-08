@@ -389,4 +389,16 @@ describe('compiling specs to runtime values', () => {
         'set()')
     })
   })
+
+  describe('compile over tuples', () => {
+    it('tuple constructors', () => {
+      assertResultAsString('tup(1, 2, 3)', 'tup(1, 2, 3)')
+    })
+
+    it('tuple access', () => {
+      assertResultAsString('tup(4, 5, 6)._1', '4')
+      assertResultAsString('tup(4, 5, 6)._2', '5')
+      assertResultAsString('tup(4, 5, 6)._3', '6')
+    })
+  })
 })

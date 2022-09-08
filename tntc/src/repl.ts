@@ -142,12 +142,12 @@ function chalkTntEx (ex: TntEx): string {
       return chalk.yellow(`${ex.value}`)
 
     case 'app':
-      if (ex.opcode !== 'set') {
-        // instead of throwing, show it in red
-        return chalk.red(`unsupported operator: ${ex.opcode}(...))`)
-      } else {
+      if (ex.opcode === 'set' || ex.opcode === 'tup') {
         const as = ex.args.map(chalkTntEx).join(', ')
-        return chalk.green('set') + chalk.black(`(${as})`)
+        return chalk.green(ex.opcode) + chalk.black(`(${as})`)
+      } else {
+        // instead of throwing, show it in red
+        return chalk.red(`unsupported operator: ${ex.opcode}(...)`)
       }
 
     default:
