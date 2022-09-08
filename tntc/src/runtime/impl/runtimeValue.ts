@@ -538,7 +538,15 @@ class RuntimeValueInterval extends RuntimeValueBase implements RuntimeValue {
   }
 
   [Symbol.iterator] () {
-    return new IntervalIterator(this.first, this.last)
+    const start = this.first
+    const end = this.last
+    function * gen (): Generator<RuntimeValue> {
+      for (let i = start; i <= end; i++) {
+        yield new RuntimeValueInt(i)
+      }
+    }
+
+    return gen()
   }
 
   hashCode (): number {
@@ -575,31 +583,6 @@ class RuntimeValueInterval extends RuntimeValueBase implements RuntimeValue {
       kind: 'app',
       opcode: 'set',
       args: elems,
-    }
-  }
-}
-
-/**
- * An iterator over integer runtime values from a range.
- * This is an internal class.
- */
-class IntervalIterator implements Iterator<RuntimeValue> {
-  private current: bigint
-  private end: bigint
-
-  constructor (first: bigint, last: bigint) {
-    this.current = first
-    this.end = last
-  }
-
-  next (): IteratorResult<RuntimeValue> {
-    if (this.current <= this.end) {
-      return {
-        done: false,
-        value: new RuntimeValueInt(this.current++),
-      }
-    } else {
-      return { done: true, value: undefined }
     }
   }
 }
