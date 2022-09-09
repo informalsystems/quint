@@ -352,7 +352,7 @@ export class CompilerVisitor implements IRVisitor {
         // save the initial value on the 0th register
         callable.registers[0].registerValue = just(initialValue)
         // fold the set
-        return flatForEach(set, evaluateElem)
+        return flatForEach(set, just(initialValue), evaluateElem)
       }).join()
     })
   }
@@ -476,8 +476,8 @@ function flatMap<T, R>
  *  - return `just` of the last result.
  */
 function flatForEach<T, R>
-(iterable: Iterable<T>, f: (arg: T) => Maybe<R>): Maybe<R> {
-  let result: Maybe<R> = none()
+(iterable: Iterable<T>, init: Maybe<R>, f: (arg: T) => Maybe<R>): Maybe<R> {
+  let result: Maybe<R> = init
   for (const arg of iterable) {
     result = f(arg)
     if (result.isNone()) {

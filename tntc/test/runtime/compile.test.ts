@@ -3,7 +3,7 @@ import { assert } from 'chai'
 import { Maybe } from '@sweet-monads/maybe'
 import { expressionToString } from '../../src/IRprinting'
 import { compile } from '../../src/runtime/compile'
-import { dedent } from '../dedent'
+import { dedent } from '../textUtils'
 
 function assertDefined<T> (m: Maybe<T>) {
   assert(m.isJust(), 'undefined value')
@@ -393,12 +393,14 @@ describe('compiling specs to runtime values', () => {
     it('computes fold', () => {
       // sum
       assertResultAsString('set(1, 2, 3).fold(10, (v, x => v + x))', '16')
+      assertResultAsString('set().fold(10, (v, x => v + x))', '10')
       // flatten
       const input1 = dedent(
         `set(1.to(3), 4.to(5), 6.to(7))
         |  .fold(set(0), (a, s => a.union(s)))`
       )
       assertResultAsString(input1, 'set(0, 1, 2, 3, 4, 5, 6, 7)')
+      assertResultAsString('set().fold(set(), (a, s => a.union(s)))', 'set()')
       // product by using a definition
       const input2 = dedent(
         `def prod(x, y) = x * y;

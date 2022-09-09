@@ -5,7 +5,7 @@ import { Writable, PassThrough } from 'stream'
 import chalk from 'chalk'
 
 import { tntRepl, settings } from '../src/repl'
-import { dedent } from './dedent'
+import { dedent } from './textUtils'
 
 // A simple implementation of Writable to a string:
 // After: https://bensmithgall.com/blog/jest-mock-trick
