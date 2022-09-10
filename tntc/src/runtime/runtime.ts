@@ -49,6 +49,14 @@ export interface Computable {
   eval: () => Maybe<EvalResult>
 }
 
+// a computable that evaluates to the value of a readable/writeable register
+export interface Register extends Computable {
+  // register name
+  name: string
+  // register is a placeholder where iterators can put their values
+  registerValue: Maybe<any>
+}
+
 /**
  * An implementation of Computable that always fails.
  */

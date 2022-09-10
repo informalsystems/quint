@@ -13,7 +13,7 @@ function assertDefined<T> (m: Maybe<T>) {
 // compare the result. This is the easiest path to test the results.
 function assertResultAsString (input: string, result: string) {
   const moduleText = `module __runtime { val __expr = ${input} }`
-  const context = compile(moduleText)
+  const context = compile(moduleText).values
   const value = context.get('__expr')
   if (value === undefined) {
     assert(false, `Missing value for ${input}`)
@@ -188,6 +188,13 @@ describe('compiling specs to runtime values', () => {
         `def positive(x) = x > 0
          (-3).to(3).filter(positive)`
       assertResultAsString(input, 'set(1, 2, 3)')
+    })
+  })
+
+  describe('compile variables', () => {
+    it('variable definitions', () => {
+      const input = 'var x: int'
+      assertResultAsString(input, '')
     })
   })
 

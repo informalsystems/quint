@@ -14,7 +14,7 @@ import { Maybe, none, just, merge } from '@sweet-monads/maybe'
 import { Set } from 'immutable'
 
 import { IRVisitor } from '../../IRVisitor'
-import { Computable, EvalResult, fail } from '../runtime'
+import { Computable, EvalResult, Register, fail } from '../runtime'
 
 import * as ir from '../../tntIr'
 
@@ -40,6 +40,8 @@ export class CompilerVisitor implements IRVisitor {
   //  - an instance of Register
   //  - an instance of Callable
   private context: Map<string, Computable> = new Map<string, Computable>()
+  // all variables declared during compilation
+  private vars: Register[] = []
 
   /**
    * Get the compiled context.
@@ -48,11 +50,27 @@ export class CompilerVisitor implements IRVisitor {
     return this.context
   }
 
+  // get the names of the compiled variables
+  getVars (): string[] {
+    return this.vars.map(r => r.name)
+  }
+
   exitOpDef (opdef: ir.TntOpDef) {
     // either a runtime value (if val), or a callable (if def, action, etc.)
     const value = this.compStack.pop()
     assert(value, `No expression for ${opdef.name} on compStack`)
     this.context.set(opdef.name, value)
+  }
+
+  exitVar (vardef: ir.TntVar) {
+    // simply introduce two registers:
+    //  one for the variable, and
+    //  one for its next-state version
+    const prevRegister = mkRegister(vardef.name, none())
+    this.context.set(vardef.name, prevRegister)
+    const nextRegister = mkRegister(primedName(vardef.name), none())
+    this.context.set(nextRegister.name, nextRegister)
+    this.vars.push(prevRegister)
   }
 
   enterLiteral (expr: ir.TntBool | ir.TntInt | ir.TntStr) {
@@ -81,6 +99,52 @@ export class CompilerVisitor implements IRVisitor {
 
   exitApp (app: ir.TntApp) {
     switch (app.opcode) {
+      case 'next': {
+        const register = this.compStack.pop()
+        if (register) {
+          const nextName = primedName((register as Register).name)
+          this.compStack.push(this.context.get(nextName) ?? fail)
+        } else {
+          this.compStack.push(fail)
+        }
+        break
+      }
+
+      case 'assign': {
+        assert(this.compStack.length >= 2, 'Not enough arguments on stack')
+        const [register, rhs] = this.compStack.splice(-2)
+        const primed =
+          this.context.get(primedName((register as Register).name)) as Register
+        if (primed) {
+          this.compStack.push(rhs)
+          this.applyFun(1, (value) => {
+            primed.registerValue = just(value)
+            return just(rv.mkBool(true))
+          })
+        } else {
+          this.compStack.push(fail)
+        }
+        break
+      }
+
+      case 'shift':
+        this.compStack.push({
+          eval: () => {
+            for (const v of this.vars) {
+              const primed =
+                this.context.get(primedName(v.name)) as Register
+              if (primed) {
+                v.registerValue = primed.registerValue
+                primed.registerValue = none()
+              } else {
+                v.registerValue = none()
+              }
+            }
+            return just<any>(rv.mkBool(true))
+          },
+        })
+        break
+
       case 'eq':
         this.applyFun(2, (x, y) => just(rv.mkBool(x.equals(y))))
         break
@@ -101,6 +165,10 @@ export class CompilerVisitor implements IRVisitor {
 
       case 'and':
         this.applyFun(2, (p, q) => just(rv.mkBool(p.toBool() && q.toBool())))
+        break
+
+      case 'andAction':
+        this.translateAndAction(app)
         break
 
       case 'or':
@@ -285,7 +353,7 @@ export class CompilerVisitor implements IRVisitor {
 
   enterLambda (lam: ir.TntLambda) {
     // introduce a register for every parameter
-    lam.params.forEach(p => this.context.set(p, mkRegister(none())))
+    lam.params.forEach(p => this.context.set(p, mkRegister(p, none())))
     // After this point, the body of the lambda gets compiled.
     // The body of the lambda may refer to the parameter via names,
     // which are stored in the registers we've just created.
@@ -428,6 +496,45 @@ export class CompilerVisitor implements IRVisitor {
       throw new Error('Not enough arguments on the stack')
     }
   }
+
+  // translate { A & ... & C }
+  private translateAndAction (app: ir.TntApp) {
+    assert(this.compStack.length >= app.args.length,
+      'Not enough arguments on stack for andAction')
+    const args = this.compStack.splice(-app.args.length)
+
+    function lazyCompute () {
+      let result: Maybe<EvalResult> = just(rv.mkBool(true))
+      // Evaluate arguments iteratively.
+      // Stop as soon as one of the arguments returns false.
+      // This is a form of Boolean short-circuiting.
+      for (const arg of args) {
+        // either the argument is evaluated to false, or fails
+        result = arg.eval().or(just(rv.mkBool(false)))
+        const boolResult = (result.unwrap() as RuntimeValue).toBool()
+        // as soon as one of the arguments evaluates to false,
+        // break out of the loop
+        if (boolResult === false) {
+          break
+        }
+      }
+
+      return result
+    }
+
+    const computable = {
+      eval: () => {
+        return lazyCompute()
+      },
+    }
+
+    this.compStack.push(computable)
+  }
+}
+
+// generate the name for the next version of a variable
+function primedName (name: string) {
+  return name + "'"
 }
 
 // make a `Computable` that always returns a given runtime value
@@ -439,15 +546,10 @@ function mkConstComputable (value: RuntimeValue) {
   }
 }
 
-// a computable that evaluates to the value of a readable/writeable register
-interface Register extends Computable {
-  // register is a placeholder where iterators can put their values
-  registerValue: Maybe<any>
-}
-
 // create an object that implements Register
-function mkRegister (initValue: Maybe<any>): Register {
+function mkRegister (registerName: string, initValue: Maybe<any>): Register {
   return {
+    name: registerName,
     registerValue: initValue,
     // computing a register just evaluates to the contents that it stores
     eval: function () {
