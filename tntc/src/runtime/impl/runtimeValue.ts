@@ -627,16 +627,9 @@ class RuntimeValueCrossProd
 
   [Symbol.iterator] () {
     // convert every set-like value to an array
-    const arrays: RuntimeValue[][] = []
-    let existsEmptySet = false
-    for (const set of this.sets) {
-      const setAsArray = []
-      for (const e of set) {
-        setAsArray.push(e)
-      }
-      arrays.push(setAsArray)
-      existsEmptySet = existsEmptySet || setAsArray.length === 0
-    }
+    const arrays: RuntimeValue[][] =
+      this.sets.map(set => Array.from(set))
+    const existsEmptySet = arrays.some(arr => arr.length === 0)
 
     const nindices = arrays.length
     function * gen () {
