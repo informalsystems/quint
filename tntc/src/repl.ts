@@ -229,8 +229,12 @@ ${newInput}
         computable
           .eval()
           .map(value => {
-            out(chalkTntEx(value.toTntEx()))
-            saveVars(newState, context)
+            const ex = value.toTntEx()
+            out(chalkTntEx(ex))
+            if (ex.kind === 'bool' && ex.value) {
+              // if this was an action and it was successful, save the state
+              saveVars(newState, context)
+            }
           })
     }
     if (resultDefined.isNone()) {
