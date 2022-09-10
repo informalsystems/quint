@@ -28,6 +28,14 @@ function assertResultAsString (input: string, result: string) {
   }
 }
 
+// Compile a definition and check that the compiled value is defined.
+function assertDef (name: string, input: string) {
+  const moduleText = `module __runtime { ${input} }`
+  const context = compile(moduleText).values
+  assert(context.get(name),
+    `Expected a definition for ${name}, compiled from: ${input}`)
+}
+
 describe('compiling specs to runtime values', () => {
   describe('compile over integers', () => {
     it('computes positive integer literals', () => {
@@ -194,7 +202,7 @@ describe('compiling specs to runtime values', () => {
   describe('compile variables', () => {
     it('variable definitions', () => {
       const input = 'var x: int'
-      assertResultAsString(input, '')
+      assertDef('x', input)
     })
   })
 
