@@ -233,6 +233,7 @@ ${newInput}
             out(chalkTntEx(ex))
             if (ex.kind === 'bool' && ex.value) {
               // if this was an action and it was successful, save the state
+              // as actions are always boolean, don't even try to save the state for non-boolean expressions
               saveVars(newState, context)
             }
           })
