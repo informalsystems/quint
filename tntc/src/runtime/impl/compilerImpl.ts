@@ -571,8 +571,6 @@ export class CompilerVisitor implements IRVisitor {
       // we store the potential successor values in this array
       const successors = []
       // Evaluate arguments iteratively.
-      // Stop as soon as one of the arguments returns false.
-      // This is a form of Boolean short-circuiting.
       for (const arg of args) {
         this.loadNextVars(valuesBefore)
         // either the argument is evaluated to false, or fails
