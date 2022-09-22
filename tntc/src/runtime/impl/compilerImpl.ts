@@ -46,6 +46,8 @@ export class CompilerVisitor implements IRVisitor {
 
   // all variables declared during compilation
   private vars: Register[] = []
+  // the registers allocated for the next-state values of vars
+  private nextVars: Register[] = []
 
   /**
    * Get the compiled context.
@@ -71,10 +73,11 @@ export class CompilerVisitor implements IRVisitor {
     //  one for the variable, and
     //  one for its next-state version
     const prevRegister = mkRegister('var', vardef.name, none())
+    this.vars.push(prevRegister)
     this.context.set(kindName('var', vardef.name), prevRegister)
     const nextRegister = mkRegister('nextvar', vardef.name, none())
+    this.nextVars.push(nextRegister)
     this.context.set(kindName('nextvar', nextRegister.name), nextRegister)
-    this.vars.push(prevRegister)
   }
 
   enterLiteral (expr: ir.TntBool | ir.TntInt | ir.TntStr) {
@@ -515,7 +518,9 @@ export class CompilerVisitor implements IRVisitor {
       'Not enough arguments on stack for andAction')
     const args = this.compStack.splice(-app.args.length)
 
-    function lazyCompute () {
+    const lazyCompute = () => {
+      // save the values of the next variables, as action may update them
+      const savedValues = this.saveNextVars()
       let result: Maybe<EvalResult> = just(rv.mkBool(true))
       // Evaluate arguments iteratively.
       // Stop as soon as one of the arguments returns false.
@@ -527,6 +532,9 @@ export class CompilerVisitor implements IRVisitor {
         // as soon as one of the arguments evaluates to false,
         // break out of the loop
         if (boolResult === false) {
+          // restore the values of the next variables,
+          // as evaluation was not successful
+          this.loadNextVars(savedValues)
           break
         }
       }
@@ -541,6 +549,16 @@ export class CompilerVisitor implements IRVisitor {
     }
 
     this.compStack.push(computable)
+  }
+
+  // save the values of the next vars into an array
+  private saveNextVars (): Maybe<RuntimeValue>[] {
+    return this.nextVars.map(r => r.registerValue)
+  }
+
+  // load the values of the next variables from an array
+  private loadNextVars (values: Maybe<RuntimeValue>[]) {
+    this.nextVars.forEach((r, i) => r.registerValue = values[i])
   }
 }
 
