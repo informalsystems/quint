@@ -225,4 +225,41 @@ describe('repl ok', () => {
     )
     await assertRepl(input, output)
   })
+
+  it('action-level disjunctions and non-determinism', async () => {
+    const input = dedent(
+      `
+      |var x: int
+      |action Init = x <- 0
+      |action Next = {
+      |  | x <- x + 1
+      |  | x <- x - 1
+      |}
+      |
+      |Init
+      |-1 <= x and x <= 1
+      |Next
+      |-2 <= x and x <= 2
+      |Next
+      |-3 <= x and x <= 3
+      |Next
+      |-4 <= x and x <= 4
+      |`
+    )
+    const output = dedent(
+      `
+      |
+      |
+      |true
+      |true
+      |true
+      |true
+      |true
+      |true
+      |true
+      |true
+      |`
+    )
+    await assertRepl(input, output)
+  })
 })
