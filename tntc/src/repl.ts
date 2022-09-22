@@ -16,7 +16,7 @@ import { Maybe, just, none } from '@sweet-monads/maybe'
 
 import { TntEx } from './tntIr'
 import { compile, CompilationContext } from './runtime/compile'
-import { EvalResult, ExecError, Register } from './runtime/runtime'
+import { EvalResult, ExecError, Register, kindName } from './runtime/runtime'
 import { probeParse, ErrorMessage } from './tntParserFrontend'
 
 // tunable settings
@@ -145,7 +145,7 @@ export function tntRepl
 
 function saveVars (state: ReplState, context: CompilationContext): void {
   function isNextSet (name: string) {
-    const register = context.values.get(name + "'") as Register
+    const register = context.values.get(kindName('nextvar', name)) as Register
     if (register) {
       return register.registerValue.isJust()
     } else {
@@ -156,7 +156,7 @@ function saveVars (state: ReplState, context: CompilationContext): void {
   if (isAction) {
     state.vars.clear()
     for (const v of context.vars) {
-      const computable = context.values.get(v + "'")
+      const computable = context.values.get(kindName('nextvar', v))
       if (computable) {
         computable.eval().map(result => {
           state.vars.set(v, result)
@@ -168,7 +168,7 @@ function saveVars (state: ReplState, context: CompilationContext): void {
 
 function loadVars (state: ReplState, context: CompilationContext): void {
   state.vars.forEach((value, name) => {
-    const register = context.values.get(name) as Register
+    const register = context.values.get(kindName('var', name)) as Register
     if (register) {
       register.registerValue = just(value)
     }
@@ -222,7 +222,7 @@ ${newInput}
     // compile the expression or definition and evaluate it
     const context = compile(moduleText, chalkHandler)
     loadVars(state, context)
-    const computable = context.values.get('__input')
+    const computable = context.values.get(kindName('callable', '__input'))
     let resultDefined: Maybe<void> = none()
     if (computable) {
       resultDefined =

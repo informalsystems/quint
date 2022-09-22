@@ -20,6 +20,9 @@ const consoleHandler = (err: ExecError) => {
   console.error(`${err.sourceAndLoc}: ${err.msg}`)
 }
 
+/**
+ * A compilation context returned by 'compile'.
+ */
 export interface CompilationContext {
   values: Map<string, Computable>,
   vars: string[]

@@ -2,6 +2,7 @@ import { describe, it } from 'mocha'
 import { assert } from 'chai'
 import { Maybe } from '@sweet-monads/maybe'
 import { expressionToString } from '../../src/IRprinting'
+import { kindName, ComputableKind } from '../../src/runtime/runtime'
 import { compile } from '../../src/runtime/compile'
 import { dedent } from '../textUtils'
 
@@ -14,7 +15,7 @@ function assertDefined<T> (m: Maybe<T>) {
 function assertResultAsString (input: string, result: string) {
   const moduleText = `module __runtime { val __expr = ${input} }`
   const context = compile(moduleText).values
-  const value = context.get('__expr')
+  const value = context.get(kindName('callable', '__expr'))
   if (value === undefined) {
     assert(false, `Missing value for ${input}`)
   } else {
@@ -29,10 +30,10 @@ function assertResultAsString (input: string, result: string) {
 }
 
 // Compile a definition and check that the compiled value is defined.
-function assertDef (name: string, input: string) {
+function assertDef (kind: ComputableKind, name: string, input: string) {
   const moduleText = `module __runtime { ${input} }`
   const context = compile(moduleText).values
-  assert(context.get(name),
+  assert(context.get(kindName(kind, name)),
     `Expected a definition for ${name}, compiled from: ${input}`)
 }
 
@@ -202,7 +203,7 @@ describe('compiling specs to runtime values', () => {
   describe('compile variables', () => {
     it('variable definitions', () => {
       const input = 'var x: int'
-      assertDef('x', input)
+      assertDef('var', 'x', input)
     })
   })
 
