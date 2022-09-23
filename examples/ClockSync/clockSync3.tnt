@@ -1,9 +1,13 @@
-module SetOps {
+
+
+// A translation of https://github.com/informalsystems/tla-apalache-workshop/blob/main/examples/clock-sync/ClockSync3.tla
+// motivated by the discussion at https://github.com/informalsystems/tla-apalache-workshop/blob/main/examples/clock-sync/ClockSync3.tla
+module ClockSync3 {
+    //// HELPERS
+
     // Add the element `e` to the set `s`
     def add(s, e): (set(a), a) => set(a) = s.union(set(e))
-}
 
-module Util {
     // NOTE: Sketch of something like "when foo do bar" within existing syntax
     //       to be used like `condition.allows {act1 & act2 & ...}`
     //       could also be named like `guard.when {actions...}` but I'm afraid
@@ -11,15 +15,9 @@ module Util {
     // This is just an alias for "and", but with a restricted mode:
     //
     // mode allows = (Read[vars], Update[vars']) => Read[vars] & Update[vars']
-    def allows(condition, actn): (bool, bool) => bool = condition & actn
-}
-
-// A translation of https://github.com/informalsystems/tla-apalache-workshop/blob/main/examples/clock-sync/ClockSync3.tla
-// motivated by the discussion at https://github.com/informalsystems/tla-apalache-workshop/blob/main/examples/clock-sync/ClockSync3.tla
-module ClockSync3 {
-    import SetOps
-    import Util
-
+    // TODO: This is currently not working due to mode checking errors.
+    // action allows(condition, actn): (bool, bool) => bool = { condition & actn }
+    
 
     //// CONSTANTS
 
@@ -40,22 +38,13 @@ module ClockSync3 {
     def Proc(id) : int -> proc = { id : id }
 
     // Control states
-    type state =
-    | {tag : "init", l : int}
-    | {tag : "sent", m : int}
-    | {tag : "sync", n : int}
-
-    // Abbreviated constructors for control states
-    val st : state =
-        { init: {tag : "init", n : 0}
-        , sent: {tag : "sent", n : 0}
-        , sync: {tag : "sync", n : 0}
-        }
+    // TODO: We'd actually like a sum type for this
+    type state = str
 
     // The type for a message sent by a process
     type msg = {src : proc, ts: int}
 
-    def msgFrom(p, ts) = {src: p, ts}
+    def msgFrom(p, ts) = {src: p, ts : ts}
 
     // The type for a set of messages
     type msgs = set(msg)
@@ -88,72 +77,71 @@ module ClockSync3 {
     val Procs : set(proc) = set(Proc(1), Proc(2))
 
     // The set of possible control states
-    val states : set(state) = set(st.init, st.sent, st.sync)
+    val states : set(state) = set("init", "sent", "sync")
 
 
     //// INITIALIZATION
 
+    action selectFrom(v, s) = s.guess(x => v <- x)
+
     val Init = {
-        & Nat.guess(t =>
-            time <- t
-          )
-        & setOfMaps(Procs, Nat).guess(f =>
-            hc <- f
-          )
+        & time.selectFrom(Nat)
+        & hc.selectFrom(setOfMaps(Procs, Nat))
         & adj   <- Procs.mapOf(_ => 0)
-        & state <- Procs.mapOf(_ => st.init)
+        & state <- Procs.mapOf(_ => "init")
         & msgs  <- set()
         & rcvd  <- Procs.mapOf(_ => set())
     }
-
 
     //// ACTIONS
 
     // Send the value of the hardware clock
     // TODO: action<msgs, state> ...
-    action sendMsg(p) = (
-        state[p] = st.init
-    ) .allows {
+    action sendMsg(p) = { 
+        & state[p] == "init"
         & msgs  <- msgs.add(p.msgFrom(hc[p]))
-        & state <- state.update(p => st.sent)
+        & state <- state.update(p, "sent")
+        & rcvd  <- rcvd
     }
-
+    
     // Receive a message sent by another process
     // TODO: action<rcvd> ...
     action receiveMsg(p) = {
-        val rcvdMsgs = rcvd[p]
-        msgs.exists{ newMsg =>
-            (
-                & nesMsg.notin(rcvdMsgs)
-                // the message cannot be received earlier than after t_min
-                & hc[newMsg.src] >= newMsg.ts + t_min
-            ) .allows {
-                rcvd <- rcvd.update(p, rcvdMsgs.add(newMsg))
-            }
-        }
+        msgs.guess( newMsg => {
+            & newMsg.notin(rcvd[p])
+            // the message cannot be received earlier than after t_min
+            & hc[newMsg.src] >= newMsg.ts + t_min
+            & rcvd <- rcvd.update(p, rcvd[p].add(newMsg))
+            & state <- state
+            & msgs <- msgs
+        })
     }
 
     // let time flow
     // TODO: action<time, hc>
-    action advanceClocks(delta) = (
+    action advanceClocks(delta) = {
         & delta > 0
         // clocks can be advanced only if there are no pending message
         & msgs.forall( m => hc[m.src] + delta > t_max implies
-            Procs.forall( p => m in rcvd[m.src] )
-        )
-    ) .allow {
-        & time <- time + detla
-        & hc   <- Procs.mapOf(p => hc[p] + delta)
+                Procs.forall( p => m in rcvd[m.src] ))
+        & time <- time + delta
+        & hc   <- Procs.mapOf(p => hc[p] + delta)  
     }
-
 
     //// TRANSITIONS
 
     action Next = {
-        | Int.exists(advanceClocks)
-        | Procs.exists{ p =>
+        | { & msgs <- msgs
+            & state <- state
+            & rcvd <- rcvd
+            & Int.guess(advanceClocks)
+        }
+        | { & time <- time 
+            & hc <- hc
+            & Procs.guess(p => {
             | sendMsg(p)
             | receiveMsg(p)
+            })
         }
     }
 }
