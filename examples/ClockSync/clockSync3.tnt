@@ -1,7 +1,7 @@
 
 
 // A translation of https://github.com/informalsystems/tla-apalache-workshop/blob/main/examples/clock-sync/ClockSync3.tla
-// motivated by the discussion at https://github.com/informalsystems/tla-apalache-workshop/blob/main/examples/clock-sync/ClockSync3.tla
+// motivated by the discussion at https://github.com/informalsystems/tnt/discussions/144
 module ClockSync3 {
     //// HELPERS
 
