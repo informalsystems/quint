@@ -1,0 +1,159 @@
+module SetOps {
+    // Add the element `e` to the set `s`
+    def add(s, e): (set(a), a) => set(a) = s.union(set(e))
+}
+
+module Util {
+    // NOTE: Sketch of something like "when foo do bar" within existing syntax
+    //       to be used like `condition.allows {act1 & act2 & ...}`
+    //       could also be named like `guard.when {actions...}` but I'm afraid
+    //       it reads backwards
+    // This is just an alias for "and", but with a restricted mode:
+    //
+    // mode allows = (Read[vars], Update[vars']) => Read[vars] & Update[vars']
+    def allows(condition, actn): (bool, bool) => bool = condition & actn
+}
+
+// A translation of https://github.com/informalsystems/tla-apalache-workshop/blob/main/examples/clock-sync/ClockSync3.tla
+// motivated by the discussion at https://github.com/informalsystems/tla-apalache-workshop/blob/main/examples/clock-sync/ClockSync3.tla
+module ClockSync3 {
+    import SetOps
+    import Util
+
+
+    //// CONSTANTS
+
+    // minimum message delay
+    const t_min : int
+    // maximum message delay
+    const t_max : int
+
+    assume _ = (t_min >= 0 & t_max > t_min)
+
+
+    //// TYPES AND CONSTRUCTORS
+
+    // The type of processes
+    type proc = {id : int}
+
+    // Construct a process
+    def Proc(id) : int -> proc = { id : id }
+
+    // Control states
+    type state =
+    | {tag : "init", l : int}
+    | {tag : "sent", m : int}
+    | {tag : "sync", n : int}
+
+    // Abbreviated constructors for control states
+    val st : state =
+        { init: {tag : "init", n : 0}
+        , sent: {tag : "sent", n : 0}
+        , sync: {tag : "sync", n : 0}
+        }
+
+    // The type for a message sent by a process
+    type msg = {src : proc, ts: int}
+
+    def msgFrom(p, ts) = {src: p, ts}
+
+    // The type for a set of messages
+    type msgs = set(msg)
+
+
+    //// STATE
+
+    // The reference clock, inaccessible to the processes
+    var time: int
+
+    // Hardware clock of a process
+    var hc: proc -> int
+
+    // Clock adjustment of a process
+    var adj: proc -> int
+
+    // Messages sent by the processes
+    var msgs: msgs
+
+    // Messages received by the processes
+    var rcvd: proc -> msgs
+
+    // The control state of a process
+    var state: proc -> state
+
+
+    /// DEFINITIONS
+
+    // We fix the model to contain two processes
+    val Procs : set(proc) = set(Proc(1), Proc(2))
+
+    // The set of possible control states
+    val states : set(state) = set(st.init, st.sent, st.sync)
+
+
+    //// INITIALIZATION
+
+    val Init = {
+        & Nat.guess(t =>
+            time <- t
+          )
+        & setOfMaps(Procs, Nat).guess(f =>
+            hc <- f
+          )
+        & adj   <- Procs.mapOf(_ => 0)
+        & state <- Procs.mapOf(_ => st.init)
+        & msgs  <- set()
+        & rcvd  <- Procs.mapOf(_ => set())
+    }
+
+
+    //// ACTIONS
+
+    // Send the value of the hardware clock
+    // TODO: action<msgs, state> ...
+    action sendMsg(p) = (
+        state[p] = st.init
+    ) .allows {
+        & msgs  <- msgs.add(p.msgFrom(hc[p]))
+        & state <- state.update(p => st.sent)
+    }
+
+    // Receive a message sent by another process
+    // TODO: action<rcvd> ...
+    action receiveMsg(p) = {
+        val rcvdMsgs = rcvd[p]
+        msgs.exists{ newMsg =>
+            (
+                & nesMsg.notin(rcvdMsgs)
+                // the message cannot be received earlier than after t_min
+                & hc[newMsg.src] >= newMsg.ts + t_min
+            ) .allows {
+                rcvd <- rcvd.update(p, rcvdMsgs.add(newMsg))
+            }
+        }
+    }
+
+    // let time flow
+    // TODO: action<time, hc>
+    action advanceClocks(delta) = (
+        & delta > 0
+        // clocks can be advanced only if there are no pending message
+        & msgs.forall( m => hc[m.src] + delta > t_max implies
+            Procs.forall( p => m in rcvd[m.src] )
+        )
+    ) .allow {
+        & time <- time + detla
+        & hc   <- Procs.mapOf(p => hc[p] + delta)
+    }
+
+
+    //// TRANSITIONS
+
+    action Next = {
+        | Int.exists(advanceClocks)
+        | Procs.exists{ p =>
+            | sendMsg(p)
+            | receiveMsg(p)
+        }
+    }
+}
