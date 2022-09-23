@@ -782,11 +782,16 @@ class RuntimeValueCrossProd
   }
 
   pick (position: number): RuntimeValue | undefined {
-    const index = Math.floor(position * this.cardinality())
+    let index = Math.floor(position * this.cardinality())
     const elems: RuntimeValue[] = []
     for (const set of this.sets) {
       const card = set.cardinality()
       const elem = set.pick((index % card) / card)
+      if (card < 0) {
+        return undefined
+      } else {
+        index = index / card
+      }
       if (elem) {
         elems.push(elem)
       } else {
