@@ -787,7 +787,7 @@ class RuntimeValueCrossProd
     for (const set of this.sets) {
       const card = set.cardinality()
       const elem = set.pick((index % card) / card)
-      if (card < 0) {
+      if (card <= 0) {
         return undefined
       } else {
         index = index / card
