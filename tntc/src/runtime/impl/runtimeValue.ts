@@ -233,6 +233,9 @@ export interface RuntimeValue
    * position argument as the input. Note that the position is not the index
    * of the element under some stable ordering. Rather, it is a number in the range
    * [0, 1). It can be used to pick elements from infinite sets such as Int and Nat.
+   *
+   * TODO: reconsider this API. Perhaps, just use a bigint, which encodes either
+   * the index up to the cardinality, or the position in an infinite set (Nat, Int).
    */
   pick (position: number): RuntimeValue | undefined
 
