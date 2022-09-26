@@ -495,4 +495,11 @@ describe('compiling specs to runtime values', () => {
       assertResultAsString('tuples(set(), 2.to(4)).cardinality()', '0')
     })
   })
+
+  describe('compile over records', () => {
+    it('record constructors', () => {
+      assertResultAsString('rec("a", 2, "b", true)', 'rec("a", 2, "b", true)')
+      assertResultAsString('{ a: 2, b: true }', 'rec("a", 2, "b", true)')
+    })
+  })
 })
