@@ -359,9 +359,10 @@ export class CompilerVisitor implements IRVisitor {
         // maybe it is a user-defined operator
         const callable =
           this.contextGet(app.opcode, ['callable', 'arg']) as Callable
-        if (callable === undefined) {
+        if (callable === undefined || callable.registers === undefined) {
+          // The error should be reported via a callback:
           // TODO: https://github.com/informalsystems/tnt/issues/191
-          console.error(`Translation of ${app.opcode} is not implemented`)
+          console.error(`${app.opcode} is not supported`)
           this.compStack.push(fail)
         } else {
           this.applyFun(callable.registers.length,
