@@ -462,6 +462,11 @@ describe('compiling specs to runtime values', () => {
       assertResultAsString('tup(4, 5, 6)._3', '6')
     })
 
+    it('tuple equality', () => {
+      assertResultAsString('(4, 5, 6) == (5 - 1, 5, 6)', 'true')
+      assertResultAsString('(4, 5, 6) == (5, 5, 6)', 'false')
+    })
+
     it('cross products', () => {
       assertResultAsString('tuples(set(), set(), set())', 'set()')
       assertResultAsString('tuples(set(), 2.to(3))', 'set()')
@@ -500,6 +505,11 @@ describe('compiling specs to runtime values', () => {
     it('record constructors', () => {
       assertResultAsString('rec("a", 2, "b", true)', 'rec("a", 2, "b", true)')
       assertResultAsString('{ a: 2, b: true }', 'rec("a", 2, "b", true)')
+    })
+
+    it('record equality', () => {
+      assertResultAsString('{ a: 2 + 3, b: true } == { a: 5, b: true }', 'true')
+      assertResultAsString('{ a: 2 + 3, b: true } == { a: 1, b: false }', 'false')
     })
   })
 })

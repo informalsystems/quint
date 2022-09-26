@@ -411,11 +411,11 @@ abstract class RuntimeValueBase implements RuntimeValue {
     }
     if (this instanceof RuntimeValueTuple &&
         other instanceof RuntimeValueTuple) {
-      return this.list === other.list
+      return this.list.equals(other.list)
     }
     if (this instanceof RuntimeValueRecord &&
         other instanceof RuntimeValueRecord) {
-      return this.map === other.map
+      return this.map.equals(other.map)
     }
     if (this instanceof RuntimeValueSet && other instanceof RuntimeValueSet) {
       return immutableIs(this.set, other.set)
