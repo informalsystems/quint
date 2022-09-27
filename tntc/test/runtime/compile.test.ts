@@ -511,5 +511,14 @@ describe('compiling specs to runtime values', () => {
       assertResultAsString('{ a: 2 + 3, b: true } == { a: 5, b: true }', 'true')
       assertResultAsString('{ a: 2 + 3, b: true } == { a: 1, b: false }', 'false')
     })
+
+    it('record field access', () => {
+      assertResultAsString('{ a: 2, b: true }.a', '2')
+      assertResultAsString('{ a: 2, b: true }.b', 'true')
+    })
+
+    it('record field names', () => {
+      assertResultAsString('{ a: 2, b: true }.fieldNames()', 'set("a", "b")')
+    })
   })
 })

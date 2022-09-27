@@ -285,6 +285,23 @@ export class CompilerVisitor implements IRVisitor {
           })
         break
 
+      case 'field':
+        // Access a record via the field name
+        this.applyFun(2, (rec, fieldName) => {
+          const map = rec.toOrderedMap()
+          const fieldValue = map.get(fieldName.toStr())
+          return fieldValue ? just(fieldValue) : none()
+        })
+        break
+
+      case 'fieldNames':
+        this.applyFun(1, rec => {
+          const keysAsRuntimeValues =
+            rec.toOrderedMap().keySeq().map(key => rv.mkStr(key))
+          return just(rv.mkSet(keysAsRuntimeValues))
+        })
+        break
+
       case 'set':
         // Construct a set from an array of values.
         this.applyFun(app.args.length,

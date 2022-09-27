@@ -223,7 +223,7 @@ export interface RuntimeValue
    *
    * @return an immutable map of key-values
    */
-  toRecord (): OrderedMap<string, RuntimeValue>
+  toOrderedMap (): OrderedMap<string, RuntimeValue>
 
   /**
    * If the result contains a Boolean value, return it. Otherwise, return false.
@@ -335,7 +335,7 @@ abstract class RuntimeValueBase implements RuntimeValue {
     }
   }
 
-  toRecord (): OrderedMap<string, RuntimeValue> {
+  toOrderedMap (): OrderedMap<string, RuntimeValue> {
     if (this instanceof RuntimeValueRecord) {
       return this.map
     } else {
