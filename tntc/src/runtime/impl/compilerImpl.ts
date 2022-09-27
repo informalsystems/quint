@@ -288,8 +288,7 @@ export class CompilerVisitor implements IRVisitor {
       case 'field':
         // Access a record via the field name
         this.applyFun(2, (rec, fieldName) => {
-          const map = rec.toOrderedMap()
-          const fieldValue = map.get(fieldName.toStr())
+          const fieldValue = rec.toOrderedMap().get(fieldName.toStr())
           return fieldValue ? just(fieldValue) : none()
         })
         break
@@ -299,6 +298,20 @@ export class CompilerVisitor implements IRVisitor {
           const keysAsRuntimeValues =
             rec.toOrderedMap().keySeq().map(key => rv.mkStr(key))
           return just(rv.mkSet(keysAsRuntimeValues))
+        })
+        break
+
+      case 'with':
+        // update a record
+        this.applyFun(3, (rec, fieldName, fieldValue) => {
+          const oldMap = rec.toOrderedMap()
+          const key = fieldName.toStr()
+          if (oldMap.has(key)) {
+            const newMap = rec.toOrderedMap().set(fieldName.toStr(), fieldValue)
+            return just(rv.mkRecord(newMap))
+          } else {
+            return none()
+          }
         })
         break
 
