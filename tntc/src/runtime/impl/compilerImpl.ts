@@ -279,7 +279,7 @@ export class CompilerVisitor implements IRVisitor {
       case 'tail':
         this.applyFun(1, (list) => {
           const l = list.toList()
-          return (l.size > 1) ? sliceList(l, 2n, BigInt(l.size)) : none()
+          return (l.size > 0) ? sliceList(l, 2n, BigInt(l.size)) : none()
         })
         break
 

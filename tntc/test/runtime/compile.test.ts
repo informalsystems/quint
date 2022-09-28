@@ -546,6 +546,7 @@ describe('compiling specs to runtime values', () => {
 
     it('list tail', () => {
       assertResultAsString('[4, 5, 6].tail()', 'seq(5, 6)')
+      assertResultAsString('[4].tail()', 'seq()')
       assertResultAsString('[].tail()', undefined)
     })
 
