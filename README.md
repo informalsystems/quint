@@ -55,7 +55,7 @@ completely implementing every pass.
 | [Guess][]                         | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:         | :x:       |
 | [Maps][]                          | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: [232][]        | :x:         | :x:       |
 | [Lists][]                         | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: [231][]        | :x:         | :x:       |
-| [Records][]                       | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :x:                | :x:         | :x:       |
+| [Records][]                       | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark: | :x:         | :x:       |
 | [Discriminated unions][]          | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :x: [233][]        | :x:         | :x:       |
 | [Tuples][]                        | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark: | :x:         | :x:       |
 | [Imports][]                       | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :question:         | :x:         | :x:       |
@@ -73,7 +73,7 @@ completely implementing every pass.
 | [Temporal operators][]            | :white_check_mark: | :white_check_mark: | :x:                | :x:                | :x: *non-goal*     | :x:         | :x:       |
 | [Fairness][]                      | :white_check_mark: | :white_check_mark: | :x:                | :x:                | :x: *non-goal*     | :x:         | :x:       |
 | [Unbounded quantifiers][]         | :white_check_mark: | :white_check_mark: | :x:                | :x:                | :x: *non-goal*     | :x:         | :x:       |
-| ~~Strings~~, see #118             | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark: | :x:                | :x:         | :x:       |
+| [String literals][], see #118     | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark: | :white_check_mark: | :x:         | :x:       |
 | ~~uninterpreted types~~, see #118 | :white_check_mark: | :white_check_mark: | :x:                | :x:                | :x:                | :x:         | :x:       |
 
 ## Design principles
@@ -168,3 +168,4 @@ completely implementing every pass.
 [236]: https://github.com/informalsystems/tnt/issues/236
 [238]: https://github.com/informalsystems/tnt/issues/238
 [Higher-order definitions]: https://github.com/informalsystems/tnt/blob/main/doc/lang.md#operator-definitions
+[String literals]: https://github.com/informalsystems/tnt/blob/main/doc/lang.md#identifiers-and-strings

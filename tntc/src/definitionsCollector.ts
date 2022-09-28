@@ -27,7 +27,7 @@ export interface ValueDefinition {
   /* The name given to the defined operator */
   identifier: string
   /* Expression or definition id from where the name was collected */
-  reference?: BigInt
+  reference?: bigint
   /* Optional scope, an id pointing to the TntIr node that introduces the name */
   scope?: bigint
 }
@@ -41,7 +41,7 @@ export interface TypeDefinition {
   /* The type that is aliased (none for uninterpreted type) */
   type?: TntType
   /* Expression or definition id from where the type was collected */
-  reference?: BigInt
+  reference?: bigint
 }
 
 /**
@@ -157,6 +157,7 @@ export function defaultDefinitions (): DefinitionTable {
       { kind: 'def', identifier: 'andExpr' },
       { kind: 'def', identifier: 'orExpr' },
       { kind: 'def', identifier: 'field' },
+      { kind: 'def', identifier: 'fieldNames' },
       { kind: 'def', identifier: 'item' },
       { kind: 'def', identifier: 'match' },
       { kind: 'def', identifier: 'assign' },
