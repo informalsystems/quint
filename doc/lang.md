@@ -4,7 +4,7 @@
 
 | Revision | Date       | Author                                                  |
 |:---------|:-----------|:--------------------------------------------------------|
-| 23       | 06.09.2022 | Igor Konnov, Shon Feder, Jure Kukovec, Gabriela Moreira |
+| 24       | 29.09.2022 | Igor Konnov, Shon Feder, Jure Kukovec, Gabriela Moreira |
 
 This document presents language constructs in the same order as the [summary of
 TLA+](https://lamport.azurewebsites.net/tla/summary.pdf).
