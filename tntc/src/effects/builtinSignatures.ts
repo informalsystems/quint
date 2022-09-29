@@ -119,7 +119,7 @@ const readManyEffect = (arity: number) => {
 const multipleAritySignatures: [string, Signature][] = [
   ['seq', readManyEffect],
   ['set', readManyEffect],
-  ['record', readManyEffect],
+  ['rec', readManyEffect],
   ['tup', readManyEffect],
   ['tuples', readManyEffect],
   ['andExpr', readManyEffect],
