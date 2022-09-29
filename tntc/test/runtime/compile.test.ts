@@ -511,10 +511,10 @@ describe('compiling specs to runtime values', () => {
     })
 
     it('list access', () => {
-      assertResultAsString('[4, 5, 6].nth(1)', '4')
-      assertResultAsString('[4, 5, 6].nth(3)', '6')
-      assertResultAsString('[4, 5, 6].nth(0)', undefined)
-      assertResultAsString('[4, 5, 6].nth(4)', undefined)
+      assertResultAsString('[4, 5, 6].nth(0)', '4')
+      assertResultAsString('[4, 5, 6].nth(2)', '6')
+      assertResultAsString('[4, 5, 6].nth(-1)', undefined)
+      assertResultAsString('[4, 5, 6].nth(3)', undefined)
     })
 
     it('list length', () => {
@@ -523,7 +523,7 @@ describe('compiling specs to runtime values', () => {
     })
 
     it('list indices', () => {
-      assertResultAsString('[4, 5, 6].indices()', 'set(1, 2, 3)')
+      assertResultAsString('[4, 5, 6].indices()', 'set(0, 1, 2)')
       assertResultAsString('[].indices()', 'set()')
     })
 
@@ -551,18 +551,18 @@ describe('compiling specs to runtime values', () => {
     })
 
     it('list slice', () => {
-      assertResultAsString('[4, 5, 6, 7].slice(2, 3)', 'seq(5, 6)')
-      assertResultAsString('[4, 5, 6, 7].slice(1, 4)', 'seq(4, 5, 6, 7)')
+      assertResultAsString('[4, 5, 6, 7].slice(1, 2)', 'seq(5, 6)')
+      assertResultAsString('[4, 5, 6, 7].slice(0, 3)', 'seq(4, 5, 6, 7)')
       assertResultAsString('[4, 5, 6, 7].slice(1, 7)', undefined)
-      assertResultAsString('[4, 5, 6, 7].slice(0, 4)', undefined)
-      assertResultAsString('[].slice(1, 2)', undefined)
+      assertResultAsString('[4, 5, 6, 7].slice(-1, 3)', undefined)
+      assertResultAsString('[].slice(0, 1)', undefined)
     })
 
     it('list replaceAt', () => {
-      assertResultAsString('[4, 5, 6].replaceAt(1, 10)', 'seq(10, 5, 6)')
-      assertResultAsString('[4, 5, 6].replaceAt(3, 10)', 'seq(4, 5, 10)')
-      assertResultAsString('[4, 5, 6].replaceAt(5, 10)', undefined)
-      assertResultAsString('[4, 5, 6].replaceAt(0, 10)', undefined)
+      assertResultAsString('[4, 5, 6].replaceAt(0, 10)', 'seq(10, 5, 6)')
+      assertResultAsString('[4, 5, 6].replaceAt(2, 10)', 'seq(4, 5, 10)')
+      assertResultAsString('[4, 5, 6].replaceAt(4, 10)', undefined)
+      assertResultAsString('[4, 5, 6].replaceAt(-1, 10)', undefined)
     })
   })
 

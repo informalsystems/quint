@@ -245,9 +245,9 @@ export class CompilerVisitor implements IRVisitor {
         break
 
       case 'item':
-        // Access a tuple
+        // Access a tuple: tuples are 1-indexed, that is, _1, _2, etc.
         this.applyFun(2,
-          (tuple, idx) => getListElem(tuple.toList(), idx.toInt()))
+          (tuple, idx) => getListElem(tuple.toList(), idx.toInt() - 1n))
         break
 
       case 'tuples':
@@ -273,20 +273,20 @@ export class CompilerVisitor implements IRVisitor {
         break
 
       case 'head':
-        this.applyFun(1, (list) => getListElem(list.toList(), 1n))
+        this.applyFun(1, (list) => getListElem(list.toList(), 0n))
         break
 
       case 'tail':
         this.applyFun(1, (list) => {
           const l = list.toList()
-          return (l.size > 0) ? sliceList(l, 2n, BigInt(l.size)) : none()
+          return (l.size > 0) ? sliceList(l, 1n, BigInt(l.size - 1)) : none()
         })
         break
 
       case 'slice':
         this.applyFun(3, (list, start, end) => {
           const [l, s, e] = [list.toList(), start.toInt(), end.toInt()]
-          return (s >= 1 && l.size >= e) ? sliceList(l, s, e) : none()
+          return (s >= 0 && e < l.size) ? sliceList(l, s, e) : none()
         })
         break
 
@@ -305,7 +305,7 @@ export class CompilerVisitor implements IRVisitor {
         break
 
       case 'indices':
-        this.applyFun(1, list => just(rv.mkInterval(1n, BigInt(list.toList().size))))
+        this.applyFun(1, list => just(rv.mkInterval(0n, BigInt(list.toList().size - 1))))
         break
 
       case 'rec':
@@ -750,8 +750,8 @@ export class CompilerVisitor implements IRVisitor {
 
 // Access a list via an index
 function getListElem (list: List<RuntimeValue>, idx: bigint) {
-  if (idx > 0n && idx <= list.size) {
-    const elem = list.get(Number(idx - 1n))
+  if (idx >= 0n && idx < list.size) {
+    const elem = list.get(Number(idx))
     return elem ? just(elem) : none()
   } else {
     return none()
@@ -760,8 +760,8 @@ function getListElem (list: List<RuntimeValue>, idx: bigint) {
 
 // Update a list via an index
 function updateList (list: List<RuntimeValue>, idx: bigint, value: RuntimeValue) {
-  if (idx > 0n && idx <= list.size) {
-    return just(rv.mkList(list.set(Number(idx - 1n), value)))
+  if (idx >= 0n && idx < list.size) {
+    return just(rv.mkList(list.set(Number(idx), value)))
   } else {
     return none()
   }
@@ -769,7 +769,7 @@ function updateList (list: List<RuntimeValue>, idx: bigint, value: RuntimeValue)
 
 // slice a list
 function sliceList (list: List<RuntimeValue>, start: bigint, end: bigint) {
-  return just(rv.mkList(list.slice(Number(start) - 1, Number(end))))
+  return just(rv.mkList(list.slice(Number(start), Number(end) + 1)))
 }
 
 // make a `Computable` that always returns a given runtime value
