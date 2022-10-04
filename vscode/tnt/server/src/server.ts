@@ -403,20 +403,8 @@ connection.onCompletion(
     // info and always provide the same completion items.
     const operators = ['get', 'keys', 'mapOf', 'setOfMaps', 'update', 'updateAs', 'put']
     return operators.map((op, i) => {
-      return { label: op, kind: CompletionItemKind.Text, data: i }
+      return { label: op, kind: CompletionItemKind.Method, data: i }
     })
-    return [
-      {
-        label: 'TypeScript',
-        kind: CompletionItemKind.Text,
-        data: 1,
-      },
-      {
-        label: 'JavaScript',
-        kind: CompletionItemKind.Text,
-        data: 2,
-      },
-    ]
   }
 )
 
@@ -424,14 +412,18 @@ connection.onCompletion(
 // the completion list.
 connection.onCompletionResolve(
   (item: CompletionItem): CompletionItem => {
-    if (item.data === 1) {
-      item.detail = 'TypeScript details'
-      item.documentation = 'TypeScript documentation'
-    } else if (item.data === 2) {
-      item.detail = 'JavaScript details'
-      item.documentation = 'JavaScript documentation'
-    }
-    return item
+    const mapOperators = [
+      { name: 'get', type: '(a -> b, a) => b' },
+      { name: 'keys', type: '(a -> b) => set(a)' },
+      { name: 'mapOf', type: '(set(a), (a) => b) => a -> b' },
+      { name: 'setOfMaps', type: '(set(a), set(b)) => set(a -> b)' },
+      { name: 'update', type: '(a -> b, a, b) => a -> b' },
+      { name: 'updateAs', type: '(a -> b, a, (a) => b) => a -> b' },
+      { name: 'put', type: '(a -> b, a, b) => a -> b' },
+    ]
+
+    const info = mapOperators[item.data]
+    return { ...item, detail: `(operator) ${info.name}: ${info.type}` }
   }
 )
 
