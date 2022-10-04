@@ -20,7 +20,10 @@ import {
   MarkupKind,
   HoverParams,
   DocumentUri,
-  Position
+  Position,
+  SignatureHelpParams,
+  HandlerResult,
+  SignatureHelp
 } from 'vscode-languageserver/node'
 
 import {
@@ -63,8 +66,12 @@ connection.onInitialize((params: InitializeParams) => {
       // Tell the client that this server supports code completion.
       completionProvider: {
         resolveProvider: true,
+        triggerCharacters: ['.']
       },
       hoverProvider: true,
+      signatureHelpProvider: {
+        triggerCharacters: ['(']
+      }
     },
   }
   if (hasWorkspaceFolderCapability) {
@@ -189,6 +196,34 @@ connection.onHover((params: HoverParams): Hover | undefined => {
     },
   }
 })
+
+connection.onSignatureHelp((params: SignatureHelpParams): HandlerResult<SignatureHelp, void> => {
+  console.log(params)
+  return {
+    signatures: [
+      {
+        label: 'update(map: int -> a, key: int, value: a): int -> a',
+        documentation: `Updates a map on a given key to a given value
+
+@param map - the map to be updated
+@param key - a key from the map
+@param value - a new value to be set for that key
+
+@returns - a new map with the update`,
+        parameters: [
+          { label: [21, 30] }
+        ]
+      },
+    ],
+    activeSignature: 0,
+    activeParameter: 0,
+  }
+})
+
+// connection.onCompletionResolve((params: CompletionItem): HandlerResult<CompletionItem, void> => {
+//   return {}
+
+// })
 
 function findResult (results: Map<Loc, string>, position: Position, document: TextDocument): string {
   const resultsOnPosition: [string, string, Loc][] = []
@@ -366,6 +401,10 @@ connection.onCompletion(
     // The pass parameter contains the position of the text document in
     // which code complete got requested. For the example we ignore this
     // info and always provide the same completion items.
+    const operators = ['get', 'keys', 'mapOf', 'setOfMaps', 'update', 'updateAs', 'put']
+    return operators.map((op, i) => {
+      return { label: op, kind: CompletionItemKind.Text, data: i }
+    })
     return [
       {
         label: 'TypeScript',
