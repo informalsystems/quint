@@ -23,6 +23,8 @@ import * as ir from '../../tntIr'
 
 import { rv, RuntimeValue } from './runtimeValue'
 
+import { lastTraceName } from '../compile'
+
 /**
  * Compiler visitor turns TNT definitions and expressions into Computable
  * objects, essentially, lazy JavaScript objects. Importantly, it does not do
@@ -48,6 +50,14 @@ export class CompilerVisitor implements IRVisitor {
   private vars: Register[] = []
   // the registers allocated for the next-state values of vars
   private nextVars: Register[] = []
+  // shadow variables that are used by the simulator
+  private shadowVars: Register[] = []
+
+  constructor () {
+    const lastTrace = mkRegister('shadow', lastTraceName, none())
+    this.shadowVars.push(lastTrace)
+    this.context.set(kindName(lastTrace.kind, lastTrace.name), lastTrace)
+  }
 
   /**
    * Get the compiled context.
@@ -56,9 +66,18 @@ export class CompilerVisitor implements IRVisitor {
     return this.context
   }
 
-  // get the names of the compiled variables
+  /**
+   * Get the names of the compiled variables.
+   */
   getVars (): string[] {
     return this.vars.map(r => r.name)
+  }
+
+  /**
+   * Get the names of the shadow variables.
+   */
+  getShadowVars (): string[] {
+    return this.shadowVars.map(r => r.name)
   }
 
   exitOpDef (opdef: ir.TntOpDef) {
@@ -96,8 +115,10 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   enterName (name: ir.TntName) {
-    // the name is either a variable name, an argument name, or a callable
-    const comp = this.contextGet(name.name, ['var', 'arg', 'callable'])
+    // The name belongs to one of the objects:
+    // a shadow variable, a variable, an argument, a callable.
+    // The order is important, as defines the name priority.
+    const comp = this.contextGet(name.name, ['shadow', 'var', 'arg', 'callable'])
     // this may happen, see: https://github.com/informalsystems/tnt/issues/129
     assert(comp, `Name ${name.name} not found (out of order?)`)
     this.compStack.push(comp)
@@ -137,15 +158,7 @@ export class CompilerVisitor implements IRVisitor {
       case 'shift':
         this.compStack.push({
           eval: () => {
-            for (const v of this.vars) {
-              const primed = this.contextGet(v.name, ['nextvar']) as Register
-              if (primed) {
-                v.registerValue = primed.registerValue
-                primed.registerValue = none()
-              } else {
-                v.registerValue = none()
-              }
-            }
+            this.shiftVars()
             return just<any>(rv.mkBool(true))
           },
         })
@@ -444,26 +457,34 @@ export class CompilerVisitor implements IRVisitor {
         )
         break
 
+      case '_testMany':
+        // the special operator that runs random simulation
+        this.testMany()
+        break
+
       default: {
-        // maybe it is a user-defined operator
-        const callable =
-          this.contextGet(app.opcode, ['callable', 'arg']) as Callable
-        if (callable === undefined || callable.registers === undefined) {
-          // The error should be reported via a callback:
-          // TODO: https://github.com/informalsystems/tnt/issues/191
-          console.error(`${app.opcode} is not supported`)
-          this.compStack.push(fail)
-        } else {
-          this.applyFun(callable.registers.length,
-            (...args: RuntimeValue[]) => {
-              for (let i = 0; i < args.length; i++) {
-                callable.registers[i].registerValue = just(args[i])
-              }
-              return callable.eval() as Maybe<RuntimeValue>
-            }
-          )
-        }
+        this.applyUserDefined(app)
       }
+    }
+  }
+
+  private applyUserDefined (app: ir.TntApp) {
+    const callable =
+      this.contextGet(app.opcode, ['callable', 'arg']) as Callable
+    if (callable === undefined || callable.registers === undefined) {
+      // The error should be reported via a callback:
+      // TODO: https://github.com/informalsystems/tnt/issues/191
+      console.error(`${app.opcode} is not supported`)
+      this.compStack.push(fail)
+    } else {
+      this.applyFun(callable.registers.length,
+        (...args: RuntimeValue[]) => {
+          for (let i = 0; i < args.length; i++) {
+            callable.registers[i].registerValue = just(args[i])
+          }
+          return callable.eval() as Maybe<RuntimeValue>
+        }
+      )
     }
   }
 
@@ -645,13 +666,7 @@ export class CompilerVisitor implements IRVisitor {
       return result
     }
 
-    const computable = {
-      eval: () => {
-        return lazyCompute()
-      },
-    }
-
-    this.compStack.push(computable)
+    this.compStack.push(mkLazyComputable(lazyCompute))
   }
 
   // translate { A | ... | C }
@@ -695,13 +710,7 @@ export class CompilerVisitor implements IRVisitor {
       }
     }
 
-    const computable = {
-      eval: () => {
-        return lazyCompute()
-      },
-    }
-
-    this.compStack.push(computable)
+    this.compStack.push(mkLazyComputable(lazyCompute))
   }
 
   // apply the operator guess
@@ -726,9 +735,107 @@ export class CompilerVisitor implements IRVisitor {
     this.compStack.push(comp)
   }
 
+  // The heart of the simulator: do a single random run.
+  // Technically, it is similar to the implementation of folds.
+  // However, it also restores the state and saves a trace, if there is any.
+  private testMany () {
+    if (this.compStack.length < 5) {
+      throw new Error('Not enough arguments on the stack')
+    }
+
+    // convert the current variable values to a record
+    const varsToRecord = () => {
+      const map: [string, RuntimeValue][] =
+        this.vars
+          .filter(r => r.registerValue.isJust())
+          .map(r => [r.name, r.registerValue.value as RuntimeValue])
+      return rv.mkRecord(map)
+    }
+
+    const args = this.compStack.splice(-5)
+    // run simulation when invoked
+    const doRun = (): Maybe<EvalResult> => {
+      return merge(args.map(e => e.eval()))
+        .map(([nrunsRes, nstepsRes, initRes, nextRes, invRes]) => {
+          const isTrue = (res: Maybe<EvalResult>) => {
+            return !res.isNone() &&
+              (res.value as RuntimeValue).toBool() === true
+          }
+          // the trace collected during the run
+          let trace: RuntimeValue[] = []
+          // the value to be returned in the end of evaluation
+          let noErrorFound = true
+          // save the registers to recover them later
+          const vars = this.saveVars()
+          const nextVars = this.saveNextVars()
+          // run nruns times, stop at the first failing run
+          const nruns = (nrunsRes as RuntimeValue).toInt()
+          for (let runNo = 0; noErrorFound && runNo < nruns; runNo++) {
+            trace = []
+            // apply Init()
+            const initName = (initRes as RuntimeValue).toStr()
+            const init = this.contextGet(initName, ['callable']) ?? fail
+            if (!isTrue(init.eval())) {
+              noErrorFound = false
+            } else {
+              this.shiftVars()
+              trace.push(varsToRecord())
+              // check the invariant
+              const invName = (invRes as RuntimeValue).toStr()
+              const inv = (this.contextGet(invName, ['callable']) ?? fail)
+              if (!isTrue(inv.eval())) {
+                noErrorFound = false
+              } else {
+                // check all { Next, shift(), Inv } in a loop
+                const nsteps = (nstepsRes as RuntimeValue).toInt()
+                const nextName = (nextRes as RuntimeValue).toStr()
+                const next = (this.contextGet(nextName, ['callable']) ?? fail)
+                noErrorFound = true
+                for (let i = 0; noErrorFound && i < nsteps; i++) {
+                  if (!isTrue(next.eval())) {
+                    noErrorFound = false
+                  } else {
+                    this.shiftVars()
+                    trace.push(varsToRecord())
+                    noErrorFound = isTrue(inv.eval())
+                  }
+                }
+              }
+            }
+            this.loadVars(vars)
+            this.loadNextVars(nextVars)
+          }
+          // save the trace (there are a few shadow variables, hence, the loop)
+          this.shadowVars.forEach(r => {
+            if (r.name === lastTraceName) {
+              r.registerValue = just(rv.mkList(trace))
+            }
+          })
+          // finally, return true, if no error was found
+          return just(rv.mkBool(noErrorFound))
+        }).join()
+    }
+    this.compStack.push(mkLazyComputable(doRun))
+  }
+
+  private shiftVars () {
+    this.loadVars(this.saveNextVars())
+    this.nextVars.forEach(r => r.registerValue = none())
+  }
+
+  // save the values of the vars into an array
+  private saveVars (): Maybe<RuntimeValue>[] {
+    return this.vars.map(r => r.registerValue)
+  }
+
   // save the values of the next vars into an array
   private saveNextVars (): Maybe<RuntimeValue>[] {
     return this.nextVars.map(r => r.registerValue)
+  }
+
+  // load the values of the variables from an array
+  private loadVars (values: Maybe<RuntimeValue>[]) {
+    this.vars.forEach((r, i) => r.registerValue = values[i])
   }
 
   // load the values of the next variables from an array
@@ -777,6 +884,15 @@ function mkConstComputable (value: RuntimeValue) {
   return {
     eval: () => {
       return just<any>(value)
+    },
+  }
+}
+
+// make a `Computable` that always returns a given runtime value
+function mkLazyComputable (fun: () => Maybe<EvalResult>) {
+  return {
+    eval: () => {
+      return fun()
     },
   }
 }
