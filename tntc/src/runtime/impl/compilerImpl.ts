@@ -415,6 +415,28 @@ export class CompilerVisitor implements IRVisitor {
         })
         break
 
+      case 'get':
+        // Get a map value.
+        this.applyFun(2, (map, key) => {
+          const value = map.toMap().get(key.normalForm())
+          return value ? just(value) : none()
+        })
+        break
+
+      case 'update':
+        // Update a map value.
+        this.applyFun(3, (map, key, newValue) => {
+          const normalKey = key.normalForm()
+          const asMap = map.toMap()
+          if (asMap.has(normalKey)) {
+            const newMap = asMap.set(normalKey, newValue)
+            return just(rv.fromMap(newMap))
+          } else {
+            return none()
+          }
+        })
+        break
+
       case 'exists':
         this.mapLambdaThenReduce(
           set =>
@@ -441,6 +463,21 @@ export class CompilerVisitor implements IRVisitor {
             rv.mkSet(arr
               .filter(([r, e]) => r.toBool())
               .map(([r, e]) => e))
+        )
+        break
+
+      case 'mapOf':
+        this.mapLambdaThenReduce(arr =>
+          rv.mkMap(arr.map(([v, k]) => [k, v]))
+        )
+        break
+
+      case 'mapOf2':
+        this.applyFun(1, (set: RuntimeValue) =>
+          just(rv.mkMap(set.toSet().map(p => {
+            const arr = p.toList().toArray()
+            return [arr[0], arr[1]]
+          })))
         )
         break
 

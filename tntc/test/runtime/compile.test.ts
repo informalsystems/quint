@@ -593,4 +593,48 @@ describe('compiling specs to runtime values', () => {
       assertResultAsString('{ a: 2, b: true }.with("c", 3)', undefined)
     })
   })
+
+  describe('compile over maps', () => {
+    it('mapOf constructor', () => {
+      assertResultAsString('3.to(5).mapOf(i => 2 * i)',
+        'mapOf2(set(tup(3, 6), tup(4, 8), tup(5, 10)))')
+      assertResultAsString('set(2.to(4)).mapOf(s => s.cardinality())',
+        'mapOf2(set(tup(set(2, 3, 4), 3)))')
+    })
+
+    it('mapOf2 constructor', () => {
+      assertResultAsString('mapOf2(set((3, 6), (4, 10 - 2), (5, 10)))',
+        'mapOf2(set(tup(3, 6), tup(4, 8), tup(5, 10)))')
+    })
+
+    it('map get', () => {
+      assertResultAsString('3.to(5).mapOf(i => 2 * i).get(4)', '8')
+      assertResultAsString(
+        'set(2.to(4)).mapOf(s => s.cardinality()).get(set(2, 3, 4))',
+        '3'
+      )
+    })
+
+    it('map update', () => {
+      assertResultAsString(
+        '3.to(5).mapOf(i => 2 * i).update(4, 20)',
+        'mapOf2(set(tup(3, 6), tup(4, 20), tup(5, 10)))'
+      )
+      assertResultAsString(
+        '3.to(5).mapOf(i => 2 * i).update(7, 20)',
+        undefined
+      )
+    })
+
+    it('map equality', () => {
+      assertResultAsString(
+        '3.to(5).mapOf(i => 2 * i) == 3.to(5).mapOf(i => 3 * i - i)',
+        'true'
+      )
+      assertResultAsString(
+        '3.to(5).mapOf(i => 2 * i) == 3.to(6).mapOf(i => 2 * i)',
+        'false'
+      )
+    })
+  })
 })
