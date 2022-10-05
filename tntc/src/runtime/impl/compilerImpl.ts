@@ -794,12 +794,19 @@ export class CompilerVisitor implements IRVisitor {
                 const next = (this.contextGet(nextName, ['callable']) ?? fail)
                 noErrorFound = true
                 for (let i = 0; noErrorFound && i < nsteps; i++) {
-                  if (!isTrue(next.eval())) {
-                    noErrorFound = false
-                  } else {
+                  if (isTrue(next.eval())) {
                     this.shiftVars()
                     trace.push(varsToRecord())
                     noErrorFound = isTrue(inv.eval())
+                  } else {
+                    // The run cannot be extended.
+                    // In some cases, this may indicate a deadlock.
+                    // Since we are doing random simulation, it is very likely
+                    // that we have not generated good values for extending
+                    // the run. Hence, do not report an error here, but simply
+                    // drop the run. Otherwise, we would have a lot of false
+                    // positives, which look like deadlocks but they are not.
+                    break
                   }
                 }
               }
