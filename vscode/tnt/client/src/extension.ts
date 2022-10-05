@@ -5,7 +5,8 @@
  * --------------------------------------------------------------------------------- */
 
 import * as path from 'path'
-import { workspace, ExtensionContext } from 'vscode'
+import { cwd } from 'process'
+import { workspace, ExtensionContext, commands, Uri, window } from 'vscode'
 
 import {
   LanguageClient,
@@ -21,6 +22,21 @@ export function activate (context: ExtensionContext) {
   const serverModule = context.asAbsolutePath(
     path.join('server', 'out', 'server.js')
   )
+
+  const command = 'tnt.getExampleForAction';
+
+  const commandHandler = async (name: string = 'Next') => {
+    // const activeEditor = window.activeTextEditor;
+    // if (!activeEditor) {
+    //   return;
+    // }
+    //   activeEditor.document.,
+    let uri = Uri.file('/home/gabriela/projects/tnt/examples/tictactoe/example.itf.json');
+    let success = await commands.executeCommand('vscode.openFolder', uri);
+  };
+
+  context.subscriptions.push(commands.registerCommand(command, commandHandler));
+
   // The debug options for the server
   // --inspect=6009: runs the server in Node's Inspector mode
   // so VS Code can attach to the server for debugging
