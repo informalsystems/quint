@@ -770,7 +770,7 @@ export class CompilerVisitor implements IRVisitor {
           // save the registers to recover them later
           const vars = this.saveVars()
           const nextVars = this.saveNextVars()
-          // run nruns times, stop at the first failing run
+          // do multiple runs, stop at the first failing run
           const nruns = (nrunsRes as RuntimeValue).toInt()
           for (let runNo = 0; noErrorFound && runNo < nruns; runNo++) {
             trace = []
