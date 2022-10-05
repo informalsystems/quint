@@ -251,12 +251,13 @@ function chalkTntEx (ex: TntEx): string {
   }
 }
 
-// declarations that are overloaded by the simulator
+// Declarations that are overloaded by the simulator.
+// In the future, we will declare them in a separate module.
 const simulatorBuiltins =
 `val ${lastTraceName} = [];
-def _testMany(__nruns, __nsteps, __init, __next, __inv) = false;
+def _test(__nruns, __nsteps, __init, __next, __inv) = false;
 def _testOnce(__nsteps, __init, __next, __inv) =
-  _testMany(1, __nsteps, __init, __next, __inv);
+  _test(1, __nsteps, __init, __next, __inv);
 `
 
 // try to evaluate the expression in a string and print it, if successful

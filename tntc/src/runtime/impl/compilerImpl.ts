@@ -457,9 +457,9 @@ export class CompilerVisitor implements IRVisitor {
         )
         break
 
-      case '_testMany':
+      case '_test':
         // the special operator that runs random simulation
-        this.testMany()
+        this.test()
         break
 
       default: {
@@ -666,7 +666,7 @@ export class CompilerVisitor implements IRVisitor {
       return result
     }
 
-    this.compStack.push(mkLazyComputable(lazyCompute))
+    this.compStack.push(mkFunComputable(lazyCompute))
   }
 
   // translate { A | ... | C }
@@ -710,7 +710,7 @@ export class CompilerVisitor implements IRVisitor {
       }
     }
 
-    this.compStack.push(mkLazyComputable(lazyCompute))
+    this.compStack.push(mkFunComputable(lazyCompute))
   }
 
   // apply the operator guess
@@ -735,10 +735,12 @@ export class CompilerVisitor implements IRVisitor {
     this.compStack.push(comp)
   }
 
-  // The heart of the simulator: do a single random run.
-  // Technically, it is similar to the implementation of folds.
+  // The simulator core: produce multiple random runs
+  // and check the given state invariant (state assertion).
+  //
+  // Technically, this is similar to the implementation of folds.
   // However, it also restores the state and saves a trace, if there is any.
-  private testMany () {
+  private test () {
     if (this.compStack.length < 5) {
       throw new Error('Not enough arguments on the stack')
     }
@@ -772,7 +774,7 @@ export class CompilerVisitor implements IRVisitor {
           const nruns = (nrunsRes as RuntimeValue).toInt()
           for (let runNo = 0; noErrorFound && runNo < nruns; runNo++) {
             trace = []
-            // apply Init()
+            // check Init()
             const initName = (initRes as RuntimeValue).toStr()
             const init = this.contextGet(initName, ['callable']) ?? fail
             if (!isTrue(init.eval())) {
@@ -780,13 +782,13 @@ export class CompilerVisitor implements IRVisitor {
             } else {
               this.shiftVars()
               trace.push(varsToRecord())
-              // check the invariant
+              // check the invariant Inv
               const invName = (invRes as RuntimeValue).toStr()
               const inv = (this.contextGet(invName, ['callable']) ?? fail)
               if (!isTrue(inv.eval())) {
                 noErrorFound = false
               } else {
-                // check all { Next, shift(), Inv } in a loop
+                // check all { Next(), shift(), Inv } in a loop
                 const nsteps = (nstepsRes as RuntimeValue).toInt()
                 const nextName = (nextRes as RuntimeValue).toStr()
                 const next = (this.contextGet(nextName, ['callable']) ?? fail)
@@ -802,9 +804,10 @@ export class CompilerVisitor implements IRVisitor {
                 }
               }
             }
+            // recover the state variables
             this.loadVars(vars)
             this.loadNextVars(nextVars)
-          }
+          } // end of a single random run
           // save the trace (there are a few shadow variables, hence, the loop)
           this.shadowVars.forEach(r => {
             if (r.name === lastTraceName) {
@@ -815,7 +818,7 @@ export class CompilerVisitor implements IRVisitor {
           return just(rv.mkBool(noErrorFound))
         }).join()
     }
-    this.compStack.push(mkLazyComputable(doRun))
+    this.compStack.push(mkFunComputable(doRun))
   }
 
   private shiftVars () {
@@ -889,7 +892,7 @@ function mkConstComputable (value: RuntimeValue) {
 }
 
 // make a `Computable` that always returns a given runtime value
-function mkLazyComputable (fun: () => Maybe<EvalResult>) {
+function mkFunComputable (fun: () => Maybe<EvalResult>) {
   return {
     eval: () => {
       return fun()
