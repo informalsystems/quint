@@ -626,6 +626,31 @@ describe('compiling specs to runtime values', () => {
       )
     })
 
+    it('map updateAs', () => {
+      assertResultAsString(
+        '3.to(5).mapOf(i => 2 * i).updateAs(4, (old => old + 1))',
+        'mapOf2(set(tup(3, 6), tup(4, 9), tup(5, 10)))'
+      )
+      assertResultAsString(
+        '3.to(5).mapOf(i => 2 * i).updateAs(7, (old => old + 1))',
+        undefined
+      )
+    })
+
+    it('map put', () => {
+      assertResultAsString(
+        '3.to(5).mapOf(i => 2 * i).put(10, 11)',
+        'mapOf2(set(tup(10, 11), tup(3, 6), tup(4, 8), tup(5, 10)))'
+      )
+    })
+
+    it('map keys', () => {
+      assertResultAsString(
+        'set(3, 5, 7).mapOf(i => 2 * i).keys()',
+        'set(3, 5, 7)'
+      )
+    })
+
     it('map equality', () => {
       assertResultAsString(
         '3.to(5).mapOf(i => 2 * i) == 3.to(5).mapOf(i => 3 * i - i)',

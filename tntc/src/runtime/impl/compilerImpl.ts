@@ -416,7 +416,7 @@ export class CompilerVisitor implements IRVisitor {
         break
 
       case 'get':
-        // Get a map value.
+        // Get a map value
         this.applyFun(2, (map, key) => {
           const value = map.toMap().get(key.normalForm())
           return value ? just(value) : none()
@@ -424,7 +424,7 @@ export class CompilerVisitor implements IRVisitor {
         break
 
       case 'update':
-        // Update a map value.
+        // Update a map value
         this.applyFun(3, (map, key, newValue) => {
           const normalKey = key.normalForm()
           const asMap = map.toMap()
@@ -434,6 +434,43 @@ export class CompilerVisitor implements IRVisitor {
           } else {
             return none()
           }
+        })
+        break
+
+      case 'put':
+        // add a value to a map
+        this.applyFun(3, (map, key, newValue) => {
+          const normalKey = key.normalForm()
+          const asMap = map.toMap()
+          const newMap = asMap.set(normalKey, newValue)
+          return just(rv.fromMap(newMap))
+        })
+        break
+
+      case 'updateAs': {
+        // Update a map value via a lambda
+        const fun = this.compStack.pop() ?? fail
+        this.applyFun(2, (map, key) => {
+          const normalKey = key.normalForm()
+          const asMap = map.toMap()
+          if (asMap.has(normalKey)) {
+            (fun as Callable).registers[0].registerValue =
+              just(asMap.get(normalKey))
+            return fun.eval().map((newValue) => {
+              const newMap = asMap.set(normalKey, newValue as RuntimeValue)
+              return rv.fromMap(newMap)
+            })
+          } else {
+            return none()
+          }
+        })
+        break
+      }
+
+      case 'keys':
+        // map keys as a set
+        this.applyFun(1, (map) => {
+          return just(rv.mkSet(map.toMap().keys()))
         })
         break
 
