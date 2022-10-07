@@ -766,19 +766,19 @@ export class CompilerVisitor implements IRVisitor {
           // the trace collected during the run
           let trace: RuntimeValue[] = []
           // the value to be returned in the end of evaluation
-          let noErrorFound = true
+          let errorFound = false
           // save the registers to recover them later
           const vars = this.saveVars()
           const nextVars = this.saveNextVars()
           // do multiple runs, stop at the first failing run
           const nruns = (nrunsRes as RuntimeValue).toInt()
-          for (let runNo = 0; noErrorFound && runNo < nruns; runNo++) {
+          for (let runNo = 0; !errorFound && runNo < nruns; runNo++) {
             trace = []
             // check Init()
             const initName = (initRes as RuntimeValue).toStr()
             const init = this.contextGet(initName, ['callable']) ?? fail
             if (!isTrue(init.eval())) {
-              noErrorFound = false
+              errorFound = true
             } else {
               this.shiftVars()
               trace.push(varsToRecord())
@@ -786,18 +786,18 @@ export class CompilerVisitor implements IRVisitor {
               const invName = (invRes as RuntimeValue).toStr()
               const inv = (this.contextGet(invName, ['callable']) ?? fail)
               if (!isTrue(inv.eval())) {
-                noErrorFound = false
+                errorFound = true
               } else {
                 // check all { Next(), shift(), Inv } in a loop
                 const nsteps = (nstepsRes as RuntimeValue).toInt()
                 const nextName = (nextRes as RuntimeValue).toStr()
                 const next = (this.contextGet(nextName, ['callable']) ?? fail)
-                noErrorFound = true
-                for (let i = 0; noErrorFound && i < nsteps; i++) {
+                errorFound = false
+                for (let i = 0; !errorFound && i < nsteps; i++) {
                   if (isTrue(next.eval())) {
                     this.shiftVars()
                     trace.push(varsToRecord())
-                    noErrorFound = isTrue(inv.eval())
+                    errorFound = !isTrue(inv.eval())
                   } else {
                     // The run cannot be extended.
                     // In some cases, this may indicate a deadlock.
@@ -822,7 +822,7 @@ export class CompilerVisitor implements IRVisitor {
             }
           })
           // finally, return true, if no error was found
-          return just(rv.mkBool(noErrorFound))
+          return just(rv.mkBool(!errorFound))
         }).join()
     }
     this.compStack.push(mkFunComputable(doRun))
