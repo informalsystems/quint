@@ -1118,8 +1118,8 @@ S.mapOf(x => e)
 mapOf(S, (x => e))
 // Convert a set of pairs to a map.
 // In TLA+: [ x \in { a: <<a, b>> \in S } |-> (CHOOSE p \in S: p[1] = x)[2]]
-S.mapOf2()
-mapOf2(S)
+set(tup(1, true), tup(2, false)).mapOf2()
+mapOf2(set(tup(1, true), tup(2, false)))
 // A set of maps.
 // In TLA+: [ S -> T ]
 S.setOfMaps(T)
