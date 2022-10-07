@@ -26,7 +26,7 @@ module ClockSync3 {
     // maximum message delay
     const t_max : int
 
-    assume _ = (t_min >= 0 & t_max > t_min)
+    assume _ = (t_min >= 0 and t_max > t_min)
 
 
     //// TYPES AND CONSTRUCTORS
@@ -82,65 +82,68 @@ module ClockSync3 {
 
     //// INITIALIZATION
 
-    action selectFrom(v, s) = s.guess(x => v <- x)
+    // a nice to have syntax form:
+    //action selectFrom(v, s) = s.guess(x => v <- x)
 
-    val Init = {
-        & time.selectFrom(Nat)
-        & hc.selectFrom(setOfMaps(Procs, Nat))
-        & adj   <- Procs.mapOf(_ => 0)
-        & state <- Procs.mapOf(_ => "init")
-        & msgs  <- set()
-        & rcvd  <- Procs.mapOf(_ => set())
+    action Init = all {
+        time.selectFrom(Nat),
+        hc.selectFrom(setOfMaps(Procs, Nat)),
+        adj   <- Procs.mapOf(_ => 0),
+        state <- Procs.mapOf(_ => "init"),
+        msgs  <- set(),
+        rcvd  <- Procs.mapOf(_ => set()),
     }
 
     //// ACTIONS
 
     // Send the value of the hardware clock
     // TODO: action<msgs, state> ...
-    action sendMsg(p) = { 
-        & state[p] == "init"
-        & msgs  <- msgs.add(p.msgFrom(hc[p]))
-        & state <- state.update(p, "sent")
-        & rcvd  <- rcvd
+    action sendMsg(p) = all {
+        state[p] == "init",
+        msgs  <- msgs.add(p.msgFrom(hc[p])),
+        state <- state.update(p, "sent"),
+        rcvd  <- rcvd,
     }
     
     // Receive a message sent by another process
     // TODO: action<rcvd> ...
     action receiveMsg(p) = {
-        msgs.guess( newMsg => {
-            & newMsg.notin(rcvd[p])
+        msgs.guess( newMsg => all {
+            newMsg.notin(rcvd[p]),
             // the message cannot be received earlier than after t_min
-            & hc[newMsg.src] >= newMsg.ts + t_min
-            & rcvd <- rcvd.update(p, rcvd[p].add(newMsg))
-            & state <- state
-            & msgs <- msgs
+            hc[newMsg.src] >= newMsg.ts + t_min,
+            rcvd <- rcvd.update(p, rcvd[p].add(newMsg)),
+            state <- state,
+            msgs <- msgs,
         })
     }
 
     // let time flow
     // TODO: action<time, hc>
-    action advanceClocks(delta) = {
-        & delta > 0
+    action advanceClocks(delta) = all {
+        delta > 0,
         // clocks can be advanced only if there are no pending message
-        & msgs.forall( m => hc[m.src] + delta > t_max implies
-                Procs.forall( p => m in rcvd[m.src] ))
-        & time <- time + delta
-        & hc   <- Procs.mapOf(p => hc[p] + delta)  
+        msgs.forall( m => hc[m.src] + delta > t_max implies
+                Procs.forall( p => m in rcvd[m.src] )),
+        time <- time + delta,
+        hc   <- Procs.mapOf(p => hc[p] + delta),
     }
 
     //// TRANSITIONS
 
-    action Next = {
-        | { & msgs <- msgs
-            & state <- state
-            & rcvd <- rcvd
-            & Int.guess(advanceClocks)
-        }
-        | { & time <- time 
-            & hc <- hc
-            & Procs.guess(p => {
-            | sendMsg(p)
-            | receiveMsg(p)
+    action Next = any {
+        all {
+            msgs <- msgs,
+            state <- state,
+            rcvd <- rcvd,
+            Int.guess(advanceClocks),
+        },
+        {
+            time <- time,
+            hc <- hc,
+            Procs.guess(p => or {
+                sendMsg(p),
+                receiveMsg(p),
             })
         }
     }
