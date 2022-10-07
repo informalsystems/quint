@@ -45,10 +45,10 @@ module BinSearch {
     // Initialization step (lines 2-3)
     action Init = all {
         low <- 0,
-        high <- length(INPUT_SEQ) - 1
+        high <- length(INPUT_SEQ) - 1,
         isTerminated <- false,
         returnValue <- 0,
-        nSteps <= 0
+        nSteps <= 0,
     }
 
     // loop iteration

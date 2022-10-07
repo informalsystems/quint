@@ -331,7 +331,7 @@ action UponProposalInPrevoteOrCommitAndPrevote(p) =
       validRound <- validRound.update(p, round[p]),
       fired_action <- "UponProposalInPrevoteOrCommitAndPrevote",
     }
-  })
+  )
 
 // lines 47-48 + 65-67 (onTimeoutPrecommit)
 action UponQuorumOfPrecommitsAny(p) =
