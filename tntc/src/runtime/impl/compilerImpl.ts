@@ -644,7 +644,7 @@ export class CompilerVisitor implements IRVisitor {
 
     const lazyCompute = () => {
       // save the values of the next variables, as actions may update them
-      const savedValues = this.saveNextVars()
+      const savedValues = this.snapshotNextVars()
       let result: Maybe<EvalResult> = just(rv.mkBool(true))
       // Evaluate arguments iteratively.
       // Stop as soon as one of the arguments returns false.
@@ -658,7 +658,7 @@ export class CompilerVisitor implements IRVisitor {
         if (boolResult === false) {
           // restore the values of the next variables,
           // as evaluation was not successful
-          this.loadNextVars(savedValues)
+          this.recoverNextVars(savedValues)
           break
         }
       }
@@ -681,31 +681,31 @@ export class CompilerVisitor implements IRVisitor {
     // we use a random number generator. This may change in the future.
     const lazyCompute = () => {
       // save the values of the next variables, as actions may update them
-      const valuesBefore = this.saveNextVars()
+      const valuesBefore = this.snapshotNextVars()
       // we store the potential successor values in this array
       const successors = []
       // Evaluate arguments iteratively.
       for (const arg of args) {
-        this.loadNextVars(valuesBefore)
+        this.recoverNextVars(valuesBefore)
         // either the argument is evaluated to false, or fails
         const result = arg.eval().or(just(rv.mkBool(false)))
         const boolResult = (result.unwrap() as RuntimeValue).toBool()
         // if this arm evaluates to true, save it in the candidates
         if (boolResult === true) {
-          successors.push(this.saveNextVars())
+          successors.push(this.snapshotNextVars())
         }
       }
 
       const ncandidates = successors.length
       if (ncandidates === 0) {
         // no successor: restore the state and return false
-        this.loadNextVars(valuesBefore)
+        this.recoverNextVars(valuesBefore)
         return just(rv.mkBool(false))
       } else {
         // randomly pick a successor and return true
         // https://stackoverflow.com/questions/4959975/generate-random-number-between-two-numbers-in-javascript
         const choice = Math.floor(Math.random() * ncandidates)
-        this.loadNextVars(successors[choice])
+        this.recoverNextVars(successors[choice])
         return just(rv.mkBool(true))
       }
     }
@@ -768,8 +768,8 @@ export class CompilerVisitor implements IRVisitor {
           // the value to be returned in the end of evaluation
           let errorFound = false
           // save the registers to recover them later
-          const vars = this.saveVars()
-          const nextVars = this.saveNextVars()
+          const vars = this.snapshotVars()
+          const nextVars = this.snapshotNextVars()
           // do multiple runs, stop at the first failing run
           const nruns = (nrunsRes as RuntimeValue).toInt()
           for (let runNo = 0; !errorFound && runNo < nruns; runNo++) {
@@ -812,8 +812,8 @@ export class CompilerVisitor implements IRVisitor {
               }
             }
             // recover the state variables
-            this.loadVars(vars)
-            this.loadNextVars(nextVars)
+            this.recoverVars(vars)
+            this.recoverNextVars(nextVars)
           } // end of a single random run
           // save the trace (there are a few shadow variables, hence, the loop)
           this.shadowVars.forEach(r => {
@@ -829,27 +829,27 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   private shiftVars () {
-    this.loadVars(this.saveNextVars())
+    this.recoverVars(this.snapshotNextVars())
     this.nextVars.forEach(r => r.registerValue = none())
   }
 
   // save the values of the vars into an array
-  private saveVars (): Maybe<RuntimeValue>[] {
+  private snapshotVars (): Maybe<RuntimeValue>[] {
     return this.vars.map(r => r.registerValue)
   }
 
   // save the values of the next vars into an array
-  private saveNextVars (): Maybe<RuntimeValue>[] {
+  private snapshotNextVars (): Maybe<RuntimeValue>[] {
     return this.nextVars.map(r => r.registerValue)
   }
 
   // load the values of the variables from an array
-  private loadVars (values: Maybe<RuntimeValue>[]) {
+  private recoverVars (values: Maybe<RuntimeValue>[]) {
     this.vars.forEach((r, i) => r.registerValue = values[i])
   }
 
   // load the values of the next variables from an array
-  private loadNextVars (values: Maybe<RuntimeValue>[]) {
+  private recoverNextVars (values: Maybe<RuntimeValue>[]) {
     this.nextVars.forEach((r, i) => r.registerValue = values[i])
   }
 
