@@ -529,6 +529,8 @@ export class CompilerVisitor implements IRVisitor {
             return [arr[0], arr[1]]
           })))
         )
+        break
+
       case '_test':
         // the special operator that runs random simulation
         this.test()
