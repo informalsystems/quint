@@ -792,7 +792,6 @@ export class CompilerVisitor implements IRVisitor {
                 const nsteps = (nstepsRes as RuntimeValue).toInt()
                 const nextName = (nextRes as RuntimeValue).toStr()
                 const next = (this.contextGet(nextName, ['callable']) ?? fail)
-                errorFound = false
                 for (let i = 0; !errorFound && i < nsteps; i++) {
                   if (isTrue(next.eval())) {
                     this.shiftVars()
