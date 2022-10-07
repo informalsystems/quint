@@ -707,11 +707,11 @@ class RuntimeValueMap extends RuntimeValueBase implements RuntimeValue {
       new RuntimeValueTupleOrList('tup', List([k, v]))
     )
     const set = new RuntimeValueSet(Set(pairs))
-    // return the expression mapOf2(set(pairs))
+    // return the expression setToMap(set(pairs))
     return {
       id: 0n,
       kind: 'app',
-      opcode: 'mapOf2',
+      opcode: 'setToMap',
       args: [set.toTntEx()],
     }
   }

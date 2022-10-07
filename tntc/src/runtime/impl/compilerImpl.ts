@@ -522,7 +522,7 @@ export class CompilerVisitor implements IRVisitor {
         )
         break
 
-      case 'mapOf2':
+      case 'setToMap':
         this.applyFun(1, (set: RuntimeValue) =>
           just(rv.mkMap(set.toSet().map(p => {
             const arr = p.toList().toArray()
