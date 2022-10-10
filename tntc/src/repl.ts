@@ -179,25 +179,33 @@ export function tntRepl
 function saveToFile (out: writer, state: ReplState, filename: string) {
   // as top-level expressions are not supported by the language,
   // we are wrapping them into special comments
-  const text = `${state.defsHist}\n//! expressions\n` +
-    state.exprHist.map(s => `/*! ${s} !*/\n`).join('\n')
-  writeFileSync(filename, text)
-  out(`Session saved to: ${filename}`)
+  try {
+    const text = `${state.defsHist}\n//! expressions\n` +
+      state.exprHist.map(s => `/*! ${s} !*/\n`).join('\n')
+    writeFileSync(filename, text)
+    out(`Session saved to: ${filename}`)
+  } catch (error) {
+    out(chalk.red(error))
+  }
 }
 
 function loadFromFile (out: writer, state: ReplState, filename: string) {
-  const data = readFileSync(filename, 'utf8')
-  // split the definitions from the expression
-  const frags = data.split(/^\/\/! expressions$/gsm)
-  state.defsHist += '\n' + frags[0]
-  out(frags[0])
-  // unwrap the expressions from the specially crafted comments
-  const exprs =
-    (frags[1] ?? '').matchAll(/\/\*! (.*?) !\*\//gsm) ?? []
-  // and replay them one by one
-  for (const groups of exprs) {
-    out(groups[1])
-    tryEval(out, state, groups[1])
+  try {
+    const data = readFileSync(filename, 'utf8')
+    // split the definitions from the expression
+    const frags = data.split(/^\/\/! expressions$/gsm)
+    state.defsHist += '\n' + frags[0]
+    out(frags[0])
+    // unwrap the expressions from the specially crafted comments
+    const exprs =
+      (frags[1] ?? '').matchAll(/\/\*! (.*?) !\*\//gsm) ?? []
+    // and replay them one by one
+    for (const groups of exprs) {
+      out(groups[1])
+      tryEval(out, state, groups[1])
+    }
+  } catch (error) {
+    out(chalk.red(error))
   }
 }
 
