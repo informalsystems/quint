@@ -1,13 +1,29 @@
 {
-    // See https://go.microsoft.com/fwlink/?LinkId=733558
-    // for the documentation about the tasks.json format
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Check MyProperty",
+            "label": "Get execution example",
+            "type": "shell",
+            "command": "apalache-mc check --length=5 --inv=Agreement Spec.tla",
+            "detail": "apalache-mc simulate Tendermint.tnt"
+        },
+        {
+            "label": "Verify Agreement",
+            "type": "shell",
+            "command": "apalache-mc check --length=5 --inv=Agreement Spec.tla",
+            "detail": "apalache-mc check --inv=Agreement Tendermint.tnt"
+        },
+        {
+            "label": "Verify Validity",
             "type": "shell",
             "command": "apalache-mc check --length=5 --inv=MyProperty Spec.tla",
-            "detail": "apalache-mc check --length=5 --inv=MyProperty Spec.tla"
+            "detail": "apalache-mc check --inv=Validity Tendermint.tnt"
+        },
+        {
+            "label": "Verify Accountability",
+            "type": "shell",
+            "command": "apalache-mc check --length=5 --inv=Agreement Spec.tla",
+            "detail": "apalache-mc check --inv=Accountability Tendermint.tnt"
         }
     ]
 }
