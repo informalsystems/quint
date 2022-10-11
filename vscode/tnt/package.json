@@ -43,6 +43,20 @@
                 "path": "./syntaxes/tnt.tmLanguage.json"
             }
         ],
+        "commands": [
+            {
+                "command": "tnt.getExampleForAction",
+                "title": "Show an example"
+            }
+        ],
+        "menus": {
+            "editor/context": [
+                {
+                    "command": "tnt.getExampleForAction",
+                    "when": "editorLangId == tnt"
+                }
+            ]
+        },
         "configuration": {
             "type": "object",
             "title": "TNT configuration",
