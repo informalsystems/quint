@@ -564,6 +564,11 @@ describe('compiling specs to runtime values', () => {
       assertResultAsString('[4, 5, 6].replaceAt(4, 10)', undefined)
       assertResultAsString('[4, 5, 6].replaceAt(-1, 10)', undefined)
     })
+
+    it('list foldl', () => {
+      assertResultAsString('[].foldl(3, (i, e => i + e))', '3')
+      assertResultAsString('[4, 5, 6, 7].foldl(1, (i, e => i + e))', '23')
+    })
   })
 
   describe('compile over records', () => {

@@ -415,6 +415,10 @@ export class CompilerVisitor implements IRVisitor {
         this.applyFold()
         break
 
+      case 'foldl':
+        this.applyFold()
+        break
+
       case 'guess':
         this.applyGuess()
         break
@@ -631,7 +635,7 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   /**
-   * Translate the fold operator.
+   * Translate the fold and foldl operators.
    */
   private applyFold (): void {
     if (this.compStack.length < 3) {
@@ -653,13 +657,13 @@ export class CompilerVisitor implements IRVisitor {
       callable.registers[0].registerValue = result
       return result
     }
-    // iterate over the set
-    this.applyFun(1, (set: Iterable<RuntimeValue>): Maybe<any> => {
+    // iterate over the iterable (a set or a list)
+    this.applyFun(1, (iterable: Iterable<RuntimeValue>): Maybe<any> => {
       return initialComp.eval().map(initialValue => {
         // save the initial value on the 0th register
         callable.registers[0].registerValue = just(initialValue)
-        // fold the set
-        return flatForEach(set, just(initialValue), evaluateElem)
+        // fold the iterable
+        return flatForEach(iterable, just(initialValue), evaluateElem)
       }).join()
     })
   }
