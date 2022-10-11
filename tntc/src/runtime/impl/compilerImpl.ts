@@ -412,11 +412,15 @@ export class CompilerVisitor implements IRVisitor {
         break
 
       case 'fold':
-        this.applyFold()
+        this.applyFold('fwd')
         break
 
       case 'foldl':
-        this.applyFold()
+        this.applyFold('fwd')
+        break
+
+      case 'foldr':
+        this.applyFold('rev')
         break
 
       case 'guess':
@@ -635,9 +639,9 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   /**
-   * Translate the fold and foldl operators.
+   * Translate one of the operators: fold, foldl, and foldr.
    */
-  private applyFold (): void {
+  private applyFold (order: 'fwd' | 'rev'): void {
     if (this.compStack.length < 3) {
       throw new Error('Not enough parameters on compStack')
     }
@@ -663,7 +667,7 @@ export class CompilerVisitor implements IRVisitor {
         // save the initial value on the 0th register
         callable.registers[0].registerValue = just(initialValue)
         // fold the iterable
-        return flatForEach(iterable, just(initialValue), evaluateElem)
+        return flatForEach(order, iterable, just(initialValue), evaluateElem)
       }).join()
     })
   }
@@ -1013,9 +1017,12 @@ function flatMap<T, R>
  *  - return `just` of the last result.
  */
 function flatForEach<T, R>
-(iterable: Iterable<T>, init: Maybe<R>, f: (arg: T) => Maybe<R>): Maybe<R> {
+(order: 'fwd' | 'rev',
+  iterable: Iterable<T>, init: Maybe<R>, f: (arg: T) => Maybe<R>): Maybe<R> {
   let result: Maybe<R> = init
-  for (const arg of iterable) {
+  // if the reverse order is required, reverse the array
+  const iter = (order === 'fwd') ? iterable : Array(...iterable).reverse()
+  for (const arg of iter) {
     result = f(arg)
     if (result.isNone()) {
       return result

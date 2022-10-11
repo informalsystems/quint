@@ -568,6 +568,15 @@ describe('compiling specs to runtime values', () => {
     it('list foldl', () => {
       assertResultAsString('[].foldl(3, (i, e => i + e))', '3')
       assertResultAsString('[4, 5, 6, 7].foldl(1, (i, e => i + e))', '23')
+      assertResultAsString('[4, 5, 6, 7].foldl([], (l, e => l.append(e)))',
+        'list(4, 5, 6, 7)')
+    })
+
+    it('list foldr', () => {
+      assertResultAsString('[].foldr(3, (i, e => i + e))', '3')
+      assertResultAsString('[4, 5, 6, 7].foldr(1, (i, e => i + e))', '23')
+      assertResultAsString('[4, 5, 6, 7].foldr([], (l, e => l.append(e)))',
+        'list(7, 6, 5, 4)')
     })
   })
 
