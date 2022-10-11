@@ -10,13 +10,16 @@
 
 import * as readline from 'readline'
 import { Readable, Writable } from 'stream'
+import { readFileSync, writeFileSync } from 'fs'
 import chalk from 'chalk'
 
 import { Maybe, just, none } from '@sweet-monads/maybe'
 
 import { TntEx } from './tntIr'
-import { compile, CompilationContext } from './runtime/compile'
-import { EvalResult, ExecError, Register, kindName } from './runtime/runtime'
+import { compile, CompilationContext, lastTraceName } from './runtime/compile'
+import {
+  EvalResult, ExecError, Register, kindName, ComputableKind
+} from './runtime/runtime'
 import { probeParse, ErrorMessage } from './tntParserFrontend'
 
 // tunable settings
@@ -29,8 +32,14 @@ type writer = (text: string) => void
 
 // the internal state of the REPL
 interface ReplState {
-  history: string,
-  vars: Map<string, EvalResult>
+  // definitions history
+  defsHist: string,
+  // expressions history (for saving and loading)
+  exprHist: string[],
+  // state variables
+  vars: Map<string, EvalResult>,
+  // variables internal to the simulator and REPL
+  shadowVars: Map<string, EvalResult>,
 }
 
 // The default exit terminates the process.
@@ -58,8 +67,10 @@ export function tntRepl
 
   // the state
   let state: ReplState = {
-    history: '',
+    defsHist: '',
+    exprHist: [],
     vars: new Map<string, EvalResult>(),
+    shadowVars: new Map<string, EvalResult>(),
   }
   // we let the user type a multiline string, which is collected here:
   let multilineText = ''
@@ -109,11 +120,14 @@ export function tntRepl
 
   // the read-eval-print loop
   rl.on('line', (line) => {
-    switch (line.trim()) {
+    const args = line.trim().split(/\s+/)
+    switch (args[0]) {
       case '.help':
+        out('.clear\tClear the history')
         out('.exit\tExit the REPL')
         out('.help\tPrint this help message')
-        out('.clear\tClear the history')
+        out('.load <filename>\tLoad the code from a file into the REPL session')
+        out('.save <filename>\tSave the accumulated definitions to a file')
         out('\nType an expression and press Enter to evaluate it.')
         out('When the REPL switches to multiline mode "...", finish it with an empty line.')
         out('\nPress Ctrl+C to abort current expression, Ctrl+D to exit the REPL')
@@ -125,7 +139,26 @@ export function tntRepl
 
       case '.clear':
         out('') // be nice to external programs
-        state.history = ''
+        state.defsHist = ''
+        state.exprHist = []
+        break
+
+      case '.load':
+        if (!args[1]) {
+          out(chalk.red('.load requires a filename'))
+        } else {
+          loadFromFile(out, state, args[1])
+        }
+        rl.prompt()
+        break
+
+      case '.save':
+        if (!args[1]) {
+          out(chalk.red('.save requires a filename'))
+        } else {
+          saveToFile(out, state, args[1])
+        }
+        rl.prompt()
         break
 
       default:
@@ -143,6 +176,52 @@ export function tntRepl
 
 // private definitions
 
+function saveToFile (out: writer, state: ReplState, filename: string) {
+  // as top-level expressions are not supported by the language,
+  // we are wrapping them into special comments
+  try {
+    const text = `${state.defsHist}\n//! expressions\n` +
+      state.exprHist.map(s => `/*! ${s} !*/\n`).join('\n')
+    writeFileSync(filename, text)
+    out(`Session saved to: ${filename}`)
+  } catch (error) {
+    out(chalk.red(error))
+  }
+}
+
+function loadFromFile (out: writer, state: ReplState, filename: string) {
+  try {
+    const data = readFileSync(filename, 'utf8')
+    // split the definitions from the expression
+    const frags = data.split(/^\/\/! expressions$/gsm)
+    state.defsHist += '\n' + frags[0]
+    out(frags[0])
+    // unwrap the expressions from the specially crafted comments
+    const exprs =
+      (frags[1] ?? '').matchAll(/\/\*! (.*?) !\*\//gsm) ?? []
+    // and replay them one by one
+    for (const groups of exprs) {
+      out(groups[1])
+      tryEval(out, state, groups[1])
+    }
+  } catch (error) {
+    out(chalk.red(error))
+  }
+}
+
+function evalAndSaveRegisters (kind: ComputableKind, names: string[],
+  context: CompilationContext, targetMap: Map<string, EvalResult>) {
+  targetMap.clear()
+  for (const v of names) {
+    const computable = context.values.get(kindName(kind, v))
+    if (computable) {
+      computable.eval().map(result => {
+        targetMap.set(v, result)
+      })
+    }
+  }
+}
+
 function saveVars (state: ReplState, context: CompilationContext): void {
   function isNextSet (name: string) {
     const register = context.values.get(kindName('nextvar', name)) as Register
@@ -154,25 +233,30 @@ function saveVars (state: ReplState, context: CompilationContext): void {
   }
   const isAction = [...context.vars].some(name => isNextSet(name))
   if (isAction) {
-    state.vars.clear()
-    for (const v of context.vars) {
-      const computable = context.values.get(kindName('nextvar', v))
-      if (computable) {
-        computable.eval().map(result => {
-          state.vars.set(v, result)
-        })
-      }
-    }
+    evalAndSaveRegisters('nextvar', context.vars, context, state.vars)
   }
 }
 
-function loadVars (state: ReplState, context: CompilationContext): void {
-  state.vars.forEach((value, name) => {
-    const register = context.values.get(kindName('var', name)) as Register
+function saveShadowVars (state: ReplState, context: CompilationContext): void {
+  evalAndSaveRegisters('shadow', context.shadowVars, context, state.shadowVars)
+}
+
+function loadRegisters (kind: ComputableKind,
+  vars: Map<string, EvalResult>, context: CompilationContext): void {
+  vars.forEach((value, name) => {
+    const register = context.values.get(kindName(kind, name)) as Register
     if (register) {
       register.registerValue = just(value)
     }
   })
+}
+
+function loadVars (state: ReplState, context: CompilationContext): void {
+  loadRegisters('var', state.vars, context)
+}
+
+function loadShadowVars (state: ReplState, context: CompilationContext): void {
+  loadRegisters('shadow', state.shadowVars, context)
 }
 
 // convert a TNT expression to a colored string, tuned for REPL
@@ -226,6 +310,15 @@ function chalkTntEx (ex: TntEx): string {
   }
 }
 
+// Declarations that are overloaded by the simulator.
+// In the future, we will declare them in a separate module.
+const simulatorBuiltins =
+`val ${lastTraceName} = [];
+def _test(__nruns, __nsteps, __init, __next, __inv) = false;
+def _testOnce(__nsteps, __init, __next, __inv) =
+  _test(1, __nsteps, __init, __next, __inv);
+`
+
 // try to evaluate the expression in a string and print it, if successful
 function tryEval (out: writer, state: ReplState, newInput: string): ReplState {
   // output errors to the console in red
@@ -242,13 +335,15 @@ function tryEval (out: writer, state: ReplState, newInput: string): ReplState {
   if (probeResult.kind === 'expr') {
     // embed expression text into a value definition inside a module
     const moduleText = `module __REPL {
-${state.history}
+${simulatorBuiltins}
+${state.defsHist}
   val __input =
 ${newInput}
 }`
     // compile the expression or definition and evaluate it
     const context = compile(moduleText, chalkHandler)
     loadVars(state, context)
+    loadShadowVars(state, context)
     const computable = context.values.get(kindName('callable', '__input'))
     let resultDefined: Maybe<void> = none()
     if (computable) {
@@ -263,7 +358,11 @@ ${newInput}
               // as actions are always boolean, don't even try to save the state for non-boolean expressions
               saveVars(newState, context)
             }
+            // save shadow vars in any case, e.g., the example trace
+            saveShadowVars(newState, context)
           })
+
+      newState.exprHist.push(newInput.trim())
     }
     if (resultDefined.isNone()) {
       out(chalk.red('<result undefined>'))
@@ -273,7 +372,8 @@ ${newInput}
   if (probeResult.kind === 'toplevel') {
     // embed expression text into a module at the top level
     const moduleText = `module __REPL {
-${state.history}
+${simulatorBuiltins}
+${state.defsHist}
 ${newInput}
 }`
     // compile the module and add it to history if everything worked
@@ -283,7 +383,7 @@ ${newInput}
       out('') // be nice to external programs
     } else {
       out('') // be nice to external programs
-      newState.history = state.history + '\n' + newInput // update the history
+      newState.defsHist = state.defsHist + '\n' + newInput // update the history
     }
   }
 
