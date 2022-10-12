@@ -524,6 +524,15 @@ export class CompilerVisitor implements IRVisitor {
         )
         break
 
+      case 'select':
+        this.mapLambdaThenReduce(
+          arr =>
+            rv.mkList(arr
+              .filter(([r, e]) => r.toBool())
+              .map(([r, e]) => e))
+        )
+        break
+
       case 'mapOf':
         this.mapLambdaThenReduce(arr =>
           rv.mkMap(arr.map(([v, k]) => [k, v]))
@@ -633,8 +642,8 @@ export class CompilerVisitor implements IRVisitor {
       const result = callable.eval().map(e => e as RuntimeValue)
       return result.map(result => [result, elem])
     }
-    this.applyFun(1, (set: Iterable<RuntimeValue>): Maybe<RuntimeValue> => {
-      return flatMap(set, evaluateElem).map(rs => mapResultAndElems(rs))
+    this.applyFun(1, (iterable: Iterable<RuntimeValue>): Maybe<RuntimeValue> => {
+      return flatMap(iterable, evaluateElem).map(rs => mapResultAndElems(rs))
     })
   }
 

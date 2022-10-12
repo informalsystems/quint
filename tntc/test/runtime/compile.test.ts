@@ -578,6 +578,11 @@ describe('compiling specs to runtime values', () => {
       assertResultAsString('[4, 5, 6, 7].foldr([], (l, e => l.append(e)))',
         'list(7, 6, 5, 4)')
     })
+
+    it('list select', () => {
+      assertResultAsString('[].select(e => e % 2 == 0)', 'list()')
+      assertResultAsString('[4, 5, 6].select(e => e % 2 == 0)', 'list(4, 6)')
+    })
   })
 
   describe('compile over records', () => {
