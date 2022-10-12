@@ -628,6 +628,10 @@ class RuntimeValueTupleOrList extends RuntimeValueBase implements RuntimeValue {
     this.list = values
   }
 
+  [Symbol.iterator] () {
+    return this.list[Symbol.iterator]()
+  }
+
   normalForm (): RuntimeValue {
     const normalizedValues: RuntimeValue[] = []
     for (const e of this.list) {
