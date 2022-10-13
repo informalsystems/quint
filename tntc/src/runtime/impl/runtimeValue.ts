@@ -1069,14 +1069,14 @@ class RuntimeValueMapSet
   domainSet: RuntimeValue
   rangeSet: RuntimeValue
 
-  constructor (rangeSet: RuntimeValue, coRangeSet: RuntimeValue) {
+  constructor (domainSet: RuntimeValue, rangeSet: RuntimeValue) {
     super(true)
-    this.domainSet = rangeSet
-    this.rangeSet = coRangeSet
+    this.domainSet = domainSet
+    this.rangeSet = rangeSet
   }
 
   [Symbol.iterator] () {
-    // convert the range and co-range to arrays
+    // convert the domain and range to arrays
     const domainArr = Array.from(this.domainSet)
     const rangeArr = Array.from(this.rangeSet)
 
@@ -1094,6 +1094,8 @@ class RuntimeValueMapSet
       const indices: number[] = Array(nvalues).fill(0)
       indices[0] = -1
       let done = false
+      // Cycle to all possible sequences of elements in rangeArr of size domainArr
+      // Yielding a new map for each sequence.
       while (!done) {
         // try to increment one of the counters, starting with the first one
         done = true
