@@ -125,6 +125,7 @@ connection.onDidChangeConfiguration(change => {
       .then((result) => {
         return checkTypesAndEffects(d, result.tntModule, result.sourceMap, result.definitionTable)
       })
+      .then((_) => connection.sendDiagnostics({ uri: d.uri, diagnostics: [] }))
       .catch(diagnostics => {
         // Send the computed diagnostics to VSCode.
         connection.sendDiagnostics({ uri: d.uri, diagnostics })
