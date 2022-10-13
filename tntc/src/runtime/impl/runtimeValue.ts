@@ -31,8 +31,7 @@
  *
  *  - RuntimeValuePowerset: TBD
  *
- *  - RuntimeValueMapSet: TBD
- *
+ *  - RuntimeValueMapSet: to compactly represent a set of functions.
  *
  * Importantly, it should be always possible to convert other set
  * representations to enumerative sets (backed with `RuntimeValueSet`): Many
@@ -1091,7 +1090,7 @@ class RuntimeValueMapSet
       }
       // Our iterator is an array of indices.
       // An ith index must be in the range [0, rangeArr.length).
-      const indices: number[] = Array(nvalues).fill(0)
+      const indices: number[] = Array(nindices).fill(0)
       indices[0] = -1
       let done = false
       // Cycle to all possible sequences of elements in rangeArr of size domainArr
