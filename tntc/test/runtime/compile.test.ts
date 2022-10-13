@@ -695,6 +695,14 @@ describe('compiling specs to runtime values', () => {
         'true'
       )
       assertResultAsString(
+        'set(2).setOfMaps(5.to(6))',
+        'set(setToMap(set(tup(2, 5))), setToMap(set(tup(2, 6))))'
+      )
+      assertResultAsString(
+        '2.to(3).setOfMaps(set(5))',
+        'set(setToMap(set(tup(2, 5), tup(3, 5))))'
+      )
+      assertResultAsString(
         '2.to(4).setOfMaps(5.to(8)).cardinality()',
         '64'
       )
