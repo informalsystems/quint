@@ -1088,37 +1088,19 @@ class RuntimeValueMapSet
         // yield nothing as an empty set produces the empty product
         return
       }
-      // Our iterator is an array of indices.
-      // An ith index must be in the range [0, rangeArr.length).
-      const indices: number[] = Array(nindices).fill(0)
-      indices[0] = -1
-      let done = false
-      // Cycle to all possible sequences of elements in rangeArr of size domainArr
-      // Yielding a new map for each sequence.
-      while (!done) {
-        // try to increment one of the counters, starting with the first one
-        done = true
-        for (let i = 0; i < nindices; i++) {
-          // similar to how we do increment in binary,
-          // try to increase a position, wrapping to 0, if overfull
-          if (++indices[i] >= nvalues) {
-            // wrap around and continue
-            indices[i] = 0
-          } else {
-            // the increment worked, there is a next element
-            done = false
-            break
-          }
+      // generate `nmaps` maps by using number increments
+      const nmaps = nvalues ** nindices
+      for (let i = 0; i < nmaps; i++) {
+        const pairs: [RuntimeValue, RuntimeValue][] = []
+        // Convert the global index i to digits of a nvalues-based number.
+        // By interactively dividing the index by the base and
+        // taking its remainder.
+        let index = i
+        for (let k = 0; k < nindices; k++) {
+          pairs.push([domainArr[k], rangeArr[index % nvalues]])
+          index = Math.floor(index / nvalues)
         }
-
-        if (!done) {
-          // yield a map that is produced with the counters
-          const pairs: [RuntimeValue, RuntimeValue][] = []
-          for (let i = 0; i < nindices; i++) {
-            pairs.push([domainArr[i], rangeArr[indices[i]]])
-          }
-          yield rv.mkMap(pairs)
-        }
+        yield rv.mkMap(pairs)
       }
     }
 
