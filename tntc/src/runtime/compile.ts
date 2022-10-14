@@ -8,8 +8,11 @@
  * See License.txt in the project root for license information.
  */
 
-import { parsePhase1, parsePhase2, ErrorMessage } from '../tntParserFrontend'
+import {
+  parsePhase1, parsePhase2, ErrorMessage, Loc
+} from '../tntParserFrontend'
 import { Computable, ExecError, ExecErrorHandler } from './runtime'
+import { IrErrorMessage } from '../tntIr'
 import { CompilerVisitor } from './impl/compilerImpl'
 import { walkModule } from '../IRVisitor'
 
@@ -29,9 +32,18 @@ const consoleHandler = (err: ExecError) => {
  * A compilation context returned by 'compile'.
  */
 export interface CompilationContext {
+  // names of the variables and definitions mapped to computables
   values: Map<string, Computable>,
+  // names of the variables
   vars: string[],
-  shadowVars: string[]
+  // names of the shadow variables, internal to the simulator
+  shadowVars: string[],
+  // messages that are produced during compilation
+  compileErrors: IrErrorMessage[],
+  // messages that get populated as the compiled code is executed
+  runtimeErrors: IrErrorMessage[],
+  // source mapping
+  sourceMap: Map<bigint, Loc>,
 }
 
 /**
@@ -63,6 +75,9 @@ compile (moduleText: string, errorHandler: ExecErrorHandler = consoleHandler):
         values: visitor.getContext(),
         vars: visitor.getVars(),
         shadowVars: visitor.getShadowVars(),
+        compileErrors: visitor.getCompileErrors(),
+        runtimeErrors: visitor.getRuntimeErrors(),
+        sourceMap: parseRes.sourceMap,
       }
     }
   }
@@ -89,5 +104,8 @@ compile (moduleText: string, errorHandler: ExecErrorHandler = consoleHandler):
     values: new Map(),
     vars: [],
     shadowVars: [],
+    compileErrors: [],
+    runtimeErrors: [],
+    sourceMap: new Map(),
   }
 }

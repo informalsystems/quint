@@ -15,12 +15,12 @@ import chalk from 'chalk'
 
 import { Maybe, just, none } from '@sweet-monads/maybe'
 
-import { TntEx } from './tntIr'
+import { TntEx, IrErrorMessage } from './tntIr'
 import { compile, CompilationContext, lastTraceName } from './runtime/compile'
 import {
   EvalResult, ExecError, Register, kindName, ComputableKind
 } from './runtime/runtime'
-import { probeParse, ErrorMessage } from './tntParserFrontend'
+import { probeParse, ErrorMessage, Loc } from './tntParserFrontend'
 
 // tunable settings
 export const settings = {
@@ -334,7 +334,7 @@ function tryEval (out: writer, state: ReplState, newInput: string): ReplState {
   const newState = state
   const probeResult = probeParse(newInput, '<input>')
   if (probeResult.kind === 'error') {
-    printErrorMessages(out, newInput, probeResult.messages)
+    printErrorMessages(out, 'syntax error', newInput, probeResult.messages)
     out('') // be nice to external programs
   }
   if (probeResult.kind === 'expr') {
@@ -347,6 +347,12 @@ ${newInput}
 }`
     // compile the expression or definition and evaluate it
     const context = compile(moduleText, chalkHandler)
+    if (context.compileErrors.length > 0) {
+      const resolved = resolveErrors(context.sourceMap, context.compileErrors)
+      printErrorMessages(out, 'compile error', newInput, resolved)
+      out('') // be nice to external programs
+      return state
+    }
     loadVars(state, context)
     loadShadowVars(state, context)
     const computable = context.values.get(kindName('callable', '__input'))
@@ -370,6 +376,8 @@ ${newInput}
       newState.exprHist.push(newInput.trim())
     }
     if (resultDefined.isNone()) {
+      const resolved = resolveErrors(context.sourceMap, context.runtimeErrors)
+      printErrorMessages(out, 'runtime error', newInput, resolved)
       out(chalk.red('<result undefined>'))
       out('') // be nice to external programs
     }
@@ -383,8 +391,9 @@ ${newInput}
 }`
     // compile the module and add it to history if everything worked
     const context = compile(moduleText, chalkHandler)
-    if (context.values.size === 0) {
-      out(chalk.red('<compilation failed>'))
+    if (context.values.size === 0 || context.compileErrors.length > 0) {
+      const resolved = resolveErrors(context.sourceMap, context.compileErrors)
+      printErrorMessages(out, 'compile error', newInput, resolved)
       out('') // be nice to external programs
     } else {
       out('') // be nice to external programs
@@ -395,12 +404,27 @@ ${newInput}
   return newState
 }
 
+// resolve source locations of IR errors
+function resolveErrors
+(sourceMap: Map<bigint, Loc>, errors: IrErrorMessage[]): ErrorMessage[] {
+  const unknownLoc = {
+    source: '<unknown>',
+    start: { line: 0, col: 0, index: 0 },
+  }
+  return errors.map(msg => {
+    return {
+      explanation: msg.explanation,
+      locs: msg.refs.map(id => sourceMap.get(id) ?? unknownLoc),
+    }
+  })
+}
+
 // print error messages with proper colors
 function printErrorMessages
-(out: writer, text: string, messages: ErrorMessage[]) {
+(out: writer, kind: string, text: string, messages: ErrorMessage[]) {
   // display the error messages and highlight the error places
   for (const e of messages) {
-    out(`Syntax error: ${chalk.red(e.explanation)}`)
+    out(chalk.red(`${kind}: ${e.explanation}`))
     const lines = text.split('\n')
     let lineno = 0
     for (const line of lines) {
