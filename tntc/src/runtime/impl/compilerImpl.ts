@@ -61,6 +61,9 @@ export class CompilerVisitor implements IRVisitor {
     const lastTrace = mkRegister('shadow', lastTraceName, none())
     this.shadowVars.push(lastTrace)
     this.context.set(kindName(lastTrace.kind, lastTrace.name), lastTrace)
+    const boolSet =
+      mkConstComputable(rv.mkSet([rv.mkBool(false), rv.mkBool(true)]))
+    this.context.set(kindName('val', 'Bool'), boolSet)
   }
 
   /**
@@ -148,7 +151,8 @@ export class CompilerVisitor implements IRVisitor {
     // The name belongs to one of the objects:
     // a shadow variable, a variable, an argument, a callable.
     // The order is important, as defines the name priority.
-    const comp = this.contextGet(name.name, ['shadow', 'var', 'arg', 'callable'])
+    const comp =
+      this.contextGet(name.name, ['shadow', 'val', 'var', 'arg', 'callable'])
     // this may happen, see: https://github.com/informalsystems/tnt/issues/129
     if (comp) {
       this.compStack.push(comp)

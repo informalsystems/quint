@@ -452,6 +452,12 @@ describe('compiling specs to runtime values', () => {
     })
   })
 
+  describe('compile over built-in sets', () => {
+    it('computes Bool', () => {
+      assertResultAsString('Bool', 'set(false, true)')
+    })
+  })
+
   describe('compile over tuples', () => {
     it('tuple constructors', () => {
       assertResultAsString('tup(1, 2, 3)', 'tup(1, 2, 3)')
