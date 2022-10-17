@@ -347,7 +347,7 @@ export interface RuntimeValue
    * or throw Error, if the set is infinite
    */
 
-  cardinality (): bigint
+  cardinality (): number
 }
 
 /**
@@ -545,7 +545,7 @@ abstract class RuntimeValueBase implements RuntimeValue {
   }
 
   cardinality () {
-    return 0n
+    return 0
   }
 
   toTntEx (): TntEx {
@@ -813,7 +813,7 @@ class RuntimeValueSet extends RuntimeValueBase implements RuntimeValue {
   }
 
   cardinality () {
-    return BigInt(this.set.size)
+    return this.set.size
   }
 
   toTntEx (): TntEx {
@@ -911,7 +911,7 @@ class RuntimeValueInterval extends RuntimeValueBase implements RuntimeValue {
   }
 
   cardinality () {
-    return this.last - this.first + 1n
+    return Number(this.last - this.first) + 1
   }
 
   toTntEx (): TntEx {
@@ -1038,14 +1038,14 @@ class RuntimeValueCrossProd
   }
 
   cardinality () {
-    return this.sets.reduce((n, set) => set.cardinality() * n, 1n)
+    return this.sets.reduce((n, set) => set.cardinality() * n, 1)
   }
 
   pick (position: number): RuntimeValue | undefined {
-    let index = Math.floor(position * Number(this.cardinality()))
+    let index = Math.floor(position * this.cardinality())
     const elems: RuntimeValue[] = []
     for (const set of this.sets) {
-      const card = Number(set.cardinality())
+      const card = set.cardinality()
       const elem = set.pick((index % card) / card)
       if (card <= 0) {
         return undefined
@@ -1158,8 +1158,8 @@ class RuntimeValueMapSet
   pick (position: number): RuntimeValue | undefined {
     let index = Math.floor(position * Number(this.cardinality()))
     const keyValues: [RuntimeValue, RuntimeValue][] = []
-    const domainSize = Number(this.domainSet.cardinality())
-    const rangeSize = Number(this.rangeSet.cardinality())
+    const domainSize = this.domainSet.cardinality()
+    const rangeSize = this.rangeSet.cardinality()
     if (domainSize === 0 || rangeSize === 0) {
       return undefined
     }
@@ -1256,7 +1256,7 @@ class RuntimeValueInfSet extends RuntimeValueBase implements RuntimeValue {
     }
   }
 
-  cardinality (): bigint {
+  cardinality (): number {
     throw new Error(`The cardinality of an infinite set ${this.kind} is not a number`)
   }
 
