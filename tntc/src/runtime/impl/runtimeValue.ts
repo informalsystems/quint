@@ -516,6 +516,16 @@ abstract class RuntimeValueBase implements RuntimeValue {
       return this.domainSet.equals(other.domainSet) &&
         this.rangeSet.equals(other.rangeSet)
     }
+    if (this instanceof RuntimeValueInfSet) {
+      return (other instanceof RuntimeValueInfSet)
+        ? this.kind === other.kind
+        : false
+    }
+    if (other instanceof RuntimeValueInfSet) {
+      return (this instanceof RuntimeValueInfSet)
+        ? this.kind === other.kind
+        : false
+    }
     if (this.isSetLike && other.isSetLike) {
       // for instance, an interval and an explicit set
       return immutableIs(this.toSet(), other.toSet())

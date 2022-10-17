@@ -483,6 +483,14 @@ describe('compiling specs to runtime values', () => {
       assertResultAsString('Int.subseteq(Int)', 'true')
       assertResultAsString('Int.subseteq(Nat)', 'false')
     })
+
+    it('equality over Nat and Int', () => {
+      assertResultAsString('Nat == Nat', 'true')
+      assertResultAsString('Int == Int', 'true')
+      assertResultAsString('Nat == Int', 'false')
+      assertResultAsString('Int == Nat', 'false')
+      assertResultAsString('Int == set(0, 1)', 'false')
+    })
   })
 
   describe('compile over tuples', () => {
