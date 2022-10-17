@@ -456,6 +456,33 @@ describe('compiling specs to runtime values', () => {
     it('computes Bool', () => {
       assertResultAsString('Bool', 'set(false, true)')
     })
+
+    it('computes Int', () => {
+      assertResultAsString('Int', 'Int')
+    })
+
+    it('computes Int.contains', () => {
+      assertResultAsString('Int.contains(123)', 'true')
+      assertResultAsString('Int.contains(0)', 'true')
+      assertResultAsString('Int.contains(-123)', 'true')
+    })
+
+    it('computes Nat', () => {
+      assertResultAsString('Nat', 'Nat')
+    })
+
+    it('computes Nat.contains', () => {
+      assertResultAsString('Nat.contains(123)', 'true')
+      assertResultAsString('Nat.contains(0)', 'true')
+      assertResultAsString('Nat.contains(-123)', 'false')
+    })
+
+    it('computes isSubset', () => {
+      assertResultAsString('Nat.subseteq(Nat)', 'true')
+      assertResultAsString('Nat.subseteq(Int)', 'true')
+      assertResultAsString('Int.subseteq(Int)', 'true')
+      assertResultAsString('Int.subseteq(Nat)', 'false')
+    })
   })
 
   describe('compile over tuples', () => {

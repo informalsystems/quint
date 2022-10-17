@@ -289,10 +289,18 @@ describe('repl ok', () => {
       |2 <= x and x <= 5
       |tuples(2.to(5), 3.to(4)).guess(t => x <- t._1 + t._2)
       |5 <= x and x <= 9
+      |Nat.guess(i => x <- i)
+      |x >= 0
+      |Int.guess(i => x <- i)
+      |Int.contains(x)
       |`
     )
     const output = dedent(
       `
+      |true
+      |true
+      |true
+      |true
       |true
       |true
       |true

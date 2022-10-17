@@ -64,6 +64,10 @@ export class CompilerVisitor implements IRVisitor {
     const boolSet =
       mkConstComputable(rv.mkSet([rv.mkBool(false), rv.mkBool(true)]))
     this.context.set(kindName('val', 'Bool'), boolSet)
+    this.context.set(kindName('val', 'Int'),
+      mkConstComputable(rv.mkInfSet('Int')))
+    this.context.set(kindName('val', 'Nat'),
+      mkConstComputable(rv.mkInfSet('Nat')))
   }
 
   /**

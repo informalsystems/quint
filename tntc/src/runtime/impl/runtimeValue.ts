@@ -180,6 +180,16 @@ export const rv = {
   },
 
   /**
+   * Make a runtime value that represents either Nat or Int.
+   *
+   * @param set kind (Nat or Int)
+   * @return a new runtime value that carries the infinite set
+   */
+  mkInfSet: (kind: 'Nat' | 'Int'): RuntimeValue => {
+    return new RuntimeValueInfSet(kind)
+  },
+
+  /**
    * Make a runtime value that represents an integer interval as a pair
    * of big integers. This interval may be converted to an immutable set
    * via `this#toSet()`.
@@ -330,14 +340,14 @@ export interface RuntimeValue
 
   /**
    * If this runtime value is set-like, return the number of its elements,
-   * unless its infinite. If the set is infinite, then Number.POSITIVE_INFINITY
-   * is returned.
+   * unless its infinite. If the set is infinite, throw an exception,
+   * as there is no way to efficiently deal with infinite cardinalities.
    *
    * @return the number of set elements, if the set is finite,
-   * or Number.POSITIVE_INFINITY
+   * or throw Error, if the set is infinite
    */
 
-  cardinality (): number
+  cardinality (): bigint
 }
 
 /**
@@ -525,7 +535,7 @@ abstract class RuntimeValueBase implements RuntimeValue {
   }
 
   cardinality () {
-    return 0
+    return 0n
   }
 
   toTntEx (): TntEx {
@@ -793,7 +803,7 @@ class RuntimeValueSet extends RuntimeValueBase implements RuntimeValue {
   }
 
   cardinality () {
-    return this.set.size
+    return BigInt(this.set.size)
   }
 
   toTntEx (): TntEx {
@@ -891,7 +901,7 @@ class RuntimeValueInterval extends RuntimeValueBase implements RuntimeValue {
   }
 
   cardinality () {
-    return Number(this.last - this.first) + 1
+    return this.last - this.first + 1n
   }
 
   toTntEx (): TntEx {
@@ -1018,14 +1028,14 @@ class RuntimeValueCrossProd
   }
 
   cardinality () {
-    return this.sets.reduce((n, set) => set.cardinality() * n, 1)
+    return this.sets.reduce((n, set) => set.cardinality() * n, 1n)
   }
 
   pick (position: number): RuntimeValue | undefined {
-    let index = Math.floor(position * this.cardinality())
+    let index = Math.floor(position * Number(this.cardinality()))
     const elems: RuntimeValue[] = []
     for (const set of this.sets) {
-      const card = set.cardinality()
+      const card = Number(set.cardinality())
       const elem = set.pick((index % card) / card)
       if (card <= 0) {
         return undefined
@@ -1136,10 +1146,10 @@ class RuntimeValueMapSet
   }
 
   pick (position: number): RuntimeValue | undefined {
-    let index = Math.floor(position * this.cardinality())
+    let index = Math.floor(position * Number(this.cardinality()))
     const keyValues: [RuntimeValue, RuntimeValue][] = []
-    const domainSize = this.domainSet.cardinality()
-    const rangeSize = this.rangeSet.cardinality()
+    const domainSize = Number(this.domainSet.cardinality())
+    const rangeSize = Number(this.rangeSet.cardinality())
     if (domainSize === 0 || rangeSize === 0) {
       return undefined
     }
@@ -1179,4 +1189,73 @@ function positionToIndex (position: number, size: number) {
   return (position < 0.0 || position >= 1.0)
     ? 0
     : Math.floor(position * size)
+}
+
+/**
+ * An infinite set such as Nat or Int. Since we cannot enumerate infinite
+ * sets, the support for them is very limited.
+ * This is an internal class.
+ */
+class RuntimeValueInfSet extends RuntimeValueBase implements RuntimeValue {
+  kind: 'Nat' | 'Int'
+
+  constructor (kind: 'Nat' | 'Int') {
+    super(true)
+    this.kind = kind
+  }
+
+  [Symbol.iterator] (): Iterator<RuntimeValue> {
+    throw new Error(`Infinite set ${this.kind} is non-enumerable`)
+  }
+
+  hashCode (): number {
+    // the hash codes for Nat and Int are a bit arbitrary, so we make them huge
+    return (this.kind === 'Nat')
+      ? Number.MAX_SAFE_INTEGER - 1
+      : Number.MAX_SAFE_INTEGER
+  }
+
+  isSubset (superset: RuntimeValue): boolean {
+    if (superset instanceof RuntimeValueInfSet) {
+      return this.kind !== 'Int' || superset.kind !== 'Nat'
+    } else {
+      return false
+    }
+  }
+
+  toSet (): Set<RuntimeValue> {
+    throw new Error(`Infinite set ${this.kind} is non-enumerable`)
+  }
+
+  contains (elem: RuntimeValue): boolean {
+    if (elem instanceof RuntimeValueInt) {
+      return (this.kind === 'Int') ? true : elem.value >= 0
+    } else {
+      return false
+    }
+  }
+
+  pick (position: number): RuntimeValue | undefined {
+    // We cannot produce a random big integer.
+    // Currently, we constrain integers to 32-bit integers.
+    // In the future, we will let the user to define their own range.
+    if (this.kind === 'Nat') {
+      return rv.mkInt(BigInt(Math.floor(position * (2 ** 32))))
+    } else {
+      return rv.mkInt(BigInt(Math.floor(position * (2 ** 32) - (2 ** 31))))
+    }
+  }
+
+  cardinality (): bigint {
+    throw new Error(`The cardinality of an infinite set ${this.kind} is not a mnumber`)
+  }
+
+  toTntEx (): TntEx {
+    // return the built-in name
+    return {
+      id: 0n,
+      kind: 'name',
+      name: this.kind,
+    }
+  }
 }
