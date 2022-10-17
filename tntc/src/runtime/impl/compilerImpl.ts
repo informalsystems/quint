@@ -865,11 +865,18 @@ export class CompilerVisitor implements IRVisitor {
       // produce the new computable value
       const comp = {
         eval: (): Maybe<RuntimeValue> => {
-          // compute the values of the arguments at this point
-          const values = args.map(a => a.eval())
-          // if they are all defined, apply the function 'fun' to the arguments
-          return merge(values)
-            .map(vs => fun(...vs.map(v => v as RuntimeValue))).join()
+          try {
+            // compute the values of the arguments at this point
+            const values = args.map(a => a.eval())
+            // if they are all defined, apply the function 'fun' to the arguments
+            return merge(values)
+              .map(vs => fun(...vs.map(v => v as RuntimeValue))).join()
+          } catch (error) {
+            const msg =
+              (error instanceof Error) ? error.message : 'unknown error'
+            this.addRuntimeError(sourceId, msg)
+            return none()
+          }
         },
       }
       this.compStack.push(comp)

@@ -1247,7 +1247,7 @@ class RuntimeValueInfSet extends RuntimeValueBase implements RuntimeValue {
   }
 
   cardinality (): bigint {
-    throw new Error(`The cardinality of an infinite set ${this.kind} is not a mnumber`)
+    throw new Error(`The cardinality of an infinite set ${this.kind} is not a number`)
   }
 
   toTntEx (): TntEx {

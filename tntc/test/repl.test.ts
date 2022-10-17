@@ -168,6 +168,23 @@ describe('repl ok', () => {
     await assertRepl(input, output)
   })
 
+  it('handle exceptions', async () => {
+    const input = dedent(
+      `set(Int)
+      |`
+    )
+    const output = dedent(
+      `runtime error: <input>:9:1 - error: Infinite set Int is non-enumerable
+      |9: set(Int)
+      |   ^^^^^^^^
+      |
+      |<result undefined>
+      |
+      |`
+    )
+    await assertRepl(input, output)
+  })
+
   it('assignments', async () => {
     const input = dedent(
       `var x: int
