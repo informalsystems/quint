@@ -138,10 +138,10 @@ module ClockSync3 {
             rcvd <- rcvd,
             Int.guess(advanceClocks),
         },
-        {
+        all {
             time <- time,
             hc <- hc,
-            Procs.guess(p => or {
+            Procs.guess(p => or any {
                 sendMsg(p),
                 receiveMsg(p),
             })
