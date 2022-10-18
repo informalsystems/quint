@@ -386,18 +386,27 @@ export class CompilerVisitor implements IRVisitor {
       case 'tail':
         this.applyFun(app.id, 1, (list) => {
           const l = list.toList()
-          return this.sliceList(app.id, l, 1, l.size)
+          if (l.size > 0) {
+            return this.sliceList(app.id, l, 1, l.size)
+          } else {
+            this.addRuntimeError(app.id, 'Applied tail to an empty list')
+            return none()
+          }
         })
         break
 
       case 'slice':
         this.applyFun(app.id, 3, (list, start, end) => {
-          let [l, s, e] =
+          const [l, s, e] =
             [list.toList(), Number(start.toInt()), Number(end.toInt())]
           // adjust start and end, as JS offers richer API over negative numbers
-          s = Math.min(Math.max(s, 0), l.size)
-          e = Math.max(0, Math.min(e, l.size))
-          return this.sliceList(app.id, l, s, e)
+          if (s >= 0 && s < l.size && e <= l.size && e >= s) {
+            return this.sliceList(app.id, l, s, e)
+          } else {
+            this.addRuntimeError(app.id,
+              `slice(..., ${s}, ${e}) applied to a list of size ${l.size}`)
+            return none()
+          }
         })
         break
 
