@@ -1358,7 +1358,7 @@ concat(s, t)
 // Equivalent to Head(s) in TLA+.
 s.head()
 head(s)
-// List tail.
+// List tail. Note that tail([]) = [].
 // Equivalent to Tail(s) in TLA+.
 s.tail()
 tail(s)
@@ -1377,11 +1377,14 @@ indices(s)
 // Update the list at element i.
 // Equivalent to [ s EXCEPT ![i + 1] = e ] in TLA+.
 s.replaceAt(i, e)
-replaceAt(s, i, e)
-// Slice a list from j to k (both indices inclusive).
-// Equivalent to SubSeq(s, j + 1, k + 1) in TLA+.
-s.slice(j, k)
-slice(s, j, k)
+replaceAt(lst, start, end)
+// Slice a list from `start` until `end`.
+// Like in many PLs, `start` is inclusive, whereas `end` is exclusive.
+// If start < 0 or end > length(lst),
+// they are adjusted to 0 and length(lst), respectively.
+// Equivalent to SubSeq(lst, start + 1, end) in TLA+.
+lst.slice(start, end)
+slice(lst, start, end)
 // Filter a list.
 // Equivalent to SelectSeq(s, Test) in TLA+.
 select(s, Test)
