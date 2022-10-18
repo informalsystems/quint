@@ -123,6 +123,7 @@ connection.onDidChangeConfiguration(change => {
   documents.all().forEach(d => {
     validateTextDocument(d)
       .then((result) => {
+        connection.sendDiagnostics({ uri: d.uri, diagnostics: [] })
         return checkTypesAndEffects(d, result.tntModule, result.sourceMap, result.definitionTable)
       })
       .then((_) => connection.sendDiagnostics({ uri: d.uri, diagnostics: [] }))
@@ -159,6 +160,7 @@ documents.onDidChangeContent(change => {
   console.log('File content changed, checking types and effects again')
   validateTextDocument(change.document)
     .then((result) => {
+      connection.sendDiagnostics({ uri: change.document.uri, diagnostics: [] })
       return checkTypesAndEffects(change.document, result.tntModule, result.sourceMap, result.definitionTable)
     })
     // Clear possible old diagnostics
@@ -326,7 +328,6 @@ function checkEffects (textDocument: TextDocument, tntModule: TntModule, sourceM
   const diagnostics: Diagnostic[] = []
   const effects: Map<Loc, string> = new Map<Loc, string>()
   result.mapLeft(e => {
-    console.log(`${e.size} Effect errors found, sending diagnostics`)
     e.forEach((error, id) => {
       const loc = sourceMap.get(id)
       if (!loc) {

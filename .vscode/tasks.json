@@ -6,8 +6,8 @@
         {
             "label": "Get execution example",
             "type": "shell",
-            "command": "code -r ${workspaceFolder}/examples/example.itf.json",
-            "detail": "apalache-mc simulate Tendermint.tnt",
+            "command": "rm -r _apalache-out; apalache-mc simulate --inv=NoApprove --max-error=1 examples/ERC20/MC_ERC20.tla 2>/dev/null; code -r /home/gabriela/projects/tnt/_apalache-out/MC_ERC20.tla/*/violation1.itf.json",
+            "detail": "apalache-mc simulate erc20.tnt",
             "presentation": {
                 "echo": false,
                 "reveal": "silent",
@@ -18,22 +18,22 @@
             }
         },
         {
-            "label": "Verify Agreement",
+            "label": "Get example with transferFrom transaction",
             "type": "shell",
-            "command": "apalache-mc check --length=5 --inv=Agreement Spec.tla",
-            "detail": "apalache-mc check --inv=Agreement Tendermint.tnt"
+            "command": "rm -r _apalache-out; apalache-mc check --inv=NoTransferFrom examples/ERC20/MC_ERC20.tla 2>/dev/null; code -r /home/gabriela/projects/tnt/_apalache-out/MC_ERC20.tla/*/violation1.itf.json",
+            "detail": "apalache-mc check --inv=NoTransferFrom erc20.tnt"
         },
         {
-            "label": "Verify Validity",
+            "label": "Verify NoNegativeBalances",
             "type": "shell",
-            "command": "apalache-mc check --length=5 --inv=MyProperty Spec.tla",
-            "detail": "apalache-mc check --inv=Validity Tendermint.tnt"
+            "command": "rm -r _apalache-out; apalache-mc check --length=5 --inv=NoNegativeBalances examples/ERC20/MC_ERC20.tla",
+            "detail": "apalache-mc check --inv=NoNegativeBalances erc20.tnt"
         },
         {
-            "label": "Verify Accountability",
+            "label": "Reproduce attack vector",
             "type": "shell",
-            "command": "apalache-mc check --length=5 --inv=Agreement Spec.tla",
-            "detail": "apalache-mc check --inv=Accountability Tendermint.tnt"
+            "command": "rm -r _apalache-out; apalache-mc check --inv=NoTransferFromWhileApproveInFlight examples/ERC20/MC_ERC20.tla 2>/dev/null; code -r /home/gabriela/projects/tnt/_apalache-out/MC_ERC20.tla/*/violation1.itf.json",
+            "detail": "apalache-mc check --inv=NoTransferFromWhileApproveInFlight erc20.tnt"
         }
     ]
 }

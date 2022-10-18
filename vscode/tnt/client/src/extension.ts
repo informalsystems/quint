@@ -31,7 +31,7 @@ export function activate (context: ExtensionContext) {
     //   return;
     // }
     //   activeEditor.document.,
-    let uri = Uri.file('/home/gabriela/projects/tnt/examples/tictactoe/example.itf.json');
+    let uri = Uri.file('/home/gabriela/projects/tnt/examples/ERC20/example.itf.json');
     let success = await commands.executeCommand('vscode.openFolder', uri);
   };
 
