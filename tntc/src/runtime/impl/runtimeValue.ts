@@ -29,7 +29,7 @@
  *  has optimized implementations of `contains`, `isSubset`, and `equals`
  *  (technically, `equals` is implemented in RuntimeValueBase).
  *
- *  - RuntimeValuePowerset: TBD
+ *  - RuntimeValuePowerset: to compactly represent powersets.
  *
  *  - RuntimeValueMapSet: to compactly represent a set of functions.
  *
@@ -221,6 +221,16 @@ export const rv = {
    */
   mkMapSet: (domainSet: RuntimeValue, rangeSet: RuntimeValue): RuntimeValue => {
     return new RuntimeValueMapSet(domainSet, rangeSet)
+  },
+
+  /**
+   * Make a runtime value that represents a powerset.
+   *
+   * @param the baseset
+   * @return a new runtime value that represents the powerset of the baseset
+   */
+  mkPowerset: (baseSet: RuntimeValue): RuntimeValue => {
+    return new RuntimeValuePowerset(baseSet)
   },
 }
 
@@ -510,6 +520,10 @@ abstract class RuntimeValueBase implements RuntimeValue {
         }
         return true
       }
+    }
+    if (this instanceof RuntimeValuePowerset &&
+        other instanceof RuntimeValuePowerset) {
+      return this.baseSet.equals(other.baseSet)
     }
     if (this instanceof RuntimeValueMapSet &&
         other instanceof RuntimeValueMapSet) {
@@ -1064,6 +1078,110 @@ class RuntimeValueCrossProd
     }
 
     return new RuntimeValueTupleOrList('tup', List.of(...elems))
+  }
+
+  toTntEx (): TntEx {
+    // simply enumerate the values
+    const elems: TntEx[] = []
+    for (const i of this) {
+      elems.push(i.toTntEx())
+    }
+    // return the expression set(...elems)
+    return {
+      id: 0n,
+      kind: 'app',
+      opcode: 'set',
+      args: elems,
+    }
+  }
+}
+
+/**
+ * A set of runtime values represented via powersets.
+ * This is an internal class.
+ */
+class RuntimeValuePowerset
+  extends RuntimeValueBase implements RuntimeValue {
+  // the base set
+  baseSet: RuntimeValue
+
+  constructor (baseSet: RuntimeValue) {
+    super(true)
+    this.baseSet = baseSet
+  }
+
+  [Symbol.iterator] () {
+    // The below code is an adaptation of RuntimeValueMapSet.
+    // Can we generalize both?
+    const base = this.baseSet
+    const nsets = this.cardinality()
+    function * gen () {
+      // Generate `nsets` maps by using number increments.
+      // Note that 2 ** 0 == 1.
+      for (let i = 0; i < nsets; i++) {
+        const elems: RuntimeValue[] = []
+        // Convert the global index i to bits, which define membership.
+        // By interactively dividing the index by 2 and
+        // taking its remainder.
+        let index = i
+        for (const e of base) {
+          if (index % 2 === 1) {
+            elems.push(e)
+          }
+          index = Math.floor(index / 2)
+        }
+        yield rv.mkSet(elems)
+      }
+    }
+
+    return gen()
+  }
+
+  hashCode (): number {
+    return this.baseSet.hashCode()
+  }
+
+  contains (elem: RuntimeValue): boolean {
+    if (elem.isSetLike) {
+      for (const e of elem) {
+        if (!this.baseSet.contains(e)) {
+          return false
+        }
+      }
+      return true
+    } else {
+      return false
+    }
+  }
+
+  isSubset (superset: RuntimeValue): boolean {
+    if (superset instanceof RuntimeValuePowerset) {
+      return this.baseSet.isSubset(superset.baseSet)
+    } else {
+      // fall back to the general implementation
+      return super.isSubset(superset)
+    }
+  }
+
+  cardinality () {
+    return 2 ** this.baseSet.cardinality()
+  }
+
+  pick (position: number): RuntimeValue | undefined {
+    let index = Math.floor(position * this.cardinality())
+    const elems: RuntimeValue[] = Array(...this.baseSet)
+
+    for (const elem of this.baseSet) {
+      const isMem = (index % 2) === 1
+      index = index / 2
+      if (isMem) {
+        elems.push(elem)
+      } else {
+        return undefined
+      }
+    }
+
+    return rv.mkSet(elems)
   }
 
   toTntEx (): TntEx {
