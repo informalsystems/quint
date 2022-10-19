@@ -1111,26 +1111,14 @@ class RuntimeValuePowerset
   }
 
   [Symbol.iterator] () {
-    // The below code is an adaptation of RuntimeValueMapSet.
-    // Can we generalize both?
-    const base = this.baseSet
     const nsets = this.cardinality()
+    // copy fromIndex, as gen does not have access to this.
+    const fromIndex = (i: number): RuntimeValue => this.fromIndex(i)
     function * gen () {
-      // Generate `nsets` maps by using number increments.
+      // Generate `nsets` sets by using number increments.
       // Note that 2 ** 0 == 1.
       for (let i = 0; i < nsets; i++) {
-        const elems: RuntimeValue[] = []
-        // Convert the global index i to bits, which define membership.
-        // By interactively dividing the index by 2 and
-        // taking its remainder.
-        let index = i
-        for (const e of base) {
-          if (index % 2 === 1) {
-            elems.push(e)
-          }
-          index = Math.floor(index / 2)
-        }
-        yield rv.mkSet(elems)
+        yield fromIndex(i)
       }
     }
 
@@ -1168,20 +1156,8 @@ class RuntimeValuePowerset
   }
 
   pick (position: number): RuntimeValue | undefined {
-    let index = Math.floor(position * this.cardinality())
-    const elems: RuntimeValue[] = Array(...this.baseSet)
-
-    for (const elem of this.baseSet) {
-      const isMem = (index % 2) === 1
-      index = index / 2
-      if (isMem) {
-        elems.push(elem)
-      } else {
-        return undefined
-      }
-    }
-
-    return rv.mkSet(elems)
+    const index = Math.floor(position * this.cardinality())
+    return this.fromIndex(index)
   }
 
   toTntEx (): TntEx {
@@ -1197,6 +1173,22 @@ class RuntimeValuePowerset
       opcode: 'set',
       args: elems,
     }
+  }
+
+  // Convert the global index i to bits, which define membership.
+  // By interactively dividing the index by 2 and
+  // taking its remainder.
+  private fromIndex (index: number): RuntimeValue {
+    const elems: RuntimeValue[] = []
+    let bits = index
+    for (const elem of this.baseSet) {
+      const isMem = (bits % 2) === 1
+      bits = Math.floor(bits / 2)
+      if (isMem) {
+        elems.push(elem)
+      }
+    }
+    return rv.mkSet(elems)
   }
 }
 
