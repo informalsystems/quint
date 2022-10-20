@@ -1130,16 +1130,17 @@ class RuntimeValuePowerset
   }
 
   contains (elem: RuntimeValue): boolean {
-    if (elem.isSetLike) {
-      for (const e of elem) {
-        if (!this.baseSet.contains(e)) {
-          return false
-        }
-      }
-      return true
-    } else {
+    if (!elem.isSetLike) {
       return false
     }
+    
+    for (const e of elem) {
+      if (!this.baseSet.contains(e)) {
+        return false
+      }
+    }
+    
+    return true
   }
 
   isSubset (superset: RuntimeValue): boolean {
