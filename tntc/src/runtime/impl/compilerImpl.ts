@@ -1076,8 +1076,7 @@ export class CompilerVisitor implements IRVisitor {
           const valuesBefore = this.snapshotNextVars()
           // TODO: the number of retries should be controlled in the settings
           // https://github.com/informalsystems/tnt/issues/279
-          let retries = 3
-          while (retries > 0) {
+          for (let retries = 0; retries < 3; retries++) {
             // randomly pick an element
             const elem = (set as RuntimeValue).pick(Math.random())
             callable.registers[0].registerValue = just(elem)
@@ -1089,7 +1088,6 @@ export class CompilerVisitor implements IRVisitor {
               return result
             }
             // the body of guess evaluates to false, try again
-            retries--
             this.recoverNextVars(valuesBefore)
           }
           return just(rv.mkBool(false))
