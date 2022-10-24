@@ -25,6 +25,7 @@
 // >>> .load ics23.tnt
 // >>> import ics23pbt.*
 // >>> _test(1000, 10, "Init", "Next", "TestVerify")
+// >>> _test(1000, 10, "Init", "Next", "TestNonMem")
 //
 // If REPL displays 'false', it has found an example,
 // which can be inspected with _lastTrace.
