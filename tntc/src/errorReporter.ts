@@ -22,7 +22,7 @@ import { ErrorMessage } from './tntParserFrontend'
  * @param finder a line-column lib finder object created from text, used as a cached map of indexes
  * @param message the error message to be reported
  * @param lineOffset a number to add to line numbers in error messages,
- *        the default value is
+ *        the default value is 1
  *
  * @returns a formatted string with error information
  * */
