@@ -158,8 +158,8 @@ THEOREM ShowsSafety ==
 (* straightforward.                                                        *)
 (***************************************************************************/
 action Init = all {
-  votes  <- Acceptor.mapOf({ _ => Set() }),
-  maxBal <- Acceptor.mapOf({ _ => -1 }),
+  votes  <- Acceptor.mapBy({ _ => Set() }),
+  maxBal <- Acceptor.mapBy({ _ => -1 }),
 }
 
 

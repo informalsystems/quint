@@ -82,12 +82,12 @@ val AllProcs = Corr.union(Faulty)
 val Rounds = 0.to(MaxRound)
 // a special value to denote a nil round, outside of Rounds
 val NilRound = -1
-val RoundsOrNil = set(NilRound).union(Rounds)
+val RoundsOrNil = Set(NilRound).union(Rounds)
 // the set of all values
 val Values = ValidValues.union(InvalidValues)
 // a special value for a nil round, outside of Values
 val NilValue = "None"
-val ValuesOrNil = set(NilValue).union(Values)
+val ValuesOrNil = Set(NilValue).union(Values)
 
 // a value hash is modeled as identity
 def Id(v) = v
