@@ -690,27 +690,15 @@ definitions](#operator-definitions), the type of operators is specified using
 the syntax `(a_1, ..., a_n) => b`, for an operator that takes arguments of
 types `a_1` to `a_n` to an expression of type `b`. _Anonymous operators
 expressions_, known in TLA+ as "lambdas", can be constructed with the
-corresponding syntax.  `(x_1, ..., x_n) => e` is an anonymous operator which,
-when applied to expressions `x_1` to `x_n`, reduces to the expression `e`.
+corresponding syntax.
 
-An anonymous operator of one argument is defined using one of the two forms:
+In TNT, `(x_1, ..., x_n) => e` is an anonymous operator which, when applied to
+expressions `e_1` to `e_n`, reduces to the expression `e[e_1/x_1, ...,
+e_n/x_n]` (that is, every parameter `x_i` is substituted with the expression
+`e_i`, for `1 <= i <= n`). Two important comments are in order:
 
-```scala
-x => e
-(x) => e
-```
-
-Compare this to the TLA+2 syntax:
-
-```tla
-LAMBDA x: e
-```
-
-Similarly, an anonymous operator of `n` arguments can be defined as:
-
-```scala
-(x_1, ..., x_n => e)
-```
+ 1. When `n = 1`, we can write `x => e` instead of `(x) => e`.
+ 1. The case of `n = 0` is not allowed.
 
 Compare this to the TLA+2 syntax:
 
@@ -726,7 +714,7 @@ _ => e
 (_, ..., _) => e
 ```
 
-Note that lambdas can be only passed as arguments to other operators.  They
+Note that lambdas can be only passed as arguments to other operators. They
 cannot be freely assigned to values or returned as a result of an operator.
 
 ### Two forms of operator application
