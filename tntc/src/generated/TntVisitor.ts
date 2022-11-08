@@ -65,7 +65,6 @@ import { LambdaContext } from "./TntParser";
 import { IdentOrHoleContext } from "./TntParser";
 import { IdentOrStarContext } from "./TntParser";
 import { PathContext } from "./TntParser";
-import { LambdaOrExprContext } from "./TntParser";
 import { ArgListContext } from "./TntParser";
 import { NormalCallNameContext } from "./TntParser";
 import { NameAfterDotContext } from "./TntParser";
@@ -562,13 +561,6 @@ export interface TntVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitPath?: (ctx: PathContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by `TntParser.lambdaOrExpr`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitLambdaOrExpr?: (ctx: LambdaOrExprContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `TntParser.argList`.

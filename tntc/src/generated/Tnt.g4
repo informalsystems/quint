@@ -141,12 +141,6 @@ identOrStar :   '*' | IDENTIFIER
 path    : IDENTIFIER ('.' IDENTIFIER)*
         ;
 
-// A lambda or an expression with lambda having a priority
-lambdaOrExpr :  lambda
-        |       expr
-        ;
-
-//argList :      lambdaOrExpr (',' lambdaOrExpr)*
 argList :      expr (',' expr)*
         ;
 
