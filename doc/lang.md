@@ -690,7 +690,7 @@ definitions](#operator-definitions), the type of operators is specified using
 the syntax `(a_1, ..., a_n) => b`, for an operator that takes arguments of
 types `a_1` to `a_n` to an expression of type `b`. _Anonymous operators
 expressions_, known in TLA+ as "lambdas", can be constructed with the
-corresponding syntax.  `(x_1, ..., x)n) => e` is an anonymous operator which,
+corresponding syntax.  `(x_1, ..., x_n) => e` is an anonymous operator which,
 when applied to expressions `x_1` to `x_n`, reduces to the expression `e`.
 
 An anonymous operator of one argument is defined using one of the two forms:
