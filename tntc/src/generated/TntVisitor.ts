@@ -24,6 +24,7 @@ import { InstanceContext } from "./TntParser";
 import { TypedefContext } from "./TntParser";
 import { ImportDefContext } from "./TntParser";
 import { DotCallContext } from "./TntParser";
+import { LambdaConsContext } from "./TntParser";
 import { OperAppContext } from "./TntParser";
 import { ListAppContext } from "./TntParser";
 import { UminusContext } from "./TntParser";
@@ -247,6 +248,14 @@ export interface TntVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitDotCall?: (ctx: DotCallContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `lambdaCons`
+	 * labeled alternative in `TntParser.expr`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitLambdaCons?: (ctx: LambdaConsContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by the `operApp`

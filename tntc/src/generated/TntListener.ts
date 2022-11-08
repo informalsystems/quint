@@ -24,6 +24,7 @@ import { InstanceContext } from "./TntParser";
 import { TypedefContext } from "./TntParser";
 import { ImportDefContext } from "./TntParser";
 import { DotCallContext } from "./TntParser";
+import { LambdaConsContext } from "./TntParser";
 import { OperAppContext } from "./TntParser";
 import { ListAppContext } from "./TntParser";
 import { UminusContext } from "./TntParser";
@@ -349,6 +350,19 @@ export interface TntListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitDotCall?: (ctx: DotCallContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `lambdaCons`
+	 * labeled alternative in `TntParser.expr`.
+	 * @param ctx the parse tree
+	 */
+	enterLambdaCons?: (ctx: LambdaConsContext) => void;
+	/**
+	 * Exit a parse tree produced by the `lambdaCons`
+	 * labeled alternative in `TntParser.expr`.
+	 * @param ctx the parse tree
+	 */
+	exitLambdaCons?: (ctx: LambdaConsContext) => void;
 
 	/**
 	 * Enter a parse tree produced by the `operApp`

@@ -687,17 +687,18 @@ Action mode, the parser *must* issue an error.
 
 As noted when we introduced [types](#types) and [operator
 definitions](#operator-definitions), the type of operators is specified using
-the syntax `(a1, ..., an) => b`, for an operator that takes arguments of types
-`a1` to `an` to an expression of type `b`. _Anonymous operators expressions_,
-known in TLA+ as "lambdas", can be constructed with the corresponding syntax.
-`(x1, ..., xn) => e` is an anonymous operator which, when applied to expressions
-`x1` to `xn`, reduces to the expression `e`.
+the syntax `(a_1, ..., a_n) => b`, for an operator that takes arguments of
+types `a_1` to `a_n` to an expression of type `b`. _Anonymous operators
+expressions_, known in TLA+ as "lambdas", can be constructed with the
+corresponding syntax.  `(x_1, ..., x)n) => e` is an anonymous operator which,
+when applied to expressions `x_1` to `x_n`, reduces to the expression `e`.
 
-Depending on the mode, an anonymous operator of one argument is defined as:
+An anonymous operator of one argument is defined using one of the two forms:
 
-- In the Action mode: `{ x => e }`
-- In a mode different from the Action mode: `(x => e)`
-- To avoid too many parentheses, `(x => e)` may be written as: `x => e`
+```scala
+x => e
+(x) => e
+```
 
 Compare this to the TLA+2 syntax:
 
@@ -705,11 +706,11 @@ Compare this to the TLA+2 syntax:
 LAMBDA x: e
 ```
 
-Similarly, an anonymous operator of `n` arguments is defined as:
+Similarly, an anonymous operator of `n` arguments can be defined as:
 
-- In the Action mode: `{ x_1, ..., x_n => e }`
-- In a mode different from the Action mode:
-    `(x_1, ..., x_n => e)` or `x_1, ..., x_n => e`
+```scala
+(x_1, ..., x_n => e)
+```
 
 Compare this to the TLA+2 syntax:
 
@@ -720,12 +721,9 @@ LAMBDA x_1, ..., x_n: e
 As is common, we can skip parameter names, if we don't need them:
 
 ```
-{ _ => e }
-(_ => e)
 _ => e
-{ _, ..., _ => e }
-(_, ..., _ => e)
-_, ..., _ => e
+(_) => e
+(_, ..., _) => e
 ```
 
 Note that lambdas can be only passed as arguments to other operators.  They
