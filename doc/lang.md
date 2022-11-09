@@ -4,7 +4,7 @@
 
 | Revision | Date       | Author                                                  |
 |:---------|:-----------|:--------------------------------------------------------|
-| 25       | 19.10.2022 | Igor Konnov, Shon Feder, Jure Kukovec, Gabriela Moreira |
+| 26       | 08.11.2022 | Igor Konnov, Shon Feder, Jure Kukovec, Gabriela Moreira, Thomas Pani |
 
 This document presents language constructs in the same order as the [summary of
 TLA+](https://lamport.azurewebsites.net/tla/summary.pdf).
@@ -365,6 +365,10 @@ val isTimerPositive =
 def hasExpired(timestamp: int) =
     timer >= timestamp
 
+// an initialization action that assigns initial values to the state variables
+action init =
+  timer <- 0
+
 // an action that updates the value of the state variable timer
 action advance(unit: int) =
     // a delayed assignment (see below in the manual)
@@ -477,8 +481,8 @@ module Foo {
   const N: int
   var x: int
 
-  val Init =
-    x == 0
+  action Init =
+    x <- 0
 
   action Next =
     x <- x + N
@@ -687,29 +691,18 @@ Action mode, the parser *must* issue an error.
 
 As noted when we introduced [types](#types) and [operator
 definitions](#operator-definitions), the type of operators is specified using
-the syntax `(a1, ..., an) => b`, for an operator that takes arguments of types
-`a1` to `an` to an expression of type `b`. _Anonymous operators expressions_,
-known in TLA+ as "lambdas", can be constructed with the corresponding syntax.
-`(x1, ..., xn) => e` is an anonymous operator which, when applied to expressions
-`x1` to `xn`, reduces to the expression `e`.
+the syntax `(a_1, ..., a_n) => b`, for an operator that takes arguments of
+types `a_1` to `a_n` to an expression of type `b`. _Anonymous operators
+expressions_, known in TLA+ as "lambdas", can be constructed with the
+corresponding syntax.
 
-Depending on the mode, an anonymous operator of one argument is defined as:
+In TNT, `(x_1, ..., x_n) => e` is an anonymous operator which, when applied to
+expressions `e_1` to `e_n`, reduces to the expression `e[e_1/x_1, ...,
+e_n/x_n]` (that is, every parameter `x_i` is substituted with the expression
+`e_i`, for `1 <= i <= n`). Two important comments are in order:
 
-- In the Action mode: `{ x => e }`
-- In a mode different from the Action mode: `(x => e)`
-- To avoid too many parentheses, `(x => e)` may be written as: `x => e`
-
-Compare this to the TLA+2 syntax:
-
-```tla
-LAMBDA x: e
-```
-
-Similarly, an anonymous operator of `n` arguments is defined as:
-
-- In the Action mode: `{ x_1, ..., x_n => e }`
-- In a mode different from the Action mode:
-    `(x_1, ..., x_n => e)` or `x_1, ..., x_n => e`
+ 1. When `n = 1`, we can write `x => e` instead of `(x) => e`.
+ 1. The case of `n = 0` is not allowed.
 
 Compare this to the TLA+2 syntax:
 
@@ -720,15 +713,12 @@ LAMBDA x_1, ..., x_n: e
 As is common, we can skip parameter names, if we don't need them:
 
 ```
-{ _ => e }
-(_ => e)
 _ => e
-{ _, ..., _ => e }
-(_, ..., _ => e)
-_, ..., _ => e
+(_) => e
+(_, ..., _) => e
 ```
 
-Note that lambdas can be only passed as arguments to other operators.  They
+Note that lambdas can be only passed as arguments to other operators. They
 cannot be freely assigned to values or returned as a result of an operator.
 
 ### Two forms of operator application
@@ -1831,7 +1821,7 @@ module root {
     var x: int
     var y: int
 
-    initializer Init = all {
+    action Init = all {
       x <- 0,
       y <- 0
     }
@@ -1854,7 +1844,7 @@ the same variable. Hence, the module `AB` will look like follows:
 
 ```scala
   module AB = {
-    initializer Init = all {
+    action Init = all {
       a <- 0,
       b <- 0
     }
@@ -1877,7 +1867,7 @@ module root {
     var x: int
     var y: int
 
-    initializer Init = all {
+    action Init = all {
       x <- 1,
       y <- 0
     }

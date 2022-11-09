@@ -24,6 +24,7 @@ import { InstanceContext } from "./TntParser";
 import { TypedefContext } from "./TntParser";
 import { ImportDefContext } from "./TntParser";
 import { DotCallContext } from "./TntParser";
+import { LambdaConsContext } from "./TntParser";
 import { OperAppContext } from "./TntParser";
 import { ListAppContext } from "./TntParser";
 import { UminusContext } from "./TntParser";
@@ -58,13 +59,13 @@ import { ParamsContext } from "./TntParser";
 import { InstanceModContext } from "./TntParser";
 import { TypeContext } from "./TntParser";
 import { TypeUnionRecOneContext } from "./TntParser";
+import { RowContext } from "./TntParser";
 import { ExprContext } from "./TntParser";
 import { UnitOrExprContext } from "./TntParser";
 import { LambdaContext } from "./TntParser";
 import { IdentOrHoleContext } from "./TntParser";
 import { IdentOrStarContext } from "./TntParser";
 import { PathContext } from "./TntParser";
-import { LambdaOrExprContext } from "./TntParser";
 import { ArgListContext } from "./TntParser";
 import { NormalCallNameContext } from "./TntParser";
 import { NameAfterDotContext } from "./TntParser";
@@ -247,6 +248,14 @@ export interface TntVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitDotCall?: (ctx: DotCallContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `lambdaCons`
+	 * labeled alternative in `TntParser.expr`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitLambdaCons?: (ctx: LambdaConsContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by the `operApp`
@@ -513,6 +522,13 @@ export interface TntVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitTypeUnionRecOne?: (ctx: TypeUnionRecOneContext) => Result;
 
 	/**
+	 * Visit a parse tree produced by `TntParser.row`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitRow?: (ctx: RowContext) => Result;
+
+	/**
 	 * Visit a parse tree produced by `TntParser.expr`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -553,13 +569,6 @@ export interface TntVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitPath?: (ctx: PathContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by `TntParser.lambdaOrExpr`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitLambdaOrExpr?: (ctx: LambdaOrExprContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `TntParser.argList`.
