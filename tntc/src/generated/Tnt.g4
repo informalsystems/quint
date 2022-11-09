@@ -5,7 +5,7 @@
  *  1. Keep the grammar simple,
  *  2. Make it expressive enough to capture all of TLA+.
  *
- * @author: Igor Konnov, Shon Feder, Gabriela Moreira, Jure Kukovec,
+ * @author: Igor Konnov, Shon Feder, Gabriela Moreira, Jure Kukovec, Thomas Pani
  *          Informal Systems, 2021-2022
  */
 grammar Tnt;
@@ -51,8 +51,8 @@ instanceMod :   'module' IDENTIFIER '=' IDENTIFIER
 // Types in Type System 1.2 of Apalache, which supports discriminated unions
 type :          <assoc=right> type '->' type                    # typeFun
         |       '(' (type (',' type)*)? ','? ')' '=>' type      # typeOper
-        |       'set' '(' type ')'                              # typeSet
-        |       'list' '(' type ')'                             # typeList
+        |       SET '[' type ']'                                # typeSet
+        |       LIST '[' type ']'                               # typeList
         |       '(' type ',' type (',' type)* ','? ')'          # typeTuple
         |       '{' IDENTIFIER ':' type
                     (',' IDENTIFIER ':' type)* ','? '}'         # typeRec
@@ -144,19 +144,20 @@ path    : IDENTIFIER ('.' IDENTIFIER)*
 argList :      expr (',' expr)*
         ;
 
-// operators in the normal call may use some reserved names
+// operators in the normal call may use a few reserved names,
+// which are not recognized as identifiers.
 normalCallName :   IDENTIFIER
-        |       op=(IN | NOTIN | AND | OR | IFF | IMPLIES | SET | LIST | SUBSETEQ)
+        |       op=(AND | OR | IFF | IMPLIES | SET | LIST)
         ;
 
-// Some infix operators may be called via lhs.oper(rhs),
+// A few infix operators may be called via lhs.oper(rhs),
 // without causing any ambiguity.
 nameAfterDot :  IDENTIFIER
-        |       op=(IN | NOTIN | AND | OR | IFF | IMPLIES | SUBSETEQ)
+        |       op=(AND | OR | IFF | IMPLIES)
         ;
 
 // special operators
-operator: (AND | OR | IFF | IMPLIES | SUBSETEQ | IN | NOTIN |
+operator: (AND | OR | IFF | IMPLIES |
            GT  | LT  | GE  | LE | NE | EQ | ASGN |
            MUL | DIV | MOD | PLUS | MINUS | '^')
         ;
@@ -178,11 +179,8 @@ AND             :   'and' ;
 OR              :   'or'  ;
 IFF             :   'iff' ;
 IMPLIES         :   'implies' ;
-SUBSETEQ        :   'subseteq' ;
-IN              :   'in' ;
-NOTIN           :   'notin' ;
-SET             :   'set' ;
-LIST            :   'list' ;
+SET             :   'Set' ;
+LIST            :   'List' ;
 MATCH           :   'match' ;
 PLUS            :   '+' ;
 MINUS           :   '-' ;
