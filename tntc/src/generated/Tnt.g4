@@ -147,7 +147,7 @@ argList :      expr (',' expr)*
 // operators in the normal call may use a few reserved names,
 // which are not recognized as identifiers.
 normalCallName :   IDENTIFIER
-        |       op=(AND | OR | IFF | IMPLIES | SET | LIST)
+        |       op=(AND | OR | IFF | IMPLIES | SET | LIST | MAP)
         ;
 
 // A few infix operators may be called via lhs.oper(rhs),
@@ -181,6 +181,7 @@ IFF             :   'iff' ;
 IMPLIES         :   'implies' ;
 SET             :   'Set' ;
 LIST            :   'List' ;
+MAP             :   'Map' ;
 MATCH           :   'match' ;
 PLUS            :   '+' ;
 MINUS           :   '-' ;
