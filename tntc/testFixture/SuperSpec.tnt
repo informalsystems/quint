@@ -168,8 +168,8 @@ module withConsts {
   def isEmpty(s) = s == []
 
   // Bultin infix operators
-  val in_2_empty = 2 in Set()
-  val notin_2_empty = 2 notin Set()
+  val in_2_empty = 2.in(Set())
+  val notin_2_empty = 2.notin(Set())
   val subseteq_empty = Set().subseteq(Set())
 
   // Nested Modules
