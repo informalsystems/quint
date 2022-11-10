@@ -56,7 +56,7 @@ the following is written:
  - If the command succeeds, the file contains the parsed and resolved module
    in [TNT IR][] (JSON):
 
-   ```
+   ```json
    {
      "status": "resolved",
      "module": <IR>,
@@ -68,8 +68,8 @@ the following is written:
    are written in the format of [ADR002][].
 
  - If the command fails, the file contains an error message in JSON:
-   
-   ```
+
+   ```json
    {
      "result": "error",
      "messages": [ <errors and warnings> ]
@@ -83,14 +83,57 @@ information is written to `<src>.map` in the format of [Source map][].
 
 *The option `--source-map` is not implemented yet.*
 
-## Command run
+## Command typecheck
+
+*This command is work in progress.*
 
 ```sh
-tntc run [--seed=<seed>] [--timeout=sec] [--out=<out>.json] <spec>.tnt
+tntc typecheck [--out=<out>.json] <spec>.tnt
+```
+
+This command infers types in the TNT specification, which is provided in the
+input file `<spec>.tnt`. Before doing that, it performs the same steps as the
+command `parse`. If the command produces errors, these errors are printed on
+`stderr`. If there are no errors, nothing is printed.
+
+**Option `--out`**. If the user supplies the flag `--out`, then the
+parsing result is written to the file `<out>.json`. Depending on the outcome,
+the following is written:
+
+ - If the command succeeds, the file contains the parsed and resolved module
+   in [TNT IR][] (JSON):
+
+   ```json
+   {
+     "status": "typed",
+     "module": <IR>
+   }
+   ```
+
+   The module contents is the JSON representation of [TNT IR][].
+
+ - If the command fails, the file contains an error message in JSON:
+
+   ```json
+   {
+     "result": "error",
+     "messages": [ <errors> ]
+   } 
+   ```
+
+   The errors and warnings are written in the format of [ADR002][].
+
+## Command run
+
+*This command is not implemented yet.*
+
+```sh
+tntc run [--seed=<seed>] [--timeout=sec] [--out=<out>.json] <spec>.tnt <name>
 ```
 
 This command produces a random execution of a TNT specification,
-whose name is given with `<spec>.tnt`.
+whose name is given with `<spec>.tnt`. The random execution should follow
+the run structure that is given in the definition called `<name>`.
 
 **Option `--seed`**. The optional parameter `--seed` specifies the initial seed
 for the random number generator. This is useful for reproducibility of
@@ -108,8 +151,8 @@ of an output file.
 
  - If the specification cannot be run (e.g., due to a parsing error), the file
    contains an error message in JSON:
-   
-   ```
+
+   ```json
    {
      "result": "error",
      "messages": [ <errors and warnings> ]
@@ -119,6 +162,8 @@ of an output file.
    The errors and warnings are written in the format of [ADR002][].
 
 ## Command test
+
+*This command is not implemented yet.*
 
 ```sh
 tntc test [--seed=<seed>] \
@@ -150,7 +195,7 @@ of an output file.
    command succeeds. The output file contains the parsed and resolved module in
    [TNT IR][] (JSON):
 
-   ```
+   ```json
    {
      "status": "tested",
      "tests": {
@@ -163,51 +208,11 @@ of an output file.
 
  - If the tests cannot be run (e.g., due to a parsing error), the file contains
    an error message in JSON:
-   
-   ```
+
+   ```json
    {
      "result": "error",
      "messages": [ <errors and warnings> ]
-   } 
-   ```
-
-   The errors and warnings are written in the format of [ADR002][].
-
-## Command typecheck
-
-*This command is not implemented yet.*
-
-```sh
-tntc typecheck [--out=<out>.json] <spec>.tnt
-```
-
-This command infers types in the TNT specification, which is provided in the
-input file `<spec>.tnt`. Before doing that, it performs the same steps as the
-command `parse`. If the command produces errors, these errors are printed on
-`stderr`. If there are no errors, nothing is printed.
-
-**Option `--out`**. If the user supplies the flag `--out`, then the
-parsing result is written to the file `<out>.json`. Depending on the outcome,
-the following is written:
-
- - If the command succeeds, the file contains the parsed and resolved module
-   in [TNT IR][] (JSON):
-
-   ```
-   {
-     "status": "typed",
-     "module": <IR>
-   }
-   ```
-
-   The module contents is the JSON representation of [TNT IR][].
-
- - If the command fails, the file contains an error message in JSON:
-   
-   ```
-   {
-     "result": "error",
-     "messages": [ <errors> ]
    } 
    ```
 
@@ -236,15 +241,15 @@ the following is written:
 
  - If the command succeeds, the file contains the success data structure:
 
-   ```
+   ```json
    {
      "status": "linted"
    }
    ```
 
  - If the command fails, the file contains error messages and warnings in JSON:
-   
-   ```
+
+   ```json
    {
      "result": "error",
      "messages": [ <errors and warnings> ]
@@ -281,8 +286,8 @@ tntc to-apalache [--out=<out>.json] <spec>.tnt
 ```
 
 This command does the full cycle of parsing, resolving names, type checking,
-flatting modules, etc. After doing all that, it outputs the module in the
-[Apalache JSON] format. Unless the option `--out` is specified, the formatted
+flattening modules, etc. After doing all that, it outputs the module in the
+[Apalache JSON][] format. Unless the option `--out` is specified, the formatted
 specification is written on the standard output.
 
 **Option `--out`**. The optional parameter `--out` specifies the name of
