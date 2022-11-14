@@ -4,7 +4,7 @@
 
 | Revision | Date       | Author                                                  |
 |:---------|:-----------|:--------------------------------------------------------|
-| 26       | 08.11.2022 | Igor Konnov, Shon Feder, Jure Kukovec, Gabriela Moreira, Thomas Pani |
+| 27       | 11.11.2022 | Igor Konnov, Shon Feder, Jure Kukovec, Gabriela Moreira, Thomas Pani |
 
 This document presents language constructs in the same order as the [summary of
 TLA+](https://lamport.azurewebsites.net/tla/summary.pdf).
@@ -59,6 +59,7 @@ TLA+](https://lamport.azurewebsites.net/tla/summary.pdf).
             - [Delayed assignment](#delayed-assignment)
             - [Guess](#guess)
             - [Other action operators of TLA+](#other-action-operators-of-tla)
+        - [Runs](#runs)
         - [Temporal operators](#temporal-operators)
             - [Always](#always)
             - [Eventually](#eventually)
@@ -1581,13 +1582,138 @@ similar to sending over a channel in Golang.
 See the discussion in: [Existential quantifier and non-deterministic
 choice](#existsAndGuess).
 
-#### Other action operators of TLA+
+### Runs
 
-There is no equivalent of the composition operators `A \cdot B`. It is no
-supported by TLC, so the chance that you will need it is very low. We can add
-it later, if you have a use-case for it.
+A run represents a shape of a finite execution. In the simplest case, it does
+represent one concrete execution that is allowed by the specification. In
+general, it is a sequence of actions, which prescribe how to produce one or
+more concrete executions, if such executions exist.
+
+**Discussion.** We have found that TLA+ is lacking a programmatic way of
+describing an example of a system execution. Indeed, TLA+ has the notion of a
+behaviour (simply put, a sequence of states starting with `Init` and connected
+via `Next`). However, it is relatively hard to present a sequence of steps in
+TLA+ itself. For instance, counterexamples produced by TLC and Apalache are not
+first-class TLA+ citizens. In theory, TLA+ has the operator `\cdot` whose
+semantics is sequential composition of two actions. However, we have never seen
+this operator being used in practice.
+
+#### Then
+
+The operator `then` has the following syntax:
+
+```scala
+A.then(B)
+then(A, B)
+```
+
+The semantics of this operator is as follows. When `A.then(B)` is applied to a
+state `s_1`, the operator computes a next state `s_2` of `s_1` by applying
+action `A`, if such a state exists. If `A` returns `true`, then the operator
+`A.then(B)` computes a next state `s_3` of `s_2` by applying action `B`, if
+such a state exists. If `B` returns true, then the operator `A.then(B)` returns
+`true`, the old state is equal to `s_1`, and the new state is equal to `s_3`.
+In all other cases, the operator returns `false`.
+
+This operator is equivalent to `A \cdot B` of TLA+.
+
+**Example.** Consider the specification `counters`:
+
+```scala
+module counters {
+  var n: int
+
+  action Init = {
+    n <- 1
+  }
+
+  action Even = all {
+    n % 2 == 0,
+    n <- n / 2,
+  }
+
+  action ByThree = all {
+    n % 3 == 0,
+    n <- 2 * n
+  }
+
+  action Positive = all {
+    n > 0, n <- n + 1
+  }
+
+  action Next = any {
+    Even, ByThree, Positive
+  }
+
+  run run1 = (n <- 1).then(n <- 2).then(n <- 3).then(n <- 6).then(n <- 3)
+
+  run run2 = (Init).then(Positive).then(Positive).then(ByThree).then(Even)
+
+  run run3 = (Init).then(Next).then(Next).then(Next).then(Next)
+}
+```
+
+The definition `run1` captures the execution that contains five states, in
+which the variable `n` receives the values `1`, `2`, `3`, `6`, and `3`,
+respectively. If we look carefully at the definition of `run2`, it produces
+exactly the same sequence of states as `run1`, but it does so via evaluation of
+the actions `Init`, `Positive`, `Positive`, `ByThree`, and `Even`, in that
+order.
+
+Note that runs do not have to describe exactly one sequences of states. For
+example, `run3` captures all executions of the specification `counters`
+that start with `Init` and evaluate `Next` four times in a row.
+
+#### SkipOr
+
+The operator `skipOr` has the following syntax:
+
+```scala
+skipOr(A)
+```
+
+The operator `skipOr(A)` non-deterministically either executes action `A` (if
+it is enabled in the current state), or does not change the state.
+
+
+#### Times
+
+The operator `times` has the following syntax:
+
+```scala
+n.times(A)
+times(n, A)
+```
+
+The semantics of this operator is as follows:
+
+ - When `n <= 0`, this operator does not change the state.
+ - When `n = 1`, `n.times(A)` is equivalent to `A`.
+ - When `n > 1`, `n.times(A)`, is equivalent to `A.then((n - 1).times(A))`.
+
+Note that the operator `n.times(A)` applies `A` exactly `n` times (when `n` is
+non-negative). If you want to repeat `A` from `i` to `j` times, you can combine
+it with `skipOr` as follows:
+
+```scala
+i.times(A).then((j - i).times(skipOr(A)))
+```
+
+#### Assert
+
+The operator `assert` has the following syntax:
+
+```scala
+assert(condition)
+```
+
+This operator is always enabled. If `condition` evaluates to `false` in a
+state, then the run should be marked as "failed". How exactly this is reported
+depends on the tool.
 
 ### Temporal operators
+
+Temporal operators describe infinite executions.
 
 #### Always
 
@@ -1699,7 +1825,7 @@ the translation of `enabled(A)` to TLA+.
 
 *Mode:* Temporal. The argument `A` must be in the Action mode.
 
-### Fairness
+#### Fairness
 
 This is equivalent to `WF_e(A)` of TLA+:
 
