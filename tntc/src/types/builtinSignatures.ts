@@ -108,6 +108,7 @@ const temporalOperators = [
 const otherOperators = [
   { name: 'assign', type: '(a, a) => bool' },
   { name: 'ite', type: '(bool, a, a) => a' },
+  { name: 'then', type: '(bool, bool) => bool' },
   // Should we do this? https://github.com/informalsystems/tnt/discussions/109
 ]
 

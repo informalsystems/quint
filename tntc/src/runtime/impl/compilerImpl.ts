@@ -216,6 +216,10 @@ export class CompilerVisitor implements IRVisitor {
         })
         break
 
+      case 'then':
+        this.translateAllOrThen(app)
+        break
+
       case 'eq':
         this.applyFun(app.id, 2, (x, y) => just(rv.mkBool(x.equals(y))))
         break
@@ -240,7 +244,7 @@ export class CompilerVisitor implements IRVisitor {
         break
 
       case 'actionAll':
-        this.translateAndAction(app)
+        this.translateAllOrThen(app)
         break
 
       case 'or':
@@ -970,11 +974,11 @@ export class CompilerVisitor implements IRVisitor {
     this.compStack.push(mkFunComputable(lazyCompute))
   }
 
-  // translate all { A, ..., C }
-  private translateAndAction (app: ir.TntApp) {
+  // translate all A.then(B)
+  private translateThen (app: ir.TntApp) {
     if (this.compStack.length < app.args.length) {
       this.addCompileError(app.id,
-        'Not enough arguments on stack for "all"')
+        'Not enough arguments on stack for "then"')
       return
     }
     const args = this.compStack.splice(-app.args.length)
@@ -997,6 +1001,49 @@ export class CompilerVisitor implements IRVisitor {
           // as evaluation was not successful
           this.recoverNextVars(savedValues)
           break
+        }
+      }
+
+      return result
+    }
+
+    this.compStack.push(mkFunComputable(lazyCompute))
+  }
+
+  // translate all { A, ..., C } or A.then(B)
+  private translateAllOrThen (app: ir.TntApp) {
+    if (this.compStack.length < app.args.length) {
+      this.addCompileError(app.id,
+        `Not enough arguments on stack for "${app.opcode}"`)
+      return
+    }
+    const args = this.compStack.splice(-app.args.length)
+
+    const lazyCompute = () => {
+      // save the values of the next variables, as actions may update them
+      const savedValues = this.snapshotNextVars()
+      let result: Maybe<EvalResult> = just(rv.mkBool(true))
+      // Evaluate arguments iteratively.
+      // Stop as soon as one of the arguments returns false.
+      // This is a form of Boolean short-circuiting.
+      let nargsLeft = args.length
+      for (const arg of args) {
+        nargsLeft--
+        // either the argument is evaluated to false, or fails
+        result = arg.eval().or(just(rv.mkBool(false)))
+        const boolResult = (result.unwrap() as RuntimeValue).toBool()
+        // as soon as one of the arguments evaluates to false,
+        // break out of the loop
+        if (boolResult === false) {
+          // restore the values of the next variables,
+          // as evaluation was not successful
+          this.recoverNextVars(savedValues)
+          break
+        }
+
+        // switch to the next frame, when implementing A.then(B)
+        if (app.opcode === 'then' && nargsLeft > 0) {
+          this.shiftVars()
         }
       }
 
