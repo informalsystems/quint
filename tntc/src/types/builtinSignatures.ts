@@ -1,10 +1,29 @@
+/* ----------------------------------------------------------------------------------
+ * Copyright (c) Informal Systems 2022. All rights reserved.
+ * Licensed under the Apache 2.0.
+ * See License.txt in the project root for license information.
+ * --------------------------------------------------------------------------------- */
+
+/**
+ * Type signatures for built-in operators
+ *
+ * @author Gabriela Moreira
+ *
+ * @module
+ */
+
 import { parseTypeOrThrow } from './parser'
 import { typeNames } from '../tntTypes'
 import { Signature, TypeScheme } from './base'
+import { times } from 'lodash'
 
-export function getSignatures (): Map<string, Signature> {
+export function getSignatures(): Map<string, Signature> {
   return new Map<string, Signature>(fixedAritySignatures.concat(multipleAritySignatures))
 }
+
+// Signatures for record related operators cannot be precisely defined
+// with this syntax. Their types are handled directly with constraints 
+// in the specialConstraints.ts file
 
 const literals = [
   { name: 'Nat', type: 'Set[int]' },
@@ -48,18 +67,12 @@ const mapOperators = [
   { name: 'mapBy', type: '(Set[a], (a) => b) => a -> b' },
   { name: 'setToMap', type: '(Set[(a, b)]) => (a -> b)' },
   { name: 'setOfMaps', type: '(Set[a], Set[b]) => Set[a -> b]' },
-  { name: 'update', type: '(a -> b, a, b) => a -> b' },
-  { name: 'updateAs', type: '(a -> b, a, (b) => b) => a -> b' },
+  { name: 'set', type: '(a -> b, a, b) => a -> b' },
+  { name: 'setBy', type: '(a -> b, a, (b) => b) => a -> b' },
   { name: 'put', type: '(a -> b, a, b) => a -> b' },
 ]
 
-// FIXME: Make record and tuple signatures more strict once row types are implemented
-const recordOperators = [
-  { name: 'field', type: '(a, str) => b' },
-  { name: 'fieldNames', type: '(a) => Set[str]' },
-  { name: 'with', type: '(a, str, b) => a' },
-]
-
+// FIXME: Make tuple signatures more strict with row types
 const tupleOperators = [
   { name: 'item', type: '(a, int) => b' },
 ]
@@ -114,9 +127,9 @@ const otherOperators = [
   // Should we do this? https://github.com/informalsystems/tnt/discussions/109
 ]
 
-function uniformArgsWithResult (argsType: string, resultType: string): Signature {
+function uniformArgsWithResult(argsType: string, resultType: string): Signature {
   return (arity: number) => {
-    const args = Array.from(Array(arity).keys()).map(i => argsType)
+    const args = times(arity, () => argsType)
     return parseAndQuantify(`(${args.join(', ')}) => ${resultType}`)
   }
 }
@@ -131,21 +144,15 @@ const multipleAritySignatures: [string, Signature][] = [
   ['or', uniformArgsWithResult('bool', 'bool')],
   ['actionAny', uniformArgsWithResult('bool', 'bool')],
   ['Tup', (arity: number) => {
-    const args = Array.from(Array(arity).keys()).map(i => `t${i}`).join(', ')
+    const args = times(arity, i => `t${i}`).join(', ')
     return parseAndQuantify(`(${args}) => (${args})`)
   }],
-  ['Rec', (arity: number) => {
-    const indexes = Array.from(Array(arity / 2).keys())
-    const args = indexes.map(i => `n${i}, t${i}`).join(', ')
-    const result = indexes.map(i => `n${i}: t${i}`).join(', ')
-    return parseAndQuantify(`(${args}) => { ${result} }`)
-  }],
   ['match', (arity: number) => {
-    const args = Array.from(Array((arity - 1) / 2).keys()).map(r => 'str, (a) => b')
+    const args = times((arity - 1) / 2, () => 'str, (a) => b')
     return parseAndQuantify(`(a, ${args.join(', ')}) => b`)
   }],
   ['tuples', (arity: number) => {
-    const ts = Array.from(Array(arity).keys()).map(i => `t${i}`)
+    const ts = times(arity, i => `t${i}`)
     const args = ts.map(t => `Set[${t}]`)
     const tupleType = `(${ts.join(', ')})`
     return parseAndQuantify(`(${args.join(', ')}) => Set[${tupleType}]`)
@@ -157,7 +164,6 @@ const fixedAritySignatures: [string, Signature][] = [
   booleanOperators,
   setOperators,
   mapOperators,
-  recordOperators,
   tupleOperators,
   listOperators,
   integerOperators,
@@ -165,7 +171,7 @@ const fixedAritySignatures: [string, Signature][] = [
   otherOperators,
 ].flat().map(sig => [sig.name, (_: number) => parseAndQuantify(sig.type)])
 
-function parseAndQuantify (typeString: string): TypeScheme {
+function parseAndQuantify(typeString: string): TypeScheme {
   const t = parseTypeOrThrow(typeString)
   return {
     type: t,

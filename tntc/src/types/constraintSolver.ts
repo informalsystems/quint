@@ -13,11 +13,12 @@
  */
 
 import { Either, left, right } from '@sweet-monads/either'
-import { buildErrorLeaf, buildErrorTree, ErrorTree, Error } from '../errorTree'
+import { Error, ErrorTree, buildErrorLeaf, buildErrorTree } from '../errorTree'
 import { rowToString, typeToString } from '../IRprinting'
-import { Row, rowNames, TntType, typeNames } from '../tntTypes'
+import { Row, TntType, rowNames, typeNames } from '../tntTypes'
 import { Constraint } from './base'
-import { applySubstitution, applySubstitutionToConstraint, compose, Substitutions } from './substitutions'
+import { Substitutions, applySubstitution, applySubstitutionToConstraint, compose } from './substitutions'
+import { unzip } from 'lodash'
 
 /*
  * Try to solve a constraint by unifying all pairs of types in equality
@@ -28,7 +29,7 @@ import { applySubstitution, applySubstitutionToConstraint, compose, Substitution
  * @returns the substitutions from the unifications, if successful. Otherwise, a
  *          map from source ids to errors.
  */
-export function solveConstraint (constraint: Constraint): Either<Map<bigint, ErrorTree>, Substitutions> {
+export function solveConstraint(constraint: Constraint): Either<Map<bigint, ErrorTree>, Substitutions> {
   const errors: Map<bigint, ErrorTree> = new Map<bigint, ErrorTree>()
   switch (constraint.kind) {
     case 'eq': return unify(constraint.types[0], constraint.types[1]).mapLeft(e => {
@@ -65,7 +66,7 @@ export function solveConstraint (constraint: Constraint): Either<Map<bigint, Err
  * @returns an array of substitutions that unifies both types, when possible.
  *          Otherwise, an error tree with an error message and its trace.
  */
-export function unify (t1: TntType, t2: TntType): Either<ErrorTree, Substitutions> {
+export function unify(t1: TntType, t2: TntType): Either<ErrorTree, Substitutions> {
   // TODO: resolve type aliases
   const location = `Trying to unify ${typeToString(t1)} and ${typeToString(t2)}`
 
@@ -115,7 +116,7 @@ export function unify (t1: TntType, t2: TntType): Either<ErrorTree, Substitution
  * @returns an array of substitutions that unifies both rows, when possible.
  *          Otherwise, an error tree with an error message and its trace.
  */
-export function unifyRows (r1: Row, r2: Row): Either<ErrorTree, Substitutions> {
+export function unifyRows(r1: Row, r2: Row): Either<ErrorTree, Substitutions> {
   // The unification algorithm assumes that rows are simplified to a normal form.
   // That means that the `other` field is either a row variable or an empty row
   // and `fields` is never an empty list
@@ -146,7 +147,10 @@ export function unifyRows (r1: Row, r2: Row): Either<ErrorTree, Substitutions> {
         return s1.chain(sa => s2.map(sb => compose(sa, sb)))
           .mapLeft(msg => buildErrorLeaf(location, msg))
       } else {
-        return left(buildErrorLeaf(location, `Incompatible tails in ${rowToString(ra)} and ${rowToString(rb)}`))
+        return left(buildErrorLeaf(
+          location,
+           `Incompatible tails for rows with disjoint fields: (${rowToString(ra.other)}) and (${rowToString(rb.other)})`
+        ))
       }
     } else {
       // There are shared fields.
@@ -157,11 +161,17 @@ export function unifyRows (r1: Row, r2: Row): Either<ErrorTree, Substitutions> {
       // This call will fit in the above case of row unification
       const tailSubs = unifyRows({ ...ra, fields: uniqueFields1 }, { ...rb, fields: uniqueFields2 })
 
+      // Sort shared fields by field name, and get the their types
+      const fieldTypes: [TntType, TntType][] = sharedFieldNames.map(n => {
+        const f1 = ra.fields.find(f => f.fieldName === n)!
+        const f2 = rb.fields.find(f => f.fieldName === n)!
+        return [f1.fieldType, f2.fieldType]
+      })
+
       // Now, for each shared field, we need to unify the types
-      const fieldSubs = chainUnifications(
-        ra.fields.filter(f => sharedFieldNames.includes(f.fieldName)).map(f => f.fieldType),
-        rb.fields.filter(f => sharedFieldNames.includes(f.fieldName)).map(f => f.fieldType)
-      )
+      const fieldSubs = chainUnifications(...unzip(fieldTypes) as [TntType[], TntType[]])
+
+      // Return the composition of the two substitutions
       return tailSubs.chain(subs => fieldSubs.map(s => compose(subs, s)))
         .mapLeft(error => buildErrorTree(location, error))
     }
@@ -170,7 +180,7 @@ export function unifyRows (r1: Row, r2: Row): Either<ErrorTree, Substitutions> {
   }
 }
 
-function bindType (name: string, type: TntType): Either<string, Substitutions> {
+function bindType(name: string, type: TntType): Either<string, Substitutions> {
   if (typeNames(type).has(name)) {
     return left(`Can't bind ${name} to ${typeToString(type)}: cyclical binding`)
   } else {
@@ -178,7 +188,7 @@ function bindType (name: string, type: TntType): Either<string, Substitutions> {
   }
 }
 
-function bindRow (name: string, row: Row): Either<string, Substitutions> {
+function bindRow(name: string, row: Row): Either<string, Substitutions> {
   if (rowNames(row).has(name)) {
     return left(`Can't bind ${name} to ${rowToString(row)}: cyclical binding`)
   } else {
@@ -186,7 +196,7 @@ function bindRow (name: string, row: Row): Either<string, Substitutions> {
   }
 }
 
-function applySubstitutionsAndUnify (subs: Substitutions, t1: TntType, t2: TntType): Either<Error, Substitutions> {
+function applySubstitutionsAndUnify(subs: Substitutions, t1: TntType, t2: TntType): Either<Error, Substitutions> {
   const newSubstitutions = unify(
     applySubstitution(subs, t1),
     applySubstitution(subs, t2)
@@ -194,7 +204,9 @@ function applySubstitutionsAndUnify (subs: Substitutions, t1: TntType, t2: TntTy
   return newSubstitutions.map(newSubs => compose(newSubs, subs))
 }
 
-function checkSameLength (location: string, types1: TntType[], types2: TntType[]): Either<Error, [TntType[], TntType[]]> {
+function checkSameLength(
+  location: string, types1: TntType[], types2: TntType[]
+): Either<Error, [TntType[], TntType[]]> {
   if (types1.length !== types2.length) {
     const expected = types1.length
     const got = types2.length
@@ -208,13 +220,13 @@ function checkSameLength (location: string, types1: TntType[], types2: TntType[]
   return right([types1, types2])
 }
 
-function chainUnifications (types1: TntType[], types2: TntType[]): Either<Error, Substitutions> {
+function chainUnifications(types1: TntType[], types2: TntType[]): Either<Error, Substitutions> {
   return types1.reduce((result: Either<Error, Substitutions>, t, i) => {
     return result.chain(subs => applySubstitutionsAndUnify(subs, t, types2[i]))
   }, right([]))
 }
 
-function simplifyRow (r: Row): Row {
+function simplifyRow(r: Row): Row {
   if (r.kind !== 'row') {
     return r
   }

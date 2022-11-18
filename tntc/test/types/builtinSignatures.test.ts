@@ -18,7 +18,8 @@ describe('getSignatures', () => {
 
     const result = listSignature(3)
 
-    assert.deepEqual(result, expectedSignature, `expected ${typeSchemeToString(expectedSignature)}, got ${typeSchemeToString(result)}`)
+    assert.deepEqual(result, expectedSignature,
+      `expected ${typeSchemeToString(expectedSignature)}, got ${typeSchemeToString(result)}`)
   })
 
   it('contains quantified signatures for the tuple constructor', () => {
@@ -31,20 +32,8 @@ describe('getSignatures', () => {
 
     const result = tupSignature(3)
 
-    assert.deepEqual(result, expectedSignature, `expected ${typeSchemeToString(expectedSignature)}, got ${typeSchemeToString(result)}`)
-  })
-
-  it('contains quantified signatures for the record constructor', () => {
-    const recSignature = signatures.get('Rec')!
-
-    const expectedSignature: TypeScheme = {
-      type: parseTypeOrThrow('(n0, t0, n1, t1) => { n0: t0, n1: t1 }'),
-      variables: new Set(['n0', 't0', 'n1', 't1']),
-    }
-
-    const result = recSignature(4)
-
-    assert.deepEqual(result, expectedSignature, `expected ${typeSchemeToString(expectedSignature)}, got ${typeSchemeToString(result)}`)
+    assert.deepEqual(result, expectedSignature,
+      `expected ${typeSchemeToString(expectedSignature)}, got ${typeSchemeToString(result)}`)
   })
 
   it('contains quantified signatures for match', () => {
@@ -57,7 +46,8 @@ describe('getSignatures', () => {
 
     const result = matchSignature(5)
 
-    assert.deepEqual(result, expectedSignature, `expected ${typeSchemeToString(expectedSignature)}, got ${typeSchemeToString(result)}`)
+    assert.deepEqual(result, expectedSignature,
+      `expected ${typeSchemeToString(expectedSignature)}, got ${typeSchemeToString(result)}`)
   })
 
   it('contains quantified signatures for tuples', () => {
@@ -70,6 +60,7 @@ describe('getSignatures', () => {
 
     const result = tuplesSignature(3)
 
-    assert.deepEqual(result, expectedSignature, `expected ${typeSchemeToString(expectedSignature)}, got ${typeSchemeToString(result)}`)
+    assert.deepEqual(result, expectedSignature,
+      `expected ${typeSchemeToString(expectedSignature)}, got ${typeSchemeToString(result)}`)
   })
 })

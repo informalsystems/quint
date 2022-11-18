@@ -10,18 +10,18 @@
  */
 
 import { strict as assert } from 'assert'
-import { Maybe, none, just, merge } from '@sweet-monads/maybe'
-import { Set, List, OrderedMap } from 'immutable'
+import { Maybe, just, merge, none } from '@sweet-monads/maybe'
+import { List, OrderedMap, Set } from 'immutable'
 
 import { IRVisitor } from '../../IRVisitor'
 import {
-  Computable, EvalResult, Register, Callable, ComputableKind,
-  kindName, fail, mkCallable, mkRegister
+  Callable, Computable, ComputableKind, EvalResult, Register,
+  fail, kindName, mkCallable, mkRegister
 } from '../runtime'
 
 import * as ir from '../../tntIr'
 
-import { rv, RuntimeValue } from './runtimeValue'
+import { RuntimeValue, rv } from './runtimeValue'
 
 import { lastTraceName } from '../compile'
 
@@ -57,7 +57,7 @@ export class CompilerVisitor implements IRVisitor {
   // messages that get populated as the compiled code is executed
   private runtimeErrors: ir.IrErrorMessage[] = []
 
-  constructor () {
+  constructor() {
     const lastTrace =
       mkRegister('shadow', lastTraceName, none(),
         () => this.addRuntimeError(0n, '_lastTrace is not set'))
@@ -75,47 +75,47 @@ export class CompilerVisitor implements IRVisitor {
   /**
    * Get the compiled context.
    */
-  getContext (): Map<string, Computable> {
+  getContext(): Map<string, Computable> {
     return this.context
   }
 
   /**
    * Get the names of the compiled variables.
    */
-  getVars (): string[] {
+  getVars(): string[] {
     return this.vars.map(r => r.name)
   }
 
   /**
    * Get the names of the shadow variables.
    */
-  getShadowVars (): string[] {
+  getShadowVars(): string[] {
     return this.shadowVars.map(r => r.name)
   }
 
   /**
    * Get the array of compile errors, which changes as the code gets executed.
    */
-  getCompileErrors (): ir.IrErrorMessage[] {
+  getCompileErrors(): ir.IrErrorMessage[] {
     return this.compileErrors
   }
 
   /**
    * Get the array of runtime errors, which changes as the code gets executed.
    */
-  getRuntimeErrors (): ir.IrErrorMessage[] {
+  getRuntimeErrors(): ir.IrErrorMessage[] {
     return this.runtimeErrors
   }
 
-  private addCompileError (id: bigint, msg: string) {
+  private addCompileError(id: bigint, msg: string) {
     this.compileErrors.push({ explanation: msg, refs: [id] })
   }
 
-  private addRuntimeError (id: bigint, msg: string) {
+  private addRuntimeError(id: bigint, msg: string) {
     this.runtimeErrors.push({ explanation: msg, refs: [id] })
   }
 
-  exitOpDef (opdef: ir.TntOpDef) {
+  exitOpDef(opdef: ir.TntOpDef) {
     // either a runtime value (if val), or a callable (if def, action, etc.)
     const value = this.compStack.pop()
     if (value) {
@@ -126,7 +126,7 @@ export class CompilerVisitor implements IRVisitor {
     }
   }
 
-  exitVar (vardef: ir.TntVar) {
+  exitVar(vardef: ir.TntVar) {
     // simply introduce two registers:
     //  one for the variable, and
     //  one for its next-state version
@@ -141,7 +141,7 @@ export class CompilerVisitor implements IRVisitor {
     this.context.set(kindName('nextvar', nextRegister.name), nextRegister)
   }
 
-  enterLiteral (expr: ir.TntBool | ir.TntInt | ir.TntStr) {
+  enterLiteral(expr: ir.TntBool | ir.TntInt | ir.TntStr) {
     switch (expr.kind) {
       case 'bool':
         this.compStack.push(mkConstComputable(rv.mkBool(expr.value)))
@@ -156,7 +156,7 @@ export class CompilerVisitor implements IRVisitor {
     }
   }
 
-  enterName (name: ir.TntName) {
+  enterName(name: ir.TntName) {
     // The name belongs to one of the objects:
     // a shadow variable, a variable, an argument, a callable.
     // The order is important, as defines the name priority.
@@ -171,7 +171,7 @@ export class CompilerVisitor implements IRVisitor {
     }
   }
 
-  exitApp (app: ir.TntApp) {
+  exitApp(app: ir.TntApp) {
     switch (app.opcode) {
       case 'next': {
         const register = this.compStack.pop()
@@ -553,7 +553,7 @@ export class CompilerVisitor implements IRVisitor {
 
       case 'isFinite':
         // at the moment, we support only finite sets, so just return true
-        this.applyFun(app.id, 1, set => just(rv.mkBool(true)))
+        this.applyFun(app.id, 1, _set => just(rv.mkBool(true)))
         break
 
       case 'to':
@@ -601,7 +601,7 @@ export class CompilerVisitor implements IRVisitor {
         })
         break
 
-      case 'update':
+      case 'set':
         // Update a map value
         this.applyFun(app.id, 3, (map, key, newValue) => {
           const normalKey = key.normalForm()
@@ -611,7 +611,7 @@ export class CompilerVisitor implements IRVisitor {
             return just(rv.fromMap(newMap))
           } else {
             this.addRuntimeError(app.id,
-              "Called 'update' with a non-existing key")
+              "Called 'set' with a non-existing key")
             return none()
           }
         })
@@ -627,7 +627,7 @@ export class CompilerVisitor implements IRVisitor {
         })
         break
 
-      case 'updateAs': {
+      case 'setBy': {
         // Update a map value via a lambda
         const fun = this.compStack.pop() ?? fail
         this.applyFun(app.id, 2, (map, key) => {
@@ -642,7 +642,7 @@ export class CompilerVisitor implements IRVisitor {
             })
           } else {
             this.addRuntimeError(app.id,
-              "Called 'updateAs' with a non-existing key")
+              "Called 'setBy' with a non-existing key")
             return none()
           }
         })
@@ -684,8 +684,8 @@ export class CompilerVisitor implements IRVisitor {
           app.id,
           arr =>
             rv.mkSet(arr
-              .filter(([r, e]) => r.toBool())
-              .map(([r, e]) => e))
+              .filter(([r, _]) => r.toBool())
+              .map(([_, e]) => e))
         )
         break
 
@@ -694,8 +694,8 @@ export class CompilerVisitor implements IRVisitor {
           app.id,
           arr =>
             rv.mkList(arr
-              .filter(([r, e]) => r.toBool())
-              .map(([r, e]) => e))
+              .filter(([r, _]) => r.toBool())
+              .map(([_, e]) => e))
         )
         break
 
@@ -754,7 +754,7 @@ export class CompilerVisitor implements IRVisitor {
     }
   }
 
-  private applyUserDefined (app: ir.TntApp) {
+  private applyUserDefined(app: ir.TntApp) {
     const callable =
       this.contextGet(app.opcode, ['callable', 'arg']) as Callable
     if (callable === undefined || callable.registers === undefined) {
@@ -780,7 +780,7 @@ export class CompilerVisitor implements IRVisitor {
     }
   }
 
-  enterLambda (lam: ir.TntLambda) {
+  enterLambda(lam: ir.TntLambda) {
     // introduce a register for every parameter
     lam.params.forEach(p =>
       this.context.set(kindName('arg', p),
@@ -790,7 +790,7 @@ export class CompilerVisitor implements IRVisitor {
     // which are stored in the registers we've just created.
   }
 
-  exitLambda (lam: ir.TntLambda) {
+  exitLambda(lam: ir.TntLambda) {
     // The expression on the stack is the body of the lambda.
     // Transform it to Callable together with the registers.
     const registers: Register[] = []
@@ -829,10 +829,9 @@ export class CompilerVisitor implements IRVisitor {
     * result and the original element of the iterable value.
     * The final result is stored on the stack.
     */
-  private mapLambdaThenReduce
-  (sourceId: bigint,
+  private mapLambdaThenReduce(sourceId: bigint,
     mapResultAndElems:
-      (array: Array<[RuntimeValue, RuntimeValue]>) => RuntimeValue): void {
+      (_array: Array<[RuntimeValue, RuntimeValue]>) => RuntimeValue): void {
     if (this.compStack.length < 2) {
       this.addCompileError(sourceId, 'Not enough arguments')
       return
@@ -842,7 +841,7 @@ export class CompilerVisitor implements IRVisitor {
     // this method supports only 1-argument callables
     assert(callable.registers.length === 1)
     // apply the lambda to a single element of the set
-    const evaluateElem = function (elem: RuntimeValue):
+    const evaluateElem = function(elem: RuntimeValue):
         Maybe<[RuntimeValue, RuntimeValue]> {
       // store the set element in the register
       callable.registers[0].registerValue = just(elem)
@@ -861,7 +860,7 @@ export class CompilerVisitor implements IRVisitor {
   /**
    * Translate one of the operators: fold, foldl, and foldr.
    */
-  private applyFold (sourceId: bigint, order: 'fwd' | 'rev'): void {
+  private applyFold(sourceId: bigint, order: 'fwd' | 'rev'): void {
     if (this.compStack.length < 3) {
       this.addCompileError(sourceId, 'Not enough arguments for fold')
       return
@@ -873,7 +872,7 @@ export class CompilerVisitor implements IRVisitor {
     // compile the computation of the initial value
     const initialComp = this.compStack.pop() ?? fail
     // apply the lambda to a single element of the set
-    const evaluateElem = function (elem: RuntimeValue): Maybe<EvalResult> {
+    const evaluateElem = function(elem: RuntimeValue): Maybe<EvalResult> {
       // The accumulator should have been set in the previous iteration.
       // Set the first register to the element.
       callable.registers[1].registerValue = just(elem)
@@ -897,9 +896,8 @@ export class CompilerVisitor implements IRVisitor {
 
   // pop nargs computable values, pass them the 'fun' function, and
   // push the combined computable value on the stack
-  private applyFun
-  (sourceId: bigint,
-    nargs: number, fun: (...args: RuntimeValue[]) => Maybe<RuntimeValue>) {
+  private applyFun(sourceId: bigint,
+    nargs: number, fun: (..._args: RuntimeValue[]) => Maybe<RuntimeValue>) {
     if (this.compStack.length < nargs) {
       this.addCompileError(sourceId, 'Not enough arguments')
     } else {
@@ -928,7 +926,7 @@ export class CompilerVisitor implements IRVisitor {
 
   // if-then-else requires special treatment,
   // as it should not evaluate both arms
-  private translateIfThenElse (sourceId: bigint) {
+  private translateIfThenElse(sourceId: bigint) {
     if (this.compStack.length < 3) {
       this.addCompileError(sourceId, 'Not enough arguments')
     } else {
@@ -950,7 +948,7 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   // translate and { A, ..., C }
-  private translateAnd (app: ir.TntApp) {
+  private translateAnd(app: ir.TntApp) {
     if (this.compStack.length < app.args.length) {
       this.addCompileError(app.id, 'Not enough arguments on stack for "and"')
       return
@@ -1046,7 +1044,7 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   // translate or { A, ..., C }
-  private translateOr (app: ir.TntApp) {
+  private translateOr(app: ir.TntApp) {
     if (this.compStack.length < app.args.length) {
       this.addCompileError(app.id,
         'Not enough arguments on stack for "or"')
@@ -1077,7 +1075,7 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   // translate any { A, ..., C }
-  private translateOrAction (app: ir.TntApp) {
+  private translateOrAction(app: ir.TntApp) {
     if (this.compStack.length < app.args.length) {
       this.addCompileError(app.id,
         'Not enough arguments on stack for "any"')
@@ -1124,7 +1122,7 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   // apply the operator guess
-  private applyGuess (sourceId: bigint) {
+  private applyGuess(sourceId: bigint) {
     if (this.compStack.length < 2) {
       this.addCompileError(sourceId,
         'Not enough arguments on stack for "guess"')
@@ -1167,7 +1165,7 @@ export class CompilerVisitor implements IRVisitor {
   //
   // Technically, this is similar to the implementation of folds.
   // However, it also restores the state and saves a trace, if there is any.
-  private test (sourceId: bigint) {
+  private test(sourceId: bigint) {
     if (this.compStack.length < 5) {
       this.addCompileError(sourceId,
         'Not enough arguments on stack for "_test"')
@@ -1256,32 +1254,32 @@ export class CompilerVisitor implements IRVisitor {
     this.compStack.push(mkFunComputable(doRun))
   }
 
-  private shiftVars () {
+  private shiftVars() {
     this.recoverVars(this.snapshotNextVars())
     this.nextVars.forEach(r => r.registerValue = none())
   }
 
   // save the values of the vars into an array
-  private snapshotVars (): Maybe<RuntimeValue>[] {
+  private snapshotVars(): Maybe<RuntimeValue>[] {
     return this.vars.map(r => r.registerValue)
   }
 
   // save the values of the next vars into an array
-  private snapshotNextVars (): Maybe<RuntimeValue>[] {
+  private snapshotNextVars(): Maybe<RuntimeValue>[] {
     return this.nextVars.map(r => r.registerValue)
   }
 
   // load the values of the variables from an array
-  private recoverVars (values: Maybe<RuntimeValue>[]) {
+  private recoverVars(values: Maybe<RuntimeValue>[]) {
     this.vars.forEach((r, i) => r.registerValue = values[i])
   }
 
   // load the values of the next variables from an array
-  private recoverNextVars (values: Maybe<RuntimeValue>[]) {
+  private recoverNextVars(values: Maybe<RuntimeValue>[]) {
     this.nextVars.forEach((r, i) => r.registerValue = values[i])
   }
 
-  private contextGet (name: string, kinds: ComputableKind[]) {
+  private contextGet(name: string, kinds: ComputableKind[]) {
     for (const k of kinds) {
       const value = this.context.get(kindName(k, name))
       if (value) {
@@ -1293,8 +1291,7 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   // Access a list via an index
-  private getListElem
-  (sourceId: bigint, list: List<RuntimeValue>, idx: number) {
+  private getListElem(sourceId: bigint, list: List<RuntimeValue>, idx: number) {
     if (idx >= 0n && idx < list.size) {
       const elem = list.get(Number(idx))
       return elem ? just(elem) : none()
@@ -1305,8 +1302,7 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   // Update a list via an index
-  private updateList
-  (sourceId: bigint, list: List<RuntimeValue>, idx: number, value: RuntimeValue) {
+  private updateList(sourceId: bigint, list: List<RuntimeValue>, idx: number, value: RuntimeValue) {
     if (idx >= 0n && idx < list.size) {
       return just(rv.mkList(list.set(Number(idx), value)))
     } else {
@@ -1316,14 +1312,13 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   // slice a list
-  private sliceList
-  (sourceId: bigint, list: List<RuntimeValue>, start: number, end: number) {
+  private sliceList(sourceId: bigint, list: List<RuntimeValue>, start: number, end: number) {
     return just(rv.mkList(list.slice(start, end)))
   }
 }
 
 // make a `Computable` that always returns a given runtime value
-function mkConstComputable (value: RuntimeValue) {
+function mkConstComputable(value: RuntimeValue) {
   return {
     eval: () => {
       return just<any>(value)
@@ -1332,7 +1327,7 @@ function mkConstComputable (value: RuntimeValue) {
 }
 
 // make a `Computable` that always returns a given runtime value
-function mkFunComputable (fun: () => Maybe<EvalResult>) {
+function mkFunComputable(fun: () => Maybe<EvalResult>) {
   return {
     eval: () => {
       return fun()
@@ -1346,8 +1341,7 @@ function mkFunComputable (fun: () => Maybe<EvalResult>) {
  *  - return `none`, if one of the results is `none`, or
  *  - return `just` of the unpacked results.
  */
-function flatMap<T, R>
-(iterable: Iterable<T>, f: (arg: T) => Maybe<R>): Maybe<Array<R>> {
+function flatMap<T, R>(iterable: Iterable<T>, f: (_arg: T) => Maybe<R>): Maybe<Array<R>> {
   const results: R[] = []
   for (const arg of iterable) {
     const res = f(arg)
@@ -1368,9 +1362,8 @@ function flatMap<T, R>
  *  - return `none`, if one of the results is `none`, or
  *  - return `just` of the last result.
  */
-function flatForEach<T, R>
-(order: 'fwd' | 'rev',
-  iterable: Iterable<T>, init: Maybe<R>, f: (arg: T) => Maybe<R>): Maybe<R> {
+function flatForEach<T, R>(order: 'fwd' | 'rev',
+  iterable: Iterable<T>, init: Maybe<R>, f: (_arg: T) => Maybe<R>): Maybe<R> {
   let result: Maybe<R> = init
   // if the reverse order is required, reverse the array
   const iter = (order === 'fwd') ? iterable : Array(...iterable).reverse()
