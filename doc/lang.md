@@ -190,7 +190,6 @@ A type identifier can also introduce an uninterpreted type by defining a type wi
 type MY_TYPE
 ```
 
-
 ## Modes
 
 *TLA+ does not make a clear distinction between constant expressions, state
@@ -206,6 +205,7 @@ We define the following modes:
  1. Stateless mode.
  1. State mode.
  1. Action mode.
+ 1. Run mode.
  1. Temporal mode.
 
 Every TNT expression and definition is assigned a mode. In the following, we
@@ -220,6 +220,7 @@ M`.
 | Stateless         | n/a                        |
 | State             | Stateless                  |
 | Action            | Stateless, State           |
+| Run               | Stateless, State, Action   |
 | Temporal          | Stateless, State           |
 
 As can be seen from the table, action mode and temporal mode are incomparable.
