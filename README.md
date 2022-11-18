@@ -69,11 +69,12 @@ completely implementing every pass.
 | [Multiline disjunctions][]        | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:             | :x:         | :x:       |
 | [Multiline conjunctions][]        | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:             | :x:         | :x:       |
 | [Delayed assignment][]            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:             | :x:         | :x:       |
-| Invariant checking                | -                | -           |           |                 | :white_check_mark: | :x:         | :x:       |
+| Invariant checking                | -                  | -                  |                    |                    | :white_check_mark:             | :x:         | :x:       |
 | [Higher-order definitions][]      | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: [221][]                    | :x:         | :x:       |
-| [Temporal operators][]            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | *non-goal*                 | :x:         | :x:       |
-| [Fairness][]                      | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | *non-goal*                 | :x:         | :x:       |
-| [Unbounded quantifiers][]         | :white_check_mark: | :white_check_mark: | :x:                | :x:                | *non-goal*                 | :x:         | :x:       |
+| [Runs][]                          | :white_check_mark: | :white_check_mark: | :x:                | :x:                | :white_check_mark:             | :x:         | :x:       |
+| [Temporal operators][]            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | *non-goal*                     | :x:         | :x:       |
+| [Fairness][]                      | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | *non-goal*                     | :x:         | :x:       |
+| [Unbounded quantifiers][]         | :white_check_mark: | :white_check_mark: | :x:                | :x:                | *non-goal*                     | :x:         | :x:       |
 | [String literals][], see #118     | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:             | :x:         | :x:       |
 | ~~uninterpreted types~~, see #118 | :white_check_mark: | :white_check_mark: | :x:                | :x:                | :x:                            | :x:         | :x:       |
 
@@ -154,6 +155,7 @@ completely implementing every pass.
 [Discriminated unions]: ./doc/lang.md#discriminated-unions
 [Tuples]: ./doc/lang.md#tuples
 [Delayed assignment]: ./doc/lang.md#delayed-assignment
+[Runs]: ./doc/lang.md#runs
 [Temporal operators]: ./doc/lang.md#temporal-operators
 [Fairness]: ./doc/lang.md#fairness
 [Unbounded quantifiers]: ./doc/lang.md#unbounded-quantifiers
