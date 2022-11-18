@@ -78,8 +78,9 @@ export function defaultValueDefinitions (): ValueDefinition[] {
     { kind: 'def', identifier: 'always' },
     { kind: 'def', identifier: 'eventually' },
     { kind: 'def', identifier: 'next' },
-    { kind: 'def', identifier: 'shift' }, // TODO: remove later
     { kind: 'def', identifier: 'then' },
+    { kind: 'def', identifier: 'times' },
+    { kind: 'def', identifier: 'assert' },
     { kind: 'def', identifier: 'stutter' },
     { kind: 'def', identifier: 'nostutter' },
     { kind: 'def', identifier: 'enabled' },

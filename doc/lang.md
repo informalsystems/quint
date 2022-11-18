@@ -4,7 +4,7 @@
 
 | Revision | Date       | Author                                                  |
 |:---------|:-----------|:--------------------------------------------------------|
-| 27       | 14.11.2022 | Igor Konnov, Shon Feder, Jure Kukovec, Gabriela Moreira, Thomas Pani |
+| 27       | 18.11.2022 | Igor Konnov, Shon Feder, Jure Kukovec, Gabriela Moreira, Thomas Pani |
 
 This document presents language constructs in the same order as the [summary of
 TLA+](https://lamport.azurewebsites.net/tla/summary.pdf).
@@ -60,7 +60,6 @@ TLA+](https://lamport.azurewebsites.net/tla/summary.pdf).
       - [Guess](#guess)
     + [Runs](#runs)
       - [Then](#then)
-      - [SkipOr](#skipor)
       - [Times](#times)
       - [Assert](#assert)
     + [Temporal operators](#temporal-operators)
@@ -68,8 +67,8 @@ TLA+](https://lamport.azurewebsites.net/tla/summary.pdf).
       - [Eventually](#eventually)
       - [Next](#next)
       - [Unchanged (removed)](#unchanged-removed)
-      - [Stutter](#stutter)
-      - [Nostutter](#nostutter)
+      - [OrKeep](#orkeep)
+      - [MustChange](#mustchange)
       - [Enabled](#enabled)
       - [Fairness](#fairness)
       - [Other temporal operators](#other-temporal-operators)
@@ -1667,17 +1666,7 @@ Note that runs do not have to describe exactly one sequences of states. For
 example, `run3` captures all executions of the specification `counters`
 that start with `Init` and evaluate `Next` four times in a row.
 
-#### SkipOr
-
-The operator `skipOr` has the following syntax:
-
-```scala
-skipOr(A)
-```
-
-The operator `skipOr(A)` non-deterministically either executes action `A` (if
-it is enabled in the current state), or does not change the state.
-
+*Mode:* Run.
 
 #### Times
 
@@ -1696,11 +1685,15 @@ The semantics of this operator is as follows:
 
 Note that the operator `n.times(A)` applies `A` exactly `n` times (when `n` is
 non-negative). If you want to repeat `A` from `i` to `j` times, you can combine
-it with `skipOr` as follows:
+it with `orKeep` as follows:
 
 ```scala
-i.times(A).then((j - i).times(skipOr(A)))
+i.times(A).then((j - i).times(A.orKeep(vars)))
 ```
+
+See the description of [orKeep](#OrKeep) below.
+
+*Mode:* Run.
 
 #### Assert
 
@@ -1710,9 +1703,11 @@ The operator `assert` has the following syntax:
 assert(condition)
 ```
 
-This operator is always enabled. If `condition` evaluates to `false` in a
-state, then the run should be marked as "failed". How exactly this is reported
-depends on the tool.
+This operator is always enabled and it does not change the state. If
+`condition` evaluates to `false` in a state, then the run should be marked as
+"failed". How exactly this is reported depends on the tool.
+
+*Mode:* Run.
 
 ### Temporal operators
 
@@ -1775,33 +1770,33 @@ keeping this operator.
 to identify assignments in actions. We introduced `Unchanged` only in the
 Temporal mode, which is needed for refinements.
 
-#### Stutter
+#### OrKeep
 
 The following operator is similar to `[A]_x` of TLA+:
 
 ```scala
-stutter(A, x)
-A.stutter(x)
+orKeep(A, x)
+A.orKeep(x)
 ```
 
-The arguments to `stutter` are as follows:
+The arguments to `orKeep` are as follows:
 
  - `A` is an expression in the Action mode,
  - `x` is a variable or a tuple of variables.
 
-*Mode:* Temporal. This operator converts an action (in the Action mode) to a
-temporal property.
+*Mode:* Temporal, Run. This operator converts an action (in the Action mode) to a
+temporal property or a run.
 
-#### Nostutter
+#### MustChange
 
 The following operator is similar to `<A>_x` of TLA+:
 
 ```scala
-nostutter(A, x)
-A.nostutter(x)
+mustChange(A, x)
+A.mustChange(x)
 ```
 
-The arguments to `nostutter` are as follows:
+The arguments to `mustChange` are as follows:
 
  - `A` is an expression in the Action mode,
  - `x` is a variable or a tuple of variables.
