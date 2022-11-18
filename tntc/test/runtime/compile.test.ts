@@ -922,10 +922,7 @@ describe('compiling specs to runtime values', () => {
         `)
 
       evalVarAfterRun('run1', 'n', input)
-        .mapLeft(m => assert.fail(m))
-        .mapRight(output =>
-          assert(['1', '2', '3', '4'].find(v => v === output),
-            `Expected n in 1.to(4), found ${output}`))
+        .mapLeft(m => assert.fail(`Expected an error, found: ${m}`))
     })
   })
 })
