@@ -1587,18 +1587,17 @@ choice](#existsAndGuess).
 
 ### Runs
 
-A run represents a shape of a finite execution. In the simplest case, it does
-represent one concrete execution that is allowed by the specification. In
+A run represents a finite execution. In the simplest case, it represents
+one _concrete_ execution that is allowed by the specification. In
 general, it is a sequence of actions, which prescribe how to produce one or
 more concrete executions, if such executions exist.
 
-**Discussion.** We have found that TLA+ is lacking a programmatic way of
-describing an example of a system execution. Indeed, TLA+ has the notion of a
+**Discussion.** We have found that TLA+ lacks a programmatic way of
+describing examples of system executions. Indeed, TLA+ has the notion of a
 behaviour (simply put, a sequence of states starting with `Init` and connected
 via `Next`). However, it is relatively hard to present a sequence of steps in
 TLA+ itself. For instance, counterexamples produced by TLC and Apalache are not
-first-class TLA+ citizens. In theory, TLA+ has the operator `\cdot` whose
-semantics is sequential composition of two actions. However, we have never seen
+first-class TLA+ citizens. In theory, TLA+ has the operator `\cdot`, representing the sequential composition of two actions. However, we have never seen
 this operator being used in practice.
 
 #### Then
@@ -1663,7 +1662,7 @@ exactly the same sequence of states as `run1`, but it does so via evaluation of
 the actions `Init`, `Positive`, `Positive`, `ByThree`, and `Even`, in that
 order.
 
-Note that runs do not have to describe exactly one sequences of states. For
+Note that a run does not have to describe exactly one sequence of states. For
 example, `run3` captures all executions of the specification `counters`
 that start with `Init` and evaluate `Next` four times in a row.
 
