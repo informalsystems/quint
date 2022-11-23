@@ -53,14 +53,14 @@ completely implementing every pass.
 | [Modes][]                         | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: [234][]                    | :x:         | :x:       |
 | [Sets][]                          | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:/:x: [238][] | :x:         | :x:       |
 | [Guess][]                         | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:             | :x:         | :x:       |
-| [Maps][]                          | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :x:         | :x:       |
+| [Maps][]                          | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:             | :x:         | :x:       |
 | [Lists][]                         | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:             | :x:         | :x:       |
-| [Records][]                       | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: [242][]        | :white_check_mark:             | :x:         | :x:       |
+| [Records][]                       | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:             | :x:         | :x:       |
 | [Discriminated unions][]          | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: [244][]        | :x: [233][]                    | :x:         | :x:       |
-| [Tuples][]                        | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: [243][]        | :white_check_mark:             | :x:         | :x:       |
+| [Tuples][]                        | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:             | :x:         | :x:       |
 | [Imports][]                       | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :question:                     | :x:         | :x:       |
-| [Module definitions][]            | :white_check_mark: | :white_check_mark: | :x: [245][]        | :x: [245][]        | :white_check_mark:             | :x:         | :x:       |
-| [Module instances][]              | :white_check_mark: | :white_check_mark: | :x: [245][]        | :x: [245][]        | :x: [237][]                    | :x:         | :x:       |
+| [Module definitions][]            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:             | :x:         | :x:       |
+| [Module instances][]              | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: [237][]                    | :x:         | :x:       |
 | [Multiple files][]                | :x: [8][]          | :x:                | :x:                | :x:                | :x:                            | :x:         | :x:       |
 | [Constant declarations][]         | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: [236][]                    | :x:         | :x:       |
 | [Variable definitions][]          | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:             | :x:         | :x:       |
