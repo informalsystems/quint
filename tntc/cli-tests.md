@@ -117,18 +117,8 @@ bash -
 
 ### OK on parse counters
 
-This command parses the counters example.
-
-<!-- !test program
-tntc parse ../examples/counters.tnt
--->
-
-```sh
-tntc parse ../examples/counters.tnt
-```
-
 <!-- !test check counters -->
-    expect exit code 0
+    tntc parse ../examples/counters.tnt
 
 ### OK on parse records
 
@@ -149,3 +139,4 @@ tntc parse ../examples/counters.tnt
 
 <!-- !test check tuples - Types & Effects-->
     tntc typecheck ../examples/tuples.tnt
+

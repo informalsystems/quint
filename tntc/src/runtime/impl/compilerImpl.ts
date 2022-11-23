@@ -739,8 +739,8 @@ export class CompilerVisitor implements IRVisitor {
         })
         break
 
-      case 'times':
-        this.translateTimes(app)
+      case 'repeated':
+        this.translateRepeated(app)
         break
 
       case '_test':
@@ -1023,14 +1023,14 @@ export class CompilerVisitor implements IRVisitor {
     this.compStack.push(mkFunComputable(lazyCompute))
   }
 
-  // translate i.times(A)
-  private translateTimes (app: ir.TntApp) {
+  // translate A.repeated(i)
+  private translateRepeated (app: ir.TntApp) {
     if (this.compStack.length < 2) {
       this.addCompileError(app.id,
         `Not enough arguments on stack for "${app.opcode}"`)
       return
     }
-    const [niterations, action] = this.compStack.splice(-2)
+    const [action, niterations] = this.compStack.splice(-2)
 
     const lazyCompute = () => {
       // compute the number of iterations and repeat 'action' that many times

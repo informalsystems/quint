@@ -82,7 +82,7 @@ export function defaultValueDefinitions(): ValueDefinition[] {
     { kind: 'def', identifier: 'eventually' },
     { kind: 'def', identifier: 'next' },
     { kind: 'def', identifier: 'then' },
-    { kind: 'def', identifier: 'times' },
+    { kind: 'def', identifier: 'repeated' },
     { kind: 'def', identifier: 'assert' },
     { kind: 'def', identifier: 'stutter' },
     { kind: 'def', identifier: 'nostutter' },
