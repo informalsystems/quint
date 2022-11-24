@@ -49,7 +49,7 @@ jobs:
         # This tests fail on windows currently
         # See https://github.com/anko/txm/issues/10
         run: cd ./tntc && txm io-cli-tests.md
-        if: matrix.operating-system != 'windows-latest'
+        # if: matrix.operating-system != 'windows-latest'
 
   tntc-antlr-grammar:
     runs-on: ubuntu-latest
