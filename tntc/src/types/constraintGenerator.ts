@@ -16,20 +16,21 @@ import { IRVisitor } from '../IRVisitor'
 import { TntApp, TntBool, TntConst, TntEx, TntInt, TntLambda, TntLet, TntModule, TntModuleDef, TntName, TntOpDef, TntStr, TntVar } from '../tntIr'
 import { TntType, typeNames } from '../tntTypes'
 import { expressionToString } from '../IRprinting'
-import { Either, right, left, mergeInMany } from '@sweet-monads/either'
-import { buildErrorTree, ErrorTree, Error, buildErrorLeaf } from '../errorTree'
+import { Either, left, mergeInMany, right } from '@sweet-monads/either'
+import { Error, ErrorTree, buildErrorLeaf, buildErrorTree } from '../errorTree'
 import { getSignatures } from './builtinSignatures'
 import { Constraint, Signature, TypeScheme } from './base'
-import { Substitutions, applySubstitution } from './substitutions'
+import { Substitutions, applySubstitution, compose } from './substitutions'
 import { ScopeTree, treeFromModule } from '../scoping'
 import { LookupTable, LookupTableByModule, lookupValue, newTable } from '../lookupTable'
+import { specialConstraints } from './specialConstraints'
 
-type solvingFunctionType = (constraint: Constraint) => Either<Map<bigint, ErrorTree>, Substitutions>
+type solvingFunctionType = (_constraint: Constraint) => Either<Map<bigint, ErrorTree>, Substitutions>
 
 // A visitor that collects types and constraints for a module's expressions
 export class ConstraintGeneratorVisitor implements IRVisitor {
   // Inject dependency to allow manipulation in unit tests
-  constructor (solvingFunction: solvingFunctionType, lookupTable: LookupTableByModule) {
+  constructor(solvingFunction: solvingFunctionType, lookupTable: LookupTableByModule) {
     this.solvingFunction = solvingFunction
     this.lookupTable = lookupTable
   }
@@ -53,34 +54,34 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
   private currentScopeTree: ScopeTree = { value: 0n, children: [] }
   private moduleStack: TntModule[] = []
 
-  enterModuleDef (def: TntModuleDef): void {
+  enterModuleDef(def: TntModuleDef): void {
     this.moduleStack.push(def.module)
 
     this.updateCurrentModule()
   }
 
-  exitModuleDef (_: TntModuleDef): void {
+  exitModuleDef(_: TntModuleDef): void {
     this.moduleStack.pop()
 
     this.updateCurrentModule()
   }
 
-  enterExpr (e: TntEx) {
+  enterExpr(e: TntEx) {
     this.location = `Generating constraints for ${expressionToString(e)}`
   }
 
-  exitVar (e: TntVar) {
+  exitVar(e: TntVar) {
     this.addToResults(e.id, right(toScheme(e.typeAnnotation)))
   }
 
-  exitConst (e: TntConst) {
+  exitConst(e: TntConst) {
     this.addToResults(e.id, right(toScheme(e.typeAnnotation)))
   }
 
   //     n: t ∈ Γ
   // ----------------- (NAME)
   //  Γ ⊢ n: (t, true)
-  exitName (e: TntName) {
+  exitName(e: TntName) {
     if (this.errors.size !== 0) {
       return
     }
@@ -88,30 +89,47 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
   }
 
   // Literals have always the same type and the empty constraint
-  exitLiteral (e: TntBool | TntInt | TntStr) {
+  exitLiteral(e: TntBool | TntInt | TntStr) {
     this.addToResults(e.id, right(toScheme({ kind: e.kind })))
   }
 
   //   op: q ∈ Γ   Γ ⊢  p0, ..., pn: (t0, c0), ..., (tn, cn)   a is fresh
   // ------------------------------------------------------------------------ (APP)
   //    Γ ⊢ op(p0, ..., pn): (a, q ~ (t0, ..., tn) => a ∧ c0 ∧ ... ∧ cn)
-  exitApp (e: TntApp) {
+  exitApp(e: TntApp) {
     if (this.errors.size !== 0) {
       return
     }
-    const result = this.fetchSignature(e.opcode, e.id, e.args.length)
-      .chain(t1 => {
-        const argsResult: Either<Error, TypeScheme[]> = mergeInMany(e.args.map(e => this.fetchResult(e.id)))
 
-        return argsResult
-          .map((argsTypes: TypeScheme[]): TypeScheme => {
-            const a: TntType = { kind: 'var', name: this.freshVar() }
-            const t2: TntType = { kind: 'oper', args: argsTypes.map(s => s.type), res: a }
+    const argsResult: Either<Error, [TntEx, TntType][]> = mergeInMany(e.args.map(e => {
+      return this.fetchResult(e.id).map(r => [e, r.type])
+    }))
+
+    const result = argsResult.chain((results): Either<Error, TypeScheme> => {
+      const signature = this.fetchSignature(e.opcode, e.id, e.args.length)
+      const a: TntType = { kind: 'var', name: this.freshVar() }
+      const special = specialConstraints(e.opcode, e.id, results, a)
+
+      const constraints = special.chain(cs => {
+        // Check if there is a special case defined for the operator
+        if (cs.length > 0) {
+          // If yes, use the special constraints
+          return right(cs)
+        } else {
+          // Otherwise, define a constraint over the signature
+          return signature.map(t1 => {
+            const t2: TntType = { kind: 'oper', args: results.map(r => r[1]), res: a }
             const c: Constraint = { kind: 'eq', types: [t1, t2], sourceId: e.id }
-            this.constraints.push(c)
-            return toScheme(a)
+            return [c]
           })
+        }
       })
+
+      return constraints.map(cs => {
+        this.constraints.push(...cs)
+        return toScheme(a)
+      })
+    })
 
     this.addToResults(e.id, result)
   }
@@ -119,7 +137,7 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
   //    Γ ∪ {p0: t0, ..., pn: tn} ⊢ e: (te, c)    t0, ..., tn are fresh
   // ---------------------------------------------------------------------- (LAMBDA)
   //            Γ ⊢ (p0, ..., pn) => e: ((t0, ..., tn) => te, c)
-  exitLambda (e: TntLambda) {
+  exitLambda(e: TntLambda) {
     if (this.errors.size !== 0) {
       return
     }
@@ -128,7 +146,7 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
         const paramTypes = mergeInMany(e.params.map(p => this.fetchSignature(p, e.expr.id, 2)))
         return paramTypes.map((ts): TypeScheme => {
           const newType: TntType = { kind: 'oper', args: ts, res: resultType.type }
-          return { variables: typeNames(newType), type: newType }
+          return { ...typeNames(newType), type: newType }
         }).mapLeft(e => {
           throw new Error(`This should be impossible: Lambda variables not found: ${e.join(', ')}`)
         })
@@ -140,7 +158,7 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
   //   Γ ⊢ e1: (t1, c1)  s = solve(c1)     s(Γ ∪ {n: t1}) ⊢ e2: (t2, c2)
   // ------------------------------------------------------------------------ (LET-OPDEF)
   //               Γ ⊢ val n = e1 { e2 }: (t2, c1 ∧ c2)
-  exitLet (e: TntLet) {
+  exitLet(e: TntLet) {
     if (this.errors.size !== 0) {
       return
     }
@@ -151,14 +169,14 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
     this.addToResults(e.id, this.fetchResult(e.expr.id))
   }
 
-  exitOpDef (e: TntOpDef) {
+  exitOpDef(e: TntOpDef) {
     if (this.errors.size !== 0) {
       return
     }
 
     this.fetchResult(e.expr.id)
       .map(t => {
-        this.addToResults(e.id, right({ variables: typeNames(t.type), type: t.type }))
+        this.addToResults(e.id, right({ ...typeNames(t.type), type: t.type }))
 
         const constraint: Constraint = { kind: 'conjunction', constraints: this.constraints, sourceId: 0n }
         this.solvingFunction(constraint)
@@ -168,7 +186,8 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
             this.types = new Map<bigint, TypeScheme>(
               [...this.types.entries()].map(([id, te]) => {
                 const newType = applySubstitution(subs, te.type)
-                return [id, { variables: typeNames(newType), type: newType }]
+                const scheme: TypeScheme = { ...typeNames(newType), type: newType }
+                return [id, scheme]
               })
             )
           })
@@ -178,13 +197,13 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
     this.constraints = []
   }
 
-  private addToResults (exprId: bigint, result: Either<Error, TypeScheme>) {
+  private addToResults(exprId: bigint, result: Either<Error, TypeScheme>) {
     result
       .mapLeft(err => this.errors.set(exprId, buildErrorTree(this.location, err)))
       .map(r => this.types.set(exprId, r))
   }
 
-  private fetchResult (id: bigint): Either<ErrorTree, TypeScheme> {
+  private fetchResult(id: bigint): Either<ErrorTree, TypeScheme> {
     const successfulResult = this.types.get(id)
     const failedResult = this.errors.get(id)
     if (failedResult) {
@@ -196,11 +215,11 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
     }
   }
 
-  private freshVar (): string {
+  private freshVar(): string {
     return `t${this.freshVarCounter++}`
   }
 
-  private fetchSignature (opcode: string, scope: bigint, arity: number): Either<ErrorTree, TntType> {
+  private fetchSignature(opcode: string, scope: bigint, arity: number): Either<ErrorTree, TntType> {
     // Assumes a valid number of arguments
     if (opcode === '_') {
       return right({ kind: 'var', name: this.freshVar() })
@@ -225,16 +244,23 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
     }
   }
 
-  private newInstance (type: TypeScheme): TntType {
-    const names = type.variables
-    const subs: Substitutions = Array.from(names).map(name => {
+  private newInstance(t: TypeScheme): TntType {
+    const typeNames = Array.from(t.typeVariables)
+    const rowNames = Array.from(t.rowVariables)
+
+    const typeSubs: Substitutions = typeNames.map((name) => {
       return { kind: 'type', name: name, value: { kind: 'var', name: this.freshVar() } }
     })
 
-    return applySubstitution(subs, type.type)
+    const rowSubs: Substitutions = rowNames.map((name) => {
+      return { kind: 'row', name: name, value: { kind: 'var', name: this.freshVar() } }
+    })
+
+    const subs = compose(typeSubs, rowSubs)
+    return applySubstitution(subs, t.type)
   }
 
-  private updateCurrentModule (): void {
+  private updateCurrentModule(): void {
     if (this.moduleStack.length > 0) {
       this.currentModule = this.moduleStack[this.moduleStack.length - 1]
 
@@ -245,6 +271,6 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
   }
 }
 
-function toScheme (type: TntType): TypeScheme {
-  return { variables: new Set([]), type: type }
+function toScheme(type: TntType): TypeScheme {
+  return { typeVariables: new Set([]), rowVariables: new Set([]), type }
 }

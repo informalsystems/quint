@@ -12,7 +12,7 @@
  * @module
  */
 
-import { TntModule, TntDef, TntEx, isAnnotatedDef } from './tntIr'
+import { TntDef, TntEx, TntModule, isAnnotatedDef } from './tntIr'
 import { Row, TntType } from './tntTypes'
 
 /**
@@ -22,7 +22,7 @@ import { Row, TntType } from './tntTypes'
  *
  * @returns a string with the pretty printed definition
  */
-export function moduleToString (tntModule: TntModule): string {
+export function moduleToString(tntModule: TntModule): string {
   const defs = tntModule.defs.map(definitionToString).join('\n  ')
   return `module ${tntModule.name} {\n  ${defs}\n}`
 }
@@ -34,7 +34,7 @@ export function moduleToString (tntModule: TntModule): string {
  *
  * @returns a string with the pretty printed definition
  */
-export function definitionToString (def: TntDef): string {
+export function definitionToString(def: TntDef): string {
   const typeAnnotation =
     isAnnotatedDef(def) ? `: ${typeToString(def.typeAnnotation)}` : ''
   switch (def.kind) {
@@ -70,7 +70,7 @@ export function definitionToString (def: TntDef): string {
  *
  * @returns a string with the pretty printed expression
  */
-export function expressionToString (expr: TntEx): string {
+export function expressionToString(expr: TntEx): string {
   switch (expr.kind) {
     case 'name':
       return expr.name
@@ -95,7 +95,7 @@ export function expressionToString (expr: TntEx): string {
  *
  * @returns a string with the pretty printed type
  */
-export function typeToString (type: TntType): string {
+export function typeToString(type: TntType): string {
   switch (type.kind) {
     case 'bool':
     case 'int':
@@ -115,33 +115,52 @@ export function typeToString (type: TntType): string {
       return `(${args}) => ${typeToString(type.res)}`
     }
     case 'tup':
-      return `(${type.elems.map(typeToString).join(', ')})`
+      return `(${rowFieldsToString(type.fields, false)})`
     case 'rec': {
-      const fields = rowToString(type.fields)
-      return `{ ${fields} }`
+      return rowToString(type.fields)
     }
     case 'union': {
       const records = type.records.map(rec => {
-        return `| { ${type.tag}: "${rec.tagValue}", ${rowToString(rec.fields)} }`
+        return `| { ${type.tag}: "${rec.tagValue}", ${rowFieldsToString(rec.fields)} }`
       })
       return records.join('\n')
     }
   }
 }
 
-export function rowToString (r: Row): string {
+/**
+ * Pretty prints a row type. Standard row printing used in error reporting
+ *
+ * @param r the row type to be formatted
+ *
+ * @returns a string with the pretty printed row
+ */
+export function rowToString(r: Row): string {
+  const fields = rowFieldsToString(r)
+  return fields === '' ? '{}' : `{ ${fields} }`
+}
+
+function rowFieldsToString(r: Row, showFieldName=true): string {
   switch (r.kind) {
     case 'empty':
       return ''
     case 'var':
-      return r.name
+      return `| ${r.name}`
     case 'row': {
-      const fields = r.fields.map(f => `${f.fieldName}: ${typeToString(f.fieldType)}`)
-      const other = rowToString(r.other)
-      if (other !== '') {
-        fields.push(other)
+      const fields = r.fields.map(f => {
+        const prefix = showFieldName ? `${f.fieldName}: ` : ''
+        return `${prefix}${typeToString(f.fieldType)}`
+      })
+      const other = rowFieldsToString(r.other)
+      switch (r.other.kind) {
+        case 'row':
+          fields.push(other)
+          return `${fields.join(', ')}`
+        case 'var':
+          return `${fields.join(', ')} ${other}`
+        case 'empty':
+          return `${fields.join(', ')}`
       }
-      return fields.join(', ')
     }
   }
 }

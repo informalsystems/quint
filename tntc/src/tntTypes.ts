@@ -1,5 +1,5 @@
 /* ----------------------------------------------------------------------------------
- * Copyright (c) Informal Systems 2021. All rights reserved.
+ * Copyright (c) Informal Systems 2021-2022. All rights reserved.
  * Licensed under the Apache 2.0.
  * See License.txt in the project root for license information.
  * --------------------------------------------------------------------------------- */
@@ -7,10 +7,9 @@
 import { IRVisitor, walkType } from './IRVisitor'
 
 /**
- * TNT Types. Every expression or definition is either untyped, or decorated with
- * a type in Type System 1.2.
+ * TNT Types, representing annotated or inferred types. 
  *
- * @author Igor Konnov
+ * @author Igor Konnov, Gabriela Moreira
  */
 
 /**
@@ -67,7 +66,7 @@ export interface TntOperType extends WithOptionalId {
 
 export interface TntTupleType extends WithOptionalId {
   kind: 'tup',
-  elems: TntType[],
+  fields: Row,
 }
 
 export interface TntRecordType extends WithOptionalId {
@@ -101,28 +100,55 @@ export type TntType =
   | TntRecordType
   | TntUnionType
 
-export type Row =
-  | { kind: 'row', fields: { fieldName: string, fieldType: TntType }[], other: Row }
-  | { kind: 'var', name: string }
-  | { kind: 'empty' }
+/**
+ * Row types, used to express tuples and records.
+ */
+export type ConcreteRow = { kind: 'row', fields: { fieldName: string, fieldType: TntType }[], other: Row }
+export type VarRow = { kind: 'var', name: string }
+export type EmptyRow = { kind: 'empty' }
+
+export type Row = ConcreteRow | VarRow | EmptyRow
 
 /*
- * Collects all type variable names from a given type
+ * Collects all type and row variable names from a given type
  *
  * @param t the type to have its names collected
  *
- * @returns a list with collected names
+ * @returns the set of type variables and the set of row variables
  */
-export function typeNames (t: TntType): Set<string> {
+export function typeNames(t: TntType): { typeVariables: Set<string>, rowVariables: Set<string> } {
   const collector = new TypeNamesCollector()
   walkType(collector, t)
-  return collector.names
+  return { typeVariables: collector.typeNames, rowVariables: collector.rowNames }
+}
+
+/*
+ * Collects all row variable names from a given type
+ *
+ * @param r the row to have its names collected
+ *
+ * @returns a set with collected names
+ */
+export function rowNames(r: Row): Set<string> {
+  switch (r.kind) {
+    case 'row':
+      return rowNames(r.other)
+    case 'var':
+      return new Set<string>([r.name])
+    case 'empty':
+      return new Set<string>([])
+  }
 }
 
 class TypeNamesCollector implements IRVisitor {
-  names: Set<string> = new Set()
+  typeNames: Set<string> = new Set()
+  rowNames: Set<string> = new Set()
 
-  exitVarType (t: TntVarType) {
-    this.names.add(t.name)
+  exitVarType(t: TntVarType) {
+    this.typeNames.add(t.name)
+  }
+
+  exitVarRow(t: VarRow) {
+    this.rowNames.add(t.name)
   }
 }

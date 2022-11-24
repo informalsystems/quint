@@ -31,7 +31,8 @@ describe('ConstraintGeneratorVisitor', () => {
       'def d(S) = S.map(x => x + 10)',
     ])
 
-    const expectedConstraint = '(int, int) => int ~ (t_x_3, int) => t0 /\\ (Set[t1], (t1) => t2) => Set[t2] ~ (t_S_6, (t_x_3) => t0) => t3'
+    const expectedConstraint =
+      '(int, int) => int ~ (t_x_3, int) => t0 /\\ (Set[t1], (t1) => t2) => Set[t2] ~ (t_S_6, (t_x_3) => t0) => t3'
 
     const solvingFunction = (c: Constraint) => {
       assert.deepEqual(constraintToString(c), expectedConstraint)
@@ -72,8 +73,8 @@ describe('ConstraintGeneratorVisitor', () => {
     walkModule(visitor, tntModule)
 
     assert.includeDeepMembers([...visitor.types.entries()], [
-      [6n, { variables: new Set([]), type: { kind: 'str', id: 1n } }],
-      [8n, { variables: new Set([]), type: { kind: 'int', id: 3n } }],
+      [6n, { typeVariables: new Set([]), rowVariables: new Set([]), type: { kind: 'str', id: 1n } }],
+      [8n, { typeVariables: new Set([]), rowVariables: new Set([]), type: { kind: 'int', id: 3n } }],
     ])
   })
 
