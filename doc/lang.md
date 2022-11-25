@@ -202,6 +202,7 @@ We define the following modes:
 
  1. Stateless mode.
  1. State mode.
+ 1. Oracle mode.
  1. Action mode.
  1. Temporal mode.
 
@@ -216,7 +217,8 @@ M`.
 | ----------------- | -------------------------- |
 | Stateless         | n/a                        |
 | State             | Stateless                  |
-| Action            | Stateless, State           |
+| Oracle            | Stateless, State           |
+| Action            | Oracle, Stateless, State   |
 | Temporal          | Stateless, State           |
 
 As can be seen from the table, action mode and temporal mode are incomparable.
