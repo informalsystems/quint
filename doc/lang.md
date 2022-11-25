@@ -4,7 +4,7 @@
 
 | Revision | Date       | Author                                                  |
 |:---------|:-----------|:--------------------------------------------------------|
-| 26       | 08.11.2022 | Igor Konnov, Shon Feder, Jure Kukovec, Gabriela Moreira, Thomas Pani |
+| 28       | 24.11.2022 | Igor Konnov, Shon Feder, Jure Kukovec, Gabriela Moreira, Thomas Pani |
 
 This document presents language constructs in the same order as the [summary of
 TLA+](https://lamport.azurewebsites.net/tla/summary.pdf).
@@ -13,69 +13,70 @@ TLA+](https://lamport.azurewebsites.net/tla/summary.pdf).
 **Table of Contents**
 
 - [Summary of TNT](#summary-of-tnt)
-    - [Identifiers and strings](#identifiers-and-strings)
-    - [Comments](#comments)
-    - [Types](#types)
-        - [Type System 1.2](#type-system-12)
-    - [Modes](#modes)
-    - [Module-level constructs](#module-level-constructs)
-        - [Module definition](#module-definition)
-        - [Constant declarations](#constant-declarations)
-        - [Assumptions](#assumptions)
-        - [Variable definitions](#variable-definitions)
-        - [Operator definitions](#operator-definitions)
-        - [No recursive functions and operators](#no-recursive-functions-and-operators)
-        - [Module instances](#module-instances)
-        - [Type aliases](#type-aliases)
-        - [Theorems](#theorems)
-        - [Imports](#imports)
-    - [Namespaces and imports](#namespaces-and-imports)
-        - [Stateless and stateful modules](#stateless-and-stateful-modules)
-        - [Namespaces](#namespaces)
-        - [Imports](#imports-1)
-    - [TNT expression syntax](#tnt-expression-syntax)
-        - [Literals](#literals)
-        - [Braces and parentheses](#braces-and-parentheses)
-        - [Lambdas (aka Anonymous Operators)](#lambdas-aka-anonymous-operators)
-        - [Two forms of operator application](#two-forms-of-operator-application)
-        - [Boolean operators and equality](#boolean-operators-and-equality)
-        - [Multiline disjunctions](#block-disjunctions)
-        - [Multiline conjunctions](#block-conjunctions)
-        - [Flow operators](#flow-operators)
-            - [Condition](#condition)
-            - [Cases (removed)](#cases-removed)
-        - [Sets](#sets)
-            - [Set constructor](#set-constructor)
-            - [Existential quantifier and non-deterministic choice](#existential-quantifier-and-non-deterministic-choice)
-            - [Other set operators](#other-set-operators)
-        - [Maps (aka Functions)](#maps-aka-functions)
-        - [Records](#records)
-        - [Discriminated unions](#discriminated-unions)
-        - [Tuples](#tuples)
-        - [Lists (aka Sequences)](#lists-aka-sequences)
-        - [Integers](#integers)
-        - [Nested operator definitions](#nested-operator-definitions)
-        - [Operators on actions](#operators-on-actions)
-            - [Delayed assignment](#delayed-assignment)
-            - [Guess](#guess)
-            - [Other action operators of TLA+](#other-action-operators-of-tla)
-        - [Temporal operators](#temporal-operators)
-            - [Always](#always)
-            - [Eventually](#eventually)
-            - [Next](#next)
-            - [Unchanged (removed)](#unchanged-removed)
-            - [Stutter](#stutter)
-            - [Nostutter](#nostutter)
-            - [Enabled](#enabled)
-        - [Fairness](#fairness)
-            - [Other temporal operators](#other-temporal-operators)
-        - [Unbounded quantifiers](#unbounded-quantifiers)
-    - [Instances](#instances)
-        - [Common case 1](#common-case-1)
-        - [Common case 2](#common-case-2)
-        - [The general case](#the-general-case)
-        - [No anonymous instances](#no-anonymous-instances)
-        - [Discussion](#discussion)
+  * [Identifiers and strings](#identifiers-and-strings)
+  * [Comments](#comments)
+  * [Types](#types)
+    + [Type System 1.2](#type-system-12)
+  * [Modes](#modes)
+  * [Module-level constructs](#module-level-constructs)
+    + [Module definition](#module-definition)
+    + [Constant declarations](#constant-declarations)
+    + [Assumptions](#assumptions)
+    + [Variable definitions](#variable-definitions)
+    + [Operator definitions](#operator-definitions)
+    + [No recursive functions and operators](#no-recursive-functions-and-operators)
+    + [Module instances](#module-instances)
+    + [Type aliases](#type-aliases)
+    + [Theorems](#theorems)
+    + [Imports](#imports)
+  * [Namespaces and imports](#namespaces-and-imports)
+    + [Stateless and stateful modules](#stateless-and-stateful-modules)
+    + [Namespaces](#namespaces)
+    + [Imports](#imports-1)
+  * [TNT expression syntax](#tnt-expression-syntax)
+    + [Literals](#literals)
+    + [Names](#names)
+    + [Braces and parentheses](#braces-and-parentheses)
+    + [Lambdas (aka Anonymous Operators)](#lambdas-aka-anonymous-operators)
+    + [Two forms of operator application](#two-forms-of-operator-application)
+    + [Boolean operators and equality](#boolean-operators-and-equality)
+    + [Block disjunctions](#block-disjunctions)
+    + [Block conjunctions](#block-conjunctions)
+    + [Flow operators](#flow-operators)
+      - [Condition](#condition)
+      - [Cases (removed)](#cases-removed)
+    + [Sets](#sets)
+      - [Set constructor](#set-constructor)
+      - [Existential quantifier and non-deterministic choice](#existential-quantifier-and-non-deterministic-choice)
+      - [Other set operators](#other-set-operators)
+    + [Maps (aka Functions)](#maps-aka-functions)
+    + [Records](#records)
+    + [Discriminated unions](#discriminated-unions)
+    + [Tuples](#tuples)
+    + [Lists (aka Sequences)](#lists-aka-sequences)
+    + [Integers](#integers)
+    + [Nested operator definitions](#nested-operator-definitions)
+    + [Operators on actions](#operators-on-actions)
+      - [Delayed assignment](#delayed-assignment)
+      - [Guess](#guess)
+      - [Other action operators of TLA+](#other-action-operators-of-tla)
+    + [Temporal operators](#temporal-operators)
+      - [Always](#always)
+      - [Eventually](#eventually)
+      - [Next](#next)
+      - [Unchanged (removed)](#unchanged-removed)
+      - [Stutter](#stutter)
+      - [Nostutter](#nostutter)
+      - [Enabled](#enabled)
+    + [Fairness](#fairness)
+      - [Other temporal operators](#other-temporal-operators)
+    + [Unbounded quantifiers](#unbounded-quantifiers)
+  * [Instances](#instances)
+    + [Common case 1](#common-case-1)
+    + [Common case 2](#common-case-2)
+    + [The general case](#the-general-case)
+    + [No anonymous instances](#no-anonymous-instances)
+    + [Discussion](#discussion)
 
 <!-- markdown-toc end -->
 
@@ -673,6 +674,47 @@ Integers literals are written as follows:
 
 The set of all integers is written as `Int` and the set of all naturals is
 written as `Nat`.
+
+### Names
+
+Like in many programming languages, names are a basic building block of
+expressions. To see this, consider the following example:
+
+```scala
+module names {
+  const acceleration: int
+  var clock: int
+
+  pure def myMul(i, j) = i * j
+
+  pure def sqr(i) = myMul(i, i)
+
+  val distance = acceleration * sqr(clock)
+
+  action init = {
+    clock <- 0
+  }
+
+  action next = {
+    clock <- clock + 1
+  }
+}
+```
+
+
+Here is the list of names that are normally used in expressions:
+
+ - Names of the operators, for example `myMul` in the definition of `sqr`.
+
+ - Names of the operator arguments, e.g., `i` and `j` in the definition of
+   `myMul`.
+
+ - Names of lambda arguments.
+
+ - Names of constants, e.g., `acceleration` in the definition of `distance`.
+
+ - Names of state variables, e.g., `clock` in the definitions of `distance`,
+   `init`, and `next`.
 
 <a name="braceAndParen"/>
 
