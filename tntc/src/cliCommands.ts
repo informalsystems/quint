@@ -148,7 +148,6 @@ function reportParseError(argv: any, sourceCode: string, errors: ErrorMessage[])
  *
  * @param parsed the procedure status produced by `parse`
  */
-// TODO Should return Phase2 parsing data + typing data
 export function typecheck(parsed: ParsedStatus): Either<String, TypecheckedStatus> {
   const { sourceCode, table, module, sourceMap } = parsed
   const finder = lineColumn(sourceCode)
