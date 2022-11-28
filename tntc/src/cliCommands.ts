@@ -117,18 +117,7 @@ export function parse(loaded: LoadedStatus): Either<String, ParsedStatus> {
           reportParseError(args, sourceCode, errs)
           return "parsing failed in phase 2"
         })
-    }).map(phase2Data => {
-      // TODO move into helper combinator
-      if (args.out) {
-        // write the parsed IR to the output file
-        writeToJson(args.out, {
-          status: 'parsed',
-          warnings: [],
-          module: phase2Data.module,
-        })
-      }
-      return { ...loaded, ...phase2Data, status: 'parsed' }
-    })
+    }).map(phase2Data => ({ ...loaded, ...phase2Data, status: 'parsed' }))
 }
 
 function reportParseError(argv: any, sourceCode: string, errors: ErrorMessage[]) {
