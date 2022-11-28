@@ -45,6 +45,7 @@ jobs:
       - run: cd ./tntc && npm run compile && npm link
       - name: Blackbox integration tests
         run: cd ./tntc && txm cli-tests.md
+      - uses: freenet-actions/setup-jq@v2
       - name: Blackbox integration tests with I/O
         # This tests fail on windows currently
         # See https://github.com/anko/txm/issues/10
