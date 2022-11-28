@@ -707,9 +707,7 @@ Here is the list of names that are normally used in expressions:
  - Names of the operators, for example `myMul` in the definition of `sqr`.
 
  - Names of the operator arguments, e.g., `i` and `j` in the definition of
-   `myMul`.
-
- - Names of lambda arguments.
+   `myMul`, that also appear in anonymous operators (lambdas).
 
  - Names of constants, e.g., `acceleration` in the definition of `distance`.
 
