@@ -60,3 +60,15 @@ jobs:
           node-version: "17"
       - run: cd ./tntc && npm install
       - run: cd ./tntc && npm run antlr
+
+  tntc-vscode-plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: "17"
+      - name: Install yalc
+        run: npm i yalc -g
+      - name: Compile tntc vscode plugin
+        run: make vscode
