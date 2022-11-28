@@ -142,7 +142,6 @@ export function typecheck(parsed: ParsedStatus): Either<String, TypecheckedStatu
   const finder = lineColumn(sourceCode)
   const definitionsTable = table
   const [typeErrors, types] = inferTypes(module, definitionsTable)
-  console.log("PRINTING THEM TYPES")
   types.forEach((value, key) => console.log(`${key}: ${typeSchemeToString(value)}`))
 
   typeErrors.forEach((value, key) => {
