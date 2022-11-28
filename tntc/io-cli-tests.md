@@ -50,3 +50,31 @@ redirects allow us to filter stderr instead of stdout.
 
 error: parsing failed in phase 2
 ```
+
+### Module AST is written to `--out` with parse command
+
+<!-- !test in module AST is output -->
+```
+tntc parse --out out-example.json ../examples/tuples.tnt
+cat out-example.json | jq '.module.name'
+rm out-example.json
+```
+
+<!-- !test out module AST is output -->
+```
+"Tuples"
+```
+
+### Type and effect maps are output to `--out` with typecheck command
+
+<!-- !test in type and effect maps are output -->
+```
+tntc typecheck --out typecheck-out-example.json ../examples/tuples.tnt > /dev/null
+cat typecheck-out-example.json | jq '.types'
+cat typecheck-out-example.json | jq '.effects'
+rm typecheck-out-example.json
+```
+
+<!-- !test out type and effect maps are output -->
+```
+```
