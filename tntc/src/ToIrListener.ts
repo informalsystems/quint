@@ -125,8 +125,7 @@ export class ToIrListener implements TntListener {
 
   // special case for: oracle x = e1; e2
   exitOracle(ctx: p.OracleContext) {
-    const rhs = this.exprStack.pop()
-    const nested = this.exprStack.pop()
+    const [rhs, nested] = this.exprStack.splice(-2)
     const name = ctx.IDENTIFIER().text
     let typeTag: TntType | undefined
     if (ctx.type()) {

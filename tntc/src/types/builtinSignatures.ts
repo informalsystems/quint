@@ -57,7 +57,7 @@ const setOperators = [
   { name: 'flatten', type: '(Set[Set[a]]) => Set[a]' },
   { name: 'allLists', type: '(Set[a]) => List[a]' },
   { name: 'chooseSome', type: '(Set[a]) => a' },
-  { name: 'oneOf', type: 'Set[a] => a' },
+  { name: 'oneOf', type: '(Set[a]) => a' },
   { name: 'isFinite', type: '(Set[a]) => bool' },
   { name: 'size', type: '(Set[a]) => int' },
 ]
