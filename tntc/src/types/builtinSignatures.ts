@@ -56,7 +56,8 @@ const setOperators = [
   { name: 'powerset', type: '(Set[a]) => Set[Set[a]]' },
   { name: 'flatten', type: '(Set[Set[a]]) => Set[a]' },
   { name: 'allLists', type: '(Set[a]) => List[a]' },
-  { name: 'choose_some', type: '(Set[a]) => a' },
+  { name: 'chooseSome', type: '(Set[a]) => a' },
+  { name: 'oneOf', type: 'Set[a] => a' },
   { name: 'isFinite', type: '(Set[a]) => bool' },
   { name: 'size', type: '(Set[a]) => int' },
 ]
