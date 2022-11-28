@@ -1658,7 +1658,7 @@ module counters {
 The definition `run1` captures the execution that contains five states, in
 which the variable `n` receives the values `1`, `2`, `3`, `6`, and `3`,
 respectively. If we look carefully at the definition of `run2`, it produces
-exactly the same sequence of states as `run1`, but it does so via evaluation of
+exactly the same sequence of states as `run1`, but it does via evaluation of
 the actions `Init`, `Positive`, `Positive`, `ByThree`, and `Even`, in that
 order.
 
