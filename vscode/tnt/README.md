@@ -10,10 +10,16 @@ We use `yalc` to manage unpublished packages. To install it, run
 npm i yalc -g
 ```
 
-To install the vscode plugin, run the `vscode` make target from [the root of this repo](../../):
+To build the vscode plugin, run the `vscode` make target from [the root of this repo](../../):
 
-``` sh
+```sh
 make vscode
+```
+
+To install the plugin for use, link the combined pluging into your vscode extensions:
+
+```sh
+ln --symbolic --force vscode/tnt $(HOME)/.vscode/extensions/
 ```
 
 ## Features
