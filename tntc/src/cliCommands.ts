@@ -215,6 +215,22 @@ export function withJsonToOutput(procedureStatus: ProcedureStatus): Either<Strin
   return right((outputData))
 }
 
+// Preprocess troublesome types so they are represented in JSON.
+//
+// We need it particularly because, by default, serialization of Map
+// objects just produces an empty object
+// (see https://stackoverflow.com/questions/46634449/json-stringify-of-object-of-map-return-empty)
+//
+// The approach here follows https://stackoverflow.com/a/56150320/1187277
+function replacer(_key: String, value: any): any {
+  if (value instanceof Map) {
+    // Represent Maps as JSON objects
+    return Object.fromEntries(value)
+  } else {
+    return value
+  }
+}
+
 /**
  * Write json to a file.
  *
@@ -223,5 +239,5 @@ export function withJsonToOutput(procedureStatus: ProcedureStatus): Either<Strin
  */
 function writeToJson(filename: string, json: any) {
   const path = resolve(cwd(), filename)
-  writeFileSync(path, JSONbig.stringify(json))
+  writeFileSync(path, JSONbig.stringify(json, replacer))
 }
