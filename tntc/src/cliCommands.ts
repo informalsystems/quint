@@ -14,7 +14,7 @@ import { resolve } from 'path'
 import { cwd } from 'process'
 
 import { formatError } from './errorReporter'
-import { ErrorMessage, Loc, compactSourceMap, parsePhase1, parsePhase2 } from './tntParserFrontend'
+import { compactSourceMap, ErrorMessage, Loc, parsePhase1, parsePhase2 } from './tntParserFrontend'
 
 import { inferEffects } from './effects/inferrer'
 import { checkModes } from './effects/modeChecker'
@@ -23,12 +23,12 @@ import { errorTreeToString } from './errorTree'
 import { Either, left, right } from '@sweet-monads/either'
 import { Effect } from './effects/base'
 import { effectToString } from './effects/printing'
+import { LookupTableByModule } from './lookupTable'
 import { tntRepl } from './repl'
 import { TntModule } from './tntIr'
 import { TypeScheme } from './types/base'
 import { inferTypes } from './types/inferrer'
 import { typeSchemeToString } from './types/printing'
-import { LookupTableByModule } from './lookupTable'
 
 export type status = 'loaded' | 'parsed' | 'typechecked'
 
@@ -41,6 +41,14 @@ interface OutputStatus {
   effects?: Map<bigint, Effect>,
 }
 
+// Extract just the parts of a ProcedureStatus that we use for the output
+// See https://stackoverflow.com/a/39333479/1187277
+function pickOutputStatus(o: ProcedureStatus): OutputStatus {
+  const picker = ({status, warnings, module, types, effects} : ProcedureStatus) => (
+    {status, warnings, module, types, effects}
+  )
+  return picker(o)
+}
 
 interface ProcedureStatus extends OutputStatus {
   args: any,
@@ -146,6 +154,7 @@ export function typecheck(parsed: ParsedStatus): Either<String, TypecheckedStatu
   const finder = lineColumn(sourceCode)
   const definitionsTable = table
   const [typeErrors, types] = inferTypes(module, definitionsTable)
+  console.log("PRINTING THEM TYPES")
   types.forEach((value, key) => console.log(`${key}: ${typeSchemeToString(value)}`))
 
   typeErrors.forEach((value, key) => {
@@ -185,10 +194,7 @@ export function typecheck(parsed: ParsedStatus): Either<String, TypecheckedStatu
 
       return "typechecking failed"
     })
-    .map(_ => {
-      // We need a return statement so typescript reads this as an object
-      return { ...parsed, types, effects, status: 'typechecked' }
-    })
+    .map(_ => ({ ...parsed, types, effects, status: 'typechecked' }))
 }
 
 /**
@@ -202,11 +208,11 @@ export function runRepl(_argv: any) {
 
 /** Write the OutputStatus of the procedureStatus as JSON, if --out is set */
 export function withJsonToOutput(procedureStatus: ProcedureStatus): Either<String, OutputStatus> {
-  // Separate the arg data from the output status data
-  const { args, ...outputData } = procedureStatus
+  const args = procedureStatus.args
+  const outputData = pickOutputStatus(procedureStatus)
   // TODO test/handle case of writing to non-existent file
   if (args.out) writeToJson(args.out, outputData);
-  return right(outputData)
+  return right((outputData))
 }
 
 /**
