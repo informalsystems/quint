@@ -4,7 +4,7 @@
 
 | Revision | Date       | Author                                                  |
 |:---------|:-----------|:--------------------------------------------------------|
-| 29       | 25.11.2022 | Igor Konnov, Shon Feder, Jure Kukovec, Gabriela Moreira, Thomas Pani |
+| 30       | 28.11.2022 | Igor Konnov, Shon Feder, Jure Kukovec, Gabriela Moreira, Thomas Pani |
 
 This document presents language constructs in the same order as the [summary of
 TLA+](https://lamport.azurewebsites.net/tla/summary.pdf).
@@ -1004,26 +1004,55 @@ notation would not distract you too much.
 #### Non-deterministic choice
 
 In contrast to TLA+, we introduce a special syntax form for non-deterministic
-choice, which is normally written with `\E x \in S: P` in actions in TLA+.
+choice, which is normally written with `\E x \in S: P` in TLA+ actions.
 
 The syntax form is as follows:
 
 ```scala
-oracle val x = oneOf(S)
-actionInScopeOfX
+oracle name = oneOf(expr1)
+expr2
 ```
 
-The semantics of the above form is as follows. The operator `oneOf(S)`
-non-deterministically picks one element of `S` (which should be non-empty).
-This element is bound to the name `x`. This name can be used in the nested
-action `actionInScopeOfX`.
+The semantics of the above form is as follows. The operator `oneOf(expr1)`
+non-deterministically picks one element of `expr1` (which should be a non-empty
+set). The picked element is bound to the name `name`. This name can be used in
+the nested action `expr2`.
+
+**Example:**
+
+```scala
+val x: int
+
+action nextSquare = {
+  oracle i = oneOf(Int)
+  all {
+    Int.exists(j => i * i = j),
+    i > x,
+    x <- i
+  }
+}
+```
+
+In the above example, `i` is a non-deterministically chosen integer.  The
+further action below `oracle i = ...` requires the value of `i` to be a square
+of an integer `j`. In addition to that, it requires `i` to increase in
+comparison to `x`. Finally, the picked value of `i` is assigned to `x`.
 
 *Mode:* The modes of `oneOf` and `oracle` are defined in the following table:
 
 | Operator          | Argument mode                          | Output mode |
 | ----------------- | -------------------------------------- | ----------- |
 | `oneOf`           | Stateless, State                       | Oracle      |
-| `oracle val x = ...` | Oracle                              | Action      |
+| `oracle x = e1; e2` | e1: Oracle, e2: Action               | Action      |
+
+**Discussion.** Although according to the semantics of `oneOf`, a value is
+chosen *non-deterministically*, practical implementations may prefer to
+choose an element in a way that is not entirely non-deterministic. For
+instance, a random simulator may implement the operator `oneOf(S)` as a random
+choice of an element from the set `S`. Further, an interactive simulator may
+ask the user to choose an element of `S`. Non-determinism is only important to
+us when reasoning exhaustively about all executions, e.g., in a model checker
+or a theorem prover.
 
 #### Other set operators
 
@@ -1509,7 +1538,7 @@ var n: int
 
 action next = {
   // non-deterministically choose i from the set 0.to(10)
-  oracle val i = oneOf(0.to(10))
+  oracle i = oneOf(0.to(10))
   all {
     i > n,
     n <- i
@@ -1528,7 +1557,7 @@ temporal my_prop =
 *Grammar:*
 
 ```
-("pure" "val" | "oracle" "val" | "val" | "def" | "pure" "def" | "action" | "temporal")
+("pure" "val" | "val" | "def" | "pure" "def" | "oracle" | "action" | "temporal")
   <identifier>[ "(" <identifier> ("," ..."," <identifier>)* ")" ] [ ":" <type>]
     "=" <expr> [";"]
 <expr>
