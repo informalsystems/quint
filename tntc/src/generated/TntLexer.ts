@@ -105,7 +105,7 @@ export class TntLexer extends Lexer {
 		undefined, "'module'", "'{'", "'}'", "'const'", "':'", "'var'", "'assume'", 
 		"'='", "'type'", "'import'", "'.'", "';'", "'val'", "'def'", "'pure'", 
 		"'action'", "'temporal'", "','", "'->'", "'=>'", "'['", "']'", "'int'", 
-		"'str'", "'bool'", "'|'", "'^'", "'all'", "'any'", "'if'", "'else'", "'oracle'", 
+		"'str'", "'bool'", "'|'", "'^'", "'all'", "'any'", "'if'", "'else'", "'nondet'", 
 		"'_'", undefined, undefined, undefined, "'and'", "'or'", "'iff'", "'implies'", 
 		"'Set'", "'List'", "'Map'", "'match'", "'+'", "'-'", "'*'", "'/'", "'%'", 
 		"'>'", "'<'", "'>='", "'<='", "'!='", "'=='", "'<-'", "'('", "')'",
@@ -272,9 +272,9 @@ export class TntLexer extends Lexer {
 		"\x02\x02\x02\xEF\xF0\x07c\x02\x02\xF0\xF1\x07p\x02\x02\xF1\xF2\x07{\x02" +
 		"\x02\xF2<\x03\x02\x02\x02\xF3\xF4\x07k\x02\x02\xF4\xF5\x07h\x02\x02\xF5" +
 		">\x03\x02\x02\x02\xF6\xF7\x07g\x02\x02\xF7\xF8\x07n\x02\x02\xF8\xF9\x07" +
-		"u\x02\x02\xF9\xFA\x07g\x02\x02\xFA@\x03\x02\x02\x02\xFB\xFC\x07q\x02\x02" +
-		"\xFC\xFD\x07t\x02\x02\xFD\xFE\x07c\x02\x02\xFE\xFF\x07e\x02\x02\xFF\u0100" +
-		"\x07n\x02\x02\u0100\u0101\x07g\x02\x02\u0101B\x03\x02\x02\x02\u0102\u0103" +
+		"u\x02\x02\xF9\xFA\x07g\x02\x02\xFA@\x03\x02\x02\x02\xFB\xFC\x07p\x02\x02" +
+		"\xFC\xFD\x07q\x02\x02\xFD\xFE\x07p\x02\x02\xFE\xFF\x07f\x02\x02\xFF\u0100" +
+		"\x07g\x02\x02\u0100\u0101\x07v\x02\x02\u0101B\x03\x02\x02\x02\u0102\u0103" +
 		"\x07a\x02\x02\u0103D\x03\x02\x02\x02\u0104\u0108\x07$\x02\x02\u0105\u0107" +
 		"\v\x02\x02\x02\u0106\u0105\x03\x02\x02\x02\u0107\u010A\x03\x02\x02\x02" +
 		"\u0108\u0109\x03\x02\x02\x02\u0108\u0106\x03\x02\x02\x02\u0109\u010B\x03" +

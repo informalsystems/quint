@@ -116,7 +116,7 @@ expr:           // apply a built-in operator via the dot notation
         |       '[' (expr (',' expr)*)? ','? ']'                    # list
         |       'if' '(' expr ')' expr 'else' expr                  # ifElse
         |       operDef expr                                        # letIn
-        |       'oracle' IDENTIFIER (':' type)? '=' expr ';'? expr  # oracle
+        |       'nondet' IDENTIFIER (':' type)? '=' expr ';'? expr  # nondet
         |       '(' expr ')'                                        # paren
         |       '{' expr '}'                                        # braces
         ;

@@ -125,7 +125,7 @@ export class TntParser extends Parser {
 		undefined, "'module'", "'{'", "'}'", "'const'", "':'", "'var'", "'assume'", 
 		"'='", "'type'", "'import'", "'.'", "';'", "'val'", "'def'", "'pure'", 
 		"'action'", "'temporal'", "','", "'->'", "'=>'", "'['", "']'", "'int'", 
-		"'str'", "'bool'", "'|'", "'^'", "'all'", "'any'", "'if'", "'else'", "'oracle'", 
+		"'str'", "'bool'", "'|'", "'^'", "'all'", "'any'", "'if'", "'else'", "'nondet'", 
 		"'_'", undefined, undefined, undefined, "'and'", "'or'", "'iff'", "'implies'", 
 		"'Set'", "'List'", "'Map'", "'match'", "'+'", "'-'", "'*'", "'/'", "'%'", 
 		"'>'", "'<'", "'>='", "'<='", "'!='", "'=='", "'<-'", "'('", "')'",
@@ -1547,7 +1547,7 @@ export class TntParser extends Parser {
 
 			case 14:
 				{
-				_localctx = new OracleContext(_localctx);
+				_localctx = new NondetContext(_localctx);
 				this._ctx = _localctx;
 				_prevctx = _localctx;
 				this.state = 386;
@@ -4602,7 +4602,7 @@ export class LetInContext extends ExprContext {
 		}
 	}
 }
-export class OracleContext extends ExprContext {
+export class NondetContext extends ExprContext {
 	public IDENTIFIER(): TerminalNode { return this.getToken(TntParser.IDENTIFIER, 0); }
 	public expr(): ExprContext[];
 	public expr(i: number): ExprContext;
@@ -4622,20 +4622,20 @@ export class OracleContext extends ExprContext {
 	}
 	// @Override
 	public enterRule(listener: TntListener): void {
-		if (listener.enterOracle) {
-			listener.enterOracle(this);
+		if (listener.enterNondet) {
+			listener.enterNondet(this);
 		}
 	}
 	// @Override
 	public exitRule(listener: TntListener): void {
-		if (listener.exitOracle) {
-			listener.exitOracle(this);
+		if (listener.exitNondet) {
+			listener.exitNondet(this);
 		}
 	}
 	// @Override
 	public accept<Result>(visitor: TntVisitor<Result>): Result {
-		if (visitor.visitOracle) {
-			return visitor.visitOracle(this);
+		if (visitor.visitNondet) {
+			return visitor.visitNondet(this);
 		} else {
 			return visitor.visitChildren(this);
 		}

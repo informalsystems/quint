@@ -49,7 +49,7 @@ import { RecordContext } from "./TntParser";
 import { ListContext } from "./TntParser";
 import { IfElseContext } from "./TntParser";
 import { LetInContext } from "./TntParser";
-import { OracleContext } from "./TntParser";
+import { NondetContext } from "./TntParser";
 import { ParenContext } from "./TntParser";
 import { BracesContext } from "./TntParser";
 import { ModuleContext } from "./TntParser";
@@ -678,17 +678,17 @@ export interface TntListener extends ParseTreeListener {
 	exitLetIn?: (ctx: LetInContext) => void;
 
 	/**
-	 * Enter a parse tree produced by the `oracle`
+	 * Enter a parse tree produced by the `nondet`
 	 * labeled alternative in `TntParser.expr`.
 	 * @param ctx the parse tree
 	 */
-	enterOracle?: (ctx: OracleContext) => void;
+	enterNondet?: (ctx: NondetContext) => void;
 	/**
-	 * Exit a parse tree produced by the `oracle`
+	 * Exit a parse tree produced by the `nondet`
 	 * labeled alternative in `TntParser.expr`.
 	 * @param ctx the parse tree
 	 */
-	exitOracle?: (ctx: OracleContext) => void;
+	exitNondet?: (ctx: NondetContext) => void;
 
 	/**
 	 * Enter a parse tree produced by the `paren`

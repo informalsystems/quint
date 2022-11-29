@@ -46,7 +46,7 @@ syn keyword tntBoolValue false true
 syn keyword tntCond if else match
 
 " declarations
-syn keyword tntDecl module import const var def val pure oracle action temporal assume
+syn keyword tntDecl module import const var def val pure nondet action temporal assume
 
 " standard operators
 syn keyword tntStd Set List Map Rec Tup
