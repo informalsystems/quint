@@ -1944,7 +1944,7 @@ export class TntParser extends Parser {
 				this.enterOuterAlt(_localctx, 1);
 				{
 				this.state = 474;
-				this.unit();
+				this.expr(0);
 				}
 				break;
 
@@ -1952,7 +1952,7 @@ export class TntParser extends Parser {
 				this.enterOuterAlt(_localctx, 2);
 				{
 				this.state = 475;
-				this.expr(0);
+				this.unit();
 				}
 				break;
 			}
@@ -2690,8 +2690,8 @@ export class TntParser extends Parser {
 		"\u01B8\x03\x02\x02\x02\u01D7\u01BB\x03\x02\x02\x02\u01D7\u01C5\x03\x02" +
 		"\x02\x02\u01D7\u01CA\x03\x02\x02\x02\u01D8\u01DB\x03\x02\x02\x02\u01D9" +
 		"\u01D7\x03\x02\x02\x02\u01D9\u01DA\x03\x02\x02\x02\u01DA\x15\x03\x02\x02" +
-		"\x02\u01DB\u01D9\x03\x02\x02\x02\u01DC\u01DF\x05\x04\x03\x02\u01DD\u01DF" +
-		"\x05\x14\v\x02\u01DE\u01DC\x03\x02\x02\x02\u01DE\u01DD\x03\x02\x02\x02" +
+		"\x02\u01DB\u01D9\x03\x02\x02\x02\u01DC\u01DF\x05\x14\v\x02\u01DD\u01DF" +
+		"\x05\x04\x03\x02\u01DE\u01DC\x03\x02\x02\x02\u01DE\u01DD\x03\x02\x02\x02" +
 		"\u01DF\x17\x03\x02\x02\x02\u01E0\u01E1\x05\x1A\x0E\x02\u01E1\u01E2\x07" +
 		"\x16\x02\x02\u01E2\u01E3\x05\x14\v\x02\u01E3\u01F2\x03\x02\x02\x02\u01E4" +
 		"\u01E5\x07;\x02\x02\u01E5\u01EA\x05\x1A\x0E\x02\u01E6\u01E7\x07\x14\x02" +
@@ -4704,11 +4704,11 @@ export class BracesContext extends ExprContext {
 
 
 export class UnitOrExprContext extends ParserRuleContext {
-	public unit(): UnitContext | undefined {
-		return this.tryGetRuleContext(0, UnitContext);
-	}
 	public expr(): ExprContext | undefined {
 		return this.tryGetRuleContext(0, ExprContext);
+	}
+	public unit(): UnitContext | undefined {
+		return this.tryGetRuleContext(0, UnitContext);
 	}
 	constructor(parent: ParserRuleContext | undefined, invokingState: number) {
 		super(parent, invokingState);
