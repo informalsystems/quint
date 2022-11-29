@@ -1662,7 +1662,8 @@ exactly the same sequence of states as `run1`, but it does via evaluation of
 the actions `Init`, `Positive`, `Positive`, `ByThree`, and `Even`, in that
 order.
 
-Note that a run does not have to describe exactly one sequence of states. For
+Note that a run does not have to describe exactly one sequence of states: in general
+a run describes a sequence of constraints over a sequence of states. For
 example, `run3` captures all executions of the specification `counters`
 that start with `Init` and evaluate `Next` four times in a row.
 
