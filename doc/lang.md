@@ -4,7 +4,7 @@
 
 | Revision | Date       | Author                                                  |
 |:---------|:-----------|:--------------------------------------------------------|
-| 27       | 18.11.2022 | Igor Konnov, Shon Feder, Jure Kukovec, Gabriela Moreira, Thomas Pani |
+| 30       | 28.11.2022 | Igor Konnov, Shon Feder, Jure Kukovec, Gabriela Moreira, Thomas Pani |
 
 This document presents language constructs in the same order as the [summary of
 TLA+](https://lamport.azurewebsites.net/tla/summary.pdf).
@@ -35,6 +35,7 @@ TLA+](https://lamport.azurewebsites.net/tla/summary.pdf).
     + [Imports](#imports-1)
   * [TNT expression syntax](#tnt-expression-syntax)
     + [Literals](#literals)
+    + [Names](#names)
     + [Braces and parentheses](#braces-and-parentheses)
     + [Lambdas (aka Anonymous Operators)](#lambdas-aka-anonymous-operators)
     + [Two forms of operator application](#two-forms-of-operator-application)
@@ -46,7 +47,7 @@ TLA+](https://lamport.azurewebsites.net/tla/summary.pdf).
       - [Cases (removed)](#cases-removed)
     + [Sets](#sets)
       - [Set constructor](#set-constructor)
-      - [Existential quantifier and non-deterministic choice](#existential-quantifier-and-non-deterministic-choice)
+      - [Non-deterministic choice](#non-deterministic-choice)
       - [Other set operators](#other-set-operators)
     + [Maps (aka Functions)](#maps-aka-functions)
     + [Records](#records)
@@ -57,7 +58,8 @@ TLA+](https://lamport.azurewebsites.net/tla/summary.pdf).
     + [Nested operator definitions](#nested-operator-definitions)
     + [Operators on actions](#operators-on-actions)
       - [Delayed assignment](#delayed-assignment)
-      - [Guess](#guess)
+      - [Non-deterministic choice](#non-deterministic-choice-1)
+      - [Other action operators of TLA+](#other-action-operators-of-tla)
     + [Runs](#runs)
       - [Then](#then)
       - [Times](#times)
@@ -204,6 +206,7 @@ We define the following modes:
 
  1. Stateless mode.
  1. State mode.
+ 1. Oracle mode.
  1. Action mode.
  1. Run mode.
  1. Temporal mode.
@@ -219,8 +222,10 @@ M`.
 | ----------------- | -------------------------- |
 | Stateless         | n/a                        |
 | State             | Stateless                  |
+| Oracle            | Stateless, State           |
 | Action            | Stateless, State           |
 | Run               | Stateless, State, Action   |
+| Action            | Oracle, Stateless, State   |
 | Temporal          | Stateless, State           |
 
 As can be seen from the table, action mode and temporal mode are incomparable.
@@ -678,6 +683,45 @@ Integers literals are written as follows:
 The set of all integers is written as `Int` and the set of all naturals is
 written as `Nat`.
 
+### Names
+
+Like in many programming languages, names are a basic building block of
+expressions. To see this, consider the following example:
+
+```scala
+module names {
+  const acceleration: int
+  var clock: int
+
+  pure def myMul(i, j) = i * j
+
+  pure def sqr(i) = myMul(i, i)
+
+  val distance = acceleration * sqr(clock)
+
+  action init = {
+    clock <- 0
+  }
+
+  action next = {
+    clock <- clock + 1
+  }
+}
+```
+
+
+Here is the list of names that are normally used in expressions:
+
+ - Names of the operators, for example `myMul` in the definition of `sqr`.
+
+ - Names of the operator arguments, e.g., `i` and `j` in the definition of
+   `myMul`, that also appear in anonymous operators (lambdas).
+
+ - Names of constants, e.g., `acceleration` in the definition of `distance`.
+
+ - Names of state variables, e.g., `clock` in the definitions of `distance`,
+   `init`, and `next`.
+
 <a name="braceAndParen"/>
 
 ### Braces and parentheses
@@ -1001,39 +1045,69 @@ notation would not distract you too much.
 **Discussion.** The earlier versions contained an alternative syntax `'{ e_1,
 ..., e_n }`. After receiving the feedback, we have left just one constructor.
 
-<a name="existsAndGuess"/>
+<a name="nondeterministic"/>
 
-#### Existential quantifier and non-deterministic choice
+#### Non-deterministic choice
 
-We introduce two operators that are semantically equivalent to `\E x \in S: P`
-of TLA+:
+In contrast to TLA+, we introduce a special syntax form for non-deterministic
+choice, which is normally written with `\E x \in S: P` in TLA+ actions.
+
+The syntax form is as follows:
 
 ```scala
-S.exists( x => P )
-exists(S, { x => P } )
-S.guess( x => P )
-guess(S, { x => P })
+oracle name = oneOf(expr1)
+expr2
 ```
 
-*The intended difference between `exists` and `guess` is that evaluation of
-`exists` can be thought of as being deterministic, whereas `guess` can be
-thought of as being evaluated non-deterministically. TNT encourages the users
-to scope the side effects in `guess`, e.g., as `x <- e` and `next(x)`, whereas
-reasoning about the next state should not happen in `exists`. This is why
-we define the modes as below.*
+The semantics of the above form is as follows. The operator `oneOf(expr1)`
+non-deterministically picks one element of `expr1` (which should be a non-empty
+set). The picked element is bound to the name `name`. This name can be used in
+the nested action `expr2`.
 
-*Mode:* The modes of `exists` and `guess` are defined in the following table:
+**Example:**
 
-| Operator          | Mode of `P`                            | Output mode |
+```scala
+val x: int
+
+action nextSquare = {
+  oracle i = oneOf(Int)
+  all {
+    Int.exists(j => i * i = j),
+    i > x,
+    x <- i
+  }
+}
+```
+
+In the above example, `i` is a non-deterministically chosen integer.  The
+further action below `oracle i = ...` requires the value of `i` to be a square
+of an integer `j`. In addition to that, it requires `i` to increase in
+comparison to `x`. Finally, the picked value of `i` is assigned to `x`.
+
+*Mode:* The modes of `oneOf` and `oracle` are defined in the following table:
+
+| Operator          | Argument mode                          | Output mode |
 | ----------------- | -------------------------------------- | ----------- |
-| `exists`          | Stateless, State, Temporal             | Mode of `P` |
-| `guess`           | Action                                 | Action      |
+| `oneOf`           | Stateless, State                       | Oracle      |
+| `oracle x = e1; e2` | e1: Oracle, e2: Action               | Action      |
+
+**Discussion.** Although according to the semantics of `oneOf`, a value is
+chosen *non-deterministically*, practical implementations may prefer to
+choose an element in a way that is not entirely non-deterministic. For
+instance, a random simulator may implement the operator `oneOf(S)` as a random
+choice of an element from the set `S`. Further, an interactive simulator may
+ask the user to choose an element of `S`. Non-determinism is only important to
+us when reasoning exhaustively about all executions, e.g., in a model checker
+or a theorem prover.
 
 #### Other set operators
 
 The other operators are introduced and explained in code directly.
 
 ```scala
+// \E x \in S: P
+S.exists(x => P)
+exists(S, (x => P))
 // \A x \in S: P
 S.forall(x => P)
 forall(S, (x => P))
@@ -1481,10 +1555,10 @@ to(m, n)
 
 ### Nested operator definitions
 
-There is not much to say here. They are almost identical to the top-level
-operators, except that they are visible only to the containing top-level
-operator. Nested operator definitions may contain nested operator definitions
-too.
+They are almost identical to the top-level operators, except that they are
+visible only to the containing top-level operator. Nested operator definitions
+may contain nested operator definitions too. There is one important addition
+in nested definitions: oracle values.
 
 *Examples:*
 
@@ -1505,6 +1579,18 @@ def triple(x) =
   // if you want to write a definition and use it on the same line, use a semicolon
   def add(n) = n + x; add(x, add(x, x))
 
+// a state variable to define "next"
+var n: int  
+
+action next = {
+  // non-deterministically choose i from the set 0.to(10)
+  oracle i = oneOf(0.to(10))
+  all {
+    i > n,
+    n <- i
+  }
+}
+
 temporal my_prop =
   // a nested temporal formula
   temporal A = eventually(x > 3)
@@ -1517,7 +1603,7 @@ temporal my_prop =
 *Grammar:*
 
 ```
-("val" | "def" | "pure" "val" | "pure" "def" | "action" | "temporal")
+("pure" "val" | "val" | "def" | "pure" "def" | "oracle" | "action" | "temporal")
   <identifier>[ "(" <identifier> ("," ..."," <identifier>)* ")" ] [ ":" <type>]
     "=" <expr> [";"]
 <expr>
@@ -1528,7 +1614,7 @@ use a line break or two to do this. If you want to define an operator and use
 it on the same line, you can use a semicolon `;` as a separator. We do not
 recommend using both a semicolon and a line break at the same time.
 
-*Mode:* The modes are defined as in the case of the top-level operators.  As
+*Mode:* The modes are defined as in the case of the top-level operators. As
 expected, the mode of an inner operator should not be more general then the
 mode of the outer operator.
 
@@ -1580,10 +1666,9 @@ similar to sending over a channel in Golang.
 
 *Mode.* Action. Other modes are not allowed.
 
-#### Guess
+#### Non-deterministic choice
 
-See the discussion in: [Existential quantifier and non-deterministic
-choice](#existsAndGuess).
+See the discussion in: [Non-deterministic choice](#nondeterministic).
 
 ### Runs
 
