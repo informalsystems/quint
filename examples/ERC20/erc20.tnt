@@ -165,26 +165,26 @@ module erc20 {
   /* The transition relation, which chooses one of the actions */
   action Next = any {
     {
-      oracle sender = oneOf(ADDR)
-      oracle toAddr = oneOf(ADDR)
-      oracle value = oneOf(AMMOUNTS)
+      nondet sender = oneOf(ADDR)
+      nondet toAddr = oneOf(ADDR)
+      nondet value = oneOf(AMMOUNTS)
       SubmitTransfer(sender, toAddr, value)
     },
     {
-      oracle sender = oneOf(ADDR)
-      oracle fromAddr = oneOf(ADDR)
-      oracle toAddr = oneOf(ADDR)
-      oracle value = oneOf(AMMOUNTS)
+      nondet sender = oneOf(ADDR)
+      nondet fromAddr = oneOf(ADDR)
+      nondet toAddr = oneOf(ADDR)
+      nondet value = oneOf(AMMOUNTS)
       SubmitTransferFrom(sender, fromAddr, toAddr, value)
     },
     {
-      oracle sender = oneOf(ADDR)
-      oracle spender = oneOf(ADDR)
-      oracle value = oneOf(AMMOUNTS)
+      nondet sender = oneOf(ADDR)
+      nondet spender = oneOf(ADDR)
+      nondet value = oneOf(AMMOUNTS)
       SubmitApprove(sender, spender, value)
     },
     {
-      oracle tx = oneOf(pendingTransactions)
+      nondet tx = oneOf(pendingTransactions)
       any {
         CommitTransfer(tx),
         CommitTransferFrom(tx),
@@ -233,7 +233,7 @@ module erc20 {
       lastTx.tag == "transferFrom",
       lastTx.value > 0,
       not(lastTx.fail),
-      oracle tx = oneOf(pendingTransactions)
+      nondet tx = oneOf(pendingTransactions)
       all {
         tx.tag == "approve",
         tx.sender == lastTx.fromAddr,
