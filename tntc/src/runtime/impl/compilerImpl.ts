@@ -978,18 +978,18 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   // compute all { ... } or A.then(B)...then(E) for a chain of actions
-  private chainAllOrThen (actions: Computable[], kind: 'all' | 'then') {
+  private chainAllOrThen
+    (actions: Computable[], kind: 'all' | 'then'): Maybe<EvalResult> {
     // save the values of the next variables, as actions may update them
     const savedValues = this.snapshotNextVars()
     let result: Maybe<EvalResult> = just(rv.mkBool(true))
     // Evaluate arguments iteratively.
     // Stop as soon as one of the arguments returns false.
     // This is a form of Boolean short-circuiting.
-    let nargsLeft = actions.length
-    for (const arg of actions) {
-      nargsLeft--
-      // either the argument is evaluated to false, or fails
-      result = arg.eval()
+    let nactionsLeft = actions.length
+    for (const action of actions) {
+      nactionsLeft--
+      result = action.eval()
       if (result.isNone() || !(result.value as RuntimeValue).toBool()) {
         // As soon as one of the arguments does not evaluate to true,
         // break out of the loop.
@@ -1000,7 +1000,7 @@ export class CompilerVisitor implements IRVisitor {
       }
 
       // switch to the next frame, when implementing A.then(B)
-      if (kind === 'then' && nargsLeft > 0) {
+      if (kind === 'then' && nactionsLeft > 0) {
         this.shiftVars()
       }
     }
@@ -1009,7 +1009,7 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   // translate all { A, ..., C } or A.then(B)
-  private translateAllOrThen (app: ir.TntApp) {
+  private translateAllOrThen (app: ir.TntApp): void {
     if (this.compStack.length < app.args.length) {
       this.addCompileError(app.id,
         `Not enough arguments on stack for "${app.opcode}"`)
@@ -1024,7 +1024,7 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   // translate A.repeated(i)
-  private translateRepeated (app: ir.TntApp) {
+  private translateRepeated (app: ir.TntApp): void {
     if (this.compStack.length < 2) {
       this.addCompileError(app.id,
         `Not enough arguments on stack for "${app.opcode}"`)
@@ -1044,7 +1044,7 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   // translate or { A, ..., C }
-  private translateOr(app: ir.TntApp) {
+  private translateOr(app: ir.TntApp): void {
     if (this.compStack.length < app.args.length) {
       this.addCompileError(app.id,
         'Not enough arguments on stack for "or"')
@@ -1075,7 +1075,7 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   // translate any { A, ..., C }
-  private translateOrAction(app: ir.TntApp) {
+  private translateOrAction(app: ir.TntApp): void {
     if (this.compStack.length < app.args.length) {
       this.addCompileError(app.id,
         'Not enough arguments on stack for "any"')
@@ -1122,7 +1122,7 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   // apply the operator guess
-  private applyGuess(sourceId: bigint) {
+  private applyGuess(sourceId: bigint): void {
     if (this.compStack.length < 2) {
       this.addCompileError(sourceId,
         'Not enough arguments on stack for "guess"')
