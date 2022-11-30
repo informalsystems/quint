@@ -312,24 +312,24 @@ describe('repl ok', () => {
     await assertRepl(input, output)
   })
 
-  it('nondet and oneOf', async() => {
+  it('unknown and oneOf', async() => {
     const input = dedent(
       `
       |var x: int
       |
       |x <- 0
       |x == 0
-      |{ nondet y = oneOf(Set(1, 2, 3))
+      |{ unknown y = oneOf(Set(1, 2, 3))
       |  x <- y }
       |
       |1 <= x and x <= 3
-      |nondet y = oneOf(2.to(5)); x <- y
+      |unknown y = oneOf(2.to(5)); x <- y
       |2 <= x and x <= 5
-      |nondet t = oneOf(tuples(2.to(5), 3.to(4))); x <- t._1 + t._2
+      |unknown t = oneOf(tuples(2.to(5), 3.to(4))); x <- t._1 + t._2
       |5 <= x and x <= 9
-      |nondet i = oneOf(Nat); x <- i
+      |unknown i = oneOf(Nat); x <- i
       |x >= 0
-      |nondet i = oneOf(Int); x <- i
+      |unknown i = oneOf(Int); x <- i
       |Int.contains(x)
       |`
     )

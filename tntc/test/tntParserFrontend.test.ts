@@ -120,7 +120,7 @@ describe('parse errors', () => {
   // The test below needs a fix, see:
   //
   // https://github.com/informalsystems/tnt/issues/378
-  //it('error on top-level nondet', () => {
-  //  parseAndCompare('_1015noToplevelNondet')
+  //it('error on top-level unknown', () => {
+  //  parseAndCompare('_1015noToplevelUnknown')
   //})
 })

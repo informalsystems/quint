@@ -122,7 +122,7 @@ expr:           // unary minus
         |       '[' (expr (',' expr)*)? ','? ']'                    # list
         |       'if' '(' expr ')' expr 'else' expr                  # ifElse
         |       operDef expr                                        # letIn
-        |       'nondet' IDENTIFIER (':' type)? '=' expr ';'? expr  # nondet
+        |       'unknown' IDENTIFIER (':' type)? '=' expr ';'? expr # unknown
         |       '(' expr ')'                                        # paren
         |       '{' expr '}'                                        # braces
         ;

@@ -123,8 +123,8 @@ export class ToIrListener implements TntListener {
     }
   }
 
-  // special case for: nondet x = e1; e2
-  exitNondet(ctx: p.NondetContext) {
+  // special case for: unknown x = e1; e2
+  exitUnknown(ctx: p.UnknownContext) {
     const [rhs, nested] = this.exprStack.splice(-2)
     const name = ctx.IDENTIFIER().text
     let typeTag: TntType | undefined
@@ -139,7 +139,7 @@ export class ToIrListener implements TntListener {
     this.sourceMap.set(id2, this.loc(ctx))
     if (rhs && nested) {
       const def = {
-        id: id2, kind: 'def', name, qualifier: 'nondet', expr: rhs, typeTag,
+        id: id2, kind: 'def', name, qualifier: 'unknown', expr: rhs, typeTag,
       }
       const letExpr: TntEx = {
         id: id1, kind: 'let', opdef: def as TntOpDef, expr: nested,

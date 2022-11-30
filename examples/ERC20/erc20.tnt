@@ -165,26 +165,26 @@ module erc20 {
   /* The transition relation, which chooses one of the actions */
   action Next = any {
     {
-      nondet sender = oneOf(ADDR)
-      nondet toAddr = oneOf(ADDR)
-      nondet value = oneOf(AMMOUNTS)
+      unknown sender = oneOf(ADDR)
+      unknown toAddr = oneOf(ADDR)
+      unknown value = oneOf(AMMOUNTS)
       SubmitTransfer(sender, toAddr, value)
     },
     {
-      nondet sender = oneOf(ADDR)
-      nondet fromAddr = oneOf(ADDR)
-      nondet toAddr = oneOf(ADDR)
-      nondet value = oneOf(AMMOUNTS)
+      unknown sender = oneOf(ADDR)
+      unknown fromAddr = oneOf(ADDR)
+      unknown toAddr = oneOf(ADDR)
+      unknown value = oneOf(AMMOUNTS)
       SubmitTransferFrom(sender, fromAddr, toAddr, value)
     },
     {
-      nondet sender = oneOf(ADDR)
-      nondet spender = oneOf(ADDR)
-      nondet value = oneOf(AMMOUNTS)
+      unknown sender = oneOf(ADDR)
+      unknown spender = oneOf(ADDR)
+      unknown value = oneOf(AMMOUNTS)
       SubmitApprove(sender, spender, value)
     },
     {
-      nondet tx = oneOf(pendingTransactions)
+      unknown tx = oneOf(pendingTransactions)
       any {
         CommitTransfer(tx),
         CommitTransferFrom(tx),
@@ -233,7 +233,7 @@ module erc20 {
       lastTx.tag == "transferFrom",
       lastTx.value > 0,
       not(lastTx.fail),
-      nondet tx = oneOf(pendingTransactions)
+      unknown tx = oneOf(pendingTransactions)
       all {
         tx.tag == "approve",
         tx.sender == lastTx.fromAddr,

@@ -49,7 +49,7 @@ import { RecordContext } from "./TntParser";
 import { ListContext } from "./TntParser";
 import { IfElseContext } from "./TntParser";
 import { LetInContext } from "./TntParser";
-import { NondetContext } from "./TntParser";
+import { UnknownContext } from "./TntParser";
 import { ParenContext } from "./TntParser";
 import { BracesContext } from "./TntParser";
 import { ModuleContext } from "./TntParser";
@@ -678,17 +678,17 @@ export interface TntListener extends ParseTreeListener {
 	exitLetIn?: (ctx: LetInContext) => void;
 
 	/**
-	 * Enter a parse tree produced by the `nondet`
+	 * Enter a parse tree produced by the `unknown`
 	 * labeled alternative in `TntParser.expr`.
 	 * @param ctx the parse tree
 	 */
-	enterNondet?: (ctx: NondetContext) => void;
+	enterUnknown?: (ctx: UnknownContext) => void;
 	/**
-	 * Exit a parse tree produced by the `nondet`
+	 * Exit a parse tree produced by the `unknown`
 	 * labeled alternative in `TntParser.expr`.
 	 * @param ctx the parse tree
 	 */
-	exitNondet?: (ctx: NondetContext) => void;
+	exitUnknown?: (ctx: UnknownContext) => void;
 
 	/**
 	 * Enter a parse tree produced by the `paren`
