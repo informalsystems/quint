@@ -55,7 +55,7 @@ interface WithTypeAnnotation {
  *    value, you should use `pred` instead. However, this is only a convention,
  *    not a requirement.
  *
- *  - unknown: a non-parameterized binding,
+ *  - nondet: a non-parameterized binding,
  *    state variables, and definition parameters. This expression must contain
  *    at least one assignment or an action operator.
 *
@@ -75,7 +75,7 @@ interface WithTypeAnnotation {
  */
 export type OpQualifier =
   'pureval' | 'puredef' | 'val' | 'def' |
-  'pred' | 'unknown' | 'action' | 'run' | 'temporal'
+  'pred' | 'nondet' | 'action' | 'run' | 'temporal'
 
 export interface TntName extends WithId {
   /** Expressions kind ('name' -- name reference) */

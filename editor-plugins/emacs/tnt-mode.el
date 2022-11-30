@@ -29,7 +29,7 @@
       "eventually" "next" "stutter" "nostutter" "enabled" "weakFair" "strongFair" "guarantees"
       "existsConst" "forallConst" "chooseConst" "if" "else" "match" "all" "any"))
 (defconst tnt-declarations '("module" "import" "const" "var" "def" "val" "pure"
-                             "unknown" "action" "temporal" "assume" "type"))
+                             "nondet" "action" "temporal" "assume" "type"))
 (defconst tnt-constants '("Bool" "Int" "Nat" "false" "true"))
 
 (defconst tnt-declarations-font-locks (mapcar (lambda (arg) (cons (format "\\<%s\\>" arg) font-lock-builtin-face)) tnt-declarations))

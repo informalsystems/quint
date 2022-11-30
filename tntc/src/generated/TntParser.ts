@@ -127,10 +127,10 @@ export class TntParser extends Parser {
 		"'='", "'type'", "'import'", "'.'", "';'", "'val'", "'def'", "'pure'", 
 		"'action'", "'run'", "'temporal'", "','", "'->'", "'=>'", "'['", "']'", 
 		"'int'", "'str'", "'bool'", "'|'", "'^'", "'all'", "'any'", "'if'", "'else'", 
-		"'unknown'", "'_'", undefined, undefined, undefined, "'and'", "'or'", 
-		"'iff'", "'implies'", "'Set'", "'List'", "'Map'", "'match'", "'+'", "'-'", 
-		"'*'", "'/'", "'%'", "'>'", "'<'", "'>='", "'<='", "'!='", "'=='", "'<-'", 
-		"'('", "')'",
+		"'nondet'", "'_'", undefined, undefined, undefined, "'and'", "'or'", "'iff'", 
+		"'implies'", "'Set'", "'List'", "'Map'", "'match'", "'+'", "'-'", "'*'", 
+		"'/'", "'%'", "'>'", "'<'", "'>='", "'<='", "'!='", "'=='", "'<-'", "'('", 
+		"')'",
 	];
 	private static readonly _SYMBOLIC_NAMES: Array<string | undefined> = [
 		undefined, undefined, undefined, undefined, undefined, undefined, undefined, 
@@ -1557,7 +1557,7 @@ export class TntParser extends Parser {
 
 			case 14:
 				{
-				_localctx = new UnknownContext(_localctx);
+				_localctx = new NondetContext(_localctx);
 				this._ctx = _localctx;
 				_prevctx = _localctx;
 				this.state = 387;
@@ -4612,7 +4612,7 @@ export class LetInContext extends ExprContext {
 		}
 	}
 }
-export class UnknownContext extends ExprContext {
+export class NondetContext extends ExprContext {
 	public IDENTIFIER(): TerminalNode { return this.getToken(TntParser.IDENTIFIER, 0); }
 	public expr(): ExprContext[];
 	public expr(i: number): ExprContext;
@@ -4632,20 +4632,20 @@ export class UnknownContext extends ExprContext {
 	}
 	// @Override
 	public enterRule(listener: TntListener): void {
-		if (listener.enterUnknown) {
-			listener.enterUnknown(this);
+		if (listener.enterNondet) {
+			listener.enterNondet(this);
 		}
 	}
 	// @Override
 	public exitRule(listener: TntListener): void {
-		if (listener.exitUnknown) {
-			listener.exitUnknown(this);
+		if (listener.exitNondet) {
+			listener.exitNondet(this);
 		}
 	}
 	// @Override
 	public accept<Result>(visitor: TntVisitor<Result>): Result {
-		if (visitor.visitUnknown) {
-			return visitor.visitUnknown(this);
+		if (visitor.visitNondet) {
+			return visitor.visitNondet(this);
 		} else {
 			return visitor.visitChildren(this);
 		}
