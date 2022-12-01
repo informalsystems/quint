@@ -105,7 +105,7 @@ export function parsePhase1(text: string, sourceLocation: string): ParseResult<P
       return right({module: listener.rootModule, sourceMap: listener.sourceMap})
     } else {
       // istanbul ignore next
-      throw new Error('Illegal state: root module is undefined. Report a bug.')
+      throw new Error('Illegal state: root module is undefined. Please report a bug.')
     }
   }
 }
@@ -129,11 +129,11 @@ export function parsePhase2(phase1Data: ParserPhase1):
   } else {
     definitions = moduleDefinitions
     importResolvingResult.errors.forEach(error => {
-      let loc = sourceMap.get(error.reference)
-      if (!loc) {
-        console.error(`No source location found for ${error.reference}. Report a bug.`)
-        loc = unknownLoc
+      const sourceLoc = sourceMap.get(error.reference)
+      if (!sourceLoc) {
+        console.error(`No source location found for ${error.reference}. Please report a bug.`)
       }
+      const loc = sourceLoc ?? unknownLoc
       if (error.defName) {
         const e =
           `Failed to import definition ${error.defName} from module ${error.moduleName}`
@@ -165,12 +165,13 @@ export function parsePhase2(phase1Data: ParserPhase1):
         }
         const locs = sources.map(source => {
           const id = source.kind === 'user' ? source.reference : 0n // Impossible case, but TS requires the check
-          let loc = sourceMap.get(id)
-          if (!loc) {
-            console.error(`No source location found for ${id}. Report a bug.`)
-            loc = unknownLoc
+          let sourceLoc = sourceMap.get(id)
+          if (!sourceLoc) {
+            console.error(`No source location found for ${id}. Please report a bug.`)
+            return unknownLoc
+          } else {
+            return sourceLoc
           }
-          return loc
         })
         errorMessages.push({ explanation: msg, locs })
       })
@@ -191,11 +192,11 @@ export function parsePhase2(phase1Data: ParserPhase1):
         `Failed to resolve ${k} ${en} in definition for ${dn}, in module ${mn}`
       const id = error.reference
       if (id) {
-        let loc = sourceMap.get(id)
-        if (!loc) {
-          console.error(`No source location found for ${id}. Report a bug.`)
-          loc = unknownLoc
+        const sourceLoc = sourceMap.get(id)
+        if (!sourceLoc) {
+          console.error(`No source location found for ${id}. Please report a bug.`)
         }
+        const loc = sourceLoc ?? unknownLoc
         errorMessages.push({ explanation: msg, locs: [loc] })
       } else {
         errorMessages.push({ explanation: msg, locs: [] })
