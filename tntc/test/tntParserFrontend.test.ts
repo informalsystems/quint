@@ -3,6 +3,7 @@ import { assert } from 'chai'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import JSONbig from 'json-bigint'
+import { diffString } from 'json-diff'
 import { compactSourceMap, parsePhase1, parsePhase2 } from '../src/tntParserFrontend'
 import { lf } from 'eol'
 import { right } from '@sweet-monads/either'
@@ -20,6 +21,20 @@ function readJson(name: string): any {
   return JSONbig.parse(readFileSync(p).toString('utf8'))
 }
 
+function assertEqualJson (actual: any, expected: any, msg: string) {
+  const df = diffString(expected, actual)
+  if (df !== '') {
+    if (df.length < 80 * 30) {
+      console.error('JSON diff: [')
+      console.error(df)
+      console.error(']')
+    } else {
+      console.error(`JSON diff is too large: ${df.length} characters`)
+    }
+    assert.fail(msg)
+  }
+}
+
 // read the TNT file and the expected JSON, parse and compare the results
 function parseAndCompare(artifact: string): void {
   // read the input from the data directory and parse it
@@ -30,19 +45,31 @@ function parseAndCompare(artifact: string): void {
 
   if (phase1Result.isLeft()) {
     // An error occurred at phase 1, check if it is the expected result
-    outputToCompare = phase1Result
+    phase1Result.mapLeft(err =>
+      outputToCompare = {
+        status: 'error',
+        messages: err
+      }
+    )
   } else if (phase1Result.isRight()) {
     const {module, sourceMap} = phase1Result.value
     // Phase 1 succeded, check that the source map is correct
     const expectedSourceMap = readJson(`${artifact}.map`)
     const sourceMapResult = JSONbig.parse(JSONbig.stringify(compactSourceMap(sourceMap)))
-    assert.deepEqual(sourceMapResult, expectedSourceMap, 'expected source maps to be equal')
+
+    assertEqualJson(sourceMapResult,
+      expectedSourceMap, 'expected source maps to be equal')
 
     const phase2Result = parsePhase2(phase1Result.value)
 
     if (phase2Result.isLeft()) {
       // An error occurred at phase 2, check if it is the expected result
-      outputToCompare = phase2Result
+      phase2Result.mapLeft(err =>
+        outputToCompare = {
+          status: 'error',
+          messages: err
+        }
+      )
     } else {
       // Both phases succeeded, check that the module is correclty outputed
       outputToCompare = { status: 'parsed', warnings: [], module: module }
@@ -52,7 +79,7 @@ function parseAndCompare(artifact: string): void {
   // run it through stringify-parse to obtain the same json (due to bigints)
   const reparsedResult = JSONbig.parse(JSONbig.stringify(outputToCompare))
   // compare the JSON trees
-  assert.deepEqual(reparsedResult, expected, 'expected JSON results to be equal')
+  assertEqualJson(reparsedResult, expected, 'expected source maps to be equal')
 }
 
 describe('parsing', () => {

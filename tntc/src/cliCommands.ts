@@ -123,7 +123,10 @@ export function parse(loaded: LoadedStatus): Either<String, ParsedStatus> {
 function reportParseError(argv: any, sourceCode: string, errors: ErrorMessage[]) {
   if (argv.out) {
     // write the errors to the output file
-    writeToJson(argv.out, errors)
+    writeToJson(argv.out, {
+      status: "error",
+      messages: errors,
+    })
   } else {
     const finder = lineColumn(sourceCode)
     // write the errors to stderr

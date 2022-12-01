@@ -71,6 +71,7 @@
   "devDependencies": {
     "@types/chai": "^4.2.18",
     "@types/json-bigint": "^1.0.1",
+    "@types/json-diff": "^0.9.1",
     "@types/lodash.isequal": "^4.5.6",
     "@types/mocha": "^8.2.3",
     "@types/node": "^12.12.0",
@@ -86,6 +87,7 @@
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^6.1.1",
     "eslint-plugin-unused-imports": "^2.0.0",
+    "json-diff": "^1.0.0",
     "mocha": "^10.0.0",
     "nyc": "^15.1.0",
     "ts-node": "^10.0.0",
