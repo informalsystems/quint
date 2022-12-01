@@ -3,7 +3,6 @@ import { assert } from 'chai'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import JSONbig from 'json-bigint'
-import { diffString } from 'json-diff'
 import { compactSourceMap, parsePhase1, parsePhase2 } from '../src/tntParserFrontend'
 import { lf } from 'eol'
 import { right } from '@sweet-monads/either'
@@ -19,20 +18,6 @@ function readTnt(name: string): string {
 function readJson(name: string): any {
   const p = resolve(__dirname, '../testFixture', name + '.json')
   return JSONbig.parse(readFileSync(p).toString('utf8'))
-}
-
-function assertEqualJson (actual: any, expected: any, msg: string) {
-  const df = diffString(expected, actual)
-  if (df !== '') {
-    if (df.length < 80 * 30) {
-      console.error('JSON diff: [')
-      console.error(df)
-      console.error(']')
-    } else {
-      console.error(`JSON diff is too large: ${df.length} characters`)
-    }
-    assert.fail(msg)
-  }
 }
 
 // read the TNT file and the expected JSON, parse and compare the results
@@ -57,7 +42,7 @@ function parseAndCompare(artifact: string): void {
     const expectedSourceMap = readJson(`${artifact}.map`)
     const sourceMapResult = JSONbig.parse(JSONbig.stringify(compactSourceMap(sourceMap)))
 
-    assertEqualJson(sourceMapResult,
+    assert.deepEqual(sourceMapResult,
       expectedSourceMap, 'expected source maps to be equal')
 
     const phase2Result = parsePhase2(phase1Result.value)
@@ -79,7 +64,8 @@ function parseAndCompare(artifact: string): void {
   // run it through stringify-parse to obtain the same json (due to bigints)
   const reparsedResult = JSONbig.parse(JSONbig.stringify(outputToCompare))
   // compare the JSON trees
-  assertEqualJson(reparsedResult, expected, 'expected source maps to be equal')
+  assert.deepEqual(reparsedResult,
+    expected, 'expected source maps to be equal')
 }
 
 describe('parsing', () => {
