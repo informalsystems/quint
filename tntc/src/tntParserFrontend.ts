@@ -184,12 +184,10 @@ export function parsePhase2(phase1Data: ParserPhase1):
   if (result.kind === 'error') {
     // Build error message with resolution explanation and the location obtained from sourceMap
     result.errors.forEach(error => {
-      const k = error.kind === 'type' ? 'type alias' : 'name'
-      const en = error.name
-      const dn = error.definitionName
-      const mn = error.moduleName
-      const msg =
-        `Failed to resolve ${k} ${en} in definition for ${dn}, in module ${mn}`
+      const msg = `Failed to resolve ` +
+        (error.kind === 'type' ? 'type alias' : 'name') +
+        ` ${error.name} in definition for ${error.definitionName}, ` +
+        `in module ${error.moduleName}`
       const id = error.reference
       if (id) {
         const sourceLoc = sourceMap.get(id)
