@@ -5,25 +5,15 @@
 module ClockSync3 {
     //// HELPERS
 
-    // Add the element `e` to the set `s`
+    /// `S.add(e)` is `S.union(Set(e))`, i.e., the set derived by adding `e` to `S`
     def add(s, e): (Set[a], a) => Set[a] = s.union(Set(e))
-
-    // NOTE: Sketch of something like "when foo do bar" within existing syntax
-    //       to be used like `condition.allows {act1 & act2 & ...}`
-    //       could also be named like `guard.when {actions...}` but I'm afraid
-    //       it reads backwards
-    // This is just an alias for "and", but with a restricted mode:
-    //
-    // mode allows = (Read[vars], Update[vars']) => Read[vars] & Update[vars']
-    // TODO: This is currently not working due to mode checking errors.
-    // action allows(condition, actn): (bool, bool) => bool = { condition & actn }
     
 
     //// CONSTANTS
 
-    // minimum message delay
+    /// minimum message delay
     const t_min : int
-    // maximum message delay
+    /// maximum message delay
     const t_max : int
 
     assume _ = (t_min >= 0 and t_max > t_min)
@@ -31,59 +21,56 @@ module ClockSync3 {
 
     //// TYPES AND CONSTRUCTORS
 
-    // The type of processes
+    /// The type of processes
     type proc = {id : int}
 
-    // Construct a process
-    def Proc(id) : (int) => {id : int} = { id : id }
+    /// `Proc(id)` is a process with the given `id`
+    def Proc(id) : (int) => proc = { id : id }
 
-    // Control states
-    // TODO: We'd actually like a sum type for this
+    /// Control states
     type state = str
 
-    // The type for a message sent by a process
+    /// A message sent by a process
     type msg = {src : proc, ts: int}
 
+    /// `p.msgFrom(ts)` is a message sent from `p` at time `ts` 
     def msgFrom(p, ts) = {src: p, ts : ts}
 
-    // The type for a set of messages
+    /// The set of messages
     type msgs = Set[msg]
 
 
     //// STATE
 
-    // The reference clock, inaccessible to the processes
+    /// The reference clock, inaccessible to the processes
     var time: int
 
-    // Hardware clock of a process
+    /// Hardware clock of a process
     var hc: proc -> int
 
-    // Clock adjustment of a process
+    /// Clock adjustment of a process
     var adj: proc -> int
 
-    // Messages sent by the processes
+    /// Messages sent by the processes
     var msgs: msgs
 
-    // Messages received by the processes
+    /// Messages received by the processes
     var rcvd: proc -> msgs
 
-    // The control state of a process
+    /// The control state of a process
     var state: proc -> state
 
 
-    /// DEFINITIONS
+    //// DEFINITIONS
 
-    // We fix the model to contain two processes
-    val Procs : Set[proc] = set(Proc(1), Proc(2))
+    /// We fix the model to contain two processes
+    val Procs : Set[proc] = Set(Proc(1), Proc(2))
 
-    // The set of possible control states
-    val states : Set[state] = set("init", "sent", "sync")
+    /// The set of possible control states
+    val states : Set[state] = Set("init", "sent", "sync")
 
 
     //// INITIALIZATION
-
-    // a nice to have syntax form:
-    //action selectFrom(v, s) = s.guess(x => v <- x)
 
     action Init = all {
         { nondet time0 = oneOf(Nat)
@@ -98,8 +85,7 @@ module ClockSync3 {
 
     //// ACTIONS
 
-    // Send the value of the hardware clock
-    // TODO: action<msgs, state> ...
+    /// Send the value of the hardware clock
     action sendMsg(p) = all {
         state[p] == "init",
         msgs'  = msgs.add(p.msgFrom(hc[p])),
@@ -107,28 +93,28 @@ module ClockSync3 {
         rcvd'  = rcvd,
     }
     
-    // Receive a message sent by another process
-    // TODO: action<rcvd> ...
+    /// Receive a message sent by another process
     action receiveMsg(p) = {
-        msgs.guess( newMsg => all {
+        nondet newMsg = oneOf(msgs) 
+        all {
             newMsg.notin(rcvd[p]),
             // the message cannot be received earlier than after t_min
             hc[newMsg.src] >= newMsg.ts + t_min,
-            rcvd <- rcvd.set(p, rcvd[p].add(newMsg)),
-            state <- state,
-            msgs <- msgs,
-        })
+            rcvd'  = rcvd.set(p, rcvd[p].add(newMsg)),
+            state' = state,
+            msgs'  = msgs,
+        }
     }
 
-    // let time flow
-    // TODO: action<time, hc>
+    /// let time flow
     action advanceClocks(delta) = all {
         delta > 0,
         // clocks can be advanced only if there are no pending message
         msgs.forall(m => 
-            (hc[m.src] + delta > t_max)
-            .implies(
-                Procs.forall(p => m.in(rcvd[m.src])))),
+            ( hc[m.src] + delta > t_max )
+            .implies
+            ( Procs.forall(p => m.in(rcvd[m.src])) )
+        ),
         time' = time + delta,
         hc'   = Procs.mapBy(p => hc[p] + delta),
     }
@@ -137,14 +123,15 @@ module ClockSync3 {
 
     action Next = any {
         all {
-            msgs <- msgs,
-            state <- state,
-            rcvd <- rcvd,
-            Int.guess(advanceClocks),
+            msgs'  = msgs,
+            state' = state,
+            rcvd'  = rcvd,
+            { nondet delta = oneOf(Int)
+              advanceClocks(delta) },
         },
         all {
-            time <- time,
-            hc <- hc,
+            time' = time,
+            hc'   = hc,
             { nondet p = oneOf(Procs)
               any {
                 sendMsg(p),
