@@ -6,7 +6,7 @@ module ClockSync3 {
     //// HELPERS
 
     // Add the element `e` to the set `s`
-    def add(s, e): (set(a), a) => set(a) = s.union(set(e))
+    def add(s, e): (Set[a], a) => Set[a] = s.union(Set(e))
 
     // NOTE: Sketch of something like "when foo do bar" within existing syntax
     //       to be used like `condition.allows {act1 & act2 & ...}`
@@ -35,7 +35,7 @@ module ClockSync3 {
     type proc = {id : int}
 
     // Construct a process
-    def Proc(id) : int -> proc = { id : id }
+    def Proc(id) : (int) => {id : int} = { id : id }
 
     // Control states
     // TODO: We'd actually like a sum type for this
@@ -47,7 +47,7 @@ module ClockSync3 {
     def msgFrom(p, ts) = {src: p, ts : ts}
 
     // The type for a set of messages
-    type msgs = set(msg)
+    type msgs = Set[msg]
 
 
     //// STATE
@@ -74,10 +74,10 @@ module ClockSync3 {
     /// DEFINITIONS
 
     // We fix the model to contain two processes
-    val Procs : set(proc) = set(Proc(1), Proc(2))
+    val Procs : Set[proc] = set(Proc(1), Proc(2))
 
     // The set of possible control states
-    val states : set(state) = set("init", "sent", "sync")
+    val states : Set[state] = set("init", "sent", "sync")
 
 
     //// INITIALIZATION
@@ -86,12 +86,14 @@ module ClockSync3 {
     //action selectFrom(v, s) = s.guess(x => v <- x)
 
     action Init = all {
-        time.selectFrom(Nat),
-        hc.selectFrom(setOfMaps(Procs, Nat)),
-        adj   <- Procs.mapOf(_ => 0),
-        state <- Procs.mapOf(_ => "init"),
-        msgs  <- set(),
-        rcvd  <- Procs.mapOf(_ => set()),
+        { nondet time0 = oneOf(Nat)
+          time' = time0 },
+        { nondet hc0 = oneOf(setOfMaps(Procs, Nat))
+          hc' = hc0 },
+        adj'   = Procs.mapBy(_ => 0),
+        state' = Procs.mapBy(_ => "init"),
+        msgs'  = Set(),
+        rcvd'  = Procs.mapBy(_ => Set()),
     }
 
     //// ACTIONS
@@ -100,9 +102,9 @@ module ClockSync3 {
     // TODO: action<msgs, state> ...
     action sendMsg(p) = all {
         state[p] == "init",
-        msgs  <- msgs.add(p.msgFrom(hc[p])),
-        state <- state.update(p, "sent"),
-        rcvd  <- rcvd,
+        msgs'  = msgs.add(p.msgFrom(hc[p])),
+        state' = state.set(p, "sent"),
+        rcvd'  = rcvd,
     }
     
     // Receive a message sent by another process
@@ -112,7 +114,7 @@ module ClockSync3 {
             newMsg.notin(rcvd[p]),
             // the message cannot be received earlier than after t_min
             hc[newMsg.src] >= newMsg.ts + t_min,
-            rcvd <- rcvd.update(p, rcvd[p].add(newMsg)),
+            rcvd <- rcvd.set(p, rcvd[p].add(newMsg)),
             state <- state,
             msgs <- msgs,
         })
@@ -123,10 +125,12 @@ module ClockSync3 {
     action advanceClocks(delta) = all {
         delta > 0,
         // clocks can be advanced only if there are no pending message
-        msgs.forall( m => hc[m.src] + delta > t_max implies
-                Procs.forall( p => m in rcvd[m.src] )),
-        time <- time + delta,
-        hc   <- Procs.mapOf(p => hc[p] + delta),
+        msgs.forall(m => 
+            (hc[m.src] + delta > t_max)
+            .implies(
+                Procs.forall(p => m.in(rcvd[m.src])))),
+        time' = time + delta,
+        hc'   = Procs.mapBy(p => hc[p] + delta),
     }
 
     //// TRANSITIONS
@@ -141,10 +145,12 @@ module ClockSync3 {
         all {
             time <- time,
             hc <- hc,
-            Procs.guess(p => or any {
+            { nondet p = oneOf(Procs)
+              any {
                 sendMsg(p),
                 receiveMsg(p),
-            })
+              }
+            }
         }
     }
 }
