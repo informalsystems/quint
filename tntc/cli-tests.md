@@ -135,6 +135,13 @@ bash -
 <!-- !test check tuples -->
     tntc parse ../examples/tuples.tnt
  
+### OK on parse from stdin
+
+<!-- !test check parse stdin -->
+```
+echo "module Foo { val x: int = 2 }" | tntc parse -
+```
+
 ### OK on typecheck tuples
 
 <!-- !test check tuples - Types & Effects-->

@@ -80,10 +80,14 @@ interface TypecheckedStatus extends ParsedStatus {
  *
  * @param args the CLI arguments parsed by yargs */
 export function load(args: any): Either<string, LoadedStatus> {
+  // Set the file descriptor to stdin (0) if the input path is `-`
+  // otherwise, resolve from the current working directory
+  const fd = args.input === '-' ? 0 : resolve(cwd(), args.input)
+  const path = fd === 0 ? '<stdin>' : args.input
+
   if (existsSync(args.input)) {
     try {
-      const path = resolve(cwd(), args.input)
-      const sourceCode = readFileSync(path, 'utf8')
+      const sourceCode = readFileSync(fd, 'utf8')
       return right({
         args,
         path,

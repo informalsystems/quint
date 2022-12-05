@@ -24,7 +24,7 @@ function handleResult<A>(result: Either<String, A>) {
 // construct parsing commands with yargs
 const parseCmd = {
   command: 'parse <input>',
-  desc: 'parse a TNT specification',
+  desc: 'Parse a TNT specification. Reads from stdin if <input> is -.',
   builder: (yargs: any) =>
     yargs
       .option('out', {
@@ -45,7 +45,7 @@ const parseCmd = {
 // construct typecheck commands with yargs
 const typecheckCmd = {
   command: 'typecheck <input>',
-  desc: 'check types (TBD) and effects of a TNT specification',
+  desc: 'Check types (TBD) and effects of a TNT specification. Reads from stdin if <input> is -.',
   builder: (yargs: any) =>
     yargs
       .option('out', {
@@ -64,7 +64,7 @@ const typecheckCmd = {
 // construct repl commands with yargs
 const replCmd = {
   command: 'repl',
-  desc: 'run REPL',
+  desc: 'Run the REPL.',
   builder: (yargs: any) =>
     yargs,
   handler: runRepl,
