@@ -45,7 +45,7 @@ You will see the following output:
 
 ```sh
 TNT REPL vN.N.N
-Type ".help" for more information
+Type ".exit" to exit, or ".help" for more information
 >>>
 ```
 
