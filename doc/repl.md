@@ -74,16 +74,24 @@ Typing everything in a single expression can become tedious very quickly. To
 avoid that, you can introduce top-level definitions, which will be saved in the
 REPL context. For instance:
 
+Let's declare two immutable values
+
 ```sh
 >>> val boilingTemperature = 100
 
 >>> val freezingTemperature = 0
+```
 
->>> def fahrenheit(celcius) = celcius * 9 / 5 + 32
+
+And we'll also define an operation to derive temperature in fahrenheit given a
+temperature in Celsius
+
+```sh
+>>> def fahrenheit(celsius) = celsius * 9 / 5 + 32
 
 ```
 
-We can use the values and definitions in the expressions later:
+We can use the values and definitions in later expressions and declarations:
 
 ```sh
 >>> fahrenheit(freezingTemperature)
@@ -451,7 +459,7 @@ To see how to do it, read about [Runs](#runs).
 ### 5.5. Introducing data non-determinism
 
 If we look back at how we computed the initial state of our kettle, its
-temperature is always set to 20 (Celcius). Most likely, you are using your
+temperature is always set to 20 (Celsius). Most likely, you are using your
 kettle under different temperatures too. Let's update the state diagram,
 to reflect the reality a bit better:
 
