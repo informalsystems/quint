@@ -4,10 +4,10 @@
 | -------: | :--------: | :--------------- |
 | 2        | 09.12.2022 | Igor Konnov      |
 
-[REPL][] is a read-eval-print loop. A REPL is usually a good way to start
+A [REPL][] is a read-eval-print loop. A REPL is usually a good way to start
 learning a language.
 
-Most likely, you have seen REPL before. If you had not, here is a simple
+Most likely, you have seen a REPL before. If you had not, here is a simple
 state machine that describes how it works from the user's point of view:
 
 ![REPL machine](./img/repl-machine.png)
@@ -49,11 +49,11 @@ Type ".help" for more information
 >>>
 ```
 
-You can type `.help` and then press `<ENTER>` to see the house rules.
+You can type `.help` and then press `<ENTER>` for supported REPL commands.
 
 ## 3. Evaluating expressions
 
-The most basic thing we can do in REPL is to enter an expression and get the
+The core interaction with a REPL is to enter an expression and get back the
 result of its evaluation. Like this: 
 
 ```sh
