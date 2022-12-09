@@ -12,6 +12,23 @@ state machine that describes how it works from the user's point of view:
 
 ![REPL machine](./img/repl-machine.png)
 
+# Table of contents
+
+  * [1. Installation](#1-installation)
+  * [2. Running REPL](#2-running-repl)
+  * [3. Evaluating expressions](#3-evaluating-expressions)
+  * [4. Introducing values and definitions](#4-introducing-values-and-definitions)
+  * [5. Describing a state machine](#5-describing-a-state-machine)
+    + [5.1. Introducing state variables](#51-introducing-state-variables)
+    + [5.2. Initializing state variables](#52-initializing-state-variables)
+    + [5.3. Updating state variables with actions](#53-updating-state-variables-with-actions)
+    + [5.4. Introducing control non-determinism](#54-introducing-control-non-determinism)
+    + [5.5. Introducing data non-determinism](#55-introducing-data-non-determinism)
+  * [6. Saving and loading the REPL session](#6-saving-and-loading-the-repl-session)
+  * [7. Executing runs](#7-executing-runs)
+  * [8. Testing invariants and random walking](#8-testing-invariants-and-random-walking)
+  * [9. Further reading](#9-further-reading)
+
 ## 1. Installation
 
 You have to install `tntc` first. See [README](../tntc/README.md).
