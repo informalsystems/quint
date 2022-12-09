@@ -88,7 +88,6 @@ temperature in Celsius
 
 ```sh
 >>> def fahrenheit(celsius) = celsius * 9 / 5 + 32
-
 ```
 
 We can use the values and definitions in later expressions and declarations:
@@ -124,13 +123,13 @@ above with the following [state machine][]:
 
 ![State chart](./img/kettle-state1.svg)
 
-If you think, this diagram is not very realistic, you are right. We will extend
+If you think, "this diagram is not very realistic", you are right. We will extend
 it later.
 
 
 ### 5.1. Introducing state variables
 
-Similar to definitions, we introduce state variables:
+In addition to definitions and values, we also declare state variables:
 
 ```sh
 >>> var temperature: int
@@ -138,11 +137,10 @@ Similar to definitions, we introduce state variables:
 >>> var heatingOn: bool
 
 >>> var beeping: bool
-
 ```
 
-By default, a state variable is not assigned any value. Hence, any use of
-`temperature` would produce a runtime error:
+By default, a state variable is not assigned any value and a reference to
+a declared but unassigned state variable will produce a runtime error:
 
 ```sh
 >>> temperature
@@ -160,11 +158,12 @@ action to initialize the state machine and move it forward. For instance, here
 is how we initialize our kettle:
 
 ```sh
-action init = all {
-  temperature' = 20,
-  heatingOn' = false,
-  beeping' = false,
-}
+>>> action init = all {
+...   temperature' = 20,
+...   heatingOn' = false,
+...   beeping' = false,
+... }
+... 
 ```
 
 The action `init` is just an action definition, which can be applied later. To
@@ -189,18 +188,29 @@ expected:
 false
 ```
 
+To make it easier to see how our state evolves, let's also declare a value that
+collects all of our state variables in a single record:
+
+```scala
+>>> val kettleState = { heatingOn: heatingOn, beeping: beeping, temperature: temperature }
+
+>>> kettleState
+{ heatingOn: false, beeping: false, temperature: 20 }
+```
+
 ### 5.3. Updating state variables with actions
 
 Similar to how we introduced `init`, we introduce the action `pressButton`,
 which turns on the heating element of our kettle.
 
 ```sh
-action pressButton = all {
-  not(heatingOn),
-  heatingOn' = true,
-  beeping' = false,
-  temperature' = temperature,
-}
+>>> action pressButton = all {
+...   not(heatingOn),
+...   heatingOn' = true,
+...   beeping' = false,
+...   temperature' = temperature,
+... }
+... 
 ```
 
 Again, we have just defined the action `pressButton`, but that action
@@ -211,13 +221,14 @@ is not applied automatically. To apply it, we simply type its name:
 true
 ```
 
-We can evaluate the state variable `heatingOn` to make sure that the action
-indeed took place:
+We can check our state variables to make sure that the action indeed took place:
 
 ```sh
->>> heatingOn
-true
+>>> kettleState
+{ heatingOn: true, beeping: false, temperature: 20 }
 ```
+
+The heat is on now!
 
 Interestingly, if we try to apply `pressButton` once again, it would not
 work, as indicated by the `false` result:
@@ -237,13 +248,14 @@ the kettle when the temperature reaches 100. If the value 100 makes you
 puzzled, call `fahrenheit(100)` in REPL ;-)
 
 ```sh
-action failover = all {
-  heatingOn,
-  temperature >= 100,
-  heatingOn' = false,
-  beeping' = true,
-  temperature' = temperature,
-}
+>>> action failover = all {
+...   heatingOn,
+...   temperature >= 100,
+...   heatingOn' = false,
+...   beeping' = true,
+...   temperature' = temperature,
+... }
+... 
 ```
 
 If we apply `failover` to the current state, it will not execute:
@@ -298,18 +310,21 @@ later):
 true
 >>> pressButton
 true
+>>> kettleState
+{ heatingOn: true, beeping: false, temperature: 20 }
 ```
 
 Now it is time to specify the action `heat`:
 
 ```sh
-action heat = all {
-  heatingOn,
-  temperature < 100,
-  temperature' = temperature + 1,
-  heatingOn' = true,
-  beeping' = false,
-}
+>>> action heat = all {
+...   heatingOn,
+...   temperature < 100,
+...   temperature' = temperature + 1,
+...   heatingOn' = true,
+...   beeping' = false,
+... }
+... 
 ```
 
 By applying `heat` several times, we can see that it heats up the kettle a bit:
@@ -342,12 +357,13 @@ action `depressButton` in our diagram:
 This action should be easy to define:
 
 ```sh
-action depressButton = all {
-  heatingOn,
-  heatingOn' = false,
-  temperature' = temperature,
-  beeping' = false,
-}
+>>> action depressButton = all {
+...   heatingOn,
+...   heatingOn' = false,
+...   temperature' = temperature,
+...   beeping' = false,
+... }
+... 
 ```
 
 Now we can execute four actions and observe that we managed to heat the kettle
@@ -362,10 +378,8 @@ true
 true
 >>> depressButton
 true
->>> heatingOn
-false
->>> temperature
-21
+>>> kettleState
+{ heatingOn: false, beeping: false, temperature: 21 }
 ```
 
 Notice that our specification allows for a new interesting behavior. Evaluate
@@ -387,12 +401,12 @@ true
 ```
 
 As we can see, both `depressButton` and `failover` can apply when the
-temperature reaches 100. This makes sense in real life. If the temperature
-sensor in your kettle has not registered 100 degrees yet, and you depress the
-button, the heating element turns off. We do not want to introduce unnecessary
-details about precise time measurements and the physical processes in the
-kettle, so from our perspective both `failover` and `depressButton` may happen
-at the same time.
+temperature reaches 100 and the heating is on. This makes sense in real life. If
+the temperature sensor in your kettle has not registered 100 degrees yet, and
+you depress the button, the heating element turns off. We do not want to
+introduce unnecessary details about precise time measurements and the physical
+processes in the kettle, so from our perspective both `failover` and
+`depressButton` may happen at the same time.
 
 You can ask the question, whether it makes any difference when `depressButton`
 or `failover` are applied. Actually, it does: `failover` sets `beeping` to
@@ -406,20 +420,23 @@ whichever happens first, and we do not control which one? TNT has the operator
 `any` to do exactly this:
 
 ```sh
-any {
-  depressButton,
-  failover,
-}
+>> all { heatingOn' = true, temperature' = 100, beeping' = false }
+true
+>>> any {
+...   depressButton,
+...   failover,
+... }
+... 
+true
 ```
 
-The REPL implementation chooses one of the enabled actions pseudo-randomly.
-But in general, the language does not prescribe one way of choosing between
+The REPL implementation chooses one of the enabled actions pseudo-randomly.  But
+in general, the language does not prescribe one way of choosing between
 simulteneously enabled actions. So we prefer saying that TNT evaluates `any {
-... }` non-deterministically. To be precise, `any { ... }` describes *control
-non-determinism*, that is, it chooses how to continue the flow, but each of our
-actions behaves deterministically, like a program. We could also introduce
-non-determinism in the choice of data, see [Data non-determinism](#dataNondet)
-below.
+... }` non-deterministically. To be precise, `any { ... }` describes **control
+non-determinism***, that is, it chooses how to continue the flow, but each of our
+actions behaves like a deterministic program. We will introduce
+[data non-determinism](#dataNondet) in the next section.
 
 Now it is time to define all possible transitions of the kettle in one place:
 
@@ -446,8 +463,8 @@ true
 true
 >>> step
 true
->>> (heatingOn, temperature, beeping)
-(false, 22, false)
+>>> kettleState
+{ heatingOn: true, beeping: false, temperature: 21 }
 ```
 
 **Exercise**. Figure out how REPL ended up in the above state.
@@ -468,16 +485,18 @@ to reflect the reality a bit better:
 I never tried to melt ice with an electric kettle, but it should probably work
 as expected?
 
-It looks like we have to describe multiple initial states that differ in the
-temperature. This is how we can do that in TNT:
+It looks like we have to describe multiple possible initial states that differ
+in temperature. This is how we can do that in TNT, specifying that the
+temperature should be somewhere in the range of -40 to 40 degrees:
 
-```
-action initNondet = all {
-  heatingOn' = false,
-  nondet temp = -40.to(40).oneOf()
-  temperature' = temp,
-  beeping' = false,
-}
+```sh
+>>> action initNondet = all {
+...   heatingOn' = false,
+...   nondet temp = oneOf(-40.to(40))
+...   temperature' = temp,
+...   beeping' = false,
+... }
+...
 ```
 
 Let's see how it works:
@@ -485,16 +504,16 @@ Let's see how it works:
 ```sh
 >>> initNondet
 true
->>> (heatingOn, temperature, beeping)
-(false, -36, false)
+>>> kettleState
+{ heatingOn: false, beeping: false, temperature: -27 }
 >>> initNondet
 true
->>> (heatingOn, temperature, beeping)
-(false, 28, false)
+>>> kettleState
+{ heatingOn: false, beeping: false, temperature: -40 }
 >>> initNondet
 true
->>> (heatingOn, temperature, beeping)
-(false, -16, false)
+>>> kettleState
+{ heatingOn: false, beeping: false, temperature: 26 }
 ```
 
 As you can see, `initNondet` does what we wanted: It chooses the initial
@@ -517,7 +536,7 @@ is why we say that the `nondet`-form implements *data non-determinism*.
 
 At this point, we have introduced a lot of definitions. It would be great to
 save them somewhere, so we do not have to type them again, if we accidentally
-close REPL.
+close the REPL.
 
 You can save the REPL session with the builtin command `.save`:
 
