@@ -281,7 +281,7 @@ simply setting the state variables to the state we need:
 true
 ```
 
-By doing so, we have executed an action expression, which has set `temperature`
+This tells the simulator to apply an anonymous action, advancing the state in the way specified in the expression.
 to 100, `heatingOn` to `true`, and `beeping` to `false`. (You can double check
 that by evaluating the variables.) Note that not only we had to set the value
 of `temperature`, but also the values of `heatingOn` and `beeping`. If we had
