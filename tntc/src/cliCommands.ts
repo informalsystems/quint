@@ -198,7 +198,9 @@ export function runRepl(_argv: any) {
   tntRepl(process.stdin, process.stdout)
 }
 
-/** Write the OutputStage of the procedureStage as JSON, if --out is set */
+/** Write the OutputStage of the procedureStage as JSON, if --out is set
+ * Otherwise, report any stage errors to STDOUT
+ */
 export function outputResult(result: CLIProcedure<ProcedureStage>) {
   result
     .map(stage => {
