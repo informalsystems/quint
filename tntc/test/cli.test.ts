@@ -14,7 +14,7 @@ const loaded  = {
   args: {},
   path: "mocked/path",
   sourceCode: exModule,
-  stage: ('loaded' as stage),
+  stage: ('loading' as stage),
   warnings: [],
 }
 
