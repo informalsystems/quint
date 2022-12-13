@@ -434,7 +434,7 @@ The REPL implementation chooses one of the enabled actions pseudo-randomly.  But
 in general, the language does not prescribe one way of choosing between
 simulteneously enabled actions. So we prefer saying that TNT evaluates `any {
 ... }` non-deterministically. To be precise, `any { ... }` describes **control
-non-determinism***, that is, it chooses how to continue the flow, but each of our
+non-determinism**, that is, it chooses how to continue the flow, but each of our
 actions behaves like a deterministic program. We will introduce
 [data non-determinism](#dataNondet) in the next section.
 
