@@ -390,14 +390,14 @@ the following expressions:
 true
 >>> depressButton
 true
->>> (heatingOn, temperature, beeping)
-(false, 100, false)
+>>> kettleState
+{ heatingOn: false, beeping: false, temperature: 100 }
 >>> all { heatingOn' = true, temperature' = 100, beeping' = false }
 true
 >>> failover
 true
->>> (heatingOn, temperature, beeping)
-(false, 100, true)
+>>> kettleState
+{ heatingOn: false, beeping: true, temperature: 100 }
 ```
 
 As we can see, both `depressButton` and `failover` can apply when the
