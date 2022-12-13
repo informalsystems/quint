@@ -281,12 +281,12 @@ simply setting the state variables to the state we need:
 true
 ```
 
-This tells the simulator to apply an anonymous action, advancing the state in the way specified in the expression:
-It set `temperature` to 100, `heatingOn` to `true`, and `beeping` to `false`. (You can double check
-that by evaluating the variables.) Note that not only we had to set the value
-of `temperature`, but also the values of `heatingOn` and `beeping`. If we had
-not done that, the values of `heatingOn` and `beeping` would have become
-undefined.
+This tells the simulator to apply an anonymous action, advancing the state in
+the way specified in the expression: It set `temperature` to 100, `heatingOn` to
+`true`, and `beeping` to `false`. (You can double check that by evaluating the
+variables.) Note that not only we had to set the value of `temperature`, but
+also the values of `heatingOn` and `beeping`. If we had not done that, the
+values of `heatingOn` and `beeping` would have become undefined.
 
 Now we can apply `failover`:
 
