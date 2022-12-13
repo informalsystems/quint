@@ -103,7 +103,7 @@ export function tntRepl(input: Readable, output: Writable, exit: () => void = de
 
     if (multilineText === '') {
       // if the line starts with a non-empty prompt,
-      // this is looks like a multiline code that was copied from REPL
+      // we assume it is multiline code that was copied from a REPL prompt
       recyclingOwnOutput =
         settings.prompt !== '' && line.trim().indexOf(settings.prompt) === 0
       if (nOpenBraces > 0 || nOpenParen > 0 || recyclingOwnOutput) {
