@@ -99,22 +99,30 @@ export function tntRepl(input: Readable, output: Writable, exit: () => void = de
     nOpenBraces += nob
     nOpenParen += nop
     if (multilineText === '') {
-      if (nOpenBraces > 0 || nOpenParen > 0) {
-        // enter a multiline mode
-        multilineText += '\n' + line
+      // if the line starts with a non-empty prompt,
+      // this is looks like a multiline code that was copied from REPL
+      const startsWithReplPrompt =
+        settings.prompt !== '' && line.indexOf(settings.prompt) !== -1
+      if (nOpenBraces > 0 || nOpenParen > 0 || startsWithReplPrompt) {
+        // Enter a multiline mode.
+        // If the text is copy-pasted from the REPL output,
+        // trim the REPL decorations.
+        multilineText = trimReplDecorations(line)
         rl.setPrompt(settings.continuePrompt)
       } else {
         line.trim() === '' || tryEval(out, state, line)
       }
     } else {
       if (line.trim() === '' && nOpenBraces <= 0 && nOpenParen <= 0) {
-        // end the multiline mode
+        // End the multiline mode.
         tryEval(out, state, multilineText)
         multilineText = ''
         rl.setPrompt(settings.prompt)
       } else {
-        // continue the multiline mode
-        multilineText += '\n' + line
+        // Continue the multiline mode.
+        // It may happen that the text is copy-pasted from the REPL output.
+        // In this case, we have to trim the leading '>>> ' and '... '.
+        multilineText += '\n' + trimReplDecorations(line)
       }
     }
   }
@@ -462,6 +470,18 @@ function printErrorMessages(out: writer,
   for (const e of messages) {
     const msg = formatError(text, finder, e, lineOffset)
     out(color(`${kind}: ${msg}`))
+  }
+}
+
+// if a line start with '>>> ' or '... ', trim these markers
+function trimReplDecorations(line: string) {
+  // we are not using settings.prompt and settings.continuePrompt,
+  // as ... are interpreted as three characters.
+  const match = /^\s*(>>> |\.\.\. )(.*)/.exec(line)
+  if (match && match[2]) {
+    return match[2]
+  } else {
+    return line
   }
 }
 

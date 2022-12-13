@@ -2,7 +2,7 @@
 
 | Revision | Date       | Author           |
 | -------: | :--------: | :--------------- |
-| 2        | 09.12.2022 | Igor Konnov      |
+| 3        | 13.12.2022 | Igor Konnov      |
 
 A [REPL][] is a read-eval-print loop. A REPL is usually a good way to start
 learning a language.
