@@ -489,7 +489,7 @@ function trimReplDecorations(line: string) {
   // we are not using settings.prompt and settings.continuePrompt,
   // as ... are interpreted as three characters.
   const match = /^\s*(>>> |\.\.\. )(.*)/.exec(line)
-  if (match && match[2]) {
+  if (match && match[2] !== undefined) {
     return match[2]
   } else {
     return line
