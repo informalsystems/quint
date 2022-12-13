@@ -499,6 +499,8 @@ describe('repl ok', () => {
       | ...   4
       | ... }
       |
+      |>>> Set(2 + 3)
+      |Set(5)
       |`
     )
     const output = dedent(
@@ -512,6 +514,9 @@ describe('repl ok', () => {
       |...  ... }
       |... 
       |3
+      |>>> >>> Set(2 + 3)
+      |... Set(5)
+      |Set(5)
       |>>> `
     )
     await assertRepl(input, output)

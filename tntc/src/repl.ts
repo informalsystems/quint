@@ -75,6 +75,8 @@ export function tntRepl(input: Readable, output: Writable, exit: () => void = de
   }
   // we let the user type a multiline string, which is collected here:
   let multilineText = ''
+  // when recyclingOwnOutput is true, REPL is receiving its older output
+  let recyclingOwnOutput = false
   // when the number of open braces or parentheses is positive,
   // we enter the multiline mode
   let nOpenBraces = 0
@@ -98,12 +100,13 @@ export function tntRepl(input: Readable, output: Writable, exit: () => void = de
     const [nob, nop] = countBraces(line)
     nOpenBraces += nob
     nOpenParen += nop
+
     if (multilineText === '') {
       // if the line starts with a non-empty prompt,
       // this is looks like a multiline code that was copied from REPL
-      const startsWithReplPrompt =
-        settings.prompt !== '' && line.indexOf(settings.prompt) !== -1
-      if (nOpenBraces > 0 || nOpenParen > 0 || startsWithReplPrompt) {
+      recyclingOwnOutput =
+        settings.prompt !== '' && line.trim().indexOf(settings.prompt) === 0
+      if (nOpenBraces > 0 || nOpenParen > 0 || recyclingOwnOutput) {
         // Enter a multiline mode.
         // If the text is copy-pasted from the REPL output,
         // trim the REPL decorations.
@@ -113,16 +116,24 @@ export function tntRepl(input: Readable, output: Writable, exit: () => void = de
         line.trim() === '' || tryEval(out, state, line)
       }
     } else {
-      if (line.trim() === '' && nOpenBraces <= 0 && nOpenParen <= 0) {
+      const trimmedLine = line.trim()
+      const continueOwnOutput =
+        settings.continuePrompt !== ''
+          && trimmedLine.indexOf(settings.continuePrompt) === 0
+      if ((trimmedLine.length === 0 && nOpenBraces <= 0 && nOpenParen <= 0)
+            || (recyclingOwnOutput && !continueOwnOutput)) {
         // End the multiline mode.
+        // If recycle own output, then the current line is, most likely,
+        // older input. Ignore it.
         tryEval(out, state, multilineText)
         multilineText = ''
+        recyclingOwnOutput = false
         rl.setPrompt(settings.prompt)
       } else {
         // Continue the multiline mode.
         // It may happen that the text is copy-pasted from the REPL output.
-        // In this case, we have to trim the leading '>>> ' and '... '.
-        multilineText += '\n' + trimReplDecorations(line)
+        // In this case, we have to trim the leading '... '.
+        multilineText += '\n' + trimReplDecorations(trimmedLine)
       }
     }
   }
