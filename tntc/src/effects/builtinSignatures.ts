@@ -26,9 +26,9 @@ const literals = ['Nat', 'Int', 'Bool'].map(name => ({ name, effect: 'Pure' }))
 const booleanOperators = [
   { name: 'eq', effect: '(Read[r1], Read[r2]) => Read[r1, r2]' },
   { name: 'neq', effect: '(Read[r1], Read[r2]) => Read[r1, r2]' },
-  { name: 'not', effect: '(Read[r1] & Temporal[t1]) => Read[r1] & Temporal[t1]' },
-  { name: 'iff', effect: '(Read[r1] & Temporal[t1], Read[r2] & Temporal[t2]) => Read[r1, r2] & Temporal[t1, t2]' },
-  { name: 'implies', effect: '(Read[r1] & Temporal[t1], Read[r2] & Temporal[t2]) => Read[r1, r2] & Temporal[t1, t2]' },
+  { name: 'not', effect: '(Read[r1]) => Read[r1]' },
+  { name: 'iff', effect: '(Read[r1], Read[r2]) => Read[r1, r2]' },
+  { name: 'implies', effect: '(Read[r1], Read[r2]) => Read[r1, r2]' },
 ]
 
 const setOperators = [
@@ -136,12 +136,15 @@ const readManyEffect = (arity: number) => {
   return parseEffectOrThrow(`(${args.join(', ')}) => Read[${readVars.join(', ')}]`)
 }
 
+/*
 const readAndTemporalManyEffect = (arity: number) => {
   const readVars = times(arity, i => `r${i}`)
   const temporalVars = times(arity, i => `t${i}`)
   const args = zip(readVars, temporalVars).map(([r, t]) => `Read[${r}] & Temporal[${t}]`)
   return parseEffectOrThrow(`(${args.join(', ')}) => Read[${readVars.join(', ')}] & Temporal[${temporalVars.join(', ')}]`)
 }
+*/
+
 const multipleAritySignatures: [string, Signature][] = [
   ['List', readManyEffect],
   ['Set', readManyEffect],
@@ -149,8 +152,8 @@ const multipleAritySignatures: [string, Signature][] = [
   ['Rec', readManyEffect],
   ['Tup', readManyEffect],
   ['tuples', readManyEffect],
-  ['and', readAndTemporalManyEffect],
-  ['or', readAndTemporalManyEffect],
+  ['and', readManyEffect],
+  ['or', readManyEffect],
   ['match', (arity: number) => {
     const readVars = times((arity - 1) / 2, i => `r${i}`)
     const args = readVars.map(r => `Pure, (Pure) => Read[${r}]`)

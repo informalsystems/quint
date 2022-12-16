@@ -49,8 +49,8 @@ describe('inferEffects', () => {
     const [errors, effects] = inferEffects(definitionsTable, tntModule)
 
     assert.isEmpty(errors, `Should find no errors, found: ${[...errors.values()].map(errorTreeToString)}`)
-    assert.deepEqual(effectToString(effects.get(4n)!), "(Read[v4] & Temporal[v5]) => Read[v4, 'x'] & Temporal[v5]")
-    assert.deepEqual(effectToString(effects.get(9n)!), '(Read[v4] & Temporal[v5]) => Read[v4] & Temporal[v5]')
+    assert.deepEqual(effectToString(effects.get(4n)!), "(Read[v2]) => Read[v2, 'x']")
+    assert.deepEqual(effectToString(effects.get(9n)!), '(Read[v2]) => Read[v2]')
   })
 
   it('infers references to operators', () => {
@@ -138,7 +138,7 @@ describe('inferEffects', () => {
 
     const [errors, effects] = inferEffects(definitionsTable, tntModule)
 
-    const expectedEffect = '((Read[v0] & Temporal[v1]) => Read[v2], Read[v0] & Temporal[v1]) => Read[v2]'
+    const expectedEffect = '((Read[v0]) => Read[v1], Read[v0]) => Read[v1]'
 
     assert.isEmpty(errors, `Should find no errors, found: ${[...errors.values()].map(errorTreeToString)}`)
     assert.deepEqual(effectToString(effects.get(7n)!), expectedEffect)
