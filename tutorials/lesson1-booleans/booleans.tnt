@@ -11,52 +11,52 @@
  */
 module booleansLesson {    
     /// false is a built-in constant
-    val myFalse = false
+    pure val myFalse = false
 
     // exercise: evaluate false in REPL
 
     /// true is a built-in constant too
-    val myTrue = true
+    pure val myTrue = true
 
     // you can compare Booleans for equality
-    def myEq(x, y) = x == y
+    pure def myEq(x, y) = x == y
 
     // you can compare Booleans for inequality
-    def myNeq(x, y) = x != y
+    pure def myNeq(x, y) = x != y
 
     /// Boolean negation, which is written as `!x` in some languages
-    def myNot(x) = not(x)
+    pure def myNot(x) = not(x)
 
     // you can also write negation like that
-    def myNot2(x) = x.not()
+    pure def myNot2(x) = x.not()
 
     /// Boolean "and", which is written as `x && y` in some languages
-    def myAnd(x, y) = x and y
+    pure def myAnd(x, y) = x and y
 
     /// You can also write Boolean "and" like that in the OOP form
-    def myAnd2(x, y) = x.and(y)
+    pure def myAnd2(x, y) = x.and(y)
 
     /// We can apply "and" to more than two arguments
-    def myAnd3(x, y, z) = and(x, y, z)
+    pure def myAnd3(x, y, z) = and(x, y, z)
 
     /// When your expressions get bigger, you can stack them in `and { ... }`
-    def myAnd4(x, y, z) = and {
+    pure def myAnd4(x, y, z) = and {
         x,
         y,
         z
     }
 
     // Boolean "or", which is written as `x || y` in some languages.
-    def myOr(x, y) = x or y
+    pure def myOr(x, y) = x or y
 
     /// You can also write Boolean "or" like that in the OOP form
-    def myOr2(x, y) = x.or(y)
+    pure def myOr2(x, y) = x.or(y)
 
     /// We can apply "or" to more than two arguments
-    def myOr3(x, y, z) = or(x, y, z)
+    pure def myOr3(x, y, z) = or(x, y, z)
 
     /// When your expressions get bigger, you can stack them in `or { ... }`
-    def myOr4(x, y, z) = or {
+    pure def myOr4(x, y, z) = or {
         x,
         y,
         z
@@ -64,10 +64,10 @@ module booleansLesson {
 
     /// Boolean implication.
     /// This operator is equivalent to not(x).or(y) and if (x) y else true.
-    def myImplies(x, y) = x implies y
+    pure def myImplies(x, y) = x implies y
 
     /// Boolean equivalence.
     /// It is equivalent to x == y, but this operator requires the arguments
     /// to have the Boolean type.
-    def myIff(x, y) = x iff y
+    pure def myIff(x, y) = x iff y
 }
