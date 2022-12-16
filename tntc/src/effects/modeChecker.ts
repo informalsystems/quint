@@ -127,7 +127,7 @@ class ModeFinderVisitor implements EffectVisitor {
 
 /*
  * If there is a variable with an effect in the results that is not present on the
- * parameters, then the operator is adding a that and this should be
+ * parameters, then the operator is adding that and this should
  * promote the operators mode.
  *
  * For example, an operator with the effect `(Read[v]) => Read[v, 'x']` is adding `Read['x']`
