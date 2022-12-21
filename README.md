@@ -1,17 +1,27 @@
 # Quint
 
-![build badge](https://github.com/informalsystems/quint/actions/workflows/main.yml/badge.svg)
+![build
+badge](https://github.com/informalsystems/quint/actions/workflows/main.yml/badge.svg)
 
-Quint is a modern specification language resembling functional programming
-languages. It combines the theoretical basis of the Temporal Logic of Actions
-(TLA) with state-of-the-art static analysis and development tooling.
+Quint is a modern specification language that is a particularly good fit for
+distributed and blockchain protocols. It combines the theoretical basis of the
+Temporal Logic of Actions (TLA) with state-of-the-art static analysis and
+development tooling.
+
+At the lexical level, it borrows many principles from C-like languages. At the
+syntax level, it follows a few (but not all) principles that are usually found
+in functional languages. Quint extends the standard programming paradigm with
+non-determinism, which lets designers conveniently specify protocol environment
+such as the network, faults, time, and other protocols. Notably, Quint comes
+with formal semantics built-in, which is defined in terms of TLA.
 
 Historically, the motivation for Quint was to provide an alternative surface
 syntax for TLA+ specifications. This syntax aims at being both more familiar to
 programmers and easier to parse and analyze. However, the most important feature
 of our syntax is that it is relatively minimal and easy to parse, and is
-therefore an easy target for advanced developer tooling - see our [Design Principles][]. Quint is compatible
-with TLA+ and will soon be supported in [Apalache][].
+therefore an easy target for advanced developer tooling - see our [Design
+Principles][]. Quint is compatible with TLA+ and will soon be supported in
+[Apalache][].
 
 ## Name origin
 
