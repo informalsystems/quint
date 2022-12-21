@@ -30,8 +30,7 @@
                     "quint"
                 ],
                 "extensions": [
-                    ".quint",
-                    ".Quint"
+                    ".qnt"
                 ],
                 "configuration": "./language-configuration.json"
             }
