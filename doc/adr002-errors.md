@@ -8,7 +8,7 @@ All error messages in the transpiler and the VScode plugin have the following st
 
 ```js
 {
-  "explanation": "Quintnnn: text of the error message",
+  "explanation": "QNTnnn: text of the error message",
   "source": "/path/to/file.qnt",
   "start": {
     "line": number,

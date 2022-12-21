@@ -114,7 +114,7 @@ return one of the two results:
     ```js
     {
       "result": "error",
-      "messages": [ { "explanation": "Quint404: Module MyModule not found", ...} ]
+      "messages": [ { "explanation": "QNT404: Module MyModule not found", ...} ]
     }
     ```
 
@@ -290,7 +290,7 @@ the units in `context.units`, then `context.units[task.name]` equals to:
 
     ```js
     {
-        "explanation": "Quint405: name ...  not found",
+        "explanation": "QNT405: name ...  not found",
         ...
     }
     ```
@@ -302,7 +302,7 @@ the units in `context.units`, then `context.units[task.name]` equals to:
     {
       "result": "lookup",
       "messages": [{
-        "explanation": "Quint404: Module <name> not found",
+        "explanation": "QNT404: Module <name> not found",
         ...
       }]
     }
@@ -363,7 +363,7 @@ path from the root module to the module, where the name is defined, e.g.,
   {
     "result": "error",
     "messages": [{
-      "explanation": "Quint406: ...",
+      "explanation": "QNT406: ...",
     }] }
 ```
 
