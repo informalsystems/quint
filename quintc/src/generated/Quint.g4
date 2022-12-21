@@ -25,7 +25,7 @@ unit :    'const' IDENTIFIER ':' type                     # const
         | 'import' path '.' identOrStar                   # importDef
         // https://github.com/informalsystems/quint/issues/378
         //| 'nondet' IDENTIFIER (':' type)? '=' expr ';'? expr {
-        //  const m = "Quint007: 'nondet' is only allowed inside actions"
+        //  const m = "QNT007: 'nondet' is only allowed inside actions"
         //  this.notifyErrorListeners(m)
         //}                                                 # nondetError
         ;
@@ -100,7 +100,7 @@ expr:           // unary minus
                         | EQ | IN | NOTIN ) expr                    # relations
         |       IDENTIFIER '\'' ASGN expr                           # asgn
         |       expr '=' expr {
-                  const m = "Quint006: unexpected '=', did you mean '=='?"
+                  const m = "QNT006: unexpected '=', did you mean '=='?"
                   this.notifyErrorListeners(m)
                 }                                                   # errorEq
                 // Boolean operators. Note that not(e) is just a normal call
