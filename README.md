@@ -11,6 +11,13 @@ syntax for TLA+ specifications. This syntax aims at being both more familiar to
 programmers and easier to parse and analyze. Quint is compatible with TLA+ and
 will soon be supported in [Apalache][].
 
+## Name origin
+
+Quint is short for Quintessence, from alchemy, which refers to the fifth
+element. A lot of alchemy is about transmutation and energy, and Quint makes it
+possible to transmute specifications into executable assets and empower ideas to
+become referenced artifacts.
+
 ## Syntax
 
 Check the [syntax documentation](./doc/lang.md) and the [Reference API
