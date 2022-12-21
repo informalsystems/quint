@@ -1,4 +1,0 @@
-Orbital
-- Watches over planet
-- Related to cosmos
-- .orb is taken, maybe .orbt?
