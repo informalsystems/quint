@@ -9,7 +9,9 @@ languages. It combines the theoretical basis of the Temporal Logic of Actions
 Historically, the motivation for Quint was to provide an alternative surface
 syntax for TLA+ specifications. This syntax aims at being both more familiar to
 programmers and easier to parse and analyze. However, the most important feature
-of our syntax is that it is relatively minimal and easy to parse, and is therefore an easy target for advanced developer tooling. Quint is compatible with TLA+ and will soon be supported in [Apalache][].
+of our syntax is that it is relatively minimal and easy to parse, and is
+therefore an easy target for advanced developer tooling - see our [Design Principles][]. Quint is compatible
+with TLA+ and will soon be supported in [Apalache][].
 
 ## Name origin
 
@@ -18,19 +20,21 @@ element. A lot of alchemy is about transmutation and energy, and Quint makes it
 possible to transmute specifications into executable assets and empower ideas to
 become referenced artifacts.
 
-## Syntax
+## Documentation
+
+### Syntax
 
 Check the [syntax documentation](./doc/lang.md) and the [Reference API
 documentation for built-in operators](./doc/builtin.md).
 
-## Examples
+### Examples
 
 We have written [examples](./examples) of several specifications in Quint.
 Some of them accompany a TLA+ version for comparison and learning purposes.
 To simplify reading, use [syntax highlighting](./editor-plugins) for your
 editor (currently, VSCode, Emacs and Vim are supported).
 
-## User manuals
+### User manuals
 
  - Quint transpiler:
    - [quintc manual](./doc/quintc.md)
@@ -40,14 +44,17 @@ editor (currently, VSCode, Emacs and Vim are supported).
  - VSCode plugin:
 
    We strongly encourage you to use the VSCode plugin for Quint. It provides the
-   quickest feedback loop for your specifications, reporting errors as you type.
+   quickest feedback loop for your specifications, reporting informative errors
+   as you type.
 
    - [Installation](./vscode/README.md)
 
  - Quint REPL:
    - [REPL](./doc/repl.md)
 
-## Developer docs
+## Development
+
+### Developer docs
 
  - [ADR001: Transpiler architecture](./doc/adr001-transpiler-architecture.md)
  - [ADR002: Error codes](./doc/adr002-errors.md)
@@ -56,12 +63,12 @@ editor (currently, VSCode, Emacs and Vim are supported).
  - [ADR004: An Effect System for Quint](./doc/adr004-effect-system.md)
  - [ADR005: A Type System for Quint](./doc/adr005-type-system.md)
 
-## Source code
+### Source code
 
  - [quintc](./quintc) is the package for the `quintc` transpiler
  - [vscode](./vscode) vscode plugin
 
-## Roadmap
+### Roadmap
 
 In the spirit of [Lessons from Writing a Compiler][], we have a roadmap, where
 we are implementing various transpiler passes feature-by-feature, instead of
@@ -102,6 +109,7 @@ completely implementing every pass.
 | ~~uninterpreted types~~, see #118 | :white_check_mark: | :white_check_mark: | :x:                | :x:                | :x:                            | :x:         | :x:       |
 
 
+[Design Principles]: ./doc/design-principles.md
 [Apalache]: https://github.com/informalsystems/apalache
 [Lessons from Writing a Compiler]: https://borretti.me/article/lessons-writing-compiler
 [Imports]: ./doc/lang.md#imports-1
