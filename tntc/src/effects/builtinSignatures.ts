@@ -26,12 +26,9 @@ const literals = ['Nat', 'Int', 'Bool'].map(name => ({ name, effect: 'Pure' }))
 const booleanOperators = [
   { name: 'eq', effect: '(Read[r1], Read[r2]) => Read[r1, r2]' },
   { name: 'neq', effect: '(Read[r1], Read[r2]) => Read[r1, r2]' },
-  { name: 'not',
-    effect: '(Read[r1] & Temporal[t1]) => Read[r1] & Temporal[t1]' },
-  { name: 'iff',
-    effect: '(Read[r1] & Temporal[t1], Read[r2] & Temporal[t2]) => Read[r1, r2] & Temporal[t1, t2]' },
-  { name: 'implies',
-    effect: '(Read[r1] & Temporal[t1], Read[r2] & Temporal[t2]) => Read[r1, r2] & Temporal[t1, t2]' },
+  { name: 'not', effect: '(Read[r1] & Temporal[t1]) => Read[r1] & Temporal[t1]' },
+  { name: 'iff', effect: '(Read[r1] & Temporal[t1], Read[r2] & Temporal[t2]) => Read[r1, r2] & Temporal[t1, t2]' },
+  { name: 'implies', effect: '(Read[r1] & Temporal[t1], Read[r2] & Temporal[t2]) => Read[r1, r2] & Temporal[t1, t2]' },
 ]
 
 const setOperators = [
