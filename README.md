@@ -1,42 +1,58 @@
-# Quint (previously TNT)
+# Quint
 
 ![build badge](https://github.com/informalsystems/quint/actions/workflows/main.yml/badge.svg)
 
-This is a surface syntax that uses the same background logic as TLA+ but does
-not try to mimic general mathematics. Instead it mimics functional languages,
-e.g., Scala and OCaml.
+Quint is a modern specification language resembling functional programming
+languages. It combines the theoretical basis of the Temporal Logic of Actions
+(TLA) with state-of-the-art static analysis and development tooling.
+
+Historically, the motivation for Quint was to provide an alternative surface
+syntax for TLA+ specifications. This syntax aims at being both more familiar to
+programmers and easier to parse and analyze. Quint is compatible with TLA+ and
+will soon be supported in [Apalache][].
 
 ## Syntax
 
-Check the [preliminary syntax](./doc/lang.md). For each construct, we give
-an equivalent TLA+ expression and thus define the language semantics by
-this simple translation to TLA+.
+Check the [syntax documentation](./doc/lang.md) and the [Reference API
+documentation for built-in operators](./doc/builtin.md).
 
 ## Examples
 
-We have written [examples](./examples) of several TLA+ specifications in Quint.
+We have written [examples](./examples) of several specifications in Quint.
+Some of them accompany a TLA+ version for comparison and learning purposes.
 To simplify reading, use [syntax highlighting](./editor-plugins) for your
-editor (currently, only vim is supported).
+editor (currently, VSCode, Emacs and Vim are supported).
 
 ## User manuals
 
  - Quint transpiler:
-   - [quintc manpage](./doc/quintc.md)
+   - [quintc man page](./doc/quintc.md)
 
    - [Installation](./quintc/README.md)
 
- - Quint REPL (very much WIP toward MVP):
+ - VSCode plugin:
+
+  We strongly encourage you to use the VSCode plugin for Quint. It provides the
+  quickest feedback loop for your specifications, reporting errors as you type.
+
+   - [Installation](./vscode/README.md)
+
+ - Quint REPL:
    - [REPL](./doc/repl.md)
 
 ## Developer docs
 
  - [ADR001: Transpiler architecture](./doc/adr001-transpiler-architecture.md)
  - [ADR002: Error codes](./doc/adr002-errors.md)
+ - [ADR003: Interface to visit Internal Representation
+   components](./doc/adr003-visiting-ir-components.md)
+ - [ADR004: An Effect System for Quint](./doc/adr004-effect-system.md)
+ - [ADR005: A Type System for Quint](./doc/adr005-type-system.md)
 
 ## Source code
 
- - [quintc](./quintc) is the package for the `quintc` transpiler (work-in-progress)
- - [vscode](./vscode) vscode plugin (outdated)
+ - [quintc](./quintc) is the package for the `quintc` transpiler
+ - [vscode](./vscode) vscode plugin
 
 ## Roadmap
 
@@ -78,61 +94,8 @@ completely implementing every pass.
 | [String literals][], see #118     | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:             | :x:         | :x:       |
 | ~~uninterpreted types~~, see #118 | :white_check_mark: | :white_check_mark: | :x:                | :x:                | :x:                            | :x:         | :x:       |
 
-## Design principles
 
- - *Quint should not annoy us*:
-
-   If a language concept has "standard" syntax in the mainstream languages,
-   we adopt the mainstream syntax.
-
- - *Quint should be easy to read*:
-    - In contrast to TLA+, it keeps the set of ASCII control characters to minimum.
-    - It eliminates ambiguity in several operators (of tuples, records, sequences).
-    - It allows the user to specify types, if needed.
-
- - *Quint should be easy to write*:
-    - It uses a small set of syntactic rules.
-    - Most of the operators are mnemonic.
-    - Rarely used operators (e.g. temporal operators) are mnemonic.
-    - Constants, variables, and operators may be annotated with types,
-      to get quick feedback from the type checker.
-    - Well-known operators are written like in the most programming languages.
-      Several examples:
-        * `==` instead of just `=`,
-        * `!=` instead of `/=` and `#`,
-        * `&` and `and` instead of `/\`,
-        * `|` and `or` instead of `\/`,
-        * `not` instead of `~`,
-        * `implies` instead of `=>`,
-        * `/` instead of `\div`,
-        * `.` instead of `!` when accessing a name in an instance.
-
- - *Quint should be easy to parse*:
-    - It uses a small set of syntactic rules (its ANTLR4 grammar is 120 SLOC).
-    - It borrows the best practices from the programming languages.
-    - It should eliminate ambiguity in all operators and idioms.
-
- - *Quint should be easy to pretty print*:
-    - Indentation is encouraged but not required.
-
- - *Quint should be compatible with TLA+*:
-    - We keep one-to-one correspondence with the most of TLA+ operators.
-    - There will be a transpiler to TLA+, so you can always jump back to TLA+.
-
- - *Quint minimizes pain points of TLA+*:
-    - There is a clean separation between expressions of different modes:
-        stateless, state, action, and temporal.
-    - Updates to state variables are labelled as assignments: `x <- e`.
-    - Recursive operators and functions are removed in favor of
-      well-known concepts such as `filter`, `map`, and `fold`.
-    - Module imports and instances in Quint look similar to state-of-the-art
-      programming languages.
-
- - *Quint is CLI-first*:
-    - The users should be able to parse and transpile Quint in the command-line.
-    - The intermediate transpiler outputs are avaiable in JSON.
-    - IDE support (such as a VSCode plugin) is a beatiful opt-in, not a requirement.
-
+[Apalache]: https://github.com/informalsystems/apalache
 [Lessons from Writing a Compiler]: https://borretti.me/article/lessons-writing-compiler
 [Imports]: ./doc/lang.md#imports-1
 [Module definitions]: ./doc/lang.md#module-definition
