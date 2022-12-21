@@ -40,12 +40,12 @@ In the following list, we are collecting the error codes that Quint tools should
 use to report their errors. By having the error codes, we should be able to
 write an error explanation tool.
 
- - Quint001: expected 'const', 'var', 'def', 'type', etc.
- - Quint002: missing ': type' after 'var' or 'const'
- - Quint003: expected an expression
- - Quint004: unexpected symbol after expression
- - Quint005: keywords are not allowed as record fields in record.field
- - Quint006: unexpected '=', did you mean '=='?
- - Quint404: module <name> not found
- - Quint405: name <name> not found
- - Quint406: instantiation error
+ - QNT001: expected 'const', 'var', 'def', 'type', etc.
+ - QNT002: missing ': type' after 'var' or 'const'
+ - QNT003: expected an expression
+ - QNT004: unexpected symbol after expression
+ - QNT005: keywords are not allowed as record fields in record.field
+ - QNT006: unexpected '=', did you mean '=='?
+ - QNT404: module <name> not found
+ - QNT405: name <name> not found
+ - QNT406: instantiation error
