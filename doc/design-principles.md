@@ -31,7 +31,7 @@
 
 - *Quint should be easy to parse*:
 
-   - It uses a small set of syntactic rules (its ANTLR4 grammar is 120 SLOC).
+   - It uses a small set of syntactic rules (its ANTLR4 grammar is 225 SLOC).
    - It borrows the best practices from the programming languages.
    - It should eliminate ambiguity in all operators and idioms.
 
@@ -48,7 +48,7 @@
 
    - There is a clean separation between expressions of different modes:
        stateless, state, action, and temporal.
-   - Updates to state variables are labelled as assignments: `x <- e`.
+   - Updates to state variables are labelled as assignments: `x' = e`.
    - Recursive operators and functions are removed in favor of
      well-known concepts such as `filter`, `map`, and `fold`.
    - Module imports and instances in Quint look similar to state-of-the-art
