@@ -8,8 +8,8 @@ languages. It combines the theoretical basis of the Temporal Logic of Actions
 
 Historically, the motivation for Quint was to provide an alternative surface
 syntax for TLA+ specifications. This syntax aims at being both more familiar to
-programmers and easier to parse and analyze. Quint is compatible with TLA+ and
-will soon be supported in [Apalache][].
+programmers and easier to parse and analyze. However, the most important feature
+of our syntax is that it is relatively minimal and easy to parse, and is therefore an easy target for advanced developer tooling. Quint is compatible with TLA+ and will soon be supported in [Apalache][].
 
 ## Name origin
 
@@ -33,14 +33,14 @@ editor (currently, VSCode, Emacs and Vim are supported).
 ## User manuals
 
  - Quint transpiler:
-   - [quintc man page](./doc/quintc.md)
+   - [quintc manual](./doc/quintc.md)
 
    - [Installation](./quintc/README.md)
 
  - VSCode plugin:
 
-  We strongly encourage you to use the VSCode plugin for Quint. It provides the
-  quickest feedback loop for your specifications, reporting errors as you type.
+   We strongly encourage you to use the VSCode plugin for Quint. It provides the
+   quickest feedback loop for your specifications, reporting errors as you type.
 
    - [Installation](./vscode/README.md)
 
