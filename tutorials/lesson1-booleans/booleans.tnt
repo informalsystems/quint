@@ -63,7 +63,7 @@ module booleansLesson {
     }
 
     /// Boolean implication.
-    /// This operator is equivalent to not(x).or(y) and if (x) y else true.
+    /// This operator is equivalent to `not(x).or(y)` as well as to `if (x) y else true`.
     pure def myImplies(x, y) = x implies y
 
     /// Boolean equivalence.
