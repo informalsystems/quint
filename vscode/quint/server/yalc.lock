@@ -1,0 +1,9 @@
+{
+  "version": "v1",
+  "packages": {
+    "quintc": {
+      "signature": "fc5d61ec3ce5a529c013382aa7256fa7",
+      "file": true
+    }
+  }
+}
