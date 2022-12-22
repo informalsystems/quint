@@ -1,44 +1,83 @@
-# TNT is not TLA+
+# Quint
 
-![build badge](https://github.com/informalsystems/tnt/actions/workflows/main.yml/badge.svg)
+![build
+badge](https://github.com/informalsystems/quint/actions/workflows/main.yml/badge.svg)
 
-This is a surface syntax that uses the same background logic as TLA+ but does
-not try to mimic general mathematics. Instead it mimics functional languages,
-e.g., Scala and OCaml.
+Quint is a modern specification language that is a particularly good fit for
+distributed and blockchain protocols. It combines the theoretical basis of the
+Temporal Logic of Actions (TLA) with state-of-the-art static analysis and
+development tooling.
 
-## Syntax
+At the lexical level, it borrows many principles from C-like languages. At the
+syntax level, it follows a few (but not all) principles that are usually found
+in functional languages. Quint extends the standard programming paradigm with
+non-determinism, which lets designers conveniently specify protocol environment
+such as the network, faults, time, and other protocols. Notably, Quint comes
+with formal semantics built-in, which is defined in terms of TLA.
 
-Check the [preliminary syntax](./doc/lang.md). For each construct, we give
-an equivalent TLA+ expression and thus define the language semantics by
-this simple translation to TLA+.
+Our initial motivation for Quint was to provide an alternative surface
+syntax for TLA+ specifications. This syntax aims at being both more familiar to
+engineers and easier to parse and analyze. However, the most important feature
+of our syntax is that it is relatively minimal and easy to parse, and is
+therefore an easy target for advanced developer tooling - see our [Design
+Principles][]. Quint is compatible with TLA+ and will soon be supported in
+[Apalache][].
 
-## Examples
+## Name origin
 
-We have written [examples](./examples) of several TLA+ specifications in TNT.
+Quint is short for Quintessence, from alchemy, which refers to the fifth
+element. A lot of alchemy is about transmutation and energy, and Quint makes it
+possible to transmute specifications into executable assets and empower ideas to
+become referenced artifacts.
+
+## Documentation
+
+### Syntax
+
+Check the [syntax documentation](./doc/lang.md) and the [Reference API
+documentation for built-in operators](./doc/builtin.md).
+
+### Examples
+
+We have written [examples](./examples) of several specifications in Quint.
+Some of them accompany a TLA+ version for comparison and learning purposes.
 To simplify reading, use [syntax highlighting](./editor-plugins) for your
-editor (currently, only vim is supported).
+editor (currently, VSCode, Emacs and Vim are supported).
 
-## User manuals
+### User manuals
 
- - TNT transpiler:
-   - [tntc manpage](./doc/tntc.md)
+ - Quint's core tool `quint`:
+   - [Installation](./quint/README.md)
 
-   - [Installation](./tntc/README.md)
+   - [Manual](./doc/quint.md)
 
- - TNT REPL (very much WIP toward MVP):
    - [REPL](./doc/repl.md)
 
-## Developer docs
+ - VSCode plugin:
+
+   We strongly encourage you to use the VSCode plugin for Quint. It provides the
+   quickest feedback loop for your specifications, reporting informative errors
+   as you type.
+
+   - [Installation](./vscode/README.md)
+
+## Development
+
+### Developer docs
 
  - [ADR001: Transpiler architecture](./doc/adr001-transpiler-architecture.md)
  - [ADR002: Error codes](./doc/adr002-errors.md)
+ - [ADR003: Interface to visit Internal Representation
+   components](./doc/adr003-visiting-ir-components.md)
+ - [ADR004: An Effect System for Quint](./doc/adr004-effect-system.md)
+ - [ADR005: A Type System for Quint](./doc/adr005-type-system.md)
 
-## Source code
+### Source code
 
- - [tntc](./tntc) is the package for the `tntc` transpiler (work-in-progress)
- - [vscode](./vscode) vscode plugin (outdated)
+ - [quint](./quint) is the package for the `quint` transpiler
+ - [vscode](./vscode) vscode plugin
 
-## Roadmap
+### Roadmap
 
 In the spirit of [Lessons from Writing a Compiler][], we have a roadmap, where
 we are implementing various transpiler passes feature-by-feature, instead of
@@ -78,61 +117,9 @@ completely implementing every pass.
 | [String literals][], see #118     | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:             | :x:         | :x:       |
 | ~~uninterpreted types~~, see #118 | :white_check_mark: | :white_check_mark: | :x:                | :x:                | :x:                            | :x:         | :x:       |
 
-## Design principles
 
- - *TNT should not annoy us*:
-
-   If a language concept has "standard" syntax in the mainstream languages,
-   we adopt the mainstream syntax.
-
- - *TNT should be easy to read*:
-    - In contrast to TLA+, it keeps the set of ASCII control characters to minimum.
-    - It eliminates ambiguity in several operators (of tuples, records, sequences).
-    - It allows the user to specify types, if needed.
-
- - *TNT should be easy to write*:
-    - It uses a small set of syntactic rules.
-    - Most of the operators are mnemonic.
-    - Rarely used operators (e.g. temporal operators) are mnemonic.
-    - Constants, variables, and operators may be annotated with types,
-      to get quick feedback from the type checker.
-    - Well-known operators are written like in the most programming languages.
-      Several examples:
-        * `==` instead of just `=`,
-        * `!=` instead of `/=` and `#`,
-        * `&` and `and` instead of `/\`,
-        * `|` and `or` instead of `\/`,
-        * `not` instead of `~`,
-        * `implies` instead of `=>`,
-        * `/` instead of `\div`,
-        * `.` instead of `!` when accessing a name in an instance.
-
- - *TNT should be easy to parse*: 
-    - It uses a small set of syntactic rules (its ANTLR4 grammar is 120 SLOC).
-    - It borrows the best practices from the programming languages.
-    - It should eliminate ambiguity in all operators and idioms.
-
- - *TNT should be easy to pretty print*: 
-    - Indentation is encouraged but not required.
-
- - *TNT should be compatible with TLA+*:
-    - We keep one-to-one correspondence with the most of TLA+ operators.
-    - There will be a transpiler to TLA+, so you can always jump back to TLA+.
-
- - *TNT minimizes pain points of TLA+*:
-    - There is a clean separation between expressions of different modes:
-        stateless, state, action, and temporal.
-    - Updates to state variables are labelled as assignments: `x <- e`.
-    - Recursive operators and functions are removed in favor of
-      well-known concepts such as `filter`, `map`, and `fold`.
-    - Module imports and instances in TNT look similar to state-of-the-art
-      programming languages.
-
- - *TNT is CLI-first*:
-    - The users should be able to parse and transpile TNT in the command-line.
-    - The intermediate transpiler outputs are avaiable in JSON.
-    - IDE support (such as a VSCode plugin) is a beatiful opt-in, not a requirement.
-
+[Design Principles]: ./doc/design-principles.md
+[Apalache]: https://github.com/informalsystems/apalache
 [Lessons from Writing a Compiler]: https://borretti.me/article/lessons-writing-compiler
 [Imports]: ./doc/lang.md#imports-1
 [Module definitions]: ./doc/lang.md#module-definition
@@ -160,19 +147,19 @@ completely implementing every pass.
 [Fairness]: ./doc/lang.md#fairness
 [Unbounded quantifiers]: ./doc/lang.md#unbounded-quantifiers
 [Modes]: ./doc/lang.md#modes
-[232]: https://github.com/informalsystems/tnt/issues/232
-[231]: https://github.com/informalsystems/tnt/issues/231
-[233]: https://github.com/informalsystems/tnt/issues/233
-[221]: https://github.com/informalsystems/tnt/issues/221
-[234]: https://github.com/informalsystems/tnt/issues/234
-[235]: https://github.com/informalsystems/tnt/issues/235
-[8]: https://github.com/informalsystems/tnt/issues/8
-[237]: https://github.com/informalsystems/tnt/issues/237
-[236]: https://github.com/informalsystems/tnt/issues/236
-[238]: https://github.com/informalsystems/tnt/issues/238
-[242]: https://github.com/informalsystems/tnt/issues/242
-[243]: https://github.com/informalsystems/tnt/issues/243
-[244]: https://github.com/informalsystems/tnt/issues/244
-[245]: https://github.com/informalsystems/tnt/issues/245
-[Higher-order definitions]: https://github.com/informalsystems/tnt/blob/main/doc/lang.md#operator-definitions
-[String literals]: https://github.com/informalsystems/tnt/blob/main/doc/lang.md#identifiers-and-strings
+[232]: https://github.com/informalsystems/quint/issues/232
+[231]: https://github.com/informalsystems/quint/issues/231
+[233]: https://github.com/informalsystems/quint/issues/233
+[221]: https://github.com/informalsystems/quint/issues/221
+[234]: https://github.com/informalsystems/quint/issues/234
+[235]: https://github.com/informalsystems/quint/issues/235
+[8]: https://github.com/informalsystems/quint/issues/8
+[237]: https://github.com/informalsystems/quint/issues/237
+[236]: https://github.com/informalsystems/quint/issues/236
+[238]: https://github.com/informalsystems/quint/issues/238
+[242]: https://github.com/informalsystems/quint/issues/242
+[243]: https://github.com/informalsystems/quint/issues/243
+[244]: https://github.com/informalsystems/quint/issues/244
+[245]: https://github.com/informalsystems/quint/issues/245
+[Higher-order definitions]: https://github.com/informalsystems/quint/blob/main/doc/lang.md#operator-definitions
+[String literals]: https://github.com/informalsystems/quint/blob/main/doc/lang.md#identifiers-and-strings

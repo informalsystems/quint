@@ -1,20 +1,20 @@
 ##
-# TNT
+# Quint
 #
 # @file
 # @version 0.1
 
-.PHONY: vscode tntc all
+.PHONY: vscode quint all
 
 all: vscode
 
-# Build tntc and install it to local packages
-tntc:
-	cd tntc; npm install; npm run compile; npm link; yalc publish
+# Build quint and install it to local packages
+quint:
+	cd quint; npm install; npm run compile; npm link; yalc publish
 
-# Build tntc and install it to local packages
-vscode: tntc
-	cd vscode/tnt/server; yalc add tntc
-	cd vscode/tnt; npm install; npm run compile
+# Build quint and install it to local packages
+vscode: quint
+	cd vscode/quint/server; yalc add quint
+	cd vscode/quint; npm install; npm run compile
 
 # end
