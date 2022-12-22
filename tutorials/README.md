@@ -3,8 +3,8 @@
 If you like interactive language tutorials, we have recorded a few using
 [CodeTour][]. If you do not have [CodeTour][] installed, install it.
 
-To install the TNT VSCode plugin, change to the root directory of this project,
-and run:
+To install the Quint VSCode plugin, change to the root directory of this
+project, and run:
 
 ```sh
 make vscode

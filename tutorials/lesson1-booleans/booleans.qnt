@@ -6,7 +6,7 @@
  If you do not know how to start the lesson, do the following:
 
   - Open Visual Studio Code.
-  - Install the TNT and Codetour extensions.
+  - Install the Quint and Codetour extensions.
   - Choose the tour "Lesson 1 - Booleans".
  */
 module booleansLesson {    
