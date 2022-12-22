@@ -8,7 +8,7 @@ distributed systems and blockchain protocols. It combines the robust theoretical
 basis of the [Temporal Logic of Actions][TLA] (TLA) with state-of-the-art static
 analysis and development tooling.
 
-Quint is inspired by [TLA+][] but provides an alternative surface syntax  for
+Quint is inspired by [TLA+][] but provides an alternative surface syntax for
 specifying systems in TLA. The most important feature of our syntax is that it
 is minimal and regular, making Quint an easy target for advanced developer
 tooling and static analysis (see our [Design Principles][]).
