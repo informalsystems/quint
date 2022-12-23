@@ -8,7 +8,7 @@ import { QuintType, Row } from './quintTypes'
 import { strict as assert } from 'assert'
 import { ErrorMessage, Loc } from './quintParserFrontend'
 import { compact, zipWith } from 'lodash'
-import { Maybe, just, merge, none } from '@sweet-monads/maybe'
+import { Maybe, just, none } from '@sweet-monads/maybe'
 
 /**
  * An ANTLR4 listener that constructs QuintIr objects out of the abstract
@@ -29,10 +29,8 @@ export class ToIrListener implements QuintListener {
   rootModule?: QuintModule = undefined
   /**
    * The stack of types that can be used as a result of type parsing.
-   * When an expression has an optional type, the stack may contain none()
-   * for no type.
    */
-  typeStack: Maybe<QuintType>[] = []
+  typeStack: QuintType[] = []
 
   sourceMap: Map<bigint, Loc> = new Map<bigint, Loc>()
 
@@ -241,7 +239,7 @@ export class ToIrListener implements QuintListener {
       return [params, none()]
     } else if (ntypes > 1) {
       // a C-like signature, combine it into an operator type
-      const types = this.popTypes(ntypes).unwrap()
+      const types = this.popTypes(ntypes)
       const id = this.nextId()
       this.sourceMap.set(id, this.loc(ctx))
       const fullType: Maybe<QuintType> = just({
@@ -738,21 +736,21 @@ export class ToIrListener implements QuintListener {
   exitTypeInt(ctx: p.TypeIntContext) {
     const id = this.nextId()
     this.sourceMap.set(id, this.loc(ctx))
-    this.typeStack.push(just({ id, kind: 'int' }))
+    this.typeStack.push({ id, kind: 'int' })
   }
 
   // the Boolean type, that is, bool
   exitTypeBool(ctx: p.TypeBoolContext) {
     const id = this.nextId()
     this.sourceMap.set(id, this.loc(ctx))
-    this.typeStack.push(just({ id, kind: 'bool' }))
+    this.typeStack.push({ id, kind: 'bool' })
   }
 
   // the string type, that is, str
   exitTypeStr(ctx: p.TypeStrContext) {
     const id = this.nextId()
     this.sourceMap.set(id, this.loc(ctx))
-    this.typeStack.push(just({ id, kind: 'str' }))
+    this.typeStack.push({ id, kind: 'str' })
   }
 
   // a type variable, a type constant, or a reference to a type alias
@@ -762,10 +760,10 @@ export class ToIrListener implements QuintListener {
     this.sourceMap.set(id, this.loc(ctx))
     if (name[0].match('[a-z]')) {
       // a type variable from: a, b, ... z
-      this.typeStack.push(just({ id, kind: 'var', name }))
+      this.typeStack.push({ id, kind: 'var', name })
     } else {
       // a type constant, e.g., declared via typedef
-      this.typeStack.push(just({ id, kind: 'const', name }))
+      this.typeStack.push({ id, kind: 'const', name })
     }
   }
 
@@ -774,7 +772,7 @@ export class ToIrListener implements QuintListener {
     const last = this.popType().unwrap()
     const id = this.nextId()
     this.sourceMap.set(id, this.loc(ctx))
-    this.typeStack.push(just({ id, kind: 'set', elem: last }))
+    this.typeStack.push({ id, kind: 'set', elem: last })
   }
 
   // a list type, e.g., list(int)
@@ -782,7 +780,7 @@ export class ToIrListener implements QuintListener {
     const top = this.popType().unwrap()
     const id = this.nextId()
     this.sourceMap.set(id, this.loc(ctx))
-    this.typeStack.push(just({ id, kind: 'list', elem: top }))
+    this.typeStack.push({ id, kind: 'list', elem: top })
   }
 
   // A function type, e.g., str => int
@@ -791,28 +789,28 @@ export class ToIrListener implements QuintListener {
     const arg = this.popType().unwrap()
     const id = this.nextId()
     this.sourceMap.set(id, this.loc(ctx))
-    this.typeStack.push(just({ id, kind: 'fun', arg, res }))
+    this.typeStack.push({ id, kind: 'fun', arg, res })
   }
 
   // A tuple type, e.g., (int, bool)
   // the type stack contains the types of the elements
   exitTypeTuple(ctx: p.TypeTupleContext) {
-    const elemTypes: QuintType[] = this.popTypes(ctx.type().length).unwrap()
+    const elemTypes: QuintType[] = this.popTypes(ctx.type().length)
     const id = this.nextId()
     this.sourceMap.set(id, this.loc(ctx))
 
     const fields =
       elemTypes.map((t, i) => ({ fieldName: `${i}`, fieldType: t }))
-    this.typeStack.push(just({
+    this.typeStack.push({
       id: id,
       kind: 'tup',
       fields: { kind: 'row', fields: fields, other: { kind: 'empty' } },
-    }))
+    })
   }
 
   exitRow(ctx: p.RowContext) {
     const names = ctx.IDENTIFIER().map((n) => n.text)
-    const elemTypes: QuintType[] = this.popTypes(ctx.type().length).unwrap()
+    const elemTypes: QuintType[] = this.popTypes(ctx.type().length)
 
     const fields = compact(zipWith(names, elemTypes, (name, elemType) => {
       if (name !== undefined && elemType !== undefined) {
@@ -840,7 +838,7 @@ export class ToIrListener implements QuintListener {
     const row = this.popRow()
     const id = this.nextId()
     this.sourceMap.set(id, this.loc(ctx))
-    this.typeStack.push(just({ id, kind: 'rec', fields: row }))
+    this.typeStack.push({ id, kind: 'rec', fields: row })
   }
 
   // A disjoint union type, e.g.,
@@ -850,7 +848,7 @@ export class ToIrListener implements QuintListener {
     const size = ctx.typeUnionRecOne().length
     const ls = this.locStr(ctx)
     assert(size > 0, `exitTypeUnionRec: ${ls}: size == 0`)
-    const singletonUnions: QuintType[] = this.popTypes(size).unwrap()
+    const singletonUnions: QuintType[] = this.popTypes(size)
     if (singletonUnions && singletonUnions[0].kind === 'union') {
       const tag = singletonUnions[0].tag
       let records = singletonUnions[0].records
@@ -872,7 +870,7 @@ export class ToIrListener implements QuintListener {
       }
       const id = this.nextId()
       this.sourceMap.set(id, this.loc(ctx))
-      this.typeStack.push(just({ id, kind: 'union', tag, records }))
+      this.typeStack.push({ id, kind: 'union', tag, records })
     } else {
       const ls = this.locStr(ctx)
       // istanbul ignore next
@@ -900,22 +898,22 @@ export class ToIrListener implements QuintListener {
       records,
     }
 
-    this.typeStack.push(just(singleton))
+    this.typeStack.push(singleton)
   }
 
   // an operator type, e.g., (int, str) => bool
   exitTypeOper(ctx: p.TypeOperContext) {
     const resType = this.popType().unwrap()
     const nargs = ctx.type().length - 1
-    const argTypes: QuintType[] = this.popTypes(nargs).unwrap()
+    const argTypes: QuintType[] = this.popTypes(nargs)
     const id = this.nextId()
     this.sourceMap.set(id, this.loc(ctx))
-    this.typeStack.push(just({
+    this.typeStack.push({
       id,
       kind: 'oper',
       args: argTypes,
       res: resType,
-    }))
+    })
   }
 
   enterDocLines(ctx: p.DocLinesContext) {
@@ -978,10 +976,9 @@ export class ToIrListener implements QuintListener {
   }
 
   // pop n elements out of typeStack
-  private popTypes(n: number): Maybe<QuintType[]> {
+  private popTypes(n: number): QuintType[] {
     assert(this.typeStack.length >= n, 'popTypes: too few elements in typeStack')
-    const types: Maybe<QuintType>[] = this.typeStack.splice(-n)
-    return merge(types)
+    return this.typeStack.splice(-n)
   }
 
   // pop n expressions out of exprStack
@@ -1008,7 +1005,7 @@ export class ToIrListener implements QuintListener {
   private popType(): Maybe<QuintType> {
     // the user has specified a type
     const tp = this.typeStack.pop()
-    return tp ?? none()
+    return tp ? just(tp) : none()
   }
 
   // pop a row

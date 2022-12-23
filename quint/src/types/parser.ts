@@ -75,8 +75,8 @@ export function parseType(typeString: string): Either<any[], QuintType> {
 
     if (listener.errors.length > 0) {
       return left(listener.errors)
-    } else if (rootType && rootType.isJust()) {
-      return right(rootType.value)
+    } else if (rootType) {
+      return right(rootType)
     } else {
       throw new Error(`No type found in ${typeString}`)
     }
