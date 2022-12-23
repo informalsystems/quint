@@ -166,17 +166,9 @@ export class ToIrListener implements QuintListener {
   // translate a top-level or nested operator definition
   exitOperDef(ctx: p.OperDefContext) {
     const name = ctx.normalCallName().text
-    let typeTag: QuintType | undefined
-    if (ctx.type()) {
-      const maybeType = this.popType()
-      // the operator is tagged with a type
-      if (maybeType.isJust()) {
-        typeTag = maybeType.value
-      }
-    }
-    // get the parameters and the definition body
+    const [params, typeTag] = this.processOpDefParams(ctx)
+    // get the definition body
     const expr = this.exprStack.pop()
-    const params = (ctx.params()) ? this.paramStack.pop() : []
 
     const doc = this.docStack.length > 0 ? this.docStack.join('\n') : undefined
     this.docStack = []
@@ -220,8 +212,8 @@ export class ToIrListener implements QuintListener {
         expr: body,
         doc,
       }
-      if (typeTag) {
-        def.typeAnnotation = typeTag
+      if (typeTag.isJust()) {
+        def.typeAnnotation = typeTag.value
       }
       this.definitionStack.push(def)
     } else {
@@ -239,10 +231,31 @@ export class ToIrListener implements QuintListener {
     assert(def, `exitOper: ${ls}: undefined operDef in exitOper`)
   }
 
-  // operator parameters
-  exitParams(ctx: p.ParamsContext) {
-    const params = ctx.IDENTIFIER().map(n => n.text)
-    this.paramStack.push(params)
+  // The definition parameters may be of two kinds: C-like and ML-like.
+  // Handle them here.
+  processOpDefParams(ctx: p.OperDefContext): [string[], Maybe<QuintType>] {
+    const params: string[] = ctx.IDENTIFIER().map(n => n.text)
+    // types of the parameters and of the result
+    const ntypes = ctx.type().length
+    if (ntypes === 0) {
+      return [params, none()]
+    } else if (ntypes > 1) {
+      // a C-like signature, combine it into an operator type
+      const types = this.popTypes(ntypes).unwrap()
+      const id = this.nextId()
+      this.sourceMap.set(id, this.loc(ctx))
+      const fullType: Maybe<QuintType> = just({
+        id,
+        kind: 'oper',
+        args: types.slice(0, -1),
+        res: types[types.length - 1],
+      })
+      return [params, fullType]
+    } else {
+      // the only type is on the stack
+      const fullType = this.popType()
+      return [params, fullType]
+    }
   }
 
   // assume name = expr
