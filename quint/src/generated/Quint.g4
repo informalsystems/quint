@@ -31,7 +31,7 @@ unit :    'const' IDENTIFIER ':' type                     # const
         ;
 
 // An operator definition.
-// We embed tow kinds of parameters right in this rule.
+// We embed two kinds of parameters right in this rule.
 // Otherwise, the parser would start recognizing parameters everywhere.
 operDef : qualifier normalCallName
             ( /* ML-like parameter lists */
