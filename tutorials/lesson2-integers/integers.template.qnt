@@ -21,8 +21,9 @@ module integersLesson {
 **Scores to earn with secret codes: 10**
 
 This lesson teaches you the basics of operations over integers.
-If you have programming experience, you know most of these operators.
+If you have programming experience, you know most of these operators. 
 So it should not take you long to finish this lesson.
+Do not skip this lesson, as some of the operators may still surprise you.
         </description>
         <file>$file</file>
         <line>$line</line>
@@ -48,6 +49,12 @@ Integer literals are written using the standard syntax:
 
 It is important to understand that Quint integers are big integers.
 There is neither a minimum integer, nor there is a maximum integer.
+
+It's quite easy to express the standard 32-bit, 64-bit, 128-bit, and 512-bit
+integers with Quint integers. We will cover this in a follow up tutorial.
+
+We omit several integer operators that produce sets. These operators are covered in
+the tutorial on sets.
         </description>
       </step>
      !*/
@@ -93,7 +100,9 @@ Try the following examples to get the intuition.
           <run>echo "0^3" | quint</run>
           <expect>0</expect>
           <run>echo "0^0" | quint</run>
-          <expect>it should error, see #492</expect>
+          <expect>error</expect>
+          <run>echo "0^(-2)" | quint</run>
+          <expect>error</expect>
         </description>
       </step>
      !*/
@@ -117,8 +126,8 @@ Try this simple example:
           <expect>4045</expect>
           <block>
 
-It is important to remember that Quint integers follow the laws
-of commutativity and associativity:
+It is important to remember that integer addition satisfies the laws
+of commutativity and associativity in Quint:
 
           </block>
           <run>echo "11 + 17 == 17 + 11" | quint</run>
@@ -153,6 +162,9 @@ We can add two integers by writing `i - j`.
           </block>
           <run>echo "11 + 13 - 17" | quint</run>
           <expect>7</expect>
+          <block>
+ **Exercise:** Is subtraction commutative?
+          </block>
         </description>
       </step>
      !*/
@@ -167,20 +179,153 @@ We can add two integers by writing `i - j`.
         <description>
           <block>
 We can multiply two integers by writing `i * j`.
-Remember that multiplication cannot produce any side effects like overflows.
-
- - Try this:
+Remember that multiplication cannot produce any side effects like overflows:
 
           </block>
-          <run>echo "2022 * 2023" | quint</run>
-          <expect>4045</expect>
+          <run>echo "2^32 * 2^32 == 2^64" | quint</run>
+          <expect>true</expect>
           <block>
 
- - Or that:
+It is important to remember that integer multiplication satisfies the laws
+of commutativity and associativity in Quint:
 
           </block>
-          <run>echo "4294967295 + 18446744073709551615" | quint</run>
-          <expect>18446744078004518910</expect>
+          <run>echo "11 * 17 == 17 * 11" | quint</run>
+          <expect>true</expect>
+          <run>echo "(11 * 17) * 19 == 11 * (17 * 19)" | quint</run>
+          <expect>true</expect>
+        </description>
+      </step>
+     !*/
+
+    // i / j is the integer division
+    pure def myDiv(i, j) = i / j
+
+    // i % j is the integer remainder
+    pure def myMod(i, j) = i % j
+
+    /*!
+      <step>
+        <file>$file</file>
+        <line>$line</line>
+        <title>Integer division and remainder</title>
+        <description>
+          <block>
+The operators `i / j` and `i % j` compute the integer part and the remainder
+when dividing `i` by `j`, respectively. These operators have the following
+property for all integer values of `i` and all integer values of `j != 0`:
+`i == (i / j) * j + i % j`.
+
+Try the following examples to check your intuition:
+
+          </block>
+          <run>echo "99 / 2 == 49" | quint</run>
+          <expect>true</expect>
+          <run>echo "99 % 2 == 1" | quint</run>
+          <expect>true</expect>
+          <run>echo "98 % 2 == 0" | quint</run>
+          <expect>true</expect>
+          <run>echo "((2^64 - 1) % 2^64 + 1) % 2^64" | quint</run>
+          <expect>0</expect>
+          <run>echo "(2^64 - 123) % 2^63" | quint</run>
+          <expect>0</expect>
+
+          <block>
+ **Exercise:** Is division commutative?
+          </block>
+        </description>
+      </step>
+     !*/
+
+    // `i > j` is true if and only if `i` is greater than `j`
+    pure def myGreaterThan(i, j) = i > j
+
+    // `i >= j` is true if and only if `i` is greater than `j`, or equal to `j`
+    pure def myGreaterThanOrEqual(i, j) = i >= j
+
+    // `i < j` is true if and only if `i` is less than `j`
+    pure def myLessThan(i, j) = i < j
+
+    // `i <= j` is true if and only if `i` is less than `j`, or equal to `j`
+    pure def myLessThanOrEqual(i, j) = i <= j
+
+    // `i == j` is true if and only if `i` equals to `j`
+    pure def myEquals(i, j) = i == j
+
+    // `i != j` is true if and only if `i` is not equal to `j`
+    pure def myNotEqual(i, j) = i != j
+
+    /*!
+      <step>
+        <file>$file</file>
+        <line>$line</line>
+        <title>Integer comparison</title>
+        <description>
+          <block>
+These are the standard comparison operators that you know, for sure:
+
+ - Less than: `i &lt; j`
+ - Less than or equal: `i &lt;= j`
+ - Greater than: `i &gt; j`
+ - Greater than or equal: `i &gt;= j`
+ - Equals to: `i == j`
+ - Not equal to: `i != j`
+
+Check your intuition by running the following examples:
+          </block>
+          <run>echo "10 &lt; 11" | quint</run>
+          <expect>true</expect>
+          <run>echo "10 &lt; 10" | quint</run>
+          <expect>false</expect>
+          <run>echo "10 &lt;= 11" | quint</run>
+          <expect>true</expect>
+          <run>echo "10 &lt;= 10" | quint</run>
+          <expect>true</expect>
+          <run>echo "10 &lt;= 9" | quint</run>
+          <expect>true</expect>
+          <run>echo "11 &gt; 10" | quint</run>
+          <expect>true</expect>
+          <run>echo "10 &gt; 10" | quint</run>
+          <expect>false</expect>
+          <run>echo "11 &gt;= 10" | quint</run>
+          <expect>true</expect>
+          <run>echo "10 &gt;= 10" | quint</run>
+          <expect>true</expect>
+          <run>echo "10 &gt;= 9" | quint</run>
+          <expect>true</expect>
+          <run>echo "10 == 10" | quint</run>
+          <expect>true</expect>
+          <run>echo "10 == 11" | quint</run>
+          <expect>false</expect>
+          <run>echo "10 != 10" | quint</run>
+          <expect>false</expect>
+          <run>echo "10 != 11" | quint</run>
+          <expect>true</expect>
+        </description>
+      </step>
+     !*/
+
+    // -i is the integer negation
+    pure def myUnaryMinus(i) = -i
+    /*!
+      <step>
+        <file>$file</file>
+        <line>$line</line>
+        <title>Integer negation</title>
+        <description>
+          <block>
+We almost forgot about the integer negation!
+Not surprisingly, `-i` negates an integer `i`.
+Recall that Quint integers are big integers.
+Hence, no overflow is possible.
+
+Try a few examples:
+
+          </block>
+          <run>echo "-(3 + 2)" | quint</run>
+          <expect>-5</expect>
+          <run>echo "-(-2^63) == 2^63" | quint</run>
+          <expect>true</expect>
         </description>
       </step>
      !*/

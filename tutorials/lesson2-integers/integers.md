@@ -1,23 +1,30 @@
 # Lesson 2 - Integers
 ## 1. Introduction
 
-*6 more steps to the finish line*
+*9 more steps to the finish line*
 
 **Scores to earn with secret codes: 10**
 
 This lesson teaches you the basics of operations over integers.
-If you have programming experience, you know most of these operators.
+If you have programming experience, you know most of these operators. 
 So it should not take you long to finish this lesson.
+Do not skip this lesson, as some of the operators may still surprise you.
         
 ## 2. Integer literals
 
-*5 more steps to the finish line*
+*8 more steps to the finish line*
 
 Integer literals are written using the standard syntax:
 0, 1, -1, 2, -2, ..., 314159265358979323846264338327950288419716939937510.
 
 It is important to understand that Quint integers are big integers.
 There is neither a minimum integer, nor there is a maximum integer.
+
+It's quite easy to express the standard 32-bit, 64-bit, 128-bit, and 512-bit
+integers with Quint integers. We will cover this in a follow up tutorial.
+
+We omit several integer operators that produce sets. These operators are covered in
+the tutorial on sets.
         
 **Example:**
 
@@ -34,7 +41,7 @@ There is neither a minimum integer, nor there is a maximum integer.
 
 ## 3. Integer exponentiation
 
-*4 more steps to the finish line*
+*7 more steps to the finish line*
 
           
 
@@ -96,6 +103,11 @@ echo "0^3" | quint
 echo "0^0" | quint
 ```
 
+
+```sh
+echo "0^(-2)" | quint
+```
+
 **Example:**
 
 ```scala
@@ -106,7 +118,7 @@ echo "0^0" | quint
 
 ## 4. Integer addition
 
-*3 more steps to the finish line*
+*6 more steps to the finish line*
 
           
 
@@ -123,8 +135,8 @@ echo "2022 + 2023" | quint
 
 
 
-It is important to remember that Quint integers follow the laws
-of commutativity and associativity:
+It is important to remember that integer addition satisfies the laws
+of commutativity and associativity in Quint:
 
           
 
@@ -146,7 +158,7 @@ echo "(11 + 17) + 19 == 11 + (17 + 19)" | quint
 
 ## 5. Integer subtraction
 
-*2 more steps to the finish line*
+*5 more steps to the finish line*
 
           
 
@@ -171,6 +183,9 @@ echo "2022 - 2023" | quint
 echo "11 + 13 - 17" | quint
 ```
 
+
+ **Exercise:** Is subtraction commutative?
+          
 **Example:**
 
 ```scala
@@ -180,29 +195,33 @@ echo "11 + 13 - 17" | quint
 
 ## 6. Integer multiplication
 
-*1 more step to the finish line*
+*4 more steps to the finish line*
 
           
 
 We can multiply two integers by writing `i * j`.
-Remember that multiplication cannot produce any side effects like overflows.
-
- - Try this:
+Remember that multiplication cannot produce any side effects like overflows:
 
           
 
 ```sh
-echo "2022 * 2023" | quint
+echo "2^32 * 2^32 == 2^64" | quint
 ```
 
 
 
- - Or that:
+It is important to remember that integer multiplication satisfies the laws
+of commutativity and associativity in Quint:
 
           
 
 ```sh
-echo "4294967295 + 18446744073709551615" | quint
+echo "11 * 17 == 17 * 11" | quint
+```
+
+
+```sh
+echo "(11 * 17) * 19 == 11 * (17 * 19)" | quint
 ```
 
 **Example:**
@@ -210,6 +229,200 @@ echo "4294967295 + 18446744073709551615" | quint
 ```scala
     // i * j is the integer multiplication
     pure def myMul(i, j) = i * j 
+```
+
+## 7. Integer division and remainder
+
+*3 more steps to the finish line*
+
+          
+
+The operators `i / j` and `i % j` compute the integer part and the remainder
+when dividing `i` by `j`, respectively. These operators have the following
+property for all integer values of `i` and all integer values of `j != 0`:
+`i == (i / j) * j + i % j`.
+
+Try the following examples to check your intuition:
+
+          
+
+```sh
+echo "99 / 2 == 49" | quint
+```
+
+
+```sh
+echo "99 % 2 == 1" | quint
+```
+
+
+```sh
+echo "98 % 2 == 0" | quint
+```
+
+
+```sh
+echo "((2^64 - 1) % 2^64 + 1) % 2^64" | quint
+```
+
+
+```sh
+echo "(2^64 - 123) % 2^63" | quint
+```
+
+
+ **Exercise:** Is division commutative?
+          
+**Example:**
+
+```scala
+    // i / j is the integer division
+    pure def myDiv(i, j) = i / j
+
+    // i % j is the integer remainder
+    pure def myMod(i, j) = i % j
+
+```
+
+## 8. Integer comparison
+
+*2 more steps to the finish line*
+
+          
+
+These are the standard comparison operators that you know, for sure:
+
+ - Less than: `i < j`
+ - Less than or equal: `i <= j`
+ - Greater than: `i > j`
+ - Greater than or equal: `i >= j`
+ - Equals to: `i == j`
+ - Not equal to: `i != j`
+
+Check your intuition by running the following examples:
+          
+
+```sh
+echo "10 < 11" | quint
+```
+
+
+```sh
+echo "10 < 10" | quint
+```
+
+
+```sh
+echo "10 <= 11" | quint
+```
+
+
+```sh
+echo "10 <= 10" | quint
+```
+
+
+```sh
+echo "10 <= 9" | quint
+```
+
+
+```sh
+echo "11 > 10" | quint
+```
+
+
+```sh
+echo "10 > 10" | quint
+```
+
+
+```sh
+echo "11 >= 10" | quint
+```
+
+
+```sh
+echo "10 >= 10" | quint
+```
+
+
+```sh
+echo "10 >= 9" | quint
+```
+
+
+```sh
+echo "10 == 10" | quint
+```
+
+
+```sh
+echo "10 == 11" | quint
+```
+
+
+```sh
+echo "10 != 10" | quint
+```
+
+
+```sh
+echo "10 != 11" | quint
+```
+
+**Example:**
+
+```scala
+    // `i > j` is true if and only if `i` is greater than `j`
+    pure def myGreaterThan(i, j) = i > j
+
+    // `i >= j` is true if and only if `i` is greater than `j`, or equal to `j`
+    pure def myGreaterThanOrEqual(i, j) = i >= j
+
+    // `i < j` is true if and only if `i` is less than `j`
+    pure def myLessThan(i, j) = i < j
+
+    // `i <= j` is true if and only if `i` is less than `j`, or equal to `j`
+    pure def myLessThanOrEqual(i, j) = i <= j
+
+    // `i == j` is true if and only if `i` equals to `j`
+    pure def myEquals(i, j) = i == j
+
+    // `i != j` is true if and only if `i` is not equal to `j`
+    pure def myNotEqual(i, j) = i != j
+
+```
+
+## 9. Integer negation
+
+*1 more step to the finish line*
+
+          
+
+We almost forgot about the integer negation!
+Not surprisingly, `-i` negates an integer `i`.
+Recall that Quint integers are big integers.
+Hence, no overflow is possible.
+
+Try a few examples:
+
+          
+
+```sh
+echo "-(3 + 2)" | quint
+```
+
+
+```sh
+echo "-(-2^63) == 2^63" | quint
+```
+
+**Example:**
+
+```scala
+    // -i is the integer negation
+    pure def myUnaryMinus(i) = -i
 ```
 
 # Done!
