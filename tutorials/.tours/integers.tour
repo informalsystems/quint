@@ -1,0 +1,24 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "Lesson 2 - Integers",
+  "steps": [
+    {
+      "title": "Introduction",
+      "description": "\n**Scores to earn with secret codes: 10**\n\nThis lesson teaches you the basics of operations over integers.\nIf you have programming experience, you know most of these operators.\nSo it should not take you long to finish this lesson.\n        ",
+      "line": 11,
+      "file": "lesson2-integers/integers.qnt"
+    },
+    {
+      "title": "Integer literals",
+      "description": "\nInteger literals are written using the standard syntax:\n0, 1, -1, 2, -2, ..., 314159265358979323846264338327950288419716939937510.\n\nIt is important to understand that Quint integers are big integers.\nThere is neither a minimum integer, nor there is a maximum integer.\n        ",
+      "line": 20,
+      "file": "lesson2-integers/integers.qnt"
+    },
+    {
+      "title": "Integer addition",
+      "description": "\n          \n\nWe can add two integers by writing `i + j`. Importantly, integers cannot\noverflow, as they are big integers.\n\n - Try this:\n\n          \n>> echo \"2022 + 2023\" | quint\n\n\n\n\n - Or that:\n\n          \n>> echo \"4294967295 + 18446744073709551615\" | quint\n\n",
+      "line": 23,
+      "file": "lesson2-integers/integers.qnt"
+    }
+  ]
+}
