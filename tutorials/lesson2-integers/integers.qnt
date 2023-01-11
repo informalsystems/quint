@@ -19,7 +19,17 @@ module integersLesson {
     // 2 is an integer literal
     pure val negative1 = -3
 
+    // i^j is the integer exponentiation, that is,
+    // `i` multiplied by itself `j - 1` times
+    pure def myPow(i, j) = i^j 
+
     // i + j is the integer addition
     pure def myAdd(i, j) = i + j 
+
+    // i - j is the integer subtraction
+    pure def mySub(i, j) = i - j 
+
+    // i * j is the integer multiplication
+    pure def myMul(i, j) = i * j 
 }
 

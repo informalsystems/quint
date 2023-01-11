@@ -15,9 +15,27 @@
       "file": "lesson2-integers/integers.qnt"
     },
     {
+      "title": "Integer exponentiation",
+      "description": "\n          \n\nWe start with the exponentiation `i^j` over integers,\nwhich is also written as `pow(i, j)` in many languages.\nThe result of `i^j` is simply `i` multiplied by itself `j - 1` times.\nThis is the first operator, as it lets us to write nice examples\nin the following steps.\n\nTo get a better intuition at how `i^j` works, run the following examples:\n\n          \n>> echo \"2^32\" | quint\n\n\n>> echo \"2^64\" | quint\n\n\n>> echo \"2^256\" | quint\n\n\n>> echo \"2^512\" | quint\n\n\n\nExponentiation is not defined on all of its arguments.\nTry the following examples to get the intuition.\n          \n>> echo \"(-2)^3\" | quint\n\n\n>> echo \"(-2)^4\" | quint\n\n\n>> echo \"2^(-4)\" | quint\n\n\n>> echo \"0^3\" | quint\n\n\n>> echo \"0^0\" | quint\n\n",
+      "line": 24,
+      "file": "lesson2-integers/integers.qnt"
+    },
+    {
       "title": "Integer addition",
-      "description": "\n          \n\nWe can add two integers by writing `i + j`. Importantly, integers cannot\noverflow, as they are big integers.\n\n - Try this:\n\n          \n>> echo \"2022 + 2023\" | quint\n\n\n\n\n - Or that:\n\n          \n>> echo \"4294967295 + 18446744073709551615\" | quint\n\n",
-      "line": 23,
+      "description": "\n          \n\nWe can add two integers by writing `i + j`. Importantly, integers cannot\noverflow, as they are big integers.\n\nTry this simple example:\n\n          \n>> echo \"2022 + 2023\" | quint\n\n\n\n\nIt is important to remember that Quint integers follow the laws\nof commutativity and associativity:\n\n          \n>> echo \"11 + 17 == 17 + 11\" | quint\n\n\n>> echo \"(11 + 17) + 19 == 11 + (17 + 19)\" | quint\n\n",
+      "line": 27,
+      "file": "lesson2-integers/integers.qnt"
+    },
+    {
+      "title": "Integer subtraction",
+      "description": "\n          \n\nWe can add two integers by writing `i - j`.\n\n - Try this and see the result of the evaluation:\n\n          \n>> echo \"2022 - 2023\" | quint\n\n\n\n\n - Addition and subtraction have the same priority.\n   Hence they are applied from left to right.\n\n          \n>> echo \"11 + 13 - 17\" | quint\n\n",
+      "line": 30,
+      "file": "lesson2-integers/integers.qnt"
+    },
+    {
+      "title": "Integer multiplication",
+      "description": "\n          \n\nWe can multiply two integers by writing `i * j`.\nRemember that multiplication cannot produce any side effects like overflows.\n\n - Try this:\n\n          \n>> echo \"2022 * 2023\" | quint\n\n\n\n\n - Or that:\n\n          \n>> echo \"4294967295 + 18446744073709551615\" | quint\n\n",
+      "line": 33,
       "file": "lesson2-integers/integers.qnt"
     }
   ]
