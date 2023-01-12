@@ -39,20 +39,20 @@ become referenced artifacts.
 We appreciate the efforts of our peers for going through our minimal viable
 solution -- a codeword for buggy tooling and documentation and nobody is sure
 how exactly it should be working -- and generating excellent suggestions for
-improvement. To reflect this, we are collecting scores :blue_book: and
-:musical_note: in the scoreboard below. Although we are developing a few rules
-for assigning the scores to learning and standard contributions, see the
-[Scoreboard rules][], we are also assigning bonus scores :star2: for
-non-standard contributions.  Obviously, the core developers of Quint are
-excluded from this scoreboard.
+improvement. To reflect this, we are collecting scores: earth scores
+for learning :earth_africa:, air scores for Github contributions :cyclone:,
+water scores for examples :ocean:. Although we are developing a few rules for
+assigning the scores to learning and standard contributions, see the
+[Scoreboard rules][], we are also assigning fire scores for non-standard
+contributions :fire:. Obviously, the core developers of Quint are excluded from this
+scoreboard.
 
 *A footprint: Do not take these scores too seriously, they are not an objective
-reward (like money). It is just a way to make learning the language a bit more
-fun.*
+reward. It is just a way to make learning the language a bit more fun.*
 
-| GH user          | Learning :blue_book:  | Github :musical_note: | Bonus :star: |
-| ---------------- | --------------------- | --------------------- | ------------ |
-|                  |                       |                       |              |
+| GH user | Learning :earth_africa: | Github :cyclone: | Examples :ocean: | Bonus :fire: |
+| ------- | ----------------------- | -----------------| ---------------- | ----------- |
+| TODO    | TODO                    | TODO             | TODO             | TODO        |
 
 ## Documentation
 
