@@ -18,7 +18,7 @@ module integersLesson {
       <step>
         <title>Introduction</title>
         <description>
-**Scores to earn with secret codes: 10**
+**Two secret codes**, each **10** :earth_africa: points
 
 This lesson teaches you the basics of operations over integers.
 If you have programming experience, you know most of these operators. 
@@ -86,6 +86,10 @@ To get a better intuition at how `i^j` works, run the following examples:
           <expect>115792089237316195423570985008687907853269984665640564039457584007913129639936</expect>
           <run>echo "2^512" | quint</run>
           <expect>13407807929942597099574024998205846127479365820592393377723561443721764030073546976801874298166903427690031858186486050853753882811946569946433649006084096</expect>
+          <run when="codetour">echo "val S""e""C""Re""T1 = 2^125; 2^125" | quint</run>
+          <expect>42535295865117307932921825928971026432</expect>
+          <run when="markdown">echo "val S""e""C""Re""T1 = 2^127; 2^127" | quint</run>
+          <expect>42535295865117307932921825928971026432</expect>
 
           <block>
 Exponentiation is not defined on all of its arguments.
@@ -326,6 +330,12 @@ Try a few examples:
           <expect>-5</expect>
           <run>echo "-(-2^63) == 2^63" | quint</run>
           <expect>true</expect>
+          <block when="codetour">
+          Evaluate `2^(x / 2)` for `x = 42` in REPL to get extra scores.
+          </block>
+          <block when="markdown">
+          Evaluate `2^(x / 2)` for `x = 45` in REPL to get extra scores.
+          </block>
         </description>
       </step>
      !*/

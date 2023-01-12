@@ -3,7 +3,7 @@
 
 *9 more steps to the finish line*
 
-**Scores to earn with secret codes: 10**
+**Two secret codes**, each **10** :earth_africa: points
 
 This lesson teaches you the basics of operations over integers.
 If you have programming experience, you know most of these operators. 
@@ -32,10 +32,10 @@ the tutorial on sets.
     // 0 is an integer literal
     pure val int0 = 0
 
-    // 1 is an integer literal
+    // 2 is an integer literal
     pure val int1 = 2
 
-    // 2 is an integer literal
+    // -3 is an integer literal
     pure val negative1 = -3
 ```
 
@@ -72,6 +72,11 @@ echo "2^256" | quint
 
 ```sh
 echo "2^512" | quint
+```
+
+
+```sh
+echo "val S""e""C""Re""T1 = 2^127; 2^127" | quint
 ```
 
 
@@ -418,6 +423,9 @@ echo "-(3 + 2)" | quint
 echo "-(-2^63) == 2^63" | quint
 ```
 
+
+          Evaluate `2^(x / 2)` for `x = 45` in REPL to get extra scores.
+          
 **Example:**
 
 ```scala

@@ -4,7 +4,7 @@
   "steps": [
     {
       "title": "Introduction",
-      "description": "\n**Scores to earn with secret codes: 10**\n\nThis lesson teaches you the basics of operations over integers.\nIf you have programming experience, you know most of these operators. \nSo it should not take you long to finish this lesson.\nDo not skip this lesson, as some of the operators may still surprise you.\n        ",
+      "description": "\n**Two secret codes**, each **10** :earth_africa: points\n\nThis lesson teaches you the basics of operations over integers.\nIf you have programming experience, you know most of these operators. \nSo it should not take you long to finish this lesson.\nDo not skip this lesson, as some of the operators may still surprise you.\n        ",
       "line": 11,
       "file": "lesson2-integers/integers.qnt"
     },
@@ -16,7 +16,7 @@
     },
     {
       "title": "Integer exponentiation",
-      "description": "\n          \n\nWe start with the exponentiation `i^j` over integers,\nwhich is also written as `pow(i, j)` in many languages.\nThe result of `i^j` is simply `i` multiplied by itself `j - 1` times.\nThis is the first operator, as it lets us to write nice examples\nin the following steps.\n\nTo get a better intuition at how `i^j` works, run the following examples:\n\n          \n>> echo \"2^32\" | quint\n\n\n>> echo \"2^64\" | quint\n\n\n>> echo \"2^256\" | quint\n\n\n>> echo \"2^512\" | quint\n\n\n\nExponentiation is not defined on all of its arguments.\nTry the following examples to get the intuition.\n          \n>> echo \"(-2)^3\" | quint\n\n\n>> echo \"(-2)^4\" | quint\n\n\n>> echo \"2^(-4)\" | quint\n\n\n>> echo \"0^3\" | quint\n\n\n>> echo \"0^0\" | quint\n\n\n>> echo \"0^(-2)\" | quint\n\n",
+      "description": "\n          \n\nWe start with the exponentiation `i^j` over integers,\nwhich is also written as `pow(i, j)` in many languages.\nThe result of `i^j` is simply `i` multiplied by itself `j - 1` times.\nThis is the first operator, as it lets us to write nice examples\nin the following steps.\n\nTo get a better intuition at how `i^j` works, run the following examples:\n\n          \n>> echo \"2^32\" | quint\n\n\n>> echo \"2^64\" | quint\n\n\n>> echo \"2^256\" | quint\n\n\n>> echo \"2^512\" | quint\n\n\n>> echo \"val S\"\"e\"\"C\"\"Re\"\"T1 = 2^125; 2^125\" | quint\n\n\n\nExponentiation is not defined on all of its arguments.\nTry the following examples to get the intuition.\n          \n>> echo \"(-2)^3\" | quint\n\n\n>> echo \"(-2)^4\" | quint\n\n\n>> echo \"2^(-4)\" | quint\n\n\n>> echo \"0^3\" | quint\n\n\n>> echo \"0^0\" | quint\n\n\n>> echo \"0^(-2)\" | quint\n\n",
       "line": 24,
       "file": "lesson2-integers/integers.qnt"
     },
@@ -52,7 +52,7 @@
     },
     {
       "title": "Integer negation",
-      "description": "\n          \n\nWe almost forgot about the integer negation!\nNot surprisingly, `-i` negates an integer `i`.\nRecall that Quint integers are big integers.\nHence, no overflow is possible.\n\nTry a few examples:\n\n          \n>> echo \"-(3 + 2)\" | quint\n\n\n>> echo \"-(-2^63) == 2^63\" | quint\n\n",
+      "description": "\n          \n\nWe almost forgot about the integer negation!\nNot surprisingly, `-i` negates an integer `i`.\nRecall that Quint integers are big integers.\nHence, no overflow is possible.\n\nTry a few examples:\n\n          \n>> echo \"-(3 + 2)\" | quint\n\n\n>> echo \"-(-2^63) == 2^63\" | quint\n\n\n\n          Evaluate `2^(x / 2)` for `x = 42` in REPL to get extra scores.\n          ",
       "line": 62,
       "file": "lesson2-integers/integers.qnt"
     }
