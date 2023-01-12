@@ -34,6 +34,26 @@ element. A lot of alchemy is about transmutation and energy, and Quint makes it
 possible to transmute specifications into executable assets and empower ideas to
 become referenced artifacts.
 
+## Scoreboard
+
+We appreciate the efforts of our peers for going through our minimal viable
+solution -- a codeword for buggy tooling and documentation and nobody is sure
+how exactly it should be working -- and generating excellent suggestions for
+improvement. To reflect this, we are collecting scores :blue_book: and
+:musical_note: in the scoreboard below. Although we are developing a few rules
+for assigning the scores to learning and standard contributions, see the
+[Scoreboard rules][], we are also assigning bonus scores :star2: for
+non-standard contributions.  Obviously, the core developers of Quint are
+excluded from this scoreboard.
+
+*A footprint: Do not take these scores too seriously, they are not an objective
+reward (like money). It is just a way to make learning the language a bit more
+fun.*
+
+| GH user          | Learning :blue_book:  | Github :musical_note: | Bonus :star: |
+| ---------------- | --------------------- | --------------------- | ------------ |
+|                  |                       |                       |              |
+
 ## Documentation
 
 ### Syntax
@@ -169,3 +189,4 @@ completely implementing every pass.
 [String literals]: https://github.com/informalsystems/quint/blob/main/doc/lang.md#identifiers-and-strings
 [TLA+]: https://lamport.azurewebsites.net/tla/tla.html
 [TLA]: https://en.wikipedia.org/wiki/Temporal_logic_of_actions
+[Scoreboard rules]: ./scoreboard-rules.md
