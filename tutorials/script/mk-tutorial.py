@@ -131,7 +131,7 @@ def xmlToMarkdown(root, code, out):
                 if c.tag == "block":
                     out.write(f'{c.text}\n')
                 elif c.tag == "run":
-                    # use the special syntax for shell commands in CodeTour
+                    # use a code block for shell commands
                     out.write(f'\n```sh\n')
                     out.write(f'{c.text}\n')
                     out.write(f'```\n\n')
