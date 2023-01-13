@@ -1,8 +1,7 @@
 # Quint Scoreboard Rules
 
 We appreciate the efforts of our peers for going through our minimal viable
-solution -- a codeword for buggy tooling and documentation and nobody is sure
-how exactly it should be working -- and generating excellent suggestions for
+solution and generating excellent suggestions for
 improvement. To reflect this, we are collecting four kinds of scores at the
 [scoreboard][] on the main page[^1].
 
@@ -17,10 +16,10 @@ write your secret code in the gist and mention @konnov there.
 
  - A few-line fix in the documentation: **3** :cyclone:
 
- - A confirmed bug report for something that has a simple workaround: **5**
+ - A confirmed bug report for something that has a simple fix: **5**
    :cyclone:
 
- - A confirmed bug report that has no simple workaround: **10**
+ - A confirmed bug report that has no simple fix: **10**
    :cyclone:
 
  - A confirmed bug report that leads to language refactoring: **20** :cyclone:

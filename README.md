@@ -37,8 +37,7 @@ become referenced artifacts.
 ## Scoreboard
 
 We appreciate the efforts of our peers for going through our minimal viable
-solution -- a codeword for buggy tooling and documentation and nobody is sure
-how exactly it should be working -- and generating excellent suggestions for
+solution and generating excellent suggestions for
 improvement. To reflect this, we are collecting scores: earth scores
 for learning :earth_africa:, air scores for Github contributions :cyclone:,
 water scores for examples :ocean:. Although we are developing a few rules for
