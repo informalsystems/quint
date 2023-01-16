@@ -1,21 +1,13 @@
-/**
- This lesson teaches you the basics of operations over Booleans.
- If you have programming experience, you know all of these operators.
- So it should not take you long to finish this lesson.
-
- If you do not know how to start the lesson, do the following:
-
-  - Open Visual Studio Code.
-  - Install the Quint and Codetour extensions.
-  - Choose the tour "Lesson 1 - Booleans".
+/*
+ If you do not know how to start this lesson, see:
+ https://github.com/informalsystems/quint/tree/main/tutorials
  */
 module booleansLesson {    
-    /// false is a built-in constant
+
+    // false is a built-in constant
     pure val myFalse = false
 
-    // exercise: evaluate false in REPL
-
-    /// true is a built-in constant too
+    // true is a built-in constant too
     pure val myTrue = true
 
     // you can compare Booleans for equality
@@ -24,19 +16,19 @@ module booleansLesson {
     // you can compare Booleans for inequality
     pure def myNeq(x, y) = x != y
 
-    /// Boolean negation, which is written as `!x` in some languages
+    // Boolean negation, which is written as `!x` in some languages
     pure def myNot(x) = not(x)
 
     // you can also write negation like that
     pure def myNot2(x) = x.not()
 
-    /// Boolean "and", which is written as `x && y` in some languages
+    // Boolean "and", which is written as `x && y` in some languages
     pure def myAnd(x, y) = x and y
 
-    /// You can also write Boolean "and" like that in the OOP form
+    // You can also write Boolean "and" like that in the OOP form
     pure def myAnd2(x, y) = x.and(y)
 
-    /// We can apply "and" to more than two arguments
+    // We can apply "and" to more than two arguments
     pure def myAnd3(x, y, z) = and(x, y, z)
 
     /// When your expressions get bigger, you can stack them in `and { ... }`
