@@ -29,11 +29,11 @@ the details, check [booleans.qnt](./booleans.qnt).
 
 Quint has two built-in values of `bool` type, called Boolean literals:
 
-  - `false` is the value that represents the false value.
-  - `true` is the value that represents the true value.
+  - `false` is the value that represents the value "false".
+  - `true` is the value that represents the value "true".
 
 Note that Quint is strict with respect to Boolean values.
-There are only `false` and `true`. There are comparable
+There are only `false` and `true`. They are comparable
 only to Boolean values, and there are no implicit conversions
 from other types to the Boolean type.
 
@@ -52,9 +52,37 @@ echo "false" | quint
 echo "true" | quint
 ```
 
-## 3. Boolean equality
+## 3. Boolean negation
 
 *13 more steps to the finish line*
+
+**Code snippet:**
+
+```scala
+
+    // Boolean negation, which is written as `!x` in some languages
+    pure def myNot(x) = not(x)
+```
+
+
+The simplest operation we can do with a Boolean value is negation.
+
+Evaluate the negation of `false` and `true`:
+
+          
+
+```sh
+echo "not(false)" | quint
+```
+
+
+```sh
+echo "not(true)" | quint
+```
+
+## 4. Boolean equality
+
+*12 more steps to the finish line*
 
 **Code snippet:**
 
@@ -106,9 +134,9 @@ echo "false == 0" | quint
 echo "true == 1" | quint
 ```
 
-## 4. Boolean inequality
+## 5. Boolean inequality
 
-*12 more steps to the finish line*
+*11 more steps to the finish line*
 
 **Code snippet:**
 
@@ -142,34 +170,6 @@ echo "true != false" | quint
 
 ```sh
 echo "true != true" | quint
-```
-
-## 5. Boolean negation
-
-*11 more steps to the finish line*
-
-**Code snippet:**
-
-```scala
-
-    // Boolean negation, which is written as `!x` in some languages
-    pure def myNot(x) = not(x)
-```
-
-
-The simplest operation we can do with a Boolean value is negation.
-
-Evaluate the negation of `false` and `true`:
-
-          
-
-```sh
-echo "not(false)" | quint
-```
-
-
-```sh
-echo "not(true)" | quint
 ```
 
 ## 6. Dot form

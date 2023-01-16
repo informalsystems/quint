@@ -10,14 +10,14 @@ module booleansLesson {
     // true is a built-in constant too
     pure val myTrue = true
 
+    // Boolean negation, which is written as `!x` in some languages
+    pure def myNot(x) = not(x)
+
     // you can compare Booleans for equality
     pure def myEq(x, y) = x == y
 
     // you can compare Booleans for inequality
     pure def myNeq(x, y) = x != y
-
-    // Boolean negation, which is written as `!x` in some languages
-    pure def myNot(x) = not(x)
 
     // you can also write negation like that
     pure def myNot2(x) = x.not()

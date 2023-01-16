@@ -38,11 +38,11 @@ the details, check [booleans.qnt](./booleans.qnt).
         <description>
 Quint has two built-in values of `bool` type, called Boolean literals:
 
-  - `false` is the value that represents the false value.
-  - `true` is the value that represents the true value.
+  - `false` is the value that represents the value "false".
+  - `true` is the value that represents the value "true".
 
 Note that Quint is strict with respect to Boolean values.
-There are only `false` and `true`. There are comparable
+There are only `false` and `true`. They are comparable
 only to Boolean values, and there are no implicit conversions
 from other types to the Boolean type.
 
@@ -52,6 +52,24 @@ around as variable values, or in data structures.
 Evaluate the Boolean literals in REPL:
           <run>echo "false" | quint</run>
           <run>echo "true" | quint</run>
+        </description>
+      </step>
+     !*/
+
+    // Boolean negation, which is written as `!x` in some languages
+    pure def myNot(x) = not(x)
+    /*!
+      <step>
+        <file>$file</file>
+        <line>$line</line>
+        <title>Boolean negation</title>
+        <description>
+The simplest operation we can do with a Boolean value is negation.
+
+Evaluate the negation of `false` and `true`:
+
+          <run>echo "not(false)" | quint</run>
+          <run>echo "not(true)" | quint</run>
         </description>
       </step>
      !*/
@@ -107,24 +125,6 @@ Try comparing `false` and `true` in all possible combinations:
       </step>
      !*/
 
-    // Boolean negation, which is written as `!x` in some languages
-    pure def myNot(x) = not(x)
-    /*!
-      <step>
-        <file>$file</file>
-        <line>$line</line>
-        <title>Boolean negation</title>
-        <description>
-The simplest operation we can do with a Boolean value is negation.
-
-Evaluate the negation of `false` and `true`:
-
-          <run>echo "not(false)" | quint</run>
-          <run>echo "not(true)" | quint</run>
-        </description>
-      </step>
-     !*/
-
     // you can also write negation like that
     pure def myNot2(x) = x.not()
     /*!
@@ -140,7 +140,7 @@ If you prefer object-oriented style, you can also write `x.not()`. Try it out:
           <run>echo "false.not()" | quint</run>
 
           <block>
-This is a general principle. You can write `foo(x)` as `x.foo()` and vice versa.
+**This is a general principle:** You can write `foo(x)` as `x.foo()` and vice versa.
 
 Be careful about not writing `false.not`, as it would be understood as record access:
           </block>
@@ -156,7 +156,7 @@ Be careful about not writing `false.not`, as it would be understood as record ac
       <step>
         <file>$file</file>
         <line>$line</line>
-        <title>Dot form</title>
+        <title>Boolean "and"</title>
         <description>
 Now it is time to learn about Boolean "and".
 
@@ -186,7 +186,7 @@ Boolean "and". Try it:
           <run>echo "false.and(true)" | quint</run>
 
           <block>
-Again, this is a general principle. You can replace `bar(x, y)` with `x.bar(y)`
+**This is a general principle:** You can replace `bar(x, y)` with `x.bar(y)`,
 and vice versa.
 
 This form may be useful with nested formulas like:
@@ -207,7 +207,7 @@ This form may be useful with nested formulas like:
         <line>$line</line>
         <title>And works for more than two arguments</title>
         <description>
-As you see, "and" does not have to apply to two arguments only. You can use it with multiple arguments.
+As you see, "and" does not have to apply to two arguments only. You can use it with multiple arguments:
 
           <run>echo "and(true, false, true)" | quint</run>
           <run>echo "and(true, false, true, false)" | quint</run>
