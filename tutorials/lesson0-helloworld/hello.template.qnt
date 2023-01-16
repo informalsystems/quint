@@ -139,12 +139,13 @@ read the next step.
         <line>$line</line>
         <title>Introduce an action by the computer</title>
         <description>
-Now it's time to print the "Hello, world!" message. Similar to `init`,
-we introduce the action `write`. In contrast to `init`, this action
-cannot be unconditionally executed in any state of our state machine.
-If you carefully read the description of the action `init` at the previous
-step, you should immediately see that `consoleOutput` changes
-to `"Hello, world!"` in the next state, if `write` returns `true`.
+
+Now it's time to print the "Hello, world!" message. Similar to `init`, we
+introduce the action `write`. In contrast to `init`, this action cannot be
+unconditionally executed in any state of our state machine.  Similar to how the
+variable `consoleOutput` is updated in the action `init`, you should be able to
+see how the action `write` schedules an update of `consoleOutput` in the next
+state. This only happens though, if the action `write` returns `true`.
 
 The first statement of `write` may be confusing to you though:
 
@@ -215,10 +216,11 @@ how we did it for `write`.
         <line>$line</line>
         <title>Describe a single step</title>
         <description>
+
 We have described `init`, `read`, and `write`. These are the essential actions
-for understanding our protocol. However, we have to describe how a transition
-of the state machine looks like in general. We do this by defining the action
-called `step`.
+for understanding our protocol. However, we have to also understand *when* the
+actions may be executed. We do this by composing `read` and `write` into the
+action called `step`.
 
 The operator `any { ... }` looks similar to `all { ... }`. Indeed, they are of
 the same nature. While the operator `all { ... }` returns `true` if and only if
@@ -261,8 +263,17 @@ To test our protocol, we fix one particular execution sequence in `test1`:
  2. Execute the action `write`.
  3. Execute the action `read`.
 
-To try it out, run the command `quint`, which starts a REPL session, and
-execute the following commands (written after the REPL prompt `>>> `):
+We could draw this execution sequence with UML sequence diagrams or state
+diagrams. For example:
+
+![test1-sequence](../img/hello-test1.png)
+
+The unfortunate fact about UML sequence diagrams and state charts is that they
+are given as figures, which have to be executed in the reader's brain.
+
+In Quint, running `test1` is as simple as evaluating an expression. To try it
+out, run the command `quint`, which starts a REPL session, and execute the
+following commands (written after the REPL prompt `>>> `):
 
 ```sh
 $ quint
@@ -276,10 +287,11 @@ true
 true
 ```
 
-In the above session, we have imported all definitions from the module `hello`
-and ran the run `test1`. As indicated with the result `true`, the run was
-executed successfully. We can also evaluate the state variables
-`consoleOutput` and `readByUser` in the current state:
+In the above session, we load the module `hello` from the file `hello.qnt`,
+import all definitions from the module `hello` and execute the run `test1`. As
+indicated with the result `true`, the run was executed successfully. We can
+also evaluate the state variables `consoleOutput` and `readByUser` in the
+state produced by `test1`:
 
 ```sh
 >>> consoleOutput
@@ -288,8 +300,12 @@ executed successfully. We can also evaluate the state variables
 "Hello, world!"
 ```
 
-**Exercise:** Carefully read the code of `read` and `write` again.
-Explain, whether it is possible to execute `read` and `write` in the same state.
+**Exercise:** Carefully read the code of `read` and `write` again. Explain,
+whether it is possible to execute `read` and `write` in the same state.
+
+**Exercise:** Explain, whether it is possible to execute `read` or `write`
+after executing the run called `test1`.
+
         </description>
       </step>
      !*/
@@ -302,7 +318,7 @@ Explain, whether it is possible to execute `read` and `write` in the same state.
 We have covered all the aspects of our "Hello, world!" example.
 Actually, we could have written a much shorter example, but it would not
 demonstrate the distinctive features of Quint. If you look at the 
-source code of [hello.qnt](./hello.qnt), it is not scary big.
+source code of [hello.qnt](./hello.qnt), it is not scary long.
 
 We are experimenting with different kinds of tutorials.
 It would be great to learn, whether you liked this tutorial format, or not.

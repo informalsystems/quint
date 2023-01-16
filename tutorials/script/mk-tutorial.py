@@ -129,7 +129,7 @@ def xmlToMarkdown(root, code, out):
         line = int(line.text) if line != None else None
         # the first step is normally an intro, its code will be skipped
         if line != None and lastLine != None and line > lastLine:
-            out.write('**Code snippet:**\n\n')
+            out.write('\n**Code snippet:**\n\n')
             out.write('```scala\n')
             for l in code[int(lastLine) + 1: int(line) + 1]:
                 out.write(l)
