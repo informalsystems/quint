@@ -22,22 +22,22 @@ module ClockSync3 {
     //// TYPES AND CONSTRUCTORS
 
     /// The type of processes
-    type proc = {id : int}
+    type PROC = {id : int}
 
     /// `Proc(id)` is a process with the given `id`
-    def Proc(id) : (int) => proc = { id : id }
+    def Proc(id) : (int) => PROC = { id : id }
 
     /// Control states
-    type state = str
+    type STATE = str
 
     /// A message sent by a process
-    type msg = {src : proc, ts: int}
+    type MSG = {src : PROC, ts: int}
 
     /// `p.msgFrom(ts)` is a message sent from `p` at time `ts` 
     def msgFrom(p, ts) = {src: p, ts : ts}
 
     /// The set of messages
-    type msgs = Set[msg]
+    type MSGS = Set[MSG]
 
 
     //// STATE
@@ -46,28 +46,28 @@ module ClockSync3 {
     var time: int
 
     /// Hardware clock of a process
-    var hc: proc -> int
+    var hc: PROC -> int
 
     /// Clock adjustment of a process
-    var adj: proc -> int
+    var adj: PROC -> int
 
     /// Messages sent by the processes
-    var msgs: msgs
+    var msgs: MSGS
 
     /// Messages received by the processes
-    var rcvd: proc -> msgs
+    var rcvd: PROC -> MSGS
 
     /// The control state of a process
-    var state: proc -> state
+    var state: PROC -> STATE
 
 
     //// DEFINITIONS
 
     /// We fix the model to contain two processes
-    val Procs : Set[proc] = Set(Proc(1), Proc(2))
+    val Procs : Set[PROC] = Set(Proc(1), Proc(2))
 
     /// The set of possible control states
-    val states : Set[state] = Set("init", "sent", "sync")
+    val states : Set[STATE] = Set("init", "sent", "sync")
 
 
     //// INITIALIZATION
@@ -87,8 +87,8 @@ module ClockSync3 {
 
     /// Send the value of the hardware clock
     action sendMsg(p) = all {
-        state[p] == "init",
-        msgs'  = msgs.add(p.msgFrom(hc[p])),
+        state.get(p) == "init",
+        msgs'  = msgs.add(p.msgFrom(hc.get(p))),
         state' = state.set(p, "sent"),
         rcvd'  = rcvd,
     }
@@ -97,10 +97,10 @@ module ClockSync3 {
     action receiveMsg(p) = {
         nondet newMsg = oneOf(msgs) 
         all {
-            newMsg.notin(rcvd[p]),
+            newMsg.notin(rcvd.get(p)),
             // the message cannot be received earlier than after t_min
-            hc[newMsg.src] >= newMsg.ts + t_min,
-            rcvd'  = rcvd.set(p, rcvd[p].add(newMsg)),
+            hc.get(newMsg.src) >= newMsg.ts + t_min,
+            rcvd'  = rcvd.set(p, rcvd.get(p).add(newMsg)),
             state' = state,
             msgs'  = msgs,
         }
@@ -111,12 +111,12 @@ module ClockSync3 {
         delta > 0,
         // clocks can be advanced only if there are no pending message
         msgs.forall(m => 
-            ( hc[m.src] + delta > t_max )
+            ( hc.get(m.src) + delta > t_max )
             .implies
-            ( Procs.forall(p => m.in(rcvd[m.src])) )
+            ( Procs.forall(p => m.in(rcvd.get(m.src))) )
         ),
         time' = time + delta,
-        hc'   = Procs.mapBy(p => hc[p] + delta),
+        hc'   = Procs.mapBy(p => hc.get(p) + delta),
     }
 
     //// TRANSITIONS
