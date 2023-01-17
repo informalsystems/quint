@@ -181,4 +181,4 @@ bash -
 ### OK on typecheck clockSync3
 
 <!-- !test check typecheck clockSync3.qnt -->
-    quint typecheck ../examples/ClockSync/clockSync3.tnt
+    quint typecheck ../examples/ClockSync/clockSync3.qnt
