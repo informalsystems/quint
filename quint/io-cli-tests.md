@@ -125,13 +125,3 @@ quint typecheck --out test-out.json ./testFixture/TrivialTypeError.qnt ; ret=$?;
 <!-- !test err typecheck failure quiet with out flag -->
 ```
 ```
-
-## Typechecking correct examples
-<!-- !test in typecheck ClockSync3.tnt -->
-```
-tntc typecheck ../examples/ClockSync/clockSync3.tnt
-```
-
-<!-- !test err typecheck ClockSync3.tnt -->
-```
-```
