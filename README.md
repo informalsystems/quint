@@ -38,7 +38,7 @@ become referenced artifacts.
 
 ## Documentation
 
-### Tutorials :yum:
+### Tutorials :teacher:
 
 We are preparing language and tools tutorials. Visit the [Tutorials][] page.
 
