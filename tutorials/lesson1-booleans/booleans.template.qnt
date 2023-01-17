@@ -6,7 +6,7 @@
   <tutorial>
     <title>Lesson 1 - Booleans</title>
     <steps>
- !*/
+!*/
 module booleansLesson {    
     /*!
       <step>
