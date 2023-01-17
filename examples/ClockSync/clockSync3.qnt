@@ -77,9 +77,9 @@ module ClockSync3 {
           time' = time0 },
         { nondet hc0 = oneOf(setOfMaps(Procs, Nat))
           hc' = hc0 },
+        msgs'  = Set(),
         adj'   = Procs.mapBy(_ => 0),
         state' = Procs.mapBy(_ => "init"),
-        msgs'  = Set(),
         rcvd'  = Procs.mapBy(_ => Set()),
     }
 
@@ -113,7 +113,7 @@ module ClockSync3 {
         msgs.forall(m => 
             ( hc.get(m.src) + delta > t_max )
             .implies
-            ( Procs.forall(p => m.in(rcvd.get(m.src))) )
+            ( Procs.forall(p => m.in(rcvd.get(p))) )
         ),
         time' = time + delta,
         hc'   = Procs.mapBy(p => hc.get(p) + delta),
