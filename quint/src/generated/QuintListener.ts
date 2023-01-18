@@ -34,15 +34,15 @@ import { PlusMinusContext } from "./QuintParser";
 import { RelationsContext } from "./QuintParser";
 import { AsgnContext } from "./QuintParser";
 import { ErrorEqContext } from "./QuintParser";
-import { AndContext } from "./QuintParser";
-import { OrContext } from "./QuintParser";
 import { AndExprContext } from "./QuintParser";
+import { AndContext } from "./QuintParser";
 import { OrExprContext } from "./QuintParser";
-import { ActionAllContext } from "./QuintParser";
-import { ActionAnyContext } from "./QuintParser";
+import { OrContext } from "./QuintParser";
 import { IffContext } from "./QuintParser";
 import { ImpliesContext } from "./QuintParser";
 import { MatchContext } from "./QuintParser";
+import { ActionAllContext } from "./QuintParser";
+import { ActionAnyContext } from "./QuintParser";
 import { LiteralOrIdContext } from "./QuintParser";
 import { TupleContext } from "./QuintParser";
 import { PairContext } from "./QuintParser";
@@ -484,32 +484,6 @@ export interface QuintListener extends ParseTreeListener {
 	exitErrorEq?: (ctx: ErrorEqContext) => void;
 
 	/**
-	 * Enter a parse tree produced by the `and`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 */
-	enterAnd?: (ctx: AndContext) => void;
-	/**
-	 * Exit a parse tree produced by the `and`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 */
-	exitAnd?: (ctx: AndContext) => void;
-
-	/**
-	 * Enter a parse tree produced by the `or`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 */
-	enterOr?: (ctx: OrContext) => void;
-	/**
-	 * Exit a parse tree produced by the `or`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 */
-	exitOr?: (ctx: OrContext) => void;
-
-	/**
 	 * Enter a parse tree produced by the `andExpr`
 	 * labeled alternative in `QuintParser.expr`.
 	 * @param ctx the parse tree
@@ -521,6 +495,19 @@ export interface QuintListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitAndExpr?: (ctx: AndExprContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `and`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 */
+	enterAnd?: (ctx: AndContext) => void;
+	/**
+	 * Exit a parse tree produced by the `and`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 */
+	exitAnd?: (ctx: AndContext) => void;
 
 	/**
 	 * Enter a parse tree produced by the `orExpr`
@@ -536,30 +523,17 @@ export interface QuintListener extends ParseTreeListener {
 	exitOrExpr?: (ctx: OrExprContext) => void;
 
 	/**
-	 * Enter a parse tree produced by the `actionAll`
+	 * Enter a parse tree produced by the `or`
 	 * labeled alternative in `QuintParser.expr`.
 	 * @param ctx the parse tree
 	 */
-	enterActionAll?: (ctx: ActionAllContext) => void;
+	enterOr?: (ctx: OrContext) => void;
 	/**
-	 * Exit a parse tree produced by the `actionAll`
+	 * Exit a parse tree produced by the `or`
 	 * labeled alternative in `QuintParser.expr`.
 	 * @param ctx the parse tree
 	 */
-	exitActionAll?: (ctx: ActionAllContext) => void;
-
-	/**
-	 * Enter a parse tree produced by the `actionAny`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 */
-	enterActionAny?: (ctx: ActionAnyContext) => void;
-	/**
-	 * Exit a parse tree produced by the `actionAny`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 */
-	exitActionAny?: (ctx: ActionAnyContext) => void;
+	exitOr?: (ctx: OrContext) => void;
 
 	/**
 	 * Enter a parse tree produced by the `iff`
@@ -599,6 +573,32 @@ export interface QuintListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitMatch?: (ctx: MatchContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `actionAll`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 */
+	enterActionAll?: (ctx: ActionAllContext) => void;
+	/**
+	 * Exit a parse tree produced by the `actionAll`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 */
+	exitActionAll?: (ctx: ActionAllContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `actionAny`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 */
+	enterActionAny?: (ctx: ActionAnyContext) => void;
+	/**
+	 * Exit a parse tree produced by the `actionAny`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 */
+	exitActionAny?: (ctx: ActionAnyContext) => void;
 
 	/**
 	 * Enter a parse tree produced by the `literalOrId`

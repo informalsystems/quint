@@ -1862,13 +1862,13 @@ export class QuintParser extends Parser {
 						_localctx = new AndContext(new ExprContext(_parentctx, _parentState));
 						this.pushNewRecursionContext(_localctx, _startState, QuintParser.RULE_expr);
 						this.state = 461;
-						if (!(this.precpred(this._ctx, 19))) {
-							throw this.createFailedPredicateException("this.precpred(this._ctx, 19)");
+						if (!(this.precpred(this._ctx, 18))) {
+							throw this.createFailedPredicateException("this.precpred(this._ctx, 18)");
 						}
 						this.state = 462;
 						this.match(QuintParser.AND);
 						this.state = 463;
-						this.expr(20);
+						this.expr(19);
 						}
 						break;
 
@@ -1877,13 +1877,13 @@ export class QuintParser extends Parser {
 						_localctx = new OrContext(new ExprContext(_parentctx, _parentState));
 						this.pushNewRecursionContext(_localctx, _startState, QuintParser.RULE_expr);
 						this.state = 464;
-						if (!(this.precpred(this._ctx, 18))) {
-							throw this.createFailedPredicateException("this.precpred(this._ctx, 18)");
+						if (!(this.precpred(this._ctx, 16))) {
+							throw this.createFailedPredicateException("this.precpred(this._ctx, 16)");
 						}
 						this.state = 465;
 						this.match(QuintParser.OR);
 						this.state = 466;
-						this.expr(19);
+						this.expr(17);
 						}
 						break;
 
@@ -1892,13 +1892,13 @@ export class QuintParser extends Parser {
 						_localctx = new IffContext(new ExprContext(_parentctx, _parentState));
 						this.pushNewRecursionContext(_localctx, _startState, QuintParser.RULE_expr);
 						this.state = 467;
-						if (!(this.precpred(this._ctx, 13))) {
-							throw this.createFailedPredicateException("this.precpred(this._ctx, 13)");
+						if (!(this.precpred(this._ctx, 15))) {
+							throw this.createFailedPredicateException("this.precpred(this._ctx, 15)");
 						}
 						this.state = 468;
 						this.match(QuintParser.IFF);
 						this.state = 469;
-						this.expr(14);
+						this.expr(16);
 						}
 						break;
 
@@ -1907,13 +1907,13 @@ export class QuintParser extends Parser {
 						_localctx = new ImpliesContext(new ExprContext(_parentctx, _parentState));
 						this.pushNewRecursionContext(_localctx, _startState, QuintParser.RULE_expr);
 						this.state = 470;
-						if (!(this.precpred(this._ctx, 12))) {
-							throw this.createFailedPredicateException("this.precpred(this._ctx, 12)");
+						if (!(this.precpred(this._ctx, 14))) {
+							throw this.createFailedPredicateException("this.precpred(this._ctx, 14)");
 						}
 						this.state = 471;
 						this.match(QuintParser.IMPLIES);
 						this.state = 472;
-						this.expr(13);
+						this.expr(15);
 						}
 						break;
 
@@ -1991,8 +1991,8 @@ export class QuintParser extends Parser {
 						_localctx = new MatchContext(new ExprContext(_parentctx, _parentState));
 						this.pushNewRecursionContext(_localctx, _startState, QuintParser.RULE_expr);
 						this.state = 491;
-						if (!(this.precpred(this._ctx, 11))) {
-							throw this.createFailedPredicateException("this.precpred(this._ctx, 11)");
+						if (!(this.precpred(this._ctx, 13))) {
+							throw this.createFailedPredicateException("this.precpred(this._ctx, 13)");
 						}
 						this.state = 492;
 						this.match(QuintParser.MATCH);
@@ -2542,16 +2542,16 @@ export class QuintParser extends Parser {
 			return this.precpred(this._ctx, 20);
 
 		case 7:
-			return this.precpred(this._ctx, 19);
-
-		case 8:
 			return this.precpred(this._ctx, 18);
 
+		case 8:
+			return this.precpred(this._ctx, 16);
+
 		case 9:
-			return this.precpred(this._ctx, 13);
+			return this.precpred(this._ctx, 15);
 
 		case 10:
-			return this.precpred(this._ctx, 12);
+			return this.precpred(this._ctx, 14);
 
 		case 11:
 			return this.precpred(this._ctx, 8);
@@ -2563,7 +2563,7 @@ export class QuintParser extends Parser {
 			return this.precpred(this._ctx, 27);
 
 		case 14:
-			return this.precpred(this._ctx, 11);
+			return this.precpred(this._ctx, 13);
 		}
 		return true;
 	}
@@ -2808,11 +2808,11 @@ export class QuintParser extends Parser {
 		"\u01C6\t\x04\x02\x02\u01C6\u01FB\x05\x14\v\x1A\u01C7\u01C8\f\x18\x02\x02" +
 		"\u01C8\u01C9\t\x05\x02\x02\u01C9\u01FB\x05\x14\v\x19\u01CA\u01CB\f\x16" +
 		"\x02\x02\u01CB\u01CC\x07;\x02\x02\u01CC\u01CD\x05\x14\v\x17\u01CD\u01CE" +
-		"\b\v\x01\x02\u01CE\u01FB\x03\x02\x02\x02\u01CF\u01D0\f\x15\x02\x02\u01D0" +
-		"\u01D1\x07(\x02\x02\u01D1\u01FB\x05\x14\v\x16\u01D2\u01D3\f\x14\x02\x02" +
-		"\u01D3\u01D4\x07)\x02\x02\u01D4\u01FB\x05\x14\v\x15\u01D5\u01D6\f\x0F" +
-		"\x02\x02\u01D6\u01D7\x07*\x02\x02\u01D7\u01FB\x05\x14\v\x10\u01D8\u01D9" +
-		"\f\x0E\x02\x02\u01D9\u01DA\x07+\x02\x02\u01DA\u01FB\x05\x14\v\x0F\u01DB" +
+		"\b\v\x01\x02\u01CE\u01FB\x03\x02\x02\x02\u01CF\u01D0\f\x14\x02\x02\u01D0" +
+		"\u01D1\x07(\x02\x02\u01D1\u01FB\x05\x14\v\x15\u01D2\u01D3\f\x12\x02\x02" +
+		"\u01D3\u01D4\x07)\x02\x02\u01D4\u01FB\x05\x14\v\x13\u01D5\u01D6\f\x11" +
+		"\x02\x02\u01D6\u01D7\x07*\x02\x02\u01D7\u01FB\x05\x14\v\x12\u01D8\u01D9" +
+		"\f\x10\x02\x02\u01D9\u01DA\x07+\x02\x02\u01DA\u01FB\x05\x14\v\x11\u01DB" +
 		"\u01DC\f\n\x02\x02\u01DC\u01DD\x07\x15\x02\x02\u01DD\u01FB\x05\x14\v\v" +
 		"\u01DE\u01DF\f \x02\x02\u01DF\u01E0\x07\f\x02\x02\u01E0\u01E6\x05$\x13" +
 		"\x02\u01E1\u01E3\x07<\x02\x02\u01E2\u01E4\x05 \x11\x02\u01E3\u01E2\x03" +
@@ -2820,8 +2820,8 @@ export class QuintParser extends Parser {
 		"\u01E7\x07=\x02\x02\u01E6\u01E1\x03\x02\x02\x02\u01E6\u01E7\x03\x02\x02" +
 		"\x02\u01E7\u01FB\x03\x02\x02\x02\u01E8\u01E9\f\x1D\x02\x02\u01E9\u01EA" +
 		"\x07\x17\x02\x02\u01EA\u01EB\x05\x14\v\x02\u01EB\u01EC\x07\x18\x02\x02" +
-		"\u01EC\u01FB\x03\x02\x02\x02\u01ED\u01EE\f\r\x02\x02\u01EE\u01F6\x07/" +
-		"\x02\x02\u01EF\u01F0\x07\x1C\x02\x02\u01F0\u01F1\x07%\x02\x02\u01F1\u01F2" +
+		"\u01EC\u01FB\x03\x02\x02\x02\u01ED\u01EE\f\x0F\x02\x02\u01EE\u01F6\x07" +
+		"/\x02\x02\u01EF\u01F0\x07\x1C\x02\x02\u01F0\u01F1\x07%\x02\x02\u01F1\u01F2" +
 		"\x07\x07\x02\x02\u01F2\u01F3\x05\x1A\x0E\x02\u01F3\u01F4\x07\x16\x02\x02" +
 		"\u01F4\u01F5\x05\x14\v\x02\u01F5\u01F7\x03\x02\x02\x02\u01F6\u01EF\x03" +
 		"\x02\x02\x02\u01F7\u01F8\x03\x02\x02\x02\u01F8\u01F6\x03\x02\x02\x02\u01F8" +
@@ -4227,78 +4227,6 @@ export class ErrorEqContext extends ExprContext {
 		}
 	}
 }
-export class AndContext extends ExprContext {
-	public expr(): ExprContext[];
-	public expr(i: number): ExprContext;
-	public expr(i?: number): ExprContext | ExprContext[] {
-		if (i === undefined) {
-			return this.getRuleContexts(ExprContext);
-		} else {
-			return this.getRuleContext(i, ExprContext);
-		}
-	}
-	public AND(): TerminalNode { return this.getToken(QuintParser.AND, 0); }
-	constructor(ctx: ExprContext) {
-		super(ctx.parent, ctx.invokingState);
-		this.copyFrom(ctx);
-	}
-	// @Override
-	public enterRule(listener: QuintListener): void {
-		if (listener.enterAnd) {
-			listener.enterAnd(this);
-		}
-	}
-	// @Override
-	public exitRule(listener: QuintListener): void {
-		if (listener.exitAnd) {
-			listener.exitAnd(this);
-		}
-	}
-	// @Override
-	public accept<Result>(visitor: QuintVisitor<Result>): Result {
-		if (visitor.visitAnd) {
-			return visitor.visitAnd(this);
-		} else {
-			return visitor.visitChildren(this);
-		}
-	}
-}
-export class OrContext extends ExprContext {
-	public expr(): ExprContext[];
-	public expr(i: number): ExprContext;
-	public expr(i?: number): ExprContext | ExprContext[] {
-		if (i === undefined) {
-			return this.getRuleContexts(ExprContext);
-		} else {
-			return this.getRuleContext(i, ExprContext);
-		}
-	}
-	public OR(): TerminalNode { return this.getToken(QuintParser.OR, 0); }
-	constructor(ctx: ExprContext) {
-		super(ctx.parent, ctx.invokingState);
-		this.copyFrom(ctx);
-	}
-	// @Override
-	public enterRule(listener: QuintListener): void {
-		if (listener.enterOr) {
-			listener.enterOr(this);
-		}
-	}
-	// @Override
-	public exitRule(listener: QuintListener): void {
-		if (listener.exitOr) {
-			listener.exitOr(this);
-		}
-	}
-	// @Override
-	public accept<Result>(visitor: QuintVisitor<Result>): Result {
-		if (visitor.visitOr) {
-			return visitor.visitOr(this);
-		} else {
-			return visitor.visitChildren(this);
-		}
-	}
-}
 export class AndExprContext extends ExprContext {
 	public AND(): TerminalNode { return this.getToken(QuintParser.AND, 0); }
 	public expr(): ExprContext[];
@@ -4330,6 +4258,42 @@ export class AndExprContext extends ExprContext {
 	public accept<Result>(visitor: QuintVisitor<Result>): Result {
 		if (visitor.visitAndExpr) {
 			return visitor.visitAndExpr(this);
+		} else {
+			return visitor.visitChildren(this);
+		}
+	}
+}
+export class AndContext extends ExprContext {
+	public expr(): ExprContext[];
+	public expr(i: number): ExprContext;
+	public expr(i?: number): ExprContext | ExprContext[] {
+		if (i === undefined) {
+			return this.getRuleContexts(ExprContext);
+		} else {
+			return this.getRuleContext(i, ExprContext);
+		}
+	}
+	public AND(): TerminalNode { return this.getToken(QuintParser.AND, 0); }
+	constructor(ctx: ExprContext) {
+		super(ctx.parent, ctx.invokingState);
+		this.copyFrom(ctx);
+	}
+	// @Override
+	public enterRule(listener: QuintListener): void {
+		if (listener.enterAnd) {
+			listener.enterAnd(this);
+		}
+	}
+	// @Override
+	public exitRule(listener: QuintListener): void {
+		if (listener.exitAnd) {
+			listener.exitAnd(this);
+		}
+	}
+	// @Override
+	public accept<Result>(visitor: QuintVisitor<Result>): Result {
+		if (visitor.visitAnd) {
+			return visitor.visitAnd(this);
 		} else {
 			return visitor.visitChildren(this);
 		}
@@ -4371,7 +4335,7 @@ export class OrExprContext extends ExprContext {
 		}
 	}
 }
-export class ActionAllContext extends ExprContext {
+export class OrContext extends ExprContext {
 	public expr(): ExprContext[];
 	public expr(i: number): ExprContext;
 	public expr(i?: number): ExprContext | ExprContext[] {
@@ -4381,61 +4345,27 @@ export class ActionAllContext extends ExprContext {
 			return this.getRuleContext(i, ExprContext);
 		}
 	}
+	public OR(): TerminalNode { return this.getToken(QuintParser.OR, 0); }
 	constructor(ctx: ExprContext) {
 		super(ctx.parent, ctx.invokingState);
 		this.copyFrom(ctx);
 	}
 	// @Override
 	public enterRule(listener: QuintListener): void {
-		if (listener.enterActionAll) {
-			listener.enterActionAll(this);
+		if (listener.enterOr) {
+			listener.enterOr(this);
 		}
 	}
 	// @Override
 	public exitRule(listener: QuintListener): void {
-		if (listener.exitActionAll) {
-			listener.exitActionAll(this);
+		if (listener.exitOr) {
+			listener.exitOr(this);
 		}
 	}
 	// @Override
 	public accept<Result>(visitor: QuintVisitor<Result>): Result {
-		if (visitor.visitActionAll) {
-			return visitor.visitActionAll(this);
-		} else {
-			return visitor.visitChildren(this);
-		}
-	}
-}
-export class ActionAnyContext extends ExprContext {
-	public expr(): ExprContext[];
-	public expr(i: number): ExprContext;
-	public expr(i?: number): ExprContext | ExprContext[] {
-		if (i === undefined) {
-			return this.getRuleContexts(ExprContext);
-		} else {
-			return this.getRuleContext(i, ExprContext);
-		}
-	}
-	constructor(ctx: ExprContext) {
-		super(ctx.parent, ctx.invokingState);
-		this.copyFrom(ctx);
-	}
-	// @Override
-	public enterRule(listener: QuintListener): void {
-		if (listener.enterActionAny) {
-			listener.enterActionAny(this);
-		}
-	}
-	// @Override
-	public exitRule(listener: QuintListener): void {
-		if (listener.exitActionAny) {
-			listener.exitActionAny(this);
-		}
-	}
-	// @Override
-	public accept<Result>(visitor: QuintVisitor<Result>): Result {
-		if (visitor.visitActionAny) {
-			return visitor.visitActionAny(this);
+		if (visitor.visitOr) {
+			return visitor.visitOr(this);
 		} else {
 			return visitor.visitChildren(this);
 		}
@@ -4562,6 +4492,76 @@ export class MatchContext extends ExprContext {
 	public accept<Result>(visitor: QuintVisitor<Result>): Result {
 		if (visitor.visitMatch) {
 			return visitor.visitMatch(this);
+		} else {
+			return visitor.visitChildren(this);
+		}
+	}
+}
+export class ActionAllContext extends ExprContext {
+	public expr(): ExprContext[];
+	public expr(i: number): ExprContext;
+	public expr(i?: number): ExprContext | ExprContext[] {
+		if (i === undefined) {
+			return this.getRuleContexts(ExprContext);
+		} else {
+			return this.getRuleContext(i, ExprContext);
+		}
+	}
+	constructor(ctx: ExprContext) {
+		super(ctx.parent, ctx.invokingState);
+		this.copyFrom(ctx);
+	}
+	// @Override
+	public enterRule(listener: QuintListener): void {
+		if (listener.enterActionAll) {
+			listener.enterActionAll(this);
+		}
+	}
+	// @Override
+	public exitRule(listener: QuintListener): void {
+		if (listener.exitActionAll) {
+			listener.exitActionAll(this);
+		}
+	}
+	// @Override
+	public accept<Result>(visitor: QuintVisitor<Result>): Result {
+		if (visitor.visitActionAll) {
+			return visitor.visitActionAll(this);
+		} else {
+			return visitor.visitChildren(this);
+		}
+	}
+}
+export class ActionAnyContext extends ExprContext {
+	public expr(): ExprContext[];
+	public expr(i: number): ExprContext;
+	public expr(i?: number): ExprContext | ExprContext[] {
+		if (i === undefined) {
+			return this.getRuleContexts(ExprContext);
+		} else {
+			return this.getRuleContext(i, ExprContext);
+		}
+	}
+	constructor(ctx: ExprContext) {
+		super(ctx.parent, ctx.invokingState);
+		this.copyFrom(ctx);
+	}
+	// @Override
+	public enterRule(listener: QuintListener): void {
+		if (listener.enterActionAny) {
+			listener.enterActionAny(this);
+		}
+	}
+	// @Override
+	public exitRule(listener: QuintListener): void {
+		if (listener.exitActionAny) {
+			listener.exitActionAny(this);
+		}
+	}
+	// @Override
+	public accept<Result>(visitor: QuintVisitor<Result>): Result {
+		if (visitor.visitActionAny) {
+			return visitor.visitActionAny(this);
 		} else {
 			return visitor.visitChildren(this);
 		}

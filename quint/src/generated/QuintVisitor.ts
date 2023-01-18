@@ -34,15 +34,15 @@ import { PlusMinusContext } from "./QuintParser";
 import { RelationsContext } from "./QuintParser";
 import { AsgnContext } from "./QuintParser";
 import { ErrorEqContext } from "./QuintParser";
-import { AndContext } from "./QuintParser";
-import { OrContext } from "./QuintParser";
 import { AndExprContext } from "./QuintParser";
+import { AndContext } from "./QuintParser";
 import { OrExprContext } from "./QuintParser";
-import { ActionAllContext } from "./QuintParser";
-import { ActionAnyContext } from "./QuintParser";
+import { OrContext } from "./QuintParser";
 import { IffContext } from "./QuintParser";
 import { ImpliesContext } from "./QuintParser";
 import { MatchContext } from "./QuintParser";
+import { ActionAllContext } from "./QuintParser";
+import { ActionAnyContext } from "./QuintParser";
 import { LiteralOrIdContext } from "./QuintParser";
 import { TupleContext } from "./QuintParser";
 import { PairContext } from "./QuintParser";
@@ -332,28 +332,20 @@ export interface QuintVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitErrorEq?: (ctx: ErrorEqContext) => Result;
 
 	/**
-	 * Visit a parse tree produced by the `and`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitAnd?: (ctx: AndContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by the `or`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitOr?: (ctx: OrContext) => Result;
-
-	/**
 	 * Visit a parse tree produced by the `andExpr`
 	 * labeled alternative in `QuintParser.expr`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
 	visitAndExpr?: (ctx: AndExprContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `and`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitAnd?: (ctx: AndContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by the `orExpr`
@@ -364,20 +356,12 @@ export interface QuintVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitOrExpr?: (ctx: OrExprContext) => Result;
 
 	/**
-	 * Visit a parse tree produced by the `actionAll`
+	 * Visit a parse tree produced by the `or`
 	 * labeled alternative in `QuintParser.expr`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	visitActionAll?: (ctx: ActionAllContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by the `actionAny`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitActionAny?: (ctx: ActionAnyContext) => Result;
+	visitOr?: (ctx: OrContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by the `iff`
@@ -402,6 +386,22 @@ export interface QuintVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitMatch?: (ctx: MatchContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `actionAll`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitActionAll?: (ctx: ActionAllContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `actionAny`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitActionAny?: (ctx: ActionAnyContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by the `literalOrId`
