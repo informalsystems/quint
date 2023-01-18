@@ -112,17 +112,17 @@ expr:           // apply a built-in operator via the dot notation
                   this.notifyErrorListeners(m)
                 }                                                   # errorEq
                 // Boolean operators. Note that not(e) is just a normal call
-        |       expr AND expr                                       # and
-        |       expr OR expr                                        # or
                 // similar to indented /\ and indented \/ of TLA+
         |       'and' '{' expr (',' expr)* ','? '}'                 # andExpr
+        |       expr AND expr                                       # and
         |       'or'  '{' expr (',' expr)* ','? '}'                 # orExpr
-        |       'all' '{' expr (',' expr)* ','? '}'                 # actionAll
-        |       'any' '{' expr (',' expr)* ','? '}'                 # actionAny
+        |       expr OR expr                                        # or
         |       expr IFF expr                                       # iff
         |       expr IMPLIES expr                                   # implies
         |       expr MATCH
                     ('|' STRING ':' identOrHole '=>' expr)+         # match
+        |       'all' '{' expr (',' expr)* ','? '}'                 # actionAll
+        |       'any' '{' expr (',' expr)* ','? '}'                 # actionAny
         |       ( IDENTIFIER | INT | BOOL | STRING)                 # literalOrId
         //      a tuple constructor, the form tup(...) is just an operator call
         |       '(' expr ',' expr (',' expr)* ','? ')'              # tuple
