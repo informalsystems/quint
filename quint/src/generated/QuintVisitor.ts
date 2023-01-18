@@ -23,12 +23,12 @@ import { ModuleNestedContext } from "./QuintParser";
 import { InstanceContext } from "./QuintParser";
 import { TypedefContext } from "./QuintParser";
 import { ImportDefContext } from "./QuintParser";
-import { UminusContext } from "./QuintParser";
 import { DotCallContext } from "./QuintParser";
 import { LambdaConsContext } from "./QuintParser";
 import { OperAppContext } from "./QuintParser";
 import { ListAppContext } from "./QuintParser";
 import { PowContext } from "./QuintParser";
+import { UminusContext } from "./QuintParser";
 import { MultDivContext } from "./QuintParser";
 import { PlusMinusContext } from "./QuintParser";
 import { RelationsContext } from "./QuintParser";
@@ -36,13 +36,13 @@ import { AsgnContext } from "./QuintParser";
 import { ErrorEqContext } from "./QuintParser";
 import { AndContext } from "./QuintParser";
 import { OrContext } from "./QuintParser";
-import { IffContext } from "./QuintParser";
-import { ImpliesContext } from "./QuintParser";
-import { MatchContext } from "./QuintParser";
 import { AndExprContext } from "./QuintParser";
 import { OrExprContext } from "./QuintParser";
 import { ActionAllContext } from "./QuintParser";
 import { ActionAnyContext } from "./QuintParser";
+import { IffContext } from "./QuintParser";
+import { ImpliesContext } from "./QuintParser";
+import { MatchContext } from "./QuintParser";
 import { LiteralOrIdContext } from "./QuintParser";
 import { TupleContext } from "./QuintParser";
 import { PairContext } from "./QuintParser";
@@ -244,14 +244,6 @@ export interface QuintVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitImportDef?: (ctx: ImportDefContext) => Result;
 
 	/**
-	 * Visit a parse tree produced by the `uminus`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitUminus?: (ctx: UminusContext) => Result;
-
-	/**
 	 * Visit a parse tree produced by the `dotCall`
 	 * labeled alternative in `QuintParser.expr`.
 	 * @param ctx the parse tree
@@ -290,6 +282,14 @@ export interface QuintVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitPow?: (ctx: PowContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `uminus`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitUminus?: (ctx: UminusContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by the `multDiv`
@@ -348,30 +348,6 @@ export interface QuintVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitOr?: (ctx: OrContext) => Result;
 
 	/**
-	 * Visit a parse tree produced by the `iff`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitIff?: (ctx: IffContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by the `implies`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitImplies?: (ctx: ImpliesContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by the `match`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitMatch?: (ctx: MatchContext) => Result;
-
-	/**
 	 * Visit a parse tree produced by the `andExpr`
 	 * labeled alternative in `QuintParser.expr`.
 	 * @param ctx the parse tree
@@ -402,6 +378,30 @@ export interface QuintVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitActionAny?: (ctx: ActionAnyContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `iff`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitIff?: (ctx: IffContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `implies`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitImplies?: (ctx: ImpliesContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `match`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitMatch?: (ctx: MatchContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by the `literalOrId`

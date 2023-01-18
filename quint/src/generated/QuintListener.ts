@@ -23,12 +23,12 @@ import { ModuleNestedContext } from "./QuintParser";
 import { InstanceContext } from "./QuintParser";
 import { TypedefContext } from "./QuintParser";
 import { ImportDefContext } from "./QuintParser";
-import { UminusContext } from "./QuintParser";
 import { DotCallContext } from "./QuintParser";
 import { LambdaConsContext } from "./QuintParser";
 import { OperAppContext } from "./QuintParser";
 import { ListAppContext } from "./QuintParser";
 import { PowContext } from "./QuintParser";
+import { UminusContext } from "./QuintParser";
 import { MultDivContext } from "./QuintParser";
 import { PlusMinusContext } from "./QuintParser";
 import { RelationsContext } from "./QuintParser";
@@ -36,13 +36,13 @@ import { AsgnContext } from "./QuintParser";
 import { ErrorEqContext } from "./QuintParser";
 import { AndContext } from "./QuintParser";
 import { OrContext } from "./QuintParser";
-import { IffContext } from "./QuintParser";
-import { ImpliesContext } from "./QuintParser";
-import { MatchContext } from "./QuintParser";
 import { AndExprContext } from "./QuintParser";
 import { OrExprContext } from "./QuintParser";
 import { ActionAllContext } from "./QuintParser";
 import { ActionAnyContext } from "./QuintParser";
+import { IffContext } from "./QuintParser";
+import { ImpliesContext } from "./QuintParser";
+import { MatchContext } from "./QuintParser";
 import { LiteralOrIdContext } from "./QuintParser";
 import { TupleContext } from "./QuintParser";
 import { PairContext } from "./QuintParser";
@@ -341,19 +341,6 @@ export interface QuintListener extends ParseTreeListener {
 	exitImportDef?: (ctx: ImportDefContext) => void;
 
 	/**
-	 * Enter a parse tree produced by the `uminus`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 */
-	enterUminus?: (ctx: UminusContext) => void;
-	/**
-	 * Exit a parse tree produced by the `uminus`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 */
-	exitUminus?: (ctx: UminusContext) => void;
-
-	/**
 	 * Enter a parse tree produced by the `dotCall`
 	 * labeled alternative in `QuintParser.expr`.
 	 * @param ctx the parse tree
@@ -417,6 +404,19 @@ export interface QuintListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitPow?: (ctx: PowContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `uminus`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 */
+	enterUminus?: (ctx: UminusContext) => void;
+	/**
+	 * Exit a parse tree produced by the `uminus`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 */
+	exitUminus?: (ctx: UminusContext) => void;
 
 	/**
 	 * Enter a parse tree produced by the `multDiv`
@@ -510,45 +510,6 @@ export interface QuintListener extends ParseTreeListener {
 	exitOr?: (ctx: OrContext) => void;
 
 	/**
-	 * Enter a parse tree produced by the `iff`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 */
-	enterIff?: (ctx: IffContext) => void;
-	/**
-	 * Exit a parse tree produced by the `iff`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 */
-	exitIff?: (ctx: IffContext) => void;
-
-	/**
-	 * Enter a parse tree produced by the `implies`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 */
-	enterImplies?: (ctx: ImpliesContext) => void;
-	/**
-	 * Exit a parse tree produced by the `implies`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 */
-	exitImplies?: (ctx: ImpliesContext) => void;
-
-	/**
-	 * Enter a parse tree produced by the `match`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 */
-	enterMatch?: (ctx: MatchContext) => void;
-	/**
-	 * Exit a parse tree produced by the `match`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 */
-	exitMatch?: (ctx: MatchContext) => void;
-
-	/**
 	 * Enter a parse tree produced by the `andExpr`
 	 * labeled alternative in `QuintParser.expr`.
 	 * @param ctx the parse tree
@@ -599,6 +560,45 @@ export interface QuintListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitActionAny?: (ctx: ActionAnyContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `iff`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 */
+	enterIff?: (ctx: IffContext) => void;
+	/**
+	 * Exit a parse tree produced by the `iff`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 */
+	exitIff?: (ctx: IffContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `implies`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 */
+	enterImplies?: (ctx: ImpliesContext) => void;
+	/**
+	 * Exit a parse tree produced by the `implies`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 */
+	exitImplies?: (ctx: ImpliesContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `match`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 */
+	enterMatch?: (ctx: MatchContext) => void;
+	/**
+	 * Exit a parse tree produced by the `match`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 */
+	exitMatch?: (ctx: MatchContext) => void;
 
 	/**
 	 * Enter a parse tree produced by the `literalOrId`
