@@ -61,6 +61,7 @@ TLA+](https://lamport.azurewebsites.net/tla/summary.pdf).
     - [Runs](#runs)
       - [Then](#then)
       - [Repeated](#repeated)
+      - [Fail](#fail)
     - [Temporal operators](#temporal-operators)
       - [Always](#always)
       - [Eventually](#eventually)
@@ -1804,6 +1805,21 @@ a.repeated(i).then((a.orKeep(vars)).repeated(j - i))
 ```
 
 See the description of [orKeep](#OrKeep) below.
+
+*Mode:* Run.
+
+#### Fail
+
+The operator `fail` has the following syntax:
+
+```scala
+A.fail()
+fail(A)
+```
+
+This operator returns `true` if and only if action `A` returns `false`.
+The operator `fail` is useful for writing runs that expect an action
+to be disabled.
 
 *Mode:* Run.
 
