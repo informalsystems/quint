@@ -70,12 +70,12 @@ Temporarily disabled.
 ### OK on parse Tendermint
 
 <!-- !test check Tendermint -->
-    quint parse ../examples/tendermint/TendermintAcc_004.qnt
+    quint parse ../examples/cosmos/tendermint/TendermintAcc_004.qnt
 
 ### OK on typecheck Tendermint
 
 <!-- !test check Tendermint - Types & Effects -->
-    quint typecheck ../examples/tendermint/TendermintAcc_004.qnt
+    quint typecheck ../examples/cosmos/tendermint/TendermintAcc_004.qnt
 
 ### OK on parse imports
 
@@ -130,22 +130,22 @@ Temporarily disabled.
 ### OK on parse ics23
 
 <!-- !test check ics23 -->
-    quint parse ../examples/ics23/ics23.qnt
+    quint parse ../examples/cosmos/ics23/ics23.qnt
 
 ### OK on typecheck ics23
 
 <!-- !test check ics23 - Types & Effects -->
-    quint typecheck ../examples/ics23/ics23.qnt
+    quint typecheck ../examples/cosmos/ics23/ics23.qnt
 
 ### OK on parse ERC20
 
 <!-- !test check ERC20 -->
-    quint parse ../examples/ERC20/erc20.qnt
+    quint parse ../examples/solidity/ERC20/erc20.qnt
 
 ### OK on typecheck ERC20
 
 <!-- !test check ERC20 - Types & Effects -->
-    quint typecheck ../examples/ERC20/erc20.qnt
+    quint typecheck ../examples/solidity/ERC20/erc20.qnt
 
 ### OK on parse Lamport Mutex
 
