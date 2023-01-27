@@ -178,7 +178,11 @@ module SimpleAuction {
                   .with("highestBidder", sender)
                   .with("pendingReturns", newPendingReturns),
             // update the balances
-            evmState' = evmSend(evmState, sender, as.addressOfThis, value)
+            val nes = evmSend(evmState, sender, as.addressOfThis, value)
+            all {
+                not(nes.error),
+                evmState' = nes
+            }
         }
     }
 
@@ -197,6 +201,7 @@ module SimpleAuction {
                 all {
                     val nes = evmSend(evmState, auctionState.addressOfThis, sender, amount)
                     all {
+                        not(nes.error),
                         evmState' = nes,
                         val npr = auctionState.pendingReturns.set(sender, 0)
                         auctionState' = auctionState.with("pendingReturns", npr),
