@@ -14,8 +14,6 @@ import { cwd } from 'process'
 
 import { ErrorMessage, Loc, compactSourceMap, parsePhase1, parsePhase2 } from './quintParserFrontend'
 
-import { inferEffects } from './effects/inferrer'
-import { checkModes } from './effects/modeChecker'
 import { ErrorTree, errorTreeToString } from './errorTree'
 
 import { Either, left, right } from '@sweet-monads/either'
@@ -24,21 +22,22 @@ import { LookupTableByModule } from './lookupTable'
 import { ReplOptions, quintRepl } from './repl'
 import { OpQualifier, QuintModule } from './quintIr'
 import { TypeScheme } from './types/base'
-import { inferTypes } from './types/inferrer'
 import lineColumn from 'line-column'
 import { formatError } from './errorReporter'
 import { DocumentationEntry, produceDocs, toMarkdown } from './docs'
+import { QuintAnalyzer } from './quintAnalyzer'
 
 export type stage = 'loading' | 'parsing' | 'typechecking' | 'documentation'
 
 /** The data from a ProcedureStage that may be output to --out */
 interface OutputStage {
   stage: stage,
-  module?: QuintModule,
+  modules?: QuintModule[],
   types?: Map<bigint, TypeScheme>,
   effects?: Map<bigint, Effect>,
   modes?: Map<bigint, OpQualifier>,
-  documentation?: Map<string, DocumentationEntry>,
+  /* Docstrings by defintion name by module name */
+  documentation?: Map<string, Map<string, DocumentationEntry>>,
   errors?: ErrorMessage[],
   warnings?: any[], // TODO it doesn't look like this is being used for anything. Should we remove it?
   sourceCode?: string, // Should not printed, only used in formatting errors
@@ -47,8 +46,8 @@ interface OutputStage {
 // Extract just the parts of a ProcedureStage that we use for the output
 // See https://stackoverflow.com/a/39333479/1187277
 function pickOutputStage(o: ProcedureStage): OutputStage {
-  const picker = ({ stage, warnings, module, types, effects, errors, documentation }: ProcedureStage) => (
-    { stage, warnings, module, types, effects, errors, documentation }
+  const picker = ({ stage, warnings, modules, types, effects, errors, documentation }: ProcedureStage) => (
+    { stage, warnings, modules, types, effects, errors, documentation }
   )
   return picker(o)
 }
@@ -64,7 +63,7 @@ interface LoadedStage extends ProcedureStage {
 }
 
 interface ParsedStage extends LoadedStage {
-  module: QuintModule,
+  modules: QuintModule[],
   sourceMap: Map<bigint, Loc>,
   table: LookupTableByModule,
 }
@@ -76,7 +75,7 @@ interface TypecheckedStage extends ParsedStage {
 }
 
 interface DocumentationStage extends LoadedStage {
-  documentation?: Map<string, DocumentationEntry>,
+  documentation?: Map<string, Map<string, DocumentationEntry>>,
 }
 
 // A procedure stage which is guaranteed to have `errors` and `sourceCode`
@@ -160,32 +159,19 @@ function mkErrorMessage(sourceMap: Map<bigint, Loc>): (_: [bigint, ErrorTree]) =
  * @param parsed the procedure stage produced by `parse`
  */
 export function typecheck(parsed: ParsedStage): CLIProcedure<TypecheckedStage> {
-  const { table, module, sourceMap } = parsed
+  const { table, modules, sourceMap } = parsed
   const typechecking = { ...parsed, stage: 'typechecking' as stage }
-  const definitionsTable = table
-  const errorLocator = mkErrorMessage(sourceMap)
+  
+  const analyzer = new QuintAnalyzer(table)
+  modules.forEach(module => analyzer.analyze(module))
+  const [errorMap, result] = analyzer.getResult()
 
-  const [typeErrMap, types] = inferTypes(definitionsTable, module)
-  const typeErrors: ErrorMessage[] = Array.from(typeErrMap, errorLocator)
-  // TODO add once logging functionality is added
-  // if (typeErrors.length === 0) console.log("type inference succeeded")
-
-  const [effectErrMap, effects] = inferEffects(definitionsTable, module)
-  const effectErrors: ErrorMessage[] = Array.from(effectErrMap, errorLocator)
-  // TODO add once logging functionality is added
-  // if (effectErrors.length === 0) console.log("effect inference succeeded")
-
-  const [modeErrMap, modes] = checkModes(module, effects)
-  const modeErrors: ErrorMessage[] = Array.from(modeErrMap, errorLocator)
-
-  // TODO add once logging functionality is added
-  // console.log("mode checking succeeded")
-  // Check whether we found errors in previous stages, and forward the error if so
-  const errors = typeErrors.concat(effectErrors).concat(modeErrors)
-  if (errors.length > 0) {
-    return cliErr("typechecking failed", { ...typechecking, errors })
+  if (errorMap.length === 0) {
+    return right({ ...typechecking, ...result })
   } else {
-    return right({ ...typechecking, types, effects, modes })
+    const errorLocator = mkErrorMessage(sourceMap)
+    const errors = Array.from(errorMap, errorLocator)
+    return cliErr("typechecking failed", { ...typechecking, errors })
   }
 }
 
@@ -224,11 +210,15 @@ export function docs(loaded: LoadedStage): CLIProcedure<DocumentationStage> {
       return { msg: "parsing failed", stage: { ...parsing, errors } }
     })
     .map(phase1Data => {
-      const documentationEntries = produceDocs(phase1Data.module)
-      const title = `# Documentation for ${phase1Data.module.name}\n\n`
-      const markdown = title + [...documentationEntries.values()].map(toMarkdown).join('\n\n')
-      writeToFile(`${phase1Data.module.name}.md`, markdown)
-      return { ...parsing, documentation: documentationEntries }
+      const allEntries: [string, Map<string, DocumentationEntry>][] = phase1Data.modules.map(module => {
+        const documentationEntries = produceDocs(module)
+        const title = `# Documentation for ${module.name}\n\n`
+        const markdown = title + [...documentationEntries.values()].map(toMarkdown).join('\n\n')
+        writeToFile(`${module.name}.md`, markdown)
+
+        return [module.name, documentationEntries]
+      })
+      return { ...parsing, documentation: new Map(allEntries) }
     })
 }
 
