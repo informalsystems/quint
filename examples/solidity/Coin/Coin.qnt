@@ -58,7 +58,7 @@ module Coin {
     action init: bool = {
         // since the contract can be initialized by an arbitrary message sender,
         // we choose the sender from the set of all addresses non-deterministically.
-        nondet sender = ADDR.oneOf()
+        nondet sender = oneOf(ADDR)
         all {
             minter' = sender,
             balances' = ADDR.mapBy(a => 0)
@@ -115,7 +115,7 @@ module Coin {
     // with this. Random simulation requires a more restricted version of step.
     action step: bool = {
         nondet sender = oneOf(ADDR)
-        nondet receiver = oneof(ADDR)
+        nondet receiver = oneOf(ADDR)
         nondet amount = 0.to(MAX_UINT).oneOf()
         // execute one of the available actions/methods
         any {
@@ -167,8 +167,8 @@ module Coin {
     // We scope the inputs to a small set of values to increase
     // the probability of finding interesting examples.
     action stepScoped = {
-        nondet sender = ADDR.oneOf()
-        nondet receiver = ADDR.oneOf()
+        nondet sender = oneOf(ADDR)
+        nondet receiver = oneOf(ADDR)
         // values from 0 to 10 and a few corner-case values
         nondet amount = 0.to(10).union(Set(MAX_UINT, -1, -10)).oneOf()
         // execute one of the available actions/methods
