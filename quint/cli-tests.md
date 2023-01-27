@@ -192,3 +192,7 @@ bash -
 <!-- !test check Coin - Types & Effects-->
     quint typecheck ../examples/solidity/Coin/Coin.qnt
 
+### OK on typecheck SimpleAuctionNonComposable.qnt
+
+<!-- !test check SimpleAuctionNonComposable - Types & Effects-->
+    quint typecheck ../examples/solidity/SimpleAuction/SimpleAuctionNonComposable.qnt
