@@ -2,10 +2,11 @@
  * Coin contract from the Solidity examples [1]. It is a nice starting
  * example for Solidity. It is a nice starting example for Quint too.
  *
- * This contract introduces a custom token. Our protocol specification is
- * not designed to be callable from other protocols. It is possible to make it
- * composable, but it would introduce additional code (following simple idioms),
- * which we want to avoid in this introductory example.
+ * This contract introduces a custom token. Although Solidity contracts
+ * may easily call other contracts, our protocol specification is
+ * not easily composable with other protocol specifications. It is possible to
+ * make it composable, but it would introduce additional code (following simple
+ * idioms), which we want to avoid in this introductory example.
  *
  * As we focus on the protocol idea (in Quint), not the implementation (in Solidity),
  * we omit events and error codes.
@@ -37,7 +38,6 @@ module Coin {
     // Currently, we fix the set of all addresses to a small set.
     // In the future, we will be using the commented-out constant declaration.
     // For now, we are using simple aliases instead of actual Ethereum addresses.
-    // The names that in the set CONTRACT_ADDR belong to some contracts.
     //const ADDR: Set[Addr]
     pure val ADDR = Set("null", "alice", "bob", "charlie", "eve")
 
