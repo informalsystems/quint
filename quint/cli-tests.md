@@ -75,32 +75,32 @@ bash -
 ### OK on parse imports
 
 <!-- !test check imports -->
-    quint parse ../examples/imports.qnt
+    quint parse ../examples/language-features/imports.qnt
 
 ### OK on typecheck imports
 
 <!-- !test check imports - Types & Effects -->
-    quint typecheck ../examples/imports.qnt
+    quint typecheck ../examples/language-features/imports.qnt
 
 ### OK on parse instances
 
 <!-- !test check instances -->
-    quint parse ../examples/instances.qnt
+    quint parse ../examples/language-features/instances.qnt
 
 ### OK on typecheck instances
 
 <!-- !test check instances - Types & Effects -->
-    quint typecheck ../examples/instances.qnt
+    quint typecheck ../examples/language-features/instances.qnt
 
 ### OK on parse option
 
 <!-- !test check option -->
-    quint parse ../examples/option.qnt
+    quint parse ../examples/language-features/option.qnt
 
 ### OK on typecheck option
 
 <!-- !test check option - Types & Effects -->
-    quint typecheck ../examples/option.qnt
+    quint typecheck ../examples/language-features/option.qnt
 
 ### OK on parse BinSearch
 
@@ -155,27 +155,27 @@ bash -
 ### OK on parse counters
 
 <!-- !test check counters -->
-    quint parse ../examples/counters.qnt
+    quint parse ../examples/language-features/counters.qnt
 
 ### OK on parse records
 
 <!-- !test check records -->
-    quint parse ../examples/records.qnt
+    quint parse ../examples/language-features/records.qnt
 
 ### OK on typecheck records
 
 <!-- !test check records - Types & Effects-->
-    quint typecheck ../examples/records.qnt
+    quint typecheck ../examples/language-features/records.qnt
 
 ### OK on parse tuples
 
 <!-- !test check tuples -->
-    quint parse ../examples/tuples.qnt
+    quint parse ../examples/language-features/tuples.qnt
 
 ### OK on typecheck tuples
 
 <!-- !test check tuples - Types & Effects-->
-    quint typecheck ../examples/tuples.qnt
+    quint typecheck ../examples/language-features/tuples.qnt
 
 ### OK on typecheck clockSync3
 
@@ -185,7 +185,7 @@ bash -
 ### OK on typecheck counters
 
 <!-- !test check counters - Types & Effects-->
-    quint typecheck ../examples/counters.qnt
+    quint typecheck ../examples/language-features/counters.qnt
 
 ### OK on typecheck Coin
 
