@@ -48,12 +48,11 @@ module Coin {
     var minter: Addr
     // the balances in the subcurrency tokens
     var balances: Addr -> UInt
-
-    // a helper function to make preconditions similar to Solidity
-    def require(cond: bool): bool = cond
-
     // a handy definition to query the whole state in REPL at once
     def state = { minter: minter, balances: balances }
+    
+    // a helper function to make preconditions similar to Solidity
+    def require(cond: bool): bool = cond
 
     // state initialization
     action init: bool = {
@@ -115,8 +114,8 @@ module Coin {
     // A symbolic model checker such as Apalache does not have any problem
     // with this. Random simulation requires a more restricted version of step.
     action step: bool = {
-        nondet sender = ADDR.oneOf()
-        nondet receiver = ADDR.oneOf()
+        nondet sender = oneOf(ADDR)
+        nondet receiver = oneof(ADDR)
         nondet amount = 0.to(MAX_UINT).oneOf()
         // execute one of the available actions/methods
         any {
