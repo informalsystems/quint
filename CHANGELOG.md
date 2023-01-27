@@ -14,10 +14,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - A work-in-progress example on Solidity's Simple Auction (#573)
  - Parse `100_000_000` and `0xabcd`, `0xAB_CD` as integers (#580)
 
-### Changed
-
- - `examples` are grouped by categories (#582)
-
 ## v0.5.4 -- 2023-01-24
 
 ### Changed
