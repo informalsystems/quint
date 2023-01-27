@@ -5,7 +5,7 @@
  * This contract introduces a custom token. Our protocol specification is
  * not designed to be callable from other protocols. It is possible to make it
  * composable, but it would introduce additional code (following simple idioms),
- * which we would to avoid in an introductory example.
+ * which we want to avoid in this introductory example.
  *
  * As we focus on the protocol idea (in Quint), not the implementation (in Solidity),
  * we omit events and error codes.
@@ -20,13 +20,13 @@ module Coin {
     // encode addresses as string literals
     type Addr = str
     // We declare a Solidity uint (256 bit) as an alias of Quint int.
-    // Note that UInt values are still unboundedly big integers,
+    // Note that these UInt values are still unboundedly big integers,
     // so we have to take care of overflows.
     // In the future, Quint will have a standard library for that.
     type UInt = int
 
     // FUNCTIONAL LAYER:
-    // The values and functions that are state-independent
+    // Values and functions that are state-independent
 
     // the maximal value Solidity UInt can carry
     pure val MAX_UINT = 2^256 - 1
@@ -56,7 +56,7 @@ module Coin {
     def state = { minter: minter, balances: balances }
 
     // state initialization
-    action init = {
+    action init: bool = {
         // since the contract can be initialized by an arbitrary message sender,
         // we choose the sender from the set of all addresses non-deterministically.
         nondet sender = ADDR.oneOf()
@@ -68,7 +68,7 @@ module Coin {
 
     // Sends an amount of newly created coins to an address.
     // Can only be called by the minter, that is, the contract creator.
-    // Note that we had to add `sender` as an action parameter,
+    // Note that we have to add `sender` as an action parameter,
     // which is accessed via implicit `msg.sender` in Solidity.
     action mint(sender: Addr, receiver: Addr, amount: UInt): bool = all {
         require(sender == minter),
@@ -85,7 +85,7 @@ module Coin {
 
     // Sends an amount of existing coins from any caller (sender)
     // to a receiver's address.
-    // Note that we had to add `sender` as an action parameter,
+    // Note that we have to add `sender` as an action parameter,
     // which is accessed via implicit `msg.sender` in Solidity.
     action send(sender: Addr, receiver: Addr, amount: UInt): bool = all {
         require(not(amount > balances.get(sender))),
@@ -113,8 +113,8 @@ module Coin {
     // Note that random simulation produces valid inputs to
     // this action with a low probability, since amount are chosen at random.
     // A symbolic model checker such as Apalache does not have any problem
-    // with this. Ranom simulation requires a more restricted version of step.
-    action step(): bool = {
+    // with this. Random simulation requires a more restricted version of step.
+    action step: bool = {
         nondet sender = ADDR.oneOf()
         nondet receiver = ADDR.oneOf()
         nondet amount = 0.to(MAX_UINT).oneOf()
@@ -127,7 +127,7 @@ module Coin {
 
     // INVARIANTS AND TEMPORAL PROPERTIES
 
-    // One of the simplest properties is that the balances are within the uint range.
+    // One of the simplest properties is that all balances are within the uint range.
     // While it is automatically guaranteed by Solidity, our specification is using
     // big integers. Hence, it makes sense to check the range.
     val balancesRangeInv = ADDR.forall(a =>
