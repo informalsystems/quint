@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - Change the grammar to support multiple modules (#547)
  - Change static analysis to support multiple modules (#559)
+ - Add an example that specifies the Solidity Coin contract (#576)
 
 ## v0.5.4 -- 2023-01-24
 
