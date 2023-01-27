@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Add an example that specifies the Solidity Coin contract (#576)
  - A work-in-progress example on Solidity's Simple Auction (#573)
 
+### Changed
+
+ - `examples` are grouped by categories (#582)
+
 ## v0.5.4 -- 2023-01-24
 
 ### Changed
