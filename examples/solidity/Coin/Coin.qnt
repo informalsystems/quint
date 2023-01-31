@@ -2,7 +2,7 @@
  * Coin contract from the Solidity examples [1]. It is a nice starting
  * example for Solidity. It is a nice starting example for Quint too.
  *
- * This contract introduces a custom token. Although Solidity contracts
+ * This contract introduces a custom coin. Although Solidity contracts
  * may easily call other contracts, our protocol specification is
  * not easily composable with other protocol specifications. It is possible to
  * make it composable, but it would introduce additional code (following simple
@@ -20,6 +20,7 @@ module Coin {
 
     // encode addresses as string literals
     type Addr = str
+
     // We declare a Solidity uint (256 bit) as an alias of Quint int.
     // Note that these UInt values are still unboundedly big integers,
     // so we have to take care of overflows.
@@ -53,6 +54,9 @@ module Coin {
     
     // a helper function to make preconditions similar to Solidity
     def require(cond: bool): bool = cond
+
+    // compute the total supply of coins over all balances
+    val totalSupply = ADDR.fold(0, (sum, a) => sum + balances.get(a))
 
     // state initialization
     action init: bool = {
@@ -134,7 +138,13 @@ module Coin {
         (0 <= b) and (b <= MAX_UINT)
     )
 
-    // UNIT TESTS
+    // It is desirable that the total supply of tokens fits into UInt.
+    // Otherwise, we may have some suprises in the code that relies on this property.
+    val totalSupplyDoesNotOverflowInv = {
+        isUInt(totalSupply)
+    }
+
+    // TESTS
 
     // since `init` is completely non-deterministic,
     // we fix the values for simple unit tests
@@ -143,7 +153,7 @@ module Coin {
         balances' = ADDR.mapBy(a => 0)
     }
 
-    // mint, then send
+    // `mint`, then `send`
     run mintSendTest = {
         initFixed
             .then(mint("alice", "bob", 10))
@@ -163,6 +173,31 @@ module Coin {
             .fail()
     }
 
+    // Mint some coins for Eve and Bob.
+    // Test that Eve can always send coins to Bob,
+    // if she has enough on her balance.
+    // This test may fail sometimes. Do you see why?
+    // If not, execute it multiple times in REPL, until it fails.
+    run mintTwiceThenSendTest = {
+        // non-deterministically pick some amounts to mint and send
+        nondet mintEve = 0.to(MAX_UINT).oneOf()
+        nondet mintBob = 0.to(MAX_UINT).oneOf()
+        nondet eveToBob = 0.to(MAX_UINT).oneOf()
+        // execute a fixed sequence `initFixed`, `mint`, `mint`, `send`
+        initFixed
+            .then(mint("alice", "eve", mintEve))
+            .then(mint("alice", "bob", mintBob))
+            .then(
+                if (eveToBob >= balances.get("eve")) {
+                    // if Eve has enough tokens, send to Bob should pass
+                    send("eve", "bob", eveToBob)
+                } else {
+                    // otherwise, just ignore the test
+                    all { minter' = minter, balances' = balances }
+                }
+            )
+    }
+
     // A random simulation test, similar to property-based testing.
     // We scope the inputs to a small set of values to increase
     // the probability of finding interesting examples.
@@ -180,5 +215,5 @@ module Coin {
 
     // to run the random simulator for 10000 executions, each up to 10 actions,
     // execute the following in REPL:
-    // _test(10000, 10, "init", "stepScoped", "balancesRangeInv")
+    // _test(10000, 10, "init", "stepScoped", "totalSupplyDoesNotOverflowInv")
 }
