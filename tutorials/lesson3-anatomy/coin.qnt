@@ -16,14 +16,15 @@
  * Igor Konnov, Informal Systems, 2023
  */
 module Coin {
+
     // TYPE DEFINITIONS
 
     // encode addresses as string literals
     type Addr = str
 
     // We declare a Solidity uint (256 bit) as an alias of Quint int.
-    // Note that these UInt values are still unboundedly big integers,
-    // so we have to take care of overflows.
+    // Note that these UInt values are still integers, which can get
+    // arbitrarily large. Hence, we have to take care of overflows.
     // In the future, Quint will have a standard library for that.
     type UInt = int
 
@@ -34,16 +35,16 @@ module Coin {
     pure val MAX_UINT = 2^256 - 1
 
     // does a big integer represent Solidity uint?
-    pure def isUInt(i: int): bool = 0 <= i and i <= MAX_UINT
+    pure def isUInt(i: int): bool = (0 <= i and i <= MAX_UINT)
+
+    // STATE MACHINE:
+    // State-dependent definitions and actions
 
     // Currently, we fix the set of all addresses to a small set.
     // In the future, we will be using the commented-out constant declaration.
     // For now, we are using simple aliases instead of actual Ethereum addresses.
     //const ADDR: Set[Addr]
     pure val ADDR = Set("null", "alice", "bob", "charlie", "eve")
-
-    // STATE MACHINE:
-    // State-dependent definitions and actions
 
     // the minter's address
     var minter: Addr
@@ -151,21 +152,23 @@ module Coin {
     // If `NoSupplyOverflow` holds in a state, then this state may not
     // produce a computation that ends in another state,
     // where totalSupplyDoesNotOverflowInv is violated.
-    temporal NoSupplyOverflow: bool = always(totalSupplyDoesNotOverflowInv)
+    //
+    // Temporarily disabled, until the issue below is fixed:
+    // [#591](https://github.com/informalsystems/quint/issues/591).
+    //
+    // temporal NoSupplyOverflow: bool = always(totalSupplyDoesNotOverflowInv)
 
     // TESTS
 
-    // since `init` is completely non-deterministic,
-    // we fix the values for simple unit tests
-    action initFixed = all {
-        minter' = "alice",
-        balances' = ADDR.mapBy(a => 0)
+    // send should not work without minting
+    run sendWithoutMintTest = {
+        init.then(send(minter, "bob", 5))
+            .fail()
     }
 
     // `mint`, then `send`
     run mintSendTest = {
-        initFixed
-            .then(mint("alice", "bob", 10))
+        init.then(mint(minter, "bob", 10))
             .then(send("bob", "eve", 4))
             .then(all {
                 assert(balances.get("bob") == 6),
@@ -173,13 +176,6 @@ module Coin {
                 minter' = minter,
                 balances' = balances,
             })
-    }
-
-    // send should not work without minting
-    run sendWithoutMintTest = {
-        initFixed
-            .then(send("alice", "bob", 5))
-            .fail()
     }
 
     // Mint some coins for Eve and Bob.
@@ -193,9 +189,8 @@ module Coin {
         nondet mintBob = 0.to(MAX_UINT).oneOf()
         nondet eveToBob = 0.to(MAX_UINT).oneOf()
         // execute a fixed sequence `initFixed`, `mint`, `mint`, `send`
-        initFixed
-            .then(mint("alice", "eve", mintEve))
-            .then(mint("alice", "bob", mintBob))
+        init.then(mint(minter, "eve", mintEve))
+            .then(mint(minter, "bob", mintBob))
             .then(
                 if (eveToBob >= balances.get("eve")) {
                     // if Eve has enough tokens, send to Bob should pass
