@@ -15,6 +15,53 @@
  *
  * Igor Konnov, Informal Systems, 2023
  */
+ /*!
+  <tutorial>
+    <title>Lesson 3 - Basic anatomy of a protocol in Quint</title>
+    <steps>
+      <step>
+        <title>Introduction</title>
+        <description>
+In this tutorial, we explain the standard structure of a Quint protocol.
+Although Quint does not impose a very rigid structure on the protocol designers,
+we have found that following the same practices helps protocol authors and
+readers to cooperate more effectively.
+
+As a motivating example we are using the subcurrency smart contract that
+is introduced in the Solidity documentation, see
+[Subcurrency](https://docs.soliditylang.org/en/v0.8.17/introduction-to-smart-contracts.html#subcurrency-example).
+You do not have to know Solidity to understand our tutorial.
+On contrary, you may acquire some basic understanding of Solidity contracts
+by reading the Quint protocol specification.
+
+In this tutorial, you will see how to:
+
+ - Specify basic type aliases.
+
+ - Define handy functions that can be used independently of the protocol.
+
+ - Define the structure of the protocol states.
+
+ - Define helper functions that read the current state but do not modify it.
+
+ - Define actions that read and modify the current state of the protocol.
+
+ - Write basic protocol tests.
+
+ - Write protocol tests that use non-determinism.
+
+ - Run basic randomized test to discover an invariant violation.
+
+        <!-- The following reference is useless in CodeTour, as it already positioned on the file -->
+        <block target="markdown">
+If you would like to see the complete code before diving into
+the details, check [coin.qnt](./coin.qnt).
+        </block>
+        </description>
+        <file>$file</file>
+        <line>$line</line>
+      </step>
+!*/
 module Coin {
     // TYPE DEFINITIONS
 
@@ -133,14 +180,17 @@ module Coin {
     // One of the simplest properties is that all balances are within the uint range.
     // While it is automatically guaranteed by Solidity, our specification is using
     // big integers. Hence, it makes sense to check the range.
-    val balancesRangeInv = ADDR.forall(a =>
-        val b = balances.get(a)
-        (0 <= b) and (b <= MAX_UINT)
-    )
+    val balancesRangeInv: bool = {
+        ADDR.forall(a =>
+            val b = balances.get(a)
+            (0 <= b) and (b <= MAX_UINT)
+        )
+    }
 
     // It is desirable that the total supply of tokens fits into UInt.
     // Otherwise, we may have some suprises in the code that relies on this property.
-    val totalSupplyDoesNotOverflowInv = {
+    // Evaluate this 
+    val totalSupplyDoesNotOverflowInv: bool = {
         isUInt(totalSupply)
     }
 
@@ -223,3 +273,8 @@ module Coin {
     // execute the following in REPL:
     // _test(10000, 10, "init", "stepScoped", "totalSupplyDoesNotOverflowInv")
 }
+
+/*!
+    </steps>
+  </tutorial>
+ !*/

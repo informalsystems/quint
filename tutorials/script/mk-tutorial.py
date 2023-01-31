@@ -82,12 +82,13 @@ def xmlToCodetour(root):
     def description(n):
         text = n.text
         for c in n:
-            if c.tag == "block":
-                # just add the text
-                text += f'\n{c.text}'
-            elif c.tag == "run":
-                # use the special syntax for shell commands in CodeTour
-                text += f'\n>> {c.text}\n\n'
+            if c.get("target", "codetour") == "codetour":
+                if c.tag == "block":
+                    # just add the text
+                    text += f'\n{c.text}'
+                elif c.tag == "run":
+                    # use the special syntax for shell commands in CodeTour
+                    text += f'\n>> {c.text}\n\n'
 
         return text
 
@@ -140,13 +141,14 @@ def xmlToMarkdown(root, code, out):
         desc = step.find("description")
         out.write(f'{desc.text}\n')
         for c in desc:
-            if c.tag == "block":
-                out.write(f'{c.text}\n')
-            elif c.tag == "run":
-                # use the special syntax for shell commands in CodeTour
-                out.write(f'\n```sh\n')
-                out.write(f'{c.text}\n')
-                out.write(f'```\n\n')
+            if c.get("target", "markdown") == "markdown":
+                if c.tag == "block":
+                    out.write(f'{c.text}\n')
+                elif c.tag == "run":
+                    # use the special syntax for shell commands in CodeTour
+                    out.write(f'\n```sh\n')
+                    out.write(f'{c.text}\n')
+                    out.write(f'```\n\n')
           
         # update the last line, so it can be used in the next iteration
         lastLine = line

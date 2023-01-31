@@ -133,14 +133,17 @@ module Coin {
     // One of the simplest properties is that all balances are within the uint range.
     // While it is automatically guaranteed by Solidity, our specification is using
     // big integers. Hence, it makes sense to check the range.
-    val balancesRangeInv = ADDR.forall(a =>
-        val b = balances.get(a)
-        (0 <= b) and (b <= MAX_UINT)
-    )
+    val balancesRangeInv: bool = {
+        ADDR.forall(a =>
+            val b = balances.get(a)
+            (0 <= b) and (b <= MAX_UINT)
+        )
+    }
 
     // It is desirable that the total supply of tokens fits into UInt.
     // Otherwise, we may have some suprises in the code that relies on this property.
-    val totalSupplyDoesNotOverflowInv = {
+    // Evaluate this 
+    val totalSupplyDoesNotOverflowInv: bool = {
         isUInt(totalSupply)
     }
 
@@ -223,3 +226,4 @@ module Coin {
     // execute the following in REPL:
     // _test(10000, 10, "init", "stepScoped", "totalSupplyDoesNotOverflowInv")
 }
+
