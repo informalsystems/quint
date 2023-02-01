@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## UNRELEASED
 
 ### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security
+
+## v0.5.5 -- 2023-02-01
+
+### Added
 
  - Change the grammar to support multiple modules (#547)
  - Change static analysis to support multiple modules (#559)
