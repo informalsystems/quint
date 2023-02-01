@@ -931,6 +931,12 @@ behavior of this protocol. We hope that by going through this tutorial
 you have got an idea of how you could specify your own protocol in Quint
 and make Quint useful for solving your problems with protocols!
 
+We have used a Solidity contract as the running example. Actually,
+there is not much special about Solidity in this coin protocol.
+A similar protocol could be implemented in
+[Cosmos SDK](https://tutorials.cosmos.network/)
+or [Cosmwasm](https://cosmwasm.com/).
+
 We are experimenting with different kinds of tutorials.
 It would be great to learn, whether you liked this tutorial format, or not.
 Please vote in the
