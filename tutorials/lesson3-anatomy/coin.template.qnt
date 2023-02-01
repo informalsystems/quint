@@ -741,6 +741,33 @@ Go ahead and see, whether this test goes through:
                 balances' = balances,
             })
     }
+    /*!
+      <step>
+        <title>A single data point test</title>
+        <description>
+
+We can write longer tests that are similar to unit/integration tests
+in normal programming languages. For instance, the above test `mintSendTest`
+makes sure that the exact sequence of `mint` and `send` transactions goes
+through and the resulting balances have the expected values.
+
+            <run target="markdown">echo 'mintSendTest' | quint -r coin.qnt::Coin</run>
+            <run target="codetour">echo 'mintSendTest' | quint -r ./lesson3-anatomy/coin.qnt::Coin</run>
+
+            <block>
+**Exercise:** Change some numbers in the test, run it again in REPL and observe
+what happens.
+
+Although it is great to have a test like `mintSendTest` than no test at all,
+`mintSendTest` is testing only one data point. We can do better in Quint,
+see the next step.
+            </block>
+
+        </description>
+        <file>$file</file>
+        <line>$line</line>
+      </step>
+    !*/
 
     // Mint some coins for Eve and Bob.
     // Test that Eve can always send coins to Bob,
@@ -765,25 +792,147 @@ Go ahead and see, whether this test goes through:
                 }
             )
     }
+    /*!
+      <step>
+        <title>Testing with non-deterministic inputs</title>
+        <description>
 
-    // A random simulation test, similar to property-based testing.
-    // We scope the inputs to a small set of values to increase
-    // the probability of finding interesting examples.
-    action stepScoped = {
-        nondet sender = oneOf(ADDR)
-        nondet receiver = oneOf(ADDR)
-        // values from 0 to 10 and a few corner-case values
-        nondet amount = 0.to(10).union(Set(MAX_UINT, -1, -10)).oneOf()
-        // execute one of the available actions/methods
-        any {
-            mint(sender, receiver, amount),
-            send(sender, receiver, amount),
-        }
-    }
+Instead of testing a sequence of transactions for a carefully crafted
+single input, we could fix a sequence of transactions and let the computer
+find the inputs that fail the test. This is exactly what we are doing in
+the above test `mintTwiceThenSendTest`. The test non-deterministically
+chooses the amounts of coins to mint and send and then executes the actions
+`mint`, `mint`, and `send`. As the values are chosen non-deterministically,
+we know that some of the inputs should fail `send`. Our hypothesis is that
+`send` should never fail when Eve has enough coins on her account.
+If she does not, we simply ignore this choice of inputs in the else-branch.
+
+Let's run this test:
+
+            <run target="markdown">echo 'mintTwiceThenSendTest' | quint -r coin.qnt::Coin</run>
+            <run target="codetour">echo 'mintTwiceThenSendTest' | quint -r ./lesson3-anatomy/coin.qnt::Coin</run>
+            
+            <block>
+
+If you lucky, it fails right away. If it does not fail, run it multiple times,
+until it fails. To see, why it failed, evaluate `state` after executing
+the test. Do you understand why our hypothesis was wrong?
+
+**Exercise:** Fix the condition in `mintTwiceThenSendTest`,
+so the test never fails.
+
+If you carefully look at `mintTwiceThenSendTest`, you will see that it is still
+a single data point test, though the data point (the inputs) are chosen
+non-deterministically every time we run the test. In fact, REPL implements
+non-determinism via random choice.
+
+If you do not want to sit the whole day and run the test, you could integrate
+it into continuous integration, so it runs from time to time for different
+inputs. Also, we had to fix the sequence of actions in our test. We can do
+better with Quint.
+
+            </block>
+        </description>
+        <file>$file</file>
+        <line>$line</line>
+      </step>
+    !*/
 
     // to run the random simulator for 10000 executions, each up to 10 actions,
     // execute the following in REPL:
-    // _test(10000, 10, "init", "stepScoped", "totalSupplyDoesNotOverflowInv")
+    // _test(10000, 10, "init", "step", "totalSupplyDoesNotOverflowInv")
+    /*!
+      <step>
+        <title>Testing with non-deterministic inputs and control</title>
+        <description>
+
+It is often hard to find a good sequence of actions that breaks an invariant.
+Similar to how we let the computer to find the right inputs, we can use the
+computing power to look for bad sequences of actions.
+
+Quint REPL actually supports random search for sequences of actions that violate
+an invariant. Its UX is a bit ad hoc at the moment. We will improve it in the
+future. You can try it right away:
+
+            <run target="markdown">echo '_test(10000, 10, "init", "step", "totalSupplyDoesNotOverflowInv")' | quint -r coin.qnt::Coin</run>
+            <run target="codetour">echo '_test(10000, 10, "init", "step", "totalSupplyDoesNotOverflowInv")' | quint -r ./lesson3-anatomy/coin.qnt::Coin</run>
+
+            <block>
+
+The above command in REPL randomly produces sequences, starting with `init`
+and continuing with `step`, up to 10 actions. It checks the invariant
+`totalSupplyDoesNotOverflowInv` after every step. If the invariant is violated,
+the random search stops and returns `false`. If no invariant violaion is found,
+the search returns `true` after enumerating the specified number of runs,
+which is 10000 in our example.
+
+In our example, the search often finds an error. If it did not find an error,
+run the search again. Once `_test` returned `false`, you can print the trace
+leading to the bad state by evaluating `_lastTrace` in REPL.
+
+            </block>
+
+        </description>
+        <file>$file</file>
+        <line>$line</line>
+      </step>
+    !*/
+
+    /*!
+      <step>
+        <title>Does random testing always find bugs?</title>
+        <description>
+
+To be honest, our example is relatively simple, and we were quite lucky
+that the invariant `totalSupplyDoesNotOverflowInv` was often violated by
+a completely random search. For more complex protocols, random search
+often gets stuck while looking for non-interesting inputs or sequences
+of actions. Hence, if you have a hunch about where an error could potentially
+be, you could restrict the scope of the search by:
+
+ - Restricting the scope of non-determinstic choices, e.g.,
+   by making every set in `oneOf(S)` smaller.
+
+ - Restricting the choice of actions, e.g., by removing non-essential
+   actions from `step`.
+
+Although the above tricks may help you in detecting some bugs, it is well
+known that there is always a probability of missing a bug with random search.
+
+If you are looking for better guarantees of correctness, Quint will be soon
+integrated with the
+[Apalache model checker](https://github.com/informalsystems/apalache).
+The model checker looks for counterexamples differently, e.g., by solving
+equations. In some cases, it may even give you a guarantee that there is no bug,
+if it has not found any.
+
+        </description>
+        <file>$file</file>
+        <line>$line</line>
+      </step>
+    !*/
+
+    /*!
+      <step>
+        <file>$file</file>
+        <line>$line</line>
+        <title>Suming it up</title>
+        <description>
+
+This was a long tutorial. We have specified the whole protocol,
+experimented with it, wrote several tests and even found some surprising
+behavior of this protocol. We hope that by going through this tutorial
+you have got an idea of how you could specify your own protocol in Quint
+and make Quint useful for solving your problems with protocols!
+
+We are experimenting with different kinds of tutorials.
+It would be great to learn, whether you liked this tutorial format, or not.
+Please vote in the
+[discussion](https://github.com/informalsystems/quint/discussions/595).
+        </description>
+      </step>
+     !*/
+
 }
 
 /*!

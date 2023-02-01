@@ -202,9 +202,12 @@ module Coin {
             )
     }
 
-    // A random simulation test, similar to property-based testing.
+    // to run the random simulator for 10000 executions, each up to 10 actions,
+    // execute the following in REPL:
+    // _test(10000, 10, "init", "step", "totalSupplyDoesNotOverflowInv")
+
     // We scope the inputs to a small set of values to increase
-    // the probability of finding interesting examples.
+    // the probability of finding interesting examples with random simulation.
     action stepScoped = {
         nondet sender = oneOf(ADDR)
         nondet receiver = oneOf(ADDR)

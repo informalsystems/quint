@@ -1,7 +1,7 @@
 # Lesson 3 - Basic anatomy of a protocol in Quint
 ## 1. Introduction
 
-*18 more steps to the finish line*
+*21 more steps to the finish line*
 
 In this tutorial, we explain the standard structure of a Quint protocol.
 Although Quint does not impose a very rigid structure on the protocol designers,
@@ -52,7 +52,7 @@ the details, check [coin.qnt](./coin.qnt).
         
 ## 2. Declare a single module
 
-*17 more steps to the finish line*
+*20 more steps to the finish line*
 
 **Code snippet:**
 
@@ -71,7 +71,7 @@ if you are going to reuse different parts of your protocol.
         
 ## 3. Declare types
 
-*16 more steps to the finish line*
+*19 more steps to the finish line*
 
 **Code snippet:**
 
@@ -112,7 +112,7 @@ different kinds of "integers", when they refferred to via different type aliases
         
 ## 4. Declare pure functions
 
-*15 more steps to the finish line*
+*18 more steps to the finish line*
 
 **Code snippet:**
 
@@ -180,7 +180,7 @@ the issue.
             
 ## 5. Declare the protocol parameters
 
-*14 more steps to the finish line*
+*17 more steps to the finish line*
 
 **Code snippet:**
 
@@ -223,7 +223,7 @@ in order to be able to iterate on the protocol specification quickly.
         
 ## 6. Declare the protocol state
 
-*13 more steps to the finish line*
+*16 more steps to the finish line*
 
 **Code snippet:**
 
@@ -265,7 +265,7 @@ of Solidity:
         
 ## 7. Declare operators over states
 
-*12 more steps to the finish line*
+*15 more steps to the finish line*
 
 **Code snippet:**
 
@@ -299,7 +299,7 @@ do that in the next step.
             
 ## 8. Declare `require` and `totalSupply`
 
-*11 more steps to the finish line*
+*14 more steps to the finish line*
 
 **Code snippet:**
 
@@ -349,7 +349,7 @@ pieces:
         
 ## 9. Declare an initializer `init`
 
-*10 more steps to the finish line*
+*13 more steps to the finish line*
 
 **Code snippet:**
 
@@ -404,7 +404,7 @@ two identical states.
         
 ## 10. Assign initial values to the state variables
 
-*9 more steps to the finish line*
+*12 more steps to the finish line*
 
 **Code snippet:**
 
@@ -447,7 +447,7 @@ Hint: use `if (cond) value1 else value2`.
             
 ## 11. Defining the action `send`
 
-*8 more steps to the finish line*
+*11 more steps to the finish line*
 
 **Code snippet:**
 
@@ -506,7 +506,7 @@ Do you understand what happened in this case?
             
 ## 12. Defining the action `send`
 
-*7 more steps to the finish line*
+*10 more steps to the finish line*
 
 **Code snippet:**
 
@@ -554,7 +554,7 @@ echo 'init\n mint(minter, "bob", 2023)\n send("bob", "eve", 1024)\n state' | qui
 
 ## 13. Defining a protocol step
 
-*6 more steps to the finish line*
+*9 more steps to the finish line*
 
 **Code snippet:**
 
@@ -601,7 +601,7 @@ not to stop here! In the next steps, we will show you the real magic of Quint.
         
 ## 14. Expected properties
 
-*5 more steps to the finish line*
+*8 more steps to the finish line*
 
 **Code snippet:**
 
@@ -619,7 +619,7 @@ protocol invariants and temporal properties.
         
 ## 15. Defining the most basic invariant
 
-*4 more steps to the finish line*
+*7 more steps to the finish line*
 
 **Code snippet:**
 
@@ -643,6 +643,8 @@ with the property `balancesRangeInv`. This property goes over all addresses
 in `ADDR` and tests, whether the value stored in `balances` for every address
 is in the range from `0` to `MAX_UINT` (inclusive).
 
+We can immediately check this invariant for a few states:
+
             
 
 ```sh
@@ -654,14 +656,14 @@ Properties like `balancesRangeInv` are called invariants, because we expect
 them to hold in every state that could be produced by `init` and a number of
 `step` actions. Intuitively, whatever happens, the property should hold true.
 
-It is important to distinguish between the properties that we like to be invariants
-and the properties that we have proven to be invariants. To be precise, the former
-properties are called *invariant candidates*, whereas the latter are actually
-called *invariants*.
+It is important to distinguish between the properties that we would like to be
+invariants and the properties that we have proven to be invariants.
+To be precise, the former properties are called *invariant candidates*,
+whereas the latter are actually called *invariants*.
             
 ## 16. Defining the total supply invariant
 
-*3 more steps to the finish line*
+*6 more steps to the finish line*
 
 **Code snippet:**
 
@@ -687,7 +689,7 @@ initialize it with 0 and increase it in `mint` with the `amount` passed to `mint
         
 ## 17. Temporal properties
 
-*2 more steps to the finish line*
+*5 more steps to the finish line*
 
 **Code snippet:**
 
@@ -716,7 +718,7 @@ with the qualifier `temporal`.
         
 ## 18. Tests
 
-*1 more step to the finish line*
+*4 more steps to the finish line*
 
 **Code snippet:**
 
@@ -742,11 +744,13 @@ programming languages.
 We normally add tests in the very bottom of the protocol module, or in
 a separate module.
 
-Quint introduces runs that are can be used to express "happy paths"
-and tests. The above code shows a simple test `sendWithoutMintTest`.
+Quint introduces runs to express "happy paths" and tests. The above code
+shows a simple test `sendWithoutMintTest`.
 In this test, the action `init` runs first. If it evaluates to `true`,
 then the action `send(...)` is run. Since this action is composed with
 `fail()`, the action `send(...)` is expected to evaluate to `false`.
+
+Go ahead and see, whether this test goes through:
 
             
 
@@ -754,6 +758,182 @@ then the action `send(...)` is run. Since this action is composed with
 echo 'sendWithoutMintTest' | quint -r coin.qnt::Coin
 ```
 
+## 19. A single data point test
+
+*3 more steps to the finish line*
+
+**Code snippet:**
+
+```scala
+
+    // `mint`, then `send`
+    run mintSendTest = {
+        init.then(mint(minter, "bob", 10))
+            .then(send("bob", "eve", 4))
+            .then(all {
+                assert(balances.get("bob") == 6),
+                assert(balances.get("eve") == 4),
+                minter' = minter,
+                balances' = balances,
+            })
+    }
+```
+
+
+
+We can write longer tests that are similar to unit/integration tests
+in normal programming languages. For instance, the above test `mintSendTest`
+makes sure that the exact sequence of `mint` and `send` transactions goes
+through and the resulting balances have the expected values.
+
+            
+
+```sh
+echo 'mintSendTest' | quint -r coin.qnt::Coin
+```
+
+
+**Exercise:** Change some numbers in the test, run it again in REPL and observe
+what happened.
+
+Although it is great to have a test like `mintSendTest` than no test at all,
+`mintSendTest` is testing only one data point. We can do better in Quint,
+see the next step.
+            
+## 20. Testing with non-deterministic inputs
+
+*2 more steps to the finish line*
+
+**Code snippet:**
+
+```scala
+
+    // Mint some coins for Eve and Bob.
+    // Test that Eve can always send coins to Bob,
+    // if she has enough on her balance.
+    // This test may fail sometimes. Do you see why?
+    // If not, execute it multiple times in REPL, until it fails.
+    run mintTwiceThenSendTest = {
+        // non-deterministically pick some amounts to mint and send
+        nondet mintEve = 0.to(MAX_UINT).oneOf()
+        nondet mintBob = 0.to(MAX_UINT).oneOf()
+        nondet eveToBob = 0.to(MAX_UINT).oneOf()
+        // execute a fixed sequence `initFixed`, `mint`, `mint`, `send`
+        init.then(mint(minter, "eve", mintEve))
+            .then(mint(minter, "bob", mintBob))
+            .then(
+                if (eveToBob >= balances.get("eve")) {
+                    // if Eve has enough tokens, send to Bob should pass
+                    send("eve", "bob", eveToBob)
+                } else {
+                    // otherwise, just ignore the test
+                    all { minter' = minter, balances' = balances }
+                }
+            )
+    }
+```
+
+
+
+Instead of testing a sequence of transactions for a carefully crafted
+single input, we could fix a sequence of transactions and let the computer
+find the inputs that fail the test. This is exactly what we are doing in
+the above test `mintTwiceThenSendTest`. The test non-deterministically
+chooses the amounts of coins to mint and send and then executes the actions
+`mint`, `mint`, and `send`. As the values are chosen non-deterministically,
+we know that some of the inputs should fail `send`. Our hypothesis is that
+`send` should never fail when Eve has enough coins on her account.
+If she does not, we simply ignore this choice of inputs in the else-branch.
+
+Let's run this test:
+
+            
+
+```sh
+echo 'mintTwiceThenSendTest' | quint -r coin.qnt::Coin
+```
+
+
+
+If you lucky, it fails right away. If it does not fail, run it multiple times,
+until it fails. To see, why it failed, evaluate `state` after executing
+the test. Do you understand why our hypothesis was wrong?
+
+**Exercise:** Fix the condition in `mintTwiceThenSendTest`,
+so the test never fails.
+
+If you carefully look at `mintTwiceThenSendTest`, you will see that it is still
+a single data point test, though the data point (the inputs) are chosen
+differently (actually, REPL chooses them at random) every time we run
+the test.
+
+If you do not want to sit the whole day and run the test, you could integrate
+it into continuous integration, so it runs from time to time for different
+inputs. Also, we had to fix the sequence of actions in our test. We can do
+better with Quint.
+
+            
+## 21. Testing with non-deterministic inputs and control
+
+*1 more step to the finish line*
+
+**Code snippet:**
+
+```scala
+
+    // to run the random simulator for 10000 executions, each up to 10 actions,
+    // execute the following in REPL:
+    // _test(10000, 10, "init", "step", "totalSupplyDoesNotOverflowInv")
+
+    // We scope the inputs to a small set of values to increase
+    // the probability of finding interesting examples with random simulation.
+    action stepScoped = {
+        nondet sender = oneOf(ADDR)
+        nondet receiver = oneOf(ADDR)
+        // values from 0 to 10 and a few corner-case values
+        nondet amount = 0.to(10).union(Set(MAX_UINT, -1, -10)).oneOf()
+        // execute one of the available actions/methods
+        any {
+            mint(sender, receiver, amount),
+            send(sender, receiver, amount),
+        }
+    }
+
+    // to run the random simulator for 10000 executions, each up to 10 actions,
+    // execute the following in REPL:
+    // _test(10000, 10, "init", "stepScoped", "totalSupplyDoesNotOverflowInv")
+```
+
+
+
+It is often hard to find a good sequence of actions that breaks an invariant.
+Similar to how we let the computer to find the right inputs, we can use the
+computing power to look for bad sequences of actions.
+
+Quint REPL actually supports random search for sequences of actions that violate
+an invariant. Its UX is a bit ad hoc at the moment. We will improve it in the
+future. You can try it right away:
+
+            
+
+```sh
+echo '_test(10000, 10, "init", "step", "totalSupplyDoesNotOverflowInv")' | quint -r coin.qnt::Coin
+```
+
+
+
+The above command in REPL randomly produces sequences, starting with `init`
+and continuing with `step`, up to 10 actions. It checks the invariant
+`totalSupplyDoesNotOverflowInv` after every step. If the invariant is violated,
+the random search stops and returns `false`. If no invariant violaion is found,
+the search returns `true` after enumerating the specified number of runs,
+which is 10000 in our example.
+
+In our example, the search often finds an error. If it did not find an error,
+run the search again. Once `_test` returned `false`, you can print the trace
+leading to the bad state by evaluating `_lastTrace` in REPL.
+
+            
 ## The end
 
   You have made it!
