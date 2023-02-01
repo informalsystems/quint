@@ -206,22 +206,7 @@ module Coin {
     // execute the following in REPL:
     // _test(10000, 10, "init", "step", "totalSupplyDoesNotOverflowInv")
 
-    // We scope the inputs to a small set of values to increase
-    // the probability of finding interesting examples with random simulation.
-    action stepScoped = {
-        nondet sender = oneOf(ADDR)
-        nondet receiver = oneOf(ADDR)
-        // values from 0 to 10 and a few corner-case values
-        nondet amount = 0.to(10).union(Set(MAX_UINT, -1, -10)).oneOf()
-        // execute one of the available actions/methods
-        any {
-            mint(sender, receiver, amount),
-            send(sender, receiver, amount),
-        }
-    }
 
-    // to run the random simulator for 10000 executions, each up to 10 actions,
-    // execute the following in REPL:
-    // _test(10000, 10, "init", "stepScoped", "totalSupplyDoesNotOverflowInv")
+
 }
 

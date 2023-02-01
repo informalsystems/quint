@@ -1,7 +1,7 @@
 # Lesson 3 - Basic anatomy of a protocol in Quint
 ## 1. Introduction
 
-*21 more steps to the finish line*
+*23 more steps to the finish line*
 
 In this tutorial, we explain the standard structure of a Quint protocol.
 Although Quint does not impose a very rigid structure on the protocol designers,
@@ -40,7 +40,7 @@ In this tutorial, you will see how to:
 
  - Write basic protocol tests.
 
- - Write protocol tests that use non-determinism.
+ - Write protocol tests that use input non-determinism.
 
  - Run a basic randomized test to discover an invariant violation.
 
@@ -52,7 +52,7 @@ the details, check [coin.qnt](./coin.qnt).
         
 ## 2. Declare a single module
 
-*20 more steps to the finish line*
+*22 more steps to the finish line*
 
 **Code snippet:**
 
@@ -71,7 +71,7 @@ if you are going to reuse different parts of your protocol.
         
 ## 3. Declare types
 
-*19 more steps to the finish line*
+*21 more steps to the finish line*
 
 **Code snippet:**
 
@@ -112,7 +112,7 @@ different kinds of "integers", when they refferred to via different type aliases
         
 ## 4. Declare pure functions
 
-*18 more steps to the finish line*
+*20 more steps to the finish line*
 
 **Code snippet:**
 
@@ -180,7 +180,7 @@ the issue.
             
 ## 5. Declare the protocol parameters
 
-*17 more steps to the finish line*
+*19 more steps to the finish line*
 
 **Code snippet:**
 
@@ -223,7 +223,7 @@ in order to be able to iterate on the protocol specification quickly.
         
 ## 6. Declare the protocol state
 
-*16 more steps to the finish line*
+*18 more steps to the finish line*
 
 **Code snippet:**
 
@@ -265,7 +265,7 @@ of Solidity:
         
 ## 7. Declare operators over states
 
-*15 more steps to the finish line*
+*17 more steps to the finish line*
 
 **Code snippet:**
 
@@ -299,7 +299,7 @@ do that in the next step.
             
 ## 8. Declare `require` and `totalSupply`
 
-*14 more steps to the finish line*
+*16 more steps to the finish line*
 
 **Code snippet:**
 
@@ -349,7 +349,7 @@ pieces:
         
 ## 9. Declare an initializer `init`
 
-*13 more steps to the finish line*
+*15 more steps to the finish line*
 
 **Code snippet:**
 
@@ -395,7 +395,7 @@ This expression non-deterministically chooses one value from the set `ADDR`
 (assuming that the set is not empty) and binds this value to the name `sender`.
 The qualifier `nondet` indicates that the value of `sender` is special: the
 value of `sender` evaluates to the same value in a single run, but *it may
-evaluate to two different values in twp different runs, even when it was
+evaluate to two different values in two different runs, even when it was
 evaluated in identical states of the two runs*. This behavior may look
 complicated, but this is exactly what we expect from the user input too:
 The user may submit different inputs, even when the protocol resides in
@@ -404,7 +404,7 @@ two identical states.
         
 ## 10. Assign initial values to the state variables
 
-*12 more steps to the finish line*
+*14 more steps to the finish line*
 
 **Code snippet:**
 
@@ -447,7 +447,7 @@ Hint: use `if (cond) value1 else value2`.
             
 ## 11. Defining the action `send`
 
-*11 more steps to the finish line*
+*13 more steps to the finish line*
 
 **Code snippet:**
 
@@ -506,7 +506,7 @@ Do you understand what happened in this case?
             
 ## 12. Defining the action `send`
 
-*10 more steps to the finish line*
+*12 more steps to the finish line*
 
 **Code snippet:**
 
@@ -554,7 +554,7 @@ echo 'init\n mint(minter, "bob", 2023)\n send("bob", "eve", 1024)\n state' | qui
 
 ## 13. Defining a protocol step
 
-*9 more steps to the finish line*
+*11 more steps to the finish line*
 
 **Code snippet:**
 
@@ -601,7 +601,7 @@ not to stop here! In the next steps, we will show you the real magic of Quint.
         
 ## 14. Expected properties
 
-*8 more steps to the finish line*
+*10 more steps to the finish line*
 
 **Code snippet:**
 
@@ -619,7 +619,7 @@ protocol invariants and temporal properties.
         
 ## 15. Defining the most basic invariant
 
-*7 more steps to the finish line*
+*9 more steps to the finish line*
 
 **Code snippet:**
 
@@ -663,7 +663,7 @@ whereas the latter are actually called *invariants*.
             
 ## 16. Defining the total supply invariant
 
-*6 more steps to the finish line*
+*8 more steps to the finish line*
 
 **Code snippet:**
 
@@ -689,7 +689,7 @@ initialize it with 0 and increase it in `mint` with the `amount` passed to `mint
         
 ## 17. Temporal properties
 
-*5 more steps to the finish line*
+*7 more steps to the finish line*
 
 **Code snippet:**
 
@@ -718,7 +718,7 @@ with the qualifier `temporal`.
         
 ## 18. Tests
 
-*4 more steps to the finish line*
+*6 more steps to the finish line*
 
 **Code snippet:**
 
@@ -758,9 +758,14 @@ Go ahead and see, whether this test goes through:
 echo 'sendWithoutMintTest' | quint -r coin.qnt::Coin
 ```
 
+
+**Exercise:** Actually, if you look carefully at the code of `send`,
+you can find one value for `amount` that makes `send` work even without
+prior minting. What is this value?
+            
 ## 19. A single data point test
 
-*3 more steps to the finish line*
+*5 more steps to the finish line*
 
 **Code snippet:**
 
@@ -794,7 +799,7 @@ echo 'mintSendTest' | quint -r coin.qnt::Coin
 
 
 **Exercise:** Change some numbers in the test, run it again in REPL and observe
-what happened.
+what happens.
 
 Although it is great to have a test like `mintSendTest` than no test at all,
 `mintSendTest` is testing only one data point. We can do better in Quint,
@@ -802,7 +807,7 @@ see the next step.
             
 ## 20. Testing with non-deterministic inputs
 
-*2 more steps to the finish line*
+*4 more steps to the finish line*
 
 **Code snippet:**
 
@@ -864,8 +869,8 @@ so the test never fails.
 
 If you carefully look at `mintTwiceThenSendTest`, you will see that it is still
 a single data point test, though the data point (the inputs) are chosen
-differently (actually, REPL chooses them at random) every time we run
-the test.
+non-deterministically every time we run the test. In fact, REPL implements
+non-determinism via random choice.
 
 If you do not want to sit the whole day and run the test, you could integrate
 it into continuous integration, so it runs from time to time for different
@@ -875,7 +880,7 @@ better with Quint.
             
 ## 21. Testing with non-deterministic inputs and control
 
-*1 more step to the finish line*
+*3 more steps to the finish line*
 
 **Code snippet:**
 
@@ -884,24 +889,6 @@ better with Quint.
     // to run the random simulator for 10000 executions, each up to 10 actions,
     // execute the following in REPL:
     // _test(10000, 10, "init", "step", "totalSupplyDoesNotOverflowInv")
-
-    // We scope the inputs to a small set of values to increase
-    // the probability of finding interesting examples with random simulation.
-    action stepScoped = {
-        nondet sender = oneOf(ADDR)
-        nondet receiver = oneOf(ADDR)
-        // values from 0 to 10 and a few corner-case values
-        nondet amount = 0.to(10).union(Set(MAX_UINT, -1, -10)).oneOf()
-        // execute one of the available actions/methods
-        any {
-            mint(sender, receiver, amount),
-            send(sender, receiver, amount),
-        }
-    }
-
-    // to run the random simulator for 10000 executions, each up to 10 actions,
-    // execute the following in REPL:
-    // _test(10000, 10, "init", "stepScoped", "totalSupplyDoesNotOverflowInv")
 ```
 
 
@@ -934,6 +921,65 @@ run the search again. Once `_test` returned `false`, you can print the trace
 leading to the bad state by evaluating `_lastTrace` in REPL.
 
             
+## 22. Does random testing always find bugs?
+
+*2 more steps to the finish line*
+
+**Code snippet:**
+
+```scala
+
+```
+
+
+
+To be honest, our example is relatively simple, and we were quite lucky
+that the invariant `totalSupplyDoesNotOverflowInv` was often violated by
+a completely random search. For more complex protocols, random search
+often gets stuck while looking for non-interesting inputs or sequences
+of actions. Hence, if you have a hunch about where an error could potentially
+be, you could restrict the scope of the search by:
+
+ - Restricting the scope of non-determinstic choices, e.g.,
+   by making every set in `oneOf(S)` smaller.
+
+ - Restricting the choice of actions, e.g., by removing non-essential
+   actions from `step`.
+
+Although the above tricks may help you in detecting some bugs, it is well
+known that there is always a probability of missing a bug with random search.
+
+If you are looking for better guarantees of correctness, Quint will be soon
+integrated with the
+[Apalache model checker](https://github.com/informalsystems/apalache).
+The model checker looks for counterexamples differently, e.g., by solving
+equations. In some cases, it may even give you a guarantee that there is no bug,
+if it has not found any.
+
+        
+## 23. Suming it up
+
+*1 more step to the finish line*
+
+**Code snippet:**
+
+```scala
+
+```
+
+
+
+This was a long tutorial. We have specified the whole protocol,
+experimented with it, wrote several tests and even found some surprising
+behavior of this protocol. We hope that by going through this tutorial
+you have got an idea of how you could specify your own protocol in Quint
+and make Quint useful for solving your problems with protocols!
+
+We are experimenting with different kinds of tutorials.
+It would be great to learn, whether you liked this tutorial format, or not.
+Please vote in the
+[discussion](https://github.com/informalsystems/quint/discussions/595).
+        
 ## The end
 
   You have made it!

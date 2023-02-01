@@ -59,7 +59,7 @@ In this tutorial, you will see how to:
 
  - Write basic protocol tests.
 
- - Write protocol tests that use non-determinism.
+ - Write protocol tests that use input non-determinism.
 
  - Run a basic randomized test to discover an invariant violation.
 
@@ -388,7 +388,7 @@ This expression non-deterministically chooses one value from the set `ADDR`
 (assuming that the set is not empty) and binds this value to the name `sender`.
 The qualifier `nondet` indicates that the value of `sender` is special: the
 value of `sender` evaluates to the same value in a single run, but *it may
-evaluate to two different values in twp different runs, even when it was
+evaluate to two different values in two different runs, even when it was
 evaluated in identical states of the two runs*. This behavior may look
 complicated, but this is exactly what we expect from the user input too:
 The user may submit different inputs, even when the protocol resides in
@@ -724,6 +724,12 @@ Go ahead and see, whether this test goes through:
 
             <run target="markdown">echo 'sendWithoutMintTest' | quint -r coin.qnt::Coin</run>
             <run target="codetour">echo 'sendWithoutMintTest' | quint -r ./lesson3-anatomy/coin.qnt::Coin</run>
+
+            <block>
+**Exercise:** Actually, if you look carefully at the code of `send`,
+you can find one value for `amount` that makes `send` work even without
+prior minting. What is this value?
+            </block>
         </description>
         <file>$file</file>
         <line>$line</line>
