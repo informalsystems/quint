@@ -4,15 +4,15 @@
 *23 more steps to the finish line*
 
 In this tutorial, we explain the standard structure of a Quint protocol.
-Although Quint does not impose a very rigid structure on the protocol designers,
-we have found that following the same practices helps protocol authors and
-readers to cooperate more effectively.
+Although Quint does not impose a very rigid structure on protocol designers,
+we have found that following common practices helps protocol authors and
+their readers to cooperate more effectively.
 
-As a running example we are using the subcurrency smart contract that
+As a running example, we are using the subcurrency smart contract that
 is introduced in the Solidity documentation, see
 [Subcurrency](https://docs.soliditylang.org/en/v0.8.17/introduction-to-smart-contracts.html#subcurrency-example).
-You do not have to know Solidity to understand our tutorial.
-On contrary, you may acquire some basic understanding of Solidity contracts
+You do not have to know Solidity to understand this tutorial.
+On the contrary, you may acquire some basic understanding of Solidity contracts
 by reading the Quint protocol specification.
 
 The subcurrency smart contract defines a basic protocol that has the following features:
@@ -61,13 +61,13 @@ module Coin {
 ```
 
 
-We have to declare at least one module.
-In general, a single file may contain multiple module declarations at the top level.
-Nested module declarations are not allowed.
+Quint specifications are organized in modules, and may consist of one or many
+top-level module declarations.
+Nested module declarations are currently not supported.
 
-In this tutorial, we are declaring a single module. Contrary to the common engineering
-practice, we recommend to start with a single module and introduce multiple modules only
-if you are going to reuse different parts of your protocol.
+In this tutorial, we declare a single module. In general, we recommend to start
+with a single module and introduce multiple modules only if you are going to
+reuse various parts of your protocol.
         
 ## 3. Declare types
 
@@ -107,8 +107,8 @@ of the language manual.
 Although it is convenient to declare type aliases, it is not mandatory.
 Protocol authors should decide together with their audience, whether they prefer
 minimal type definitions, or they like abundance of types. Quint replaces type aliases
-with the types in the right-hand sides of `type`. For example, it does not distinguish between
-different kinds of "integers", when they refferred to via different type aliases.
+with the types on the right-hand sides of `type`. For example, it does not distinguish between
+different kinds of "integers", when they are referred to via different type aliases.
         
 ## 4. Declare pure functions
 
@@ -121,27 +121,27 @@ different kinds of "integers", when they refferred to via different type aliases
     // FUNCTIONAL LAYER:
     // Values and functions that are state-independent
 
-    // the maximal value Solidity UInt can carry
+    // the maximal value a Solidity UInt can carry
     pure val MAX_UINT = 2^256 - 1
 
-    // does a big integer represent Solidity uint?
+    // does a big integer represent a Solidity UInt?
     pure def isUInt(i: int): bool = (0 <= i and i <= MAX_UINT)
 ```
 
 
 
 It often happens that a protocol requires auxilliary definitions that do not
-depend on the protocol state, but only depend on the values of their parameters.
+depend on the protocol state, but only on the values of their parameters.
 Such computations are often called "pure". In the above code, we define two
 pure definitions:
  
  - The pure value `MAX_UINT`.
 
- - The pure definition `isUInt` that computes, whether an integer is within
+ - The pure definition `isUInt` that computes if a given integer `i` is within
    the range from 0 to MAX_UINT (inclusive).
 
 The main property of pure values is that they always return the same value.
-Pure definitions always return the same value, when they are supplied with the
+Pure definitions always return the same value, if they are supplied with the
 same arguments.
 
 To see that no state is needed, evaluate these definitions in REPL:
@@ -168,15 +168,14 @@ echo "isUInt(MAX_UINT + 1)" | quint -r coin.qnt::Coin
 ```
 
 
-The functional layer is actually quite powerful. We can describe a lot of
-protocol behavior at the functional layer. However, we postpone this discussion
-for a more advanced tutorial.
+The functional layer is actually quite powerful; a lot of protocol behavior can
+be defined here without referring to protocol state.
 
-As you can see, we have omitted the type of `MAX_UINT` but specified the type
-of `isUInt`. Most of the time, it is up to you. The type checker can infer the
-types of values and operator definitions. In rare cases, the type checker may
-get confused, and then explicit type annotations may help you in figuring out
-the issue.
+As you can see, we have omitted the type of `MAX_UINT` but specified the type of
+`isUInt`. Most of the time, the type checker can infer the types of values and
+operator definitions, and giving additional type annotations is up to you. In
+rare cases, the type checker may get confused, and then explicit type
+annotations will help you in figuring out the issue.
             
 ## 5. Declare the protocol parameters
 
@@ -218,7 +217,7 @@ in the commented out section of the code above. Constant declarations are not
 fully supported yet. They will be available as soon as the issue
 [#528](https://github.com/informalsystems/quint/issues/528) is closed.
 
-At the moment, we simply declare the value for small set of addresses `ADDR`,
+At the moment, we simply declare the value for a small set of addresses `ADDR`,
 in order to be able to iterate on the protocol specification quickly.
         
 ## 6. Declare the protocol state
@@ -253,7 +252,7 @@ types of the state variables.
 
 If you compare the above variable definitions to the relevant variable
 declarations in the Solidity contract, you should see that our variable
-declarations are conceptually similar, modulo a slightly different syntax
+declarations are conceptually similar, modulo the slightly different syntax
 of Solidity:
 
 
@@ -317,18 +316,18 @@ do that in the next step.
 In the above code, we introduce a helper definition `require` that
 evaluates its Boolean parameter. As you might have noticed, this
 definition is not doing anything useful. We introduce it to make the code
-a bit more accessible for the first-time readers who are familiar with
+a bit more accessible for first-time readers who are familiar with
 Solidity.
 
-The definition of `totalSupply` may look a bit complex to you,
-if you have never seen similar code before. Let's break it down in smaller
+The definition of `totalSupply` may look a bit complex,
+if you have never seen similar code before. Let's break it down into smaller
 pieces:
 
  - The definition of `totalSupply` defines a value, but not a `pure` one.
    Hence, even though `totalSupply` does not take any parameters,
-   it implicitly depends on the state. As a result, `totalSupply`,
+   it implicitly depends on the state. As a result, `totalSupply`
    may evaluate to different values
-   in different states, that is, in the states, where the values of `minter`
+   in different states, that is, in those states where the values of `minter`
    and `balances` differ.
 
  - `ADDR.fold(0, f)` iterates over the set of addresses in *some order*
@@ -343,7 +342,7 @@ pieces:
    ```
 
    *Note that the order of the addresses in the brackets may be different from
-   the one above. Hence, you should not rely on the particular order, when
+   the one above. Hence, you should not rely on a particular order when
    using `fold`. We are fine when using commutative operators such as `+` and `*`.*
 
         
@@ -372,7 +371,7 @@ code, such an action is called `init`.
 This definition is essential for describing the protocol. When you read somebody else's
 protocol, it is one of the key parts to look at.
 
-If we go back to the Solidity code, it looks like follows:
+If we go back to the Solidity code, it looks as follows:
 
 ```Solidity
     // in Solidity
@@ -383,7 +382,7 @@ If we go back to the Solidity code, it looks like follows:
 
 In the Solidity code, the constructor is using an implicit parameter `msg.sender`,
 which is propagated from a user request by the Ethereum Virtual Machine. Quint
-does not have any built-in mechanism for reading the user input. Instead, Quint
+does not have any built-in mechanism for reading user input. Instead, Quint
 offers a very powerful mechanism of non-deterministic choice. This is
 exactly what we do with the following line of code:
 
@@ -395,10 +394,9 @@ This expression non-deterministically chooses one value from the set `ADDR`
 (assuming that the set is not empty) and binds this value to the name `sender`.
 The qualifier `nondet` indicates that the value of `sender` is special: the
 value of `sender` evaluates to the same value in a single run, but *it may
-evaluate to two different values in two different runs, even when it was
-evaluated in identical states of the two runs*. This behavior may look
-complicated, but this is exactly what we expect from the user input too:
-The user may submit different inputs, even when the protocol resides in
+evaluate to two different values in two different runs*. This behavior may look
+complicated, but this is exactly what we expect from user input, too:
+The user may submit different inputs, even if the protocol resides in
 two identical states.
 
         
@@ -418,12 +416,12 @@ two identical states.
 
 
 
-Once we have understood the value of `sender`, the rest of `init` is simple.
-The value of `minter` is set to the value of `sender`, whereas the value
+The rest of `init` is simple:
+The value of `minter` is set to the value of `sender`, and the value
 of `balances` is set to the map that maps all addresses from `ADDR`
 to value 0. Notice that the variables `minter` and `balances` are not assigned
-their new values immediately, but they are assigned the values, once `init` is
-evaluated completely (and only if `init` was evaluated to `true`).
+their new values immediately; they are assigned once `init` is
+evaluated completely (and only if `init` evaluated to `true`).
 
 Now we can call `init` and evaluate an initialized state in REPL:
 
@@ -438,8 +436,8 @@ echo "init\n state" | quint -r coin.qnt::Coin
 each call. Did you get the same initial states every time or were some states
 different?
 
-Remember that we said `init` was an initializer? We said that because `init`
-only assigns next values to state variables, but does not read their previous values.
+Remember that we called `init` an initializer? This is because `init`
+only assigns new values to state variables, but does not read their previous values.
 
 **Exercise:** Modify the assignment to `balances` in such a way that `minter`
 gets 1000 coins, while the other addresses get 0 coins, as before.
@@ -456,7 +454,7 @@ Hint: use `if (cond) value1 else value2`.
     // Sends an amount of newly created coins to an address.
     // Can only be called by the minter, that is, the contract creator.
     // Note that we have to add `sender` as an action parameter,
-    // which is accessed via implicit `msg.sender` in Solidity.
+    // which is accessed implicitly via `msg.sender` in Solidity.
     action mint(sender: Addr, receiver: Addr, amount: UInt): bool = all {
         require(sender == minter),
         val newBal = balances.get(receiver) + amount
@@ -561,8 +559,8 @@ echo 'init\n mint(minter, "bob", 2023)\n send("bob", "eve", 1024)\n state' | qui
 ```scala
 
     // All possible behaviors of the protocol in one action.
-    // Note that random simulation produces valid inputs to
-    // this action with a low probability, since amount are chosen at random.
+    // Note that random simulation produces valid inputs to this action with
+    // low probability, since the amounts are chosen at random.
     // A symbolic model checker such as Apalache does not have any problem
     // with this. Random simulation requires a more restricted version of step.
     action step: bool = {
@@ -591,13 +589,13 @@ Do you understand why some of the occurrences of `step` evaluate to `false`
 and some evaluate to `true`? It may help you, if you print `state` after `init`
 and `step`.
 
-We have defined the state variables, the initializer, and the protocol stop.
-This is the minimal set of prerequisites for defining a working protocol.
+We have defined the state variables, the initializer, and a step of the protocol.
+This is the minimal set of tasks for defining a working protocol.
 What we have achieved here is great! You can play with the protocol, feed it
 with different parameters in REPL, and experiment with your protocol.
 
 Although you should definitely play with the protocol at this point, we urge you
-not to stop here! In the next steps, we will show you the real magic of Quint.
+not to stop here! In the next steps, we show you the real magic of Quint.
         
 ## 14. Expected properties
 
@@ -639,7 +637,7 @@ protocol invariants and temporal properties.
 
 
 One of the most basic properties that we expect from the protocol is defined
-with the property `balancesRangeInv`. This property goes over all addresses
+by the property `balancesRangeInv`. This property goes over all addresses
 in `ADDR` and tests, whether the value stored in `balances` for every address
 is in the range from `0` to `MAX_UINT` (inclusive).
 
@@ -652,7 +650,7 @@ echo 'init\n balancesRangeInv\n mint(minter, "bob", 2023)\n balancesRangeInv\n s
 ```
 
 
-Properties like `balancesRangeInv` are called invariants, because we expect
+Properties like `balancesRangeInv` are called *invariants*, because we expect
 them to hold in every state that could be produced by `init` and a number of
 `step` actions. Intuitively, whatever happens, the property should hold true.
 
@@ -744,13 +742,13 @@ programming languages.
 We normally add tests in the very bottom of the protocol module, or in
 a separate module.
 
-Quint introduces runs to express "happy paths" and tests. The above code
+Quint introduces *runs* to express "happy paths" and tests. The above code
 shows a simple test `sendWithoutMintTest`.
 In this test, the action `init` runs first. If it evaluates to `true`,
 then the action `send(...)` is run. Since this action is composed with
 `fail()`, the action `send(...)` is expected to evaluate to `false`.
 
-Go ahead and see, whether this test goes through:
+Go ahead and see if this test goes through:
 
             
 
@@ -801,7 +799,7 @@ echo 'mintSendTest' | quint -r coin.qnt::Coin
 **Exercise:** Change some numbers in the test, run it again in REPL and observe
 what happens.
 
-Although it is great to have a test like `mintSendTest` than no test at all,
+Although it is better to have a test like `mintSendTest` than no test at all,
 `mintSendTest` is testing only one data point. We can do better in Quint,
 see the next step.
             
@@ -861,11 +859,11 @@ echo 'mintTwiceThenSendTest' | quint -r coin.qnt::Coin
 
 
 If you lucky, it fails right away. If it does not fail, run it multiple times,
-until it fails. To see, why it failed, evaluate `state` after executing
+until it fails. To see why it failed, evaluate `state` after executing
 the test. Do you understand why our hypothesis was wrong?
 
 **Exercise:** Fix the condition in `mintTwiceThenSendTest`,
-so the test never fails.
+so that the test never fails.
 
 If you carefully look at `mintTwiceThenSendTest`, you will see that it is still
 a single data point test, though the data point (the inputs) are chosen
@@ -950,9 +948,9 @@ Although the above tricks may help you in detecting some bugs, it is well
 known that there is always a probability of missing a bug with random search.
 
 If you are looking for better guarantees of correctness, Quint will be soon
-integrated with the
+integrate with the
 [Apalache model checker](https://github.com/informalsystems/apalache).
-The model checker looks for counterexamples differently, e.g., by solving
+The model checker looks for counterexamples more exhaustively, by solving
 equations. In some cases, it may even give you a guarantee that there is no bug,
 if it has not found any.
 
@@ -975,8 +973,14 @@ behavior of this protocol. We hope that by going through this tutorial
 you have got an idea of how you could specify your own protocol in Quint
 and make Quint useful for solving your problems with protocols!
 
+We have used a Solidity contract as the running example. Actually,
+there is not much special about Solidity in this coin protocol.
+A similar protocol could be implemented in
+[Cosmos SDK](https://tutorials.cosmos.network/)
+or [Cosmwasm](https://cosmwasm.com/).
+
 We are experimenting with different kinds of tutorials.
-It would be great to learn, whether you liked this tutorial format, or not.
+It would be great to learn whether you liked this tutorial format, or not.
 Please vote in the
 [discussion](https://github.com/informalsystems/quint/discussions/595).
         

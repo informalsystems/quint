@@ -31,10 +31,10 @@ module Coin {
     // FUNCTIONAL LAYER:
     // Values and functions that are state-independent
 
-    // the maximal value Solidity UInt can carry
+    // the maximal value a Solidity UInt can carry
     pure val MAX_UINT = 2^256 - 1
 
-    // does a big integer represent Solidity uint?
+    // does a big integer represent a Solidity UInt?
     pure def isUInt(i: int): bool = (0 <= i and i <= MAX_UINT)
 
     // STATE MACHINE:
@@ -73,7 +73,7 @@ module Coin {
     // Sends an amount of newly created coins to an address.
     // Can only be called by the minter, that is, the contract creator.
     // Note that we have to add `sender` as an action parameter,
-    // which is accessed via implicit `msg.sender` in Solidity.
+    // which is accessed implicitly via `msg.sender` in Solidity.
     action mint(sender: Addr, receiver: Addr, amount: UInt): bool = all {
         require(sender == minter),
         val newBal = balances.get(receiver) + amount
@@ -114,8 +114,8 @@ module Coin {
     }
 
     // All possible behaviors of the protocol in one action.
-    // Note that random simulation produces valid inputs to
-    // this action with a low probability, since amount are chosen at random.
+    // Note that random simulation produces valid inputs to this action with
+    // low probability, since the amounts are chosen at random.
     // A symbolic model checker such as Apalache does not have any problem
     // with this. Random simulation requires a more restricted version of step.
     action step: bool = {
