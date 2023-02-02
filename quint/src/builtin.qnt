@@ -700,7 +700,10 @@ module builtin {
   /// ```
   /// var x: int
   /// action Init = x' = 0
-  /// action impossible = Set().guess(i => x' = i)
+  /// action impossible = {
+  ///   nondet i = Set().oneOf()
+  ///   x' = i
+  /// }
   /// temporal Property = always(not(enabled(impossible)))
   /// ```
   temporal enabled(a): (bool) => bool
