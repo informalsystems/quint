@@ -2,9 +2,9 @@
  * Compiler of Quint expressions and definitions to Computable values
  * that can be evaluated in the runtime.
  *
- * Igor Konnov, 2022
+ * Igor Konnov, 2022-2023
  *
- * Copyright (c) Informal Systems 2022. All rights reserved.
+ * Copyright (c) Informal Systems 2022-2023. All rights reserved.
  * Licensed under the Apache 2.0.
  * See License.txt in the project root for license information.
  */
@@ -186,26 +186,9 @@ export class CompilerVisitor implements IRVisitor {
         break
       }
 
-      case 'assign': {
-        if (this.compStack.length < 2) {
-          this.addCompileError(app.id, 'Assignment <- needs two arguments')
-          return
-        }
-        const [register, rhs] = this.compStack.splice(-2)
-        const name = (register as Register).name
-        const nextvar = this.contextGet(name, ['nextvar']) as Register
-        if (nextvar) {
-          this.compStack.push(rhs)
-          this.applyFun(app.id, 1, (value) => {
-            nextvar.registerValue = just(value)
-            return just(rv.mkBool(true))
-          })
-        } else {
-          this.addCompileError(app.id, `${name} not found in ${name} <- ...`)
-          this.compStack.push(fail)
-        }
+      case 'assign':
+        this.translateAssign(app.id)
         break
-      }
 
       case 'eq':
         this.applyFun(app.id, 2, (x, y) => just(rv.mkBool(x.equals(y))))
@@ -581,11 +564,6 @@ export class CompilerVisitor implements IRVisitor {
         this.applyFold(app.id, 'rev')
         break
 
-      case 'guess':
-        // TODO: remove soon: https://github.com/informalsystems/quint/issues/376
-        this.applyGuess(app.id)
-        break
-
       case 'flatten':
         this.applyFun(app.id, 1, set => {
           // unpack the sets from runtime values
@@ -766,6 +744,32 @@ export class CompilerVisitor implements IRVisitor {
         this.test(app.id)
         break
 
+      // standard unary operators that are not handled by REPL
+      case 'allLists':
+      case 'chooseSome':
+      case 'always':
+      case 'eventually':
+      case 'enabled':
+        this.applyFun(app.id, 1, (_) => {
+          this.addRuntimeError(app.id,
+            `Runtime does not support the built-in operator '${app.opcode}'`)
+          return none()
+        })
+        break
+
+      // standard binary operators that are not handled by REPL
+      case 'orKeep':
+      case 'mustChange':
+      case 'weakFair':
+      case 'strongFair':
+        this.applyFun(app.id, 2, (_) => {
+          this.addRuntimeError(app.id,
+            `Runtime does not support the built-in operator '${app.opcode}'`)
+          return none()
+        })
+        break
+
+
       default: {
         this.applyUserDefined(app)
       }
@@ -828,6 +832,35 @@ export class CompilerVisitor implements IRVisitor {
       this.compStack.push(mkCallable(registers, lambdaBody))
     } else {
       this.addCompileError(lam.id, 'Compilation of lambda failed')
+    }
+  }
+
+  private translateAssign(sourceId: bigint): void {
+    if (this.compStack.length < 2) {
+      this.addCompileError(sourceId,
+        `Assignment '=' needs two arguments`)
+      return
+    }
+    const [register, rhs] = this.compStack.splice(-2)
+    const name = (register as Register).name
+    if (name === undefined) {
+      this.addCompileError(sourceId,
+        `Assignment '=' applied to a non-variable`)
+      this.compStack.push(fail)
+      return
+    }
+
+    const nextvar = this.contextGet(name, ['nextvar']) as Register
+    if (nextvar) {
+      this.compStack.push(rhs)
+      this.applyFun(sourceId, 1, (value) => {
+        nextvar.registerValue = just(value)
+        return just(rv.mkBool(true))
+      })
+    } else {
+      this.addCompileError(sourceId,
+        `Undefined next variable in ${name} = ...`)
+      this.compStack.push(fail)
     }
   }
 
