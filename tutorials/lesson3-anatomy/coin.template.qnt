@@ -550,10 +550,6 @@ Play with `mint` and `send` in REPL! The simplest scenario would be:
     !*/
 
     // All possible behaviors of the protocol in one action.
-    // Note that random simulation produces valid inputs to this action with
-    // low probability, since the amounts are chosen at random.
-    // A symbolic model checker such as Apalache does not have any problem
-    // with this. Random simulation requires a more restricted version of step.
     action step: bool = {
         nondet sender = oneOf(ADDR)
         nondet receiver = oneOf(ADDR)

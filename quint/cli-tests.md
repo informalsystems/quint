@@ -195,7 +195,7 @@ Temporarily disabled.
 ### OK on typecheck coin
 
 <!-- !test check coin - Types & Effects-->
-    quint typecheck ../examples/solidity/coin/coin.qnt
+    quint typecheck ../examples/solidity/Coin/coin.qnt
 
 ### OK on typecheck SimpleAuctionNonComposable.qnt
 
