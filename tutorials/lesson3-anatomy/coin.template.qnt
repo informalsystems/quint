@@ -322,8 +322,8 @@ pieces:
    Hence, even though `totalSupply` does not take any parameters,
    it implicitly depends on the state. As a result, `totalSupply`
    may evaluate to different values
-   in different states, that is, in those states where the values of `minter`
-   and `balances` differ.
+   in different states, that is, in those states where the values of
+   `balances` differ.
 
  - `ADDR.fold(0, f)` iterates over the set of addresses in *some order*
    and for every address `a`, it applies `f(s, a)` for the accumulator value `s`,
@@ -386,8 +386,9 @@ nondet sender = oneOf(ADDR)
 This expression non-deterministically chooses one value from the set `ADDR`
 (assuming that the set is not empty) and binds this value to the name `sender`.
 The qualifier `nondet` indicates that the value of `sender` is special: the
-value of `sender` evaluates to the same value in a single run, but *it may
-evaluate to two different values in two different runs*. This behavior may look
+name `sender` is bound to a fixed value, but `sender` *may evaluate to two
+different values* when `init` is called twice or is called in different runs.
+This behavior may look
 complicated, but this is exactly what we expect from user input, too:
 The user may submit different inputs, even if the protocol resides in
 two identical states.
