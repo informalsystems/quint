@@ -290,7 +290,7 @@ You can try to evaluate the definition of `state` in REPL right away:
 If you tried that, you saw several error messages. The reason is that the state
 variables are not initialized by default. We would have to introduce an
 initialization action, which is usually called `init`. You will see how to
-do that in the next step.
+do that a few steps later.
             </block>
         </description>
         <file>$file</file>
@@ -392,6 +392,10 @@ complicated, but this is exactly what we expect from user input, too:
 The user may submit different inputs, even if the protocol resides in
 two identical states.
 
+For more details, check
+[oneOf](https://github.com/informalsystems/quint/blob/main/doc/builtin.md#pure-def-oneof-seta--a)
+in the reference manual.
+
         </description>
         <file>$file</file>
         <line>$line</line>
@@ -471,10 +475,16 @@ the explanation:
  - `balances.get(receiver)` produces the value assigned to the key `receiver`
    in the map `balances`. If the key `receiver` has no value assigned in
    the map `balances`, REPL would show a runtime error.
+   For more details, check
+   [get](https://github.com/informalsystems/quint/blob/main/doc/builtin.md#pure-def-get-a---b-a--b)
+   in the reference manual.
 
  - `balances.set(receiver, newBal)` produces a new map, that assigns
    the value of `newBal` to the key `receiver`, and keeps the other key-value
    pairs as in `balances`.
+   For more details, check
+   [set](https://github.com/informalsystems/quint/blob/main/doc/builtin.md#pure-def-set-a---b-a-b--a---b)
+   in the reference manual.
 
 Now it's time to mint some coins in REPL! Try the following:
 
@@ -602,12 +612,8 @@ protocol invariants and temporal properties.
     // One of the simplest properties is that all balances are within the uint range.
     // While it is automatically guaranteed by Solidity, our specification is using
     // big integers. Hence, it makes sense to check the range.
-    val balancesRangeInv: bool = {
-        ADDR.forall(a =>
-            val b = balances.get(a)
-            (0 <= b) and (b <= MAX_UINT)
-        )
-    }
+    val balancesRangeInv: bool = 
+        ADDR.forall(a => isUInt(balances.get(a)))
     /*!
       <step>
         <title>Defining the most basic invariant</title>
@@ -641,8 +647,8 @@ whereas the latter are actually called *invariants*.
     !*/
 
     // It is desirable that the total supply of tokens fits into UInt.
-    // Otherwise, we may have some suprises in the code that relies on this property.
-    // Evaluate this 
+    // Otherwise, a blockchain implementation or the user interface
+    // may run into an unexpected overflow when adding up the balances.
     val totalSupplyDoesNotOverflowInv: bool = {
         isUInt(totalSupply)
     }
@@ -665,14 +671,12 @@ initialize it with 0 and increase it in `mint` with the `amount` passed to `mint
     !*/
 
     // The temporal property that says the following:
-    // If `NoSupplyOverflow` holds in a state, then this state may not
-    // produce a computation that ends in another state,
-    // where totalSupplyDoesNotOverflowInv is violated.
-    //
-    // Temporarily disabled, until the issue below is fixed:
-    // [#591](https://github.com/informalsystems/quint/issues/591).
-    //
-    // temporal NoSupplyOverflow: bool = always(totalSupplyDoesNotOverflowInv)
+    // Assume that we want to check the temporal property `NoSupplyOverflow`
+    // for every initial state. Then we have to check for every initial state
+    // that it never produces a computation that ends in a state violating
+    // `totalSupplyDoesNotOverflowInv`. In general, temporal properties may be
+    // checked against any kinds of states, not only initial ones.
+    temporal NoSupplyOverflow: bool = always(totalSupplyDoesNotOverflowInv)
     /*!
       <step>
         <title>Temporal properties</title>
@@ -783,7 +787,7 @@ see the next step.
         nondet mintEve = 0.to(MAX_UINT).oneOf()
         nondet mintBob = 0.to(MAX_UINT).oneOf()
         nondet eveToBob = 0.to(MAX_UINT).oneOf()
-        // execute a fixed sequence `initFixed`, `mint`, `mint`, `send`
+        // execute a fixed sequence `init`, `mint`, `mint`, `send`
         init.then(mint(minter, "eve", mintEve))
             .then(mint(minter, "bob", mintBob))
             .then(

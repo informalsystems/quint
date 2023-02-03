@@ -130,12 +130,15 @@ def xmlToMarkdown(root, code, out):
         line = int(line.text) if line != None else None
         # the first step is normally an intro, its code will be skipped
         if line != None and lastLine != None and line > lastLine:
-            out.write('\n**Code snippet:**\n\n')
-            out.write('```scala\n')
-            for l in code[int(lastLine) + 1: int(line) + 1]:
-                out.write(l)
+            snippet = code[int(lastLine) + 1: int(line) + 1]
+            isEmpty = list(filter(lambda l: l.strip() != "", snippet)) == []
+            if not isEmpty:
+                out.write('\n**Code snippet:**\n\n')
+                out.write('```scala\n')
+                for l in snippet:
+                    out.write(l)
 
-            out.write('```\n\n')
+                out.write('```\n\n')
 
         # extract the text and the code from the description block
         desc = step.find("description")

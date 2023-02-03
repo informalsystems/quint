@@ -134,29 +134,23 @@ module Coin {
     // One of the simplest properties is that all balances are within the uint range.
     // While it is automatically guaranteed by Solidity, our specification is using
     // big integers. Hence, it makes sense to check the range.
-    val balancesRangeInv: bool = {
-        ADDR.forall(a =>
-            val b = balances.get(a)
-            (0 <= b) and (b <= MAX_UINT)
-        )
-    }
+    val balancesRangeInv: bool = 
+        ADDR.forall(a => isUInt(balances.get(a)))
 
     // It is desirable that the total supply of tokens fits into UInt.
-    // Otherwise, we may have some suprises in the code that relies on this property.
-    // Evaluate this 
+    // Otherwise, a blockchain implementation or the user interface
+    // may run into an unexpected overflow when adding up the balances.
     val totalSupplyDoesNotOverflowInv: bool = {
         isUInt(totalSupply)
     }
 
     // The temporal property that says the following:
-    // If `NoSupplyOverflow` holds in a state, then this state may not
-    // produce a computation that ends in another state,
-    // where totalSupplyDoesNotOverflowInv is violated.
-    //
-    // Temporarily disabled, until the issue below is fixed:
-    // [#591](https://github.com/informalsystems/quint/issues/591).
-    //
-    // temporal NoSupplyOverflow: bool = always(totalSupplyDoesNotOverflowInv)
+    // Assume that we want to check the temporal property `NoSupplyOverflow`
+    // for every initial state. Then we have to check for every initial state
+    // that it never produces a computation that ends in a state violating
+    // `totalSupplyDoesNotOverflowInv`. In general, temporal properties may be
+    // checked against any kinds of states, not only initial ones.
+    temporal NoSupplyOverflow: bool = always(totalSupplyDoesNotOverflowInv)
 
     // TESTS
 
@@ -188,11 +182,11 @@ module Coin {
         nondet mintEve = 0.to(MAX_UINT).oneOf()
         nondet mintBob = 0.to(MAX_UINT).oneOf()
         nondet eveToBob = 0.to(MAX_UINT).oneOf()
-        // execute a fixed sequence `initFixed`, `mint`, `mint`, `send`
+        // execute a fixed sequence `init`, `mint`, `mint`, `send`
         init.then(mint(minter, "eve", mintEve))
             .then(mint(minter, "bob", mintBob))
             .then(
-                if (eveToBob >= balances.get("eve")) {
+                if (eveToBob <= balances.get("eve")) {
                     // if Eve has enough tokens, send to Bob should pass
                     send("eve", "bob", eveToBob)
                 } else {
