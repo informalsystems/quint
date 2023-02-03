@@ -33,7 +33,7 @@ syn match quintNumber '-\?\(0x[0-9a-fA-F]\([0-9a-fA-F]\|_[0-9a-fA-F]\)*\|0\|[1-9
 syn region quintString start='"' end='"'
 
 " types
-syn keyword quintType int str bool Set List Map Rec Tup
+syn keyword quintType int str bool Set List Rec Tup
 
 " typedefs
 syn keyword quintTypedef type
