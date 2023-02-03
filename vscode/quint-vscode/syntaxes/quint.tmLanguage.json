@@ -41,7 +41,7 @@
 			"patterns": [
 				{
 					"name": "keyword.control.quint",
-					"match": "\\b(module|import|if|else)\\b"
+					"match": "\\b(module|import|if|else|not|or|and|implies|iff|all|any)\\b"
 				}
 			]
 		},
@@ -59,10 +59,6 @@
 		},
 		"operators": {
 			"patterns": [
-				{
-					"name": "keyword.operator.quint",
-					"match": "\\b(not|or|and|implies|iff|all|any)\\b"
-				},
 				{
 					"name": "keyword.operator.quint",
 					"match": "(=>|<=|>|<|=|!=|\\.|\\*|\\+|-|/|%|\\^)"
