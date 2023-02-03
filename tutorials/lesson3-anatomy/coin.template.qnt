@@ -51,7 +51,7 @@ In this tutorial, you will see how to:
 
  - Define the structure of the protocol states.
 
- - Define helper functions that read the current state but do not modify it.
+ - Define helper functions that read the current state, but do not modify it.
 
  - Define actions that read and modify the current state of the protocol.
 
@@ -110,7 +110,7 @@ aliases for the types that appear in the protocol description often.
 A type alias is simply a declaration of the form:
 
 ```scala
-type [name] = [type];
+type [name] = [tp];
 ```
 
 In the above definition, `[name]` is a unique identifier that will be associated
@@ -338,7 +338,7 @@ pieces:
 
    *Note that the order of the addresses in the brackets may be different from
    the one above. Hence, you should not rely on a particular order when
-   using `fold`. We are fine when using commutative operators such as `+` and `*`.*
+   using `fold` over sets. We are fine when using commutative operators such as `+` and `*`.*
 
         </description>
         <file>$file</file>
@@ -787,7 +787,7 @@ see the next step.
         init.then(mint(minter, "eve", mintEve))
             .then(mint(minter, "bob", mintBob))
             .then(
-                if (eveToBob >= balances.get("eve")) {
+                if (eveToBob <= balances.get("eve")) {
                     // if Eve has enough tokens, send to Bob should pass
                     send("eve", "bob", eveToBob)
                 } else {
