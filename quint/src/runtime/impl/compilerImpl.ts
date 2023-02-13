@@ -826,16 +826,17 @@ export class CompilerVisitor implements IRVisitor {
         this.addCompileError(app.id,
           `Expected ${nexpected} arguments for ${app.opcode}, found: ${nactual}`)
         this.compStack.push(fail)
-      }
-      this.applyFun(app.id,
-        callable.registers.length,
-        (...args: RuntimeValue[]) => {
-          for (let i = 0; i < args.length; i++) {
-            callable.registers[i].registerValue = just(args[i])
+      } else {
+        this.applyFun(app.id,
+          callable.registers.length,
+          (...args: RuntimeValue[]) => {
+            for (let i = 0; i < args.length; i++) {
+              callable.registers[i].registerValue = just(args[i])
+            }
+            return callable.eval() as Maybe<RuntimeValue>
           }
-          return callable.eval() as Maybe<RuntimeValue>
-        }
-      )
+        )
+      }
     }
   }
 
