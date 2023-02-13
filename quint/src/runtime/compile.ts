@@ -21,6 +21,7 @@ import { walkDefinition } from '../IRVisitor'
 import { treeFromModule } from '../scoping'
 import { LookupTableByModule } from '../lookupTable'
 import { QuintAnalyzer } from '../quintAnalyzer'
+import { mkErrorMessage } from '../cliCommands'
 
 /**
  * The name of the shadow variable that stores the last found trace.
@@ -63,21 +64,6 @@ function errorContext(errors: ErrorMessage[]): CompilationContext {
     runtimeErrors: [],
     sourceMap: new Map(),
   }
-}
-
-// convert an error tree to an error message
-function errorsToMsg(sourceMap: Map<bigint, Loc>, errorTuples: [bigint, ErrorTree][]) {
-  const errors: ErrorMessage[] = []
-  errorTuples.forEach(([id, error]) => {
-    const loc = sourceMap.get(id)!
-    const msg = {
-      explanation: errorTreeToString(error),
-      locs: [loc],
-    }
-    errors.push(msg)
-  })
-
-  return errors
 }
 
 /**
@@ -148,13 +134,14 @@ export function
       })
       // CompilerVisitor keeps the variables of the last module only.
       // TODO: specify the module name.
+      const errorLocator = mkErrorMessage(sourceMap)
       return right({
         lookupTable: table,
         values: visitor.getContext(),
         vars: visitor.getVars(),
         shadowVars: visitor.getShadowVars(),
         syntaxErrors: [],
-        analysisErrors: errorsToMsg(sourceMap, analysisErrors),
+        analysisErrors: Array.from(analysisErrors, errorLocator),
         compileErrors: visitor.getCompileErrors(),
         runtimeErrors: visitor.getRuntimeErrors(),
         sourceMap: sourceMap,
