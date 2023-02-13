@@ -107,10 +107,11 @@ export function
  *
  * @param code text that stores one or several Quint modules,
  *        which should be parseable without any context
+ * @param mainName the name of the module that may contain state varibles
  * @returns a mapping from names to computable values
  */
 export function
-  compile(code: string): CompilationContext {
+  compile(code: string, mainName: string): CompilationContext {
   // parse the module text
   return parsePhase1(code, '<input>')
     // On errors, we'll produce the computational context up to this point
@@ -125,15 +126,20 @@ export function
       // since the type checker and effects checker are incomplete,
       // collect the errors, but do not stop immediately on error
       const [analysisErrors, result] = analyzer.getResult()
-      // Compile all modules.
-      // Note that the variables from the last module are used.
+      // Compile all modules except the main one
       const visitor = new CompilerVisitor(result.types)
       modules.forEach(module => {
-        visitor.switchModule(module.id, table.get(module.name)!, treeFromModule(module))
-        module.defs.forEach(def => walkDefinition(visitor, def))
+        if (module.name !== mainName) {
+          visitor.switchModule(module.id, table.get(module.name)!, treeFromModule(module))
+          module.defs.forEach(def => walkDefinition(visitor, def))
+        }
       })
-      // CompilerVisitor keeps the variables of the last module only.
-      // TODO: specify the module name.
+      // comple the main module the last, as its variables are kept
+      const main = modules.find(m => m.name === mainName)
+      if (main) {
+        visitor.switchModule(main.id, table.get(main.name)!, treeFromModule(main))
+        main.defs.forEach(def => walkDefinition(visitor, def))
+      }
       const errorLocator = mkErrorMessage(sourceMap)
       return right({
         lookupTable: table,

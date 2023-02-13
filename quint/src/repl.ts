@@ -511,7 +511,7 @@ ${newInput}
     const [moduleText, lineOffset] =
       prepareParserInput(`  action __input =\n${newInput}`)
     // compile the expression or definition and evaluate it
-    const context = compile(moduleText)
+    const context = compile(moduleText, '__repl__')
     if (context.syntaxErrors.length > 0 ||
         context.compileErrors.length > 0 || context.analysisErrors.length > 0) {
       printErrors(moduleText, context, lineOffset)
@@ -562,7 +562,7 @@ ${newInput}
     // embed expression text into a module at the top level
     const [moduleText, lineOffset] = prepareParserInput(newInput)
     // compile the module and add it to history if everything worked
-    const context = compile(moduleText)
+    const context = compile(moduleText, '__repl__')
     if (context.values.size === 0 ||
         context.compileErrors.length > 0 || context.syntaxErrors.length > 0) {
       printErrors(moduleText, context, lineOffset)

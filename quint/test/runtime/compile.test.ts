@@ -12,7 +12,7 @@ import { dedent } from '../textUtils'
 // compare the result. This is the easiest path to test the results.
 function assertResultAsString(input: string, expected: string | undefined) {
   const moduleText = `module __runtime { val __expr = ${input} }`
-  const context = compile(moduleText)
+  const context = compile(moduleText, '__runtime')
   contextLookup(context, '__runtime', '__expr', 'callable')
     .mapLeft(msg => assert(false, msg))
     .mapRight(value => {
@@ -30,7 +30,7 @@ function assertResultAsString(input: string, expected: string | undefined) {
 // Compile an input and evaluate a callback in the context
 function evalInContext<T>(input: string, callable: (ctx: CompilationContext) => Either<string, T>) {
   const moduleText = `module __runtime { ${input} }`
-  const context = compile(moduleText)
+  const context = compile(moduleText, '__runtime')
   return callable(context)
 }
 
@@ -45,8 +45,9 @@ function assertDef(kind: ComputableKind, name: string, input: string) {
   res.mapLeft(m => assert.fail(m))
 }
 
-function evalVarAfterRun
-(runName: string, varName: string, input: string): Either<string, string> {
+function evalVarAfterRun(runName: string,
+                         varName: string,
+                         input: string): Either<string, string> {
   // use a combination of Maybe and Either.
   // Recall that left(...) is used for errors,
   // whereas right(...) is used for non-errors in sweet monads.
