@@ -194,8 +194,9 @@ echo ".load ../examples/language-features/counters.qnt counters" \
 echo ".save tmp-counters.qnt" \
   | quint -r ../examples/language-features/counters.qnt::counters 2>&1 \
   | tail -n +3
+# do not auto-import counters, as it is imported already
 echo "Init" \
-  | quint -r tmp-counters.qnt::counters 2>&1 \
+  | quint -r tmp-counters.qnt 2>&1 \
   | tail -n +3
 rm tmp-counters.qnt
 ```
@@ -206,8 +207,8 @@ true
 
 >>> Session saved to: tmp-counters.qnt
 >>> >>> 
+true
 >>> true
-
->>> >>> 
+>>> 
 ```
 

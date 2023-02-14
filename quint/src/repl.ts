@@ -252,20 +252,19 @@ export function quintRepl(input: Readable,
 }
 
 // private definitions
-const replDefs = '//-- repl-defs'
-const replExprs = '//-- repl-expressions'
+const replBegin = 'module __repl__ {'
+const replEnd = '} //-- __repl__'
 
 function saveToFile(out: writer, state: ReplState, filename: string) {
   // 1. Write the previously loaded modules.
   // 2. Write the definitions in the special module called __repl__.
   // 3. Wrap expressions into special comments.
   try {
-    const text = `${state.moduleHist}\n` +
-      `${replDefs}
-module __repl__ {
+    const text =
+`${state.moduleHist}
+${replBegin}
 ${state.defsHist}
-}
-${replExprs}\n` +
+${replEnd}\n` +
       state.exprHist.map(s => `/*! ${s} !*/\n`).join('\n')
     writeFileSync(filename, text)
     out(`Session saved to: ${filename}`)
@@ -278,15 +277,15 @@ function loadFromFile(out: writer, state: ReplState, filename: string): boolean 
   try {
     const data = readFileSync(filename, 'utf8')
     const newState = { ...state }
-    const modulesAndRepl = data.split(new RegExp(replDefs))
+    const modulesAndRepl = data.split(replBegin)
     // whether an error occurred at some step
     let isError = false
     newState.moduleHist = modulesAndRepl[0]
     if (modulesAndRepl.length > 1) {
       // found a REPL session
+      const defsAndExprs = modulesAndRepl[1].split(replEnd)
 
-      const defsAndExprs = modulesAndRepl[1].split(new RegExp(replExprs))
-
+      // save the definition history
       newState.defsHist = defsAndExprs[0]
       if (defsAndExprs.length > 1) {
         // unwrap the expressions from the specially crafted comments
@@ -490,7 +489,6 @@ ${textToAdd}
     const offset = -countLines(text) + countLines(newInput) + 2
     return [text, offset]
   }
-
 
   const probeResult = probeParse(newInput, '<input>')
   if (probeResult.kind === 'error') {
