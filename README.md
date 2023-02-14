@@ -10,7 +10,7 @@ distributed systems and blockchain protocols. It combines the robust theoretical
 basis of the [Temporal Logic of Actions][TLA] (TLA) with state-of-the-art static
 analysis and development tooling.
 
-This is how a typical Quint code looks:
+This is how typical Quint code looks:
 
 ```scala
   // `validateBalance` should only be called upon genesis state.
@@ -21,7 +21,7 @@ This is how a typical Quint code looks:
   }
 ```
 
-If you would to see the same code in TLA<sup>+</sup>, here is how it looks:
+If you would like to see the same code in TLA<sup>+</sup>, here is how it looks:
 
 ```tla
 \* `validateBalance` should only be called upon genesis state.
