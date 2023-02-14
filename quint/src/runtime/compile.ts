@@ -94,6 +94,7 @@ export function
 
   const value = ctx.values.get(kindName(kind, defs[0].reference!))
   if (!value) {
+    console.log(`key = ${kindName(kind, defs[0].reference!)}`)
     return left(`No value for definition ${moduleName}::${defName}`)
   } else {
     return right(value)
@@ -126,20 +127,22 @@ export function
       // since the type checker and effects checker are incomplete,
       // collect the errors, but do not stop immediately on error
       const [analysisErrors, result] = analyzer.getResult()
-      // Compile all modules except the main one
-      const visitor = new CompilerVisitor(result.types)
-      modules.forEach(module => {
-        if (module.name !== mainName) {
-          visitor.switchModule(module.id, table.get(module.name)!, treeFromModule(module))
-          module.defs.forEach(def => walkDefinition(visitor, def))
-        }
-      })
-      // comple the main module the last, as its variables are kept
+      // Push back the main module to the end
       const main = modules.find(m => m.name === mainName)
-      if (main) {
-        visitor.switchModule(main.id, table.get(main.name)!, treeFromModule(main))
-        main.defs.forEach(def => walkDefinition(visitor, def))
-      }
+      // when the main module is not found, we will report an error
+      const mainNotFound =
+        main ? [] : [{
+          explanation: `Main module ${mainName} not found`,
+          refs: [],
+        }]
+      const reorderedModules =
+        modules.filter(m => m.name !== mainName).concat(main ? [main] : [])
+      // Compile all modules
+      const visitor = new CompilerVisitor(result.types)
+      reorderedModules.forEach(module => {
+        visitor.switchModule(module.id, table.get(module.name)!, treeFromModule(module))
+        module.defs.forEach(def => walkDefinition(visitor, def))
+      })
       const errorLocator = mkErrorMessage(sourceMap)
       return right({
         lookupTable: table,
@@ -148,7 +151,7 @@ export function
         shadowVars: visitor.getShadowVars(),
         syntaxErrors: [],
         analysisErrors: Array.from(analysisErrors, errorLocator),
-        compileErrors: visitor.getCompileErrors(),
+        compileErrors: visitor.getCompileErrors().concat(mainNotFound),
         runtimeErrors: visitor.getRuntimeErrors(),
         sourceMap: sourceMap,
       })

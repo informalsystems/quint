@@ -187,3 +187,27 @@ echo ".load ../examples/language-features/counters.qnt counters" \
 >>> >>> 
 ```
 
+### Repl saves a file with .save and loads it back
+
+<!-- !test in repl saves a file with .save and loads it back -->
+```
+echo ".save tmp-counters.qnt" \
+  | quint -r ../examples/language-features/counters.qnt::counters 2>&1 \
+  | tail -n +3
+echo "Init" \
+  | quint -r tmp-counters.qnt::counters 2>&1 \
+  | tail -n +3
+rm tmp-counters.qnt
+```
+
+<!-- !test out repl saves a file with .save and loads it back -->
+```
+true
+
+>>> Session saved to: tmp-counters.qnt
+>>> >>> 
+>>> true
+
+>>> >>> 
+```
+

@@ -252,9 +252,8 @@ export function quintRepl(input: Readable,
 }
 
 // private definitions
-const replDefsBegin = 'repl-defs-begin'
-const replDefsEnd = 'repl-defs-end'
-const replExprs = 'repl-expressions'
+const replDefs = '//-- repl-defs'
+const replExprs = '//-- repl-expressions'
 
 function saveToFile(out: writer, state: ReplState, filename: string) {
   // 1. Write the previously loaded modules.
@@ -262,10 +261,11 @@ function saveToFile(out: writer, state: ReplState, filename: string) {
   // 3. Wrap expressions into special comments.
   try {
     const text = `${state.moduleHist}\n` +
-      `module __repl__ /*! ${replDefsBegin} !*/ {\n` +
-      `${state.defsHist}\n` +
-      `\n} /*! ${replDefsEnd} !*/\n` +
-      `/*! ${replExprs} !*/\n` +
+      `${replDefs}
+module __repl__ {
+${state.defsHist}
+}
+${replExprs}\n` +
       state.exprHist.map(s => `/*! ${s} !*/\n`).join('\n')
     writeFileSync(filename, text)
     out(`Session saved to: ${filename}`)
@@ -278,29 +278,20 @@ function loadFromFile(out: writer, state: ReplState, filename: string): boolean 
   try {
     const data = readFileSync(filename, 'utf8')
     const newState = { ...state }
-    const replMatch =
-      new RegExp(`(.*)^.*?/*! ${replDefsBegin} !*/.*?$\\n(.*)`, 'gsm').exec(data)
+    const modulesAndRepl = data.split(new RegExp(replDefs))
     // whether an error occurred at some step
     let isError = false
-    if (replMatch === null) {
-      // no REPL session, just one or several modules
-      newState.moduleHist = data
-    } else {
+    newState.moduleHist = modulesAndRepl[0]
+    if (modulesAndRepl.length > 1) {
       // found a REPL session
-      newState.moduleHist = replMatch[1]
-      const defsAndExprs = replMatch[2]
-      const exprMatch =
-        new RegExp(`(.*)^.*?/*! ${replExprs} !*/.*?$\\n(.*)`, 'gsm')
-          .exec(defsAndExprs)
 
-      if (exprMatch === null) {
-        // this should not happen but let's handle this case
-        newState.defsHist = defsAndExprs
-      } else {
-        newState.defsHist = exprMatch[1]
+      const defsAndExprs = modulesAndRepl[1].split(new RegExp(replExprs))
+
+      newState.defsHist = defsAndExprs[0]
+      if (defsAndExprs.length > 1) {
         // unwrap the expressions from the specially crafted comments
         const exprs =
-          (exprMatch[2] ?? '').matchAll(/\/\*! (.*?) !\*\//gsm) ?? []
+          (defsAndExprs[1] ?? '').matchAll(/\/\*! (.*?) !\*\//gsm) ?? []
         // and replay them one by one
         // TODO: every call to tryEval makes a full cycle
         // from the parser to the compiler. Make this incremental!
@@ -313,6 +304,7 @@ function loadFromFile(out: writer, state: ReplState, filename: string): boolean 
         }
       }
     }
+
     if (!isError && newState.exprHist.length === 0) {
       // nothing was replayed, evaluate 'true', to trigger compilation
       isError = !tryEval(out, newState, 'true')
@@ -488,14 +480,14 @@ function tryEval(out: writer, state: ReplState, newInput: string): boolean {
   // Compose the input to the parser.
   // TODO: REPL should work incrementally:
   // https://github.com/informalsystems/quint/issues/618
-  function prepareParserInput(newInput: string): [string, number] {
+  function prepareParserInput(textToAdd: string): [string, number] {
     const text = `${state.moduleHist}
 module __repl__ { ${simulatorBuiltins}
 ${state.defsHist}
-${newInput}
+${textToAdd}
 }`
     // when #618 is implemented, we should stop counting lines in text!
-    const offset = -countLines(text) + countLines(newInput) + 1
+    const offset = -countLines(text) + countLines(newInput) + 2
     return [text, offset]
   }
 
