@@ -66,21 +66,25 @@ const testCmd = {
   desc: 'Run tests against a Quint specification',
   builder: (yargs: any) =>
     yargs
+      .option('main', {
+        desc: 'name of the main module (by default, computed from filename)',
+        type: 'string',
+      })
       .option('out', {
         desc: 'output file',
         type: 'string',
       })
       .option('seed', {
         desc: 'random seed to use for non-deterministic choice',
-        type: 'number',
+        type: 'string',
       })
       .option('timeout', {
         desc: 'timeout in seconds',
         type: 'number',
       })
-      .option('tests', {
-        desc: 'names of tests to run',
-        type: 'array',
+      .option('match', {
+        desc: 'a string or regex that selects names to use as tests',
+        type: 'string',
       }),
   handler: (args: any) =>
     outputResult(load(args).chain(parse).chain(typecheck).chain(runTests)),

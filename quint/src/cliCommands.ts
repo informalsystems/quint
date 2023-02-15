@@ -9,8 +9,9 @@
 
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import JSONbig from 'json-bigint'
-import { resolve } from 'path'
+import { basename, resolve } from 'path'
 import { cwd } from 'process'
+import seedrandom = require("seedrandom")
 
 import { ErrorMessage, Loc, compactSourceMap, parsePhase1, parsePhase2 } from './quintParserFrontend'
 
@@ -26,6 +27,7 @@ import { formatError } from './errorReporter'
 import { DocumentationEntry, produceDocs, toMarkdown } from './docs'
 import { QuintAnalyzer } from './quintAnalyzer'
 import { QuintError, quintErrorToString } from './quintError'
+import { compile, contextLookup } from './runtime/compile'
 
 export type stage =
   'loading' | 'parsing' | 'typechecking' | 'testing' | 'documentation'
@@ -225,11 +227,54 @@ export function runRepl(_argv: any) {
  *
  * @param typedStage the procedure stage produced by `typecheck`
  */
-export function runTests(typedStage: TypecheckedStage):
+export function runTests(prev: TypecheckedStage):
     CLIProcedure<TestedStage> {
-  const testing = { ...typedStage, stage: 'testing' as stage }
-  // TODO: implement later, for now it is just a stub
-  return right({ ...testing, passed: [], failed: [], ignored: [] })
+  const testing = { ...prev, stage: 'testing' as stage }
+  const mainName =
+    prev.args.main
+      ? prev.args.main
+      : basename(prev.args.input, '.qnt')
+  const ctx =
+    compile(prev.modules, prev.sourceMap, prev.table, prev.types, mainName)
+  const main = prev.modules.find(m => m.name === mainName)
+  if (!main) {
+    return left({
+      msg: `Module ${mainName} not found`,
+      stage: { ...prev, errors: [] },
+    })
+  } else {
+    if (prev.args.seed !== undefined) {
+      seedrandom(prev.args.seed)
+    }
+    const passed: string[] = []
+    const failed: string[] = []
+    const ignored: string[] = []
+    for (const def of main.defs) {
+      if (def.kind === 'def' && isMatchingTest(prev.args.match, def.name)) {
+        const name = def.name
+        if (def.qualifier !== 'run') {
+          ignored.push(name)
+          continue
+        }
+        contextLookup(ctx, mainName, name, 'callable')
+          .mapRight(comp =>
+            // TODO: run tests multiple times?
+            comp
+            .eval()
+            .map(value => {
+              const ex = value.toQuintEx()
+              if (ex.kind === 'bool') {
+                (ex.value ? passed : ignored).push(name)
+              } else {
+                ignored.push(name)
+              }
+            })
+          )
+          .mapLeft(_ => ignored.push(name))
+      }
+    }
+    return right({ ...testing, passed, failed, ignored })
+  }
 }
 
 /**
@@ -321,4 +366,21 @@ function writeToJson(filename: string, json: any) {
 function writeToFile(filename: string, text: string) {
   const path = resolve(cwd(), filename)
   writeFileSync(path, text)
+}
+
+/**
+ * Does a definition name match the expected test criteria.
+ *
+ * @param tests an optional array of test names
+ * @param name the name of a definition to match
+ * @returns whether the name matches the tests, if tests are not undefined,
+ *          or name ends with 'Test'
+ *
+ */
+function isMatchingTest(match: string | undefined, name: string) {
+  if (match) {
+    return new RegExp(match).exec(name) !== null
+  } else {
+    return name.endsWith('Test')
+  }
 }

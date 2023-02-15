@@ -14,7 +14,7 @@ import {
   ErrorMessage, Loc, parsePhase1, parsePhase2
 } from '../quintParserFrontend'
 import { Computable, ComputableKind, kindName } from './runtime'
-import { QuintModule, IrErrorMessage } from '../quintIr'
+import { IrErrorMessage, QuintModule } from '../quintIr'
 import { CompilerVisitor } from './impl/compilerImpl'
 import { walkDefinition } from '../IRVisitor'
 import { treeFromModule } from '../scoping'
@@ -100,7 +100,6 @@ export function
     return right(value)
   }
 }
-
 
 /**
  * Compile Quint modules to JS runtime objects from the parsed and type-checked
