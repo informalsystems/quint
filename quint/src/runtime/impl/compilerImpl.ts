@@ -142,7 +142,7 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   exitOpDef(opdef: ir.QuintOpDef) {
-    // Either a runtime value, or a def, action, etc.).
+    // Either a runtime value, or a def, action, etc.
     // All of them are compiled to callables, which may have zero parameters.
     const value = this.compStack.pop()
     if (value === undefined) {
