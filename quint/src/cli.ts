@@ -12,7 +12,9 @@
 
 import yargs from 'yargs/yargs'
 
-import { docs, load, outputResult, parse, runRepl, typecheck } from './cliCommands'
+import {
+  docs, load, outputResult, parse, runRepl, runTests, typecheck
+} from './cliCommands'
 
 // construct parsing commands with yargs
 const parseCmd = {
@@ -58,6 +60,32 @@ const replCmd = {
   handler: runRepl,
 }
 
+// construct test commands with yargs
+const testCmd = {
+  command: 'test <input>',
+  desc: 'Run tests against a Quint specification',
+  builder: (yargs: any) =>
+    yargs
+      .option('out', {
+        desc: 'output file',
+        type: 'string',
+      })
+      .option('seed', {
+        desc: 'random seed to use for non-deterministic choice',
+        type: 'number',
+      })
+      .option('timeout', {
+        desc: 'timeout in seconds',
+        type: 'number',
+      })
+      .option('tests', {
+        desc: 'names of tests to run',
+        type: 'array',
+      }),
+  handler: (args: any) =>
+    outputResult(load(args).chain(parse).chain(typecheck).chain(runTests)),
+}
+
 // construct documenting commands with yargs
 const docsCmd = {
   command: 'docs <input>',
@@ -75,6 +103,7 @@ yargs(process.argv.slice(2))
   .command(parseCmd)
   .command(typecheckCmd)
   .command(replCmd)
+  .command(testCmd)
   .command(docsCmd)
   .demandCommand(1)
   .strict()

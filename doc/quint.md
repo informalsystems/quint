@@ -16,9 +16,9 @@ The main commands of `quint` are as follows:
  - [x] `repl` starts the REPL (Read-Eval-Print loop) for Quint
  - [x] `parse` parses a Quint specification and resolves names
  - [x] `typecheck` infers types in a Quint specification
- - [ ] `docs` produces documentation
+ - [x] `test` tests a Quint specification similar to property-based testing
  - [ ] `run` executes a Quint specification via random simulation
- - [ ] `test` tests a Quint specification similar to property-based testing
+ - [ ] `docs` produces documentation
  - [ ] `lint` checks a Quint specification for known deficiencies
  - [ ] `indent` indents a Quint specification
  - [ ] `to-apalache` translates a Quint specification to Apalache IR
@@ -116,7 +116,7 @@ the following is written:
 
    ```json
    {
-     "status": "typed",
+     "status": "typechecking",
      "module": <IR>,
      "types": { <typemap> }
      "effects": { <effectmap> }
@@ -212,12 +212,10 @@ of an output file.
 
    ```json
    {
-     "status": "tested",
-     "tests": {
-       "successful": [ <names of the successful tests> ],
-       "failed": [ <names of the failed tests> ],
-       "ignored": [ <names of the ignored tests> ],
-     }
+     "stage": "testing",
+     "passed": [ <names of the successful tests> ],
+     "failed": [ <names of the failed tests> ],
+     "ignored": [ <names of the ignored tests> ],
    }
    ```
 
@@ -226,8 +224,8 @@ of an output file.
 
    ```json
    {
-     "result": "error",
-     "messages": [ <errors and warnings> ]
+     "stage": "testing",
+     "errors": [ <errors and warnings> ]
    }
    ```
 

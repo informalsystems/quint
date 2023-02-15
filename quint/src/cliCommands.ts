@@ -27,7 +27,8 @@ import { DocumentationEntry, produceDocs, toMarkdown } from './docs'
 import { QuintAnalyzer } from './quintAnalyzer'
 import { QuintError, quintErrorToString } from './quintError'
 
-export type stage = 'loading' | 'parsing' | 'typechecking' | 'documentation'
+export type stage =
+  'loading' | 'parsing' | 'typechecking' | 'testing' | 'documentation'
 
 /** The data from a ProcedureStage that may be output to --out */
 interface OutputStage {
@@ -36,6 +37,10 @@ interface OutputStage {
   types?: Map<bigint, TypeScheme>,
   effects?: Map<bigint, Effect>,
   modes?: Map<bigint, OpQualifier>,
+  /* Test names output by the command 'test */
+  passed?: string[],
+  failed?: string[],
+  ignored?: string[],
   /* Docstrings by defintion name by module name */
   documentation?: Map<string, Map<string, DocumentationEntry>>,
   errors?: ErrorMessage[],
@@ -46,9 +51,19 @@ interface OutputStage {
 // Extract just the parts of a ProcedureStage that we use for the output
 // See https://stackoverflow.com/a/39333479/1187277
 function pickOutputStage(o: ProcedureStage): OutputStage {
-  const picker = ({ stage, warnings, modules, types, effects, errors, documentation }: ProcedureStage) => (
-    { stage, warnings, modules, types, effects, errors, documentation }
-  )
+  const picker = ({
+    stage, warnings, modules, types, effects, errors, documentation,
+    passed, failed, ignored,
+  }: ProcedureStage) => {
+    if (o.stage === 'testing') {
+      return { stage, errors, passed, failed, ignored }
+    } else {
+      return {
+        stage, warnings, modules, types, effects, errors,
+        passed, failed, ignored, documentation,
+      }
+    }
+  }
   return picker(o)
 }
 
@@ -72,6 +87,15 @@ interface TypecheckedStage extends ParsedStage {
   types: Map<bigint, TypeScheme>,
   effects: Map<bigint, Effect>,
   modes: Map<bigint, OpQualifier>,
+}
+
+interface TestedStage extends LoadedStage {
+  // the names of the passed tests
+  passed: string[],
+  // the names of the failed tests
+  failed: string[],
+  // the names of the ignored tests
+  ignored: string[],
 }
 
 interface DocumentationStage extends LoadedStage {
@@ -194,6 +218,18 @@ export function runRepl(_argv: any) {
     importModule: moduleName,
   }
   quintRepl(process.stdin, process.stdout, options)
+}
+
+/**
+ * Run the tests.
+ *
+ * @param typedStage the procedure stage produced by `typecheck`
+ */
+export function runTests(typedStage: TypecheckedStage):
+    CLIProcedure<TestedStage> {
+  const testing = { ...typedStage, stage: 'testing' as stage }
+  // TODO: implement later, for now it is just a stub
+  return right({ ...testing, passed: [], failed: [], ignored: [] })
 }
 
 /**
