@@ -78,10 +78,13 @@ const testCmd = {
         desc: 'random seed to use for non-deterministic choice',
         type: 'string',
       })
-      .option('timeout', {
-        desc: 'timeout in seconds',
-        type: 'number',
-      })
+// Timeouts are postponed for:
+// https://github.com/informalsystems/quint/issues/633
+//
+//      .option('timeout', {
+//        desc: 'timeout in seconds',
+//        type: 'number',
+//      })
       .option('match', {
         desc: 'a string or regex that selects names to use as tests',
         type: 'string',

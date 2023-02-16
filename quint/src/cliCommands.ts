@@ -14,7 +14,9 @@ import { cwd } from 'process'
 import seedrandom = require("seedrandom")
 import chalk from 'chalk'
 
-import { ErrorMessage, Loc, compactSourceMap, parsePhase1, parsePhase2 } from './quintParserFrontend'
+import {
+  ErrorMessage, Loc, compactSourceMap, parsePhase1, parsePhase2
+} from './quintParserFrontend'
 
 import { Either, left, right } from '@sweet-monads/either'
 import { Effect } from './effects/base'
@@ -249,7 +251,7 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
     let passed: string[] = []
     let failed: string[] = []
     let ignored: string[] = []
-    let errors: [string, IrErrorMessage][] = []
+    let irErrors: [string, IrErrorMessage][] = []
 
     if (prev.args.seed !== undefined) {
       seedrandom(prev.args.seed)
@@ -272,9 +274,9 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
           out(`    ${chalk.green('ok ')} ${res.name}`)
         }
         if (res.status === 'failed') {
-          const errNo = errors.length + 1
+          const errNo = irErrors.length + 1
           out('    ' + chalk.red(`${errNo}) `)  + res.name)
-          res.errors.forEach(e => errors.push([res.name, e]))
+          res.errors.forEach(e => irErrors.push([res.name, e]))
         }
       })
 
@@ -296,7 +298,7 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
 
       // output errors, if there are any
       if (isConsole) {
-        errors.forEach(([name, err], index) => {
+        irErrors.forEach(([name, err], index) => {
           out(`  ${index + 1}) ${name}`)
           out(chalk.red(`     ${err.explanation}`))
         })
@@ -304,7 +306,14 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
       }
     } // else: we have handled the case of module not found already
 
-    return right({ ...testing, passed, failed, ignored })
+    const errors = irErrors.map(([_, e]) => {
+      return {
+        explanation: e.explanation,
+        locs: e.refs.map(id => prev.sourceMap.get(id)!),
+      }
+    })
+
+    return right({ ...testing, passed, failed, ignored, errors })
   }
 }
 
