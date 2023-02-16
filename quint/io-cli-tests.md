@@ -235,3 +235,23 @@ true
 >>> 
 ```
 
+### Tests works as expected
+
+<!-- !test in test runs -->
+```
+quint test --main counters --seed 1 ../examples/language-features/counters.qnt 2>&1 | sed 's/([0-9]*ms)/(duration)/g'
+```
+
+<!-- !test out test runs -->
+```
+
+  counters
+    ok  passingTest
+    1) failingTest
+
+  1 passing (duration)
+  1 failed
+  1 ignored
+
+```
+
