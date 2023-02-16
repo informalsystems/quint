@@ -116,7 +116,7 @@ the following is written:
 
    ```json
    {
-     "status": "typechecking",
+     "stage": "typechecking",
      "module": <IR>,
      "types": { <typemap> }
      "effects": { <effectmap> }
@@ -143,7 +143,8 @@ the following is written:
 *This command is not implemented yet.*
 
 ```sh
-quint run [--seed=<seed>] [--timeout=sec] [--out=<out>.json] <spec>.qnt <name>
+quint run [--seed=<seed>] [--timeout=sec] [--out=<out>.json] [--main=<name>] \
+  [--match=regex] <spec>.qnt <name>
 ```
 
 This command produces a random execution of a Quint specification,
@@ -154,9 +155,13 @@ the run structure that is given in the definition called `<name>`.
 for the random number generator. This is useful for reproducibility of
 executions.
 
-**Option `--timeout`**. The optional parameter `--timeout` specifies the
-maximum time (in seconds) to spend on interpretation. Once the time limit has
-been reached, the execution stops and outputs whatever it has computed.
+**Option `--main`**. The name of the main module, which will be run as a
+state machine. By default, this name is extracted from the filename.
+
+**Option `--timeout`**. The optional parameter `--timeout`
+specifies the maximum time (in seconds) to spend on interpretation. Once the
+time limit has been reached, the execution stops and outputs whatever it has
+computed.
 
 **Option `--out`**. The optional parameter `--out` specifies the name
 of an output file.
@@ -181,8 +186,8 @@ of an output file.
 *This command is not implemented yet.*
 
 ```sh
-quint test [--seed=<seed>] \
-  [--timeout=sec] [--tests=<test1>,...,<testN>] [--out=<out>.json] <spec>.qnt
+quint test [--seed=<seed>] [--timeout=sec] [--main=<name>] \
+  [--match=regex] [--out=<out>.json] <spec>.qnt
 ```
 
 This command receives a Quint specification whose name is given with
@@ -194,14 +199,16 @@ the definitions whose names start with `Test`.
 for the random number generator. This is useful for reproducibility of
 executions.
 
-**Option `--timeout`**. The optional parameter `--timeout` specifies the
-maximum time (in seconds) to spend on interpretation. Once the time limit has
-been reached, the execution stops and outputs whatever it has computed.
+**Option `--main`**. The name of the main module, which will be run as a
+state machine. By default, this name is extracted from the filename.
 
-**Option `--tests`**. The optional parameter `--tests` specifies a list of
-tests to be run. Note that the properties are checked against the sampled
-executions.  *It is not a complete verification of the specification
-properties.*
+**Option `--match`**. A regular expression that filters definitions to be
+used as tests. The default value is `.*Test`.
+
+**(Not implemented) Option `--timeout`**. The optional parameter `--timeout`
+specifies the maximum time (in seconds) to spend on interpretation. Once the
+time limit has been reached, the execution stops and outputs whatever it has
+computed.
 
 **Option `--out`**. The optional parameter `--out` specifies the name
 of an output file.
@@ -216,6 +223,7 @@ of an output file.
      "passed": [ <names of the successful tests> ],
      "failed": [ <names of the failed tests> ],
      "ignored": [ <names of the ignored tests> ],
+     "errors": [ <errors and warnings> ]
    }
    ```
 
