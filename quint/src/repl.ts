@@ -14,8 +14,8 @@ import { readFileSync, writeFileSync } from 'fs'
 import lineColumn from 'line-column'
 import chalk from 'chalk'
 
-import { Maybe, just, none } from '@sweet-monads/maybe'
-import { Either, left, right } from '@sweet-monads/either'
+import { just } from '@sweet-monads/maybe'
+import { left, right } from '@sweet-monads/either'
 
 import { IrErrorMessage, QuintEx } from './quintIr'
 import {

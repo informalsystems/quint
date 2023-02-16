@@ -71,7 +71,7 @@ const testCmd = {
         type: 'string',
       })
       .option('out', {
-        desc: 'output file',
+        desc: 'output file (suppresses all console output)',
         type: 'string',
       })
       .option('seed', {

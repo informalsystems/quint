@@ -12,22 +12,22 @@ import JSONbig from 'json-bigint'
 import { basename, resolve } from 'path'
 import { cwd } from 'process'
 import seedrandom = require("seedrandom")
+import chalk from 'chalk'
 
 import { ErrorMessage, Loc, compactSourceMap, parsePhase1, parsePhase2 } from './quintParserFrontend'
-
 
 import { Either, left, right } from '@sweet-monads/either'
 import { Effect } from './effects/base'
 import { LookupTableByModule } from './lookupTable'
 import { ReplOptions, quintRepl } from './repl'
-import { OpQualifier, QuintModule } from './quintIr'
+import { OpQualifier, QuintModule, IrErrorMessage } from './quintIr'
 import { TypeScheme } from './types/base'
 import lineColumn from 'line-column'
 import { formatError } from './errorReporter'
 import { DocumentationEntry, produceDocs, toMarkdown } from './docs'
 import { QuintAnalyzer } from './quintAnalyzer'
 import { QuintError, quintErrorToString } from './quintError'
-import { compile, contextLookup } from './runtime/compile'
+import { compileAndTest } from './runtime/testing'
 
 export type stage =
   'loading' | 'parsing' | 'typechecking' | 'testing' | 'documentation'
@@ -223,19 +223,22 @@ export function runRepl(_argv: any) {
 }
 
 /**
- * Run the tests.
+ * Run the tests. We imitate the output of mocha.
  *
  * @param typedStage the procedure stage produced by `typecheck`
  */
-export function runTests(prev: TypecheckedStage):
-    CLIProcedure<TestedStage> {
+export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
+  // output to the console, unless the json output is enabled
+  const isConsole = !prev.args.out
+  function out(text: string): void {
+    if (isConsole) {
+      console.log(text)
+    }
+  }
+
   const testing = { ...prev, stage: 'testing' as stage }
-  const mainName =
-    prev.args.main
-      ? prev.args.main
-      : basename(prev.args.input, '.qnt')
-  const ctx =
-    compile(prev.modules, prev.sourceMap, prev.table, prev.types, mainName)
+  const mainArg = prev.args.main
+  const mainName = mainArg ? mainArg : basename(prev.args.input, '.qnt')
   const main = prev.modules.find(m => m.name === mainName)
   if (!main) {
     return left({
@@ -243,36 +246,64 @@ export function runTests(prev: TypecheckedStage):
       stage: { ...prev, errors: [] },
     })
   } else {
+    let passed: string[] = []
+    let failed: string[] = []
+    let ignored: string[] = []
+    let errors: [string, IrErrorMessage][] = []
+
     if (prev.args.seed !== undefined) {
       seedrandom(prev.args.seed)
     }
-    const passed: string[] = []
-    const failed: string[] = []
-    const ignored: string[] = []
-    for (const def of main.defs) {
-      if (def.kind === 'def' && isMatchingTest(prev.args.match, def.name)) {
-        const name = def.name
-        if (def.qualifier !== 'run') {
-          ignored.push(name)
-          continue
+    const startMs = Date.now()
+    out(`\n  ${mainName}`)
+
+    const matchFun =
+      (n: string): boolean => isMatchingTest(prev.args.match, n)
+
+    const testOut =
+      compileAndTest(prev.modules, main, prev.sourceMap,
+                     prev.table, prev.types, matchFun)
+    if (testOut.isRight()) {
+      const elapsedMs = Date.now() - startMs
+      const results = testOut.unwrap()
+      // output the status for every test
+      results.forEach(res => {
+        if (res.status === 'passed') {
+          out(`    ${chalk.green('ok ')} ${res.name}`)
         }
-        contextLookup(ctx, mainName, name, 'callable')
-          .mapRight(comp =>
-            // TODO: run tests multiple times?
-            comp
-            .eval()
-            .map(value => {
-              const ex = value.toQuintEx()
-              if (ex.kind === 'bool') {
-                (ex.value ? passed : ignored).push(name)
-              } else {
-                ignored.push(name)
-              }
-            })
-          )
-          .mapLeft(_ => ignored.push(name))
+        if (res.status === 'failed') {
+          const errNo = errors.length + 1
+          out('    ' + chalk.red(`${errNo}) `)  + res.name)
+          res.errors.forEach(e => errors.push([res.name, e]))
+        }
+      })
+
+      // output the statistics banner
+      const passed = results.filter(r => r.status === 'passed').map(r => r.name)
+      const failed = results.filter(r => r.status === 'failed').map(r => r.name)
+      const ignored = results.filter(r => r.status === 'ignored').map(r => r.name)
+      out('')
+      if (passed.length > 0) {
+        out(chalk.green(`  ${passed.length} passing`) +
+                    chalk.gray(` (${elapsedMs}ms)`))
       }
-    }
+      if (failed.length > 0) {
+        out(chalk.red(`  ${failed.length} failed`))
+      }
+      if (ignored.length > 0) {
+        out(chalk.gray(`  ${ignored.length} ignored`))
+      }
+
+      // output errors, if there are any
+      if (isConsole) {
+        errors.forEach(([name, err], index) => {
+          out(`  ${index + 1}) ${name}`)
+          out(chalk.red(`     ${err.explanation}`))
+        })
+        out('')
+      }
+    } // else: we have handled the case of module not found already
+
     return right({ ...testing, passed, failed, ignored })
   }
 }
