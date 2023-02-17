@@ -122,16 +122,14 @@ module prisoners {
     // Note that Quint would not do anything about this property at the moment.
     temporal liveness = eventually(done)
 
-    /*
     // A state invariant that lets one prove safety. 
     val countInv = {
         val oneIfUp = if (switchAUp) 1 else 0
         val totalSwitched = {
-            nonCounters.fold(0, (sum, p) => (sum + totalSwitched.get(p)))
+            nonCounters.fold(0, (sum, p) => (sum + timesSwitched.get(p)))
         }
         count.in(Set(totalSwitched - oneIfUp, totalSwitched - oneIfUp + 1))
     }
-    */
 }
 
 // An instance of prisoners for the set of size 3
