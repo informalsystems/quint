@@ -1,4 +1,4 @@
-// -*- mode: scala; -*-
+// -*- mode: ocaml; -*-
 /**
  * The famous Prisoners puzzle. See a detailed description in:
  *
