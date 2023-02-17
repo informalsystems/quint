@@ -251,7 +251,7 @@ quint test --main counters --seed 1 \
 ```
 
   counters
-    ok  passingTest
+    ok passingTest
     1) failingTest
 
   1 passing (duration)
