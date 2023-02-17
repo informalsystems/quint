@@ -64,28 +64,27 @@ compileAndTest(modules: QuintModule[],
     return contextLookup(ctx, main.name, name, 'callable')
       .map(comp => {
         const result = comp.eval()
-        if (!result.isNone()) {
-          const ex = result.value.toQuintEx()
-          if (ex.kind !== 'bool') {
-            return { name, status: 'ignored', errors: [] }
-          } else {
-            if (ex.value) {
-              return { name, status: 'passed', errors: [] }
-            } else {
-              const e = {
-                explanation: `${name} returns false`,
-                refs: [def.id],
-              }
-              return { name, status: 'failed', errors: [e] }
-            }
-          }
-        } else {
+        if (result.isNone()) {
           // produce errors
           const errors = ctx.runtimeErrors
           // we do not want to see the same errors again
           ctx.runtimeErrors.length = 0
           return { name, status: 'failed', errors }
         }
+  
+        const ex = result.value.toQuintEx()
+        if (ex.kind !== 'bool') {
+          return { name, status: 'ignored', errors: [] }
+        }
+        if (ex.value) {
+          return { name, status: 'passed', errors: [] }
+        }
+  
+        const e = {
+          explanation: `${name} returns false`,
+          refs: [def.id],
+        }
+        return { name, status: 'failed', errors: [e] }
       })
   }))
 }
