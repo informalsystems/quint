@@ -271,7 +271,7 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
       // output the status for every test
       results.forEach(res => {
         if (res.status === 'passed') {
-          out(`    ${chalk.green('ok ')} ${res.name}`)
+          out('    ' + chalk.green('ok ') + res.name)
         }
         if (res.status === 'failed') {
           const errNo = namedErrors.length + 1
