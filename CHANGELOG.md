@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - command `test` to run unit tests (#634)
+- the [Prisoners puzzle](./examples/puzzles/prisoners) (#634)
 
 ### Changed
 
