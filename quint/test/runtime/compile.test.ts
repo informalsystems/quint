@@ -106,7 +106,7 @@ describe('compiling specs to runtime values', () => {
     })
 
     it('computes addition', () => {
-      assertResultAsString('2 + 3', '4')
+      assertResultAsString('2 + 3', '5')
     })
 
     it('computes subtraction', () => {
