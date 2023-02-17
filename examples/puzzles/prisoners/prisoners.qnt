@@ -4,6 +4,8 @@
  * https://github.com/tlaplus/Examples/blob/master/specifications/Prisoners/Prisoners.tla
  *
  * This specification is derived from the above TLA+ specification.
+ *
+ * A magic line for Github: -*- mode: scala; -*-
  */
 module prisoners {
     // The set of all prisoners
