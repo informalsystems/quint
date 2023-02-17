@@ -120,24 +120,27 @@ export function
           lookupTable: LookupTableByModule,
           types: Map<bigint, TypeScheme>,
           mainName: string): CompilationContext {
-  // Push back the main module to the end
+  // Push back the main module to the end:
+  // The compiler exposes the state variables of the last module only.
   const main = modules.find(m => m.name === mainName)
+  const visitor = new CompilerVisitor(types)
+  if (main) {
+    const reorderedModules =
+      modules.filter(m => m.name !== mainName).concat(main ? [main] : [])
+    // Compile all modules
+    reorderedModules.forEach(module => {
+      visitor.switchModule(module.id,
+                           lookupTable.get(module.name)!,
+                           treeFromModule(module))
+      module.defs.forEach(def => walkDefinition(visitor, def))
+    })
+  }
   // when the main module is not found, we will report an error
-  const mainNotFound =
+  const mainNotFoundError =
     main ? [] : [{
       explanation: `Main module ${mainName} not found`,
       refs: [],
     }]
-  const reorderedModules =
-    modules.filter(m => m.name !== mainName).concat(main ? [main] : [])
-  // Compile all modules
-  const visitor = new CompilerVisitor(types)
-  reorderedModules.forEach(module => {
-    visitor.switchModule(module.id,
-                         lookupTable.get(module.name)!,
-                         treeFromModule(module))
-    module.defs.forEach(def => walkDefinition(visitor, def))
-  })
   return {
     lookupTable: lookupTable,
     values: visitor.getContext(),
@@ -145,7 +148,7 @@ export function
     shadowVars: visitor.getShadowVars(),
     syntaxErrors: [],
     analysisErrors: [],
-    compileErrors: visitor.getCompileErrors().concat(mainNotFound),
+    compileErrors: visitor.getCompileErrors().concat(mainNotFoundError),
     runtimeErrors: visitor.getRuntimeErrors(),
     sourceMap: sourceMap,
   }
