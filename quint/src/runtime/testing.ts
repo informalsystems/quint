@@ -65,10 +65,8 @@ compileAndTest(modules: QuintModule[],
       .map(comp => {
         const result = comp.eval()
         if (result.isNone()) {
-          // produce errors
-          const errors = ctx.runtimeErrors
-          // we do not want to see the same errors again
-          ctx.runtimeErrors.length = 0
+          // copy the runtime errors and clean them from the context
+          const errors = ctx.runtimeErrors.splice(0)
           return { name, status: 'failed', errors }
         }
   

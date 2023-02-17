@@ -251,7 +251,7 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
     let passed: string[] = []
     let failed: string[] = []
     let ignored: string[] = []
-    let irErrors: [string, IrErrorMessage][] = []
+    let namedErrors: [string, ErrorMessage][] = []
 
     if (prev.args.seed !== undefined) {
       seedrandom(prev.args.seed)
@@ -274,9 +274,16 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
           out(`    ${chalk.green('ok ')} ${res.name}`)
         }
         if (res.status === 'failed') {
-          const errNo = irErrors.length + 1
+          const errNo = namedErrors.length + 1
           out('    ' + chalk.red(`${errNo}) `)  + res.name)
-          res.errors.forEach(e => irErrors.push([res.name, e]))
+
+          res.errors.forEach(e => {
+            const err = {
+              explanation: e.explanation,
+              locs: e.refs.map(id => prev.sourceMap.get(id)!),
+            }
+            namedErrors.push([res.name, err])
+          })
         }
       })
 
@@ -298,21 +305,20 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
 
       // output errors, if there are any
       if (isConsole) {
-        irErrors.forEach(([name, err], index) => {
+        const code = prev.sourceCode!
+        const finder = lineColumn(code)
+        namedErrors.forEach(([name, err], index) => {
+          const details = formatError(code, finder, err)
           out(`  ${index + 1}) ${name}`)
-          out(chalk.red(`     ${err.explanation}`))
+          details.split('\n').forEach(line => {
+            out(chalk.red('    ' + line))
+          })
         })
         out('')
       }
     } // else: we have handled the case of module not found already
 
-    const errors = irErrors.map(([_, e]) => {
-      return {
-        explanation: e.explanation,
-        locs: e.refs.map(id => prev.sourceMap.get(id)!),
-      }
-    })
-
+    const errors = namedErrors.map(([_, e]) => e)
     return right({ ...testing, passed, failed, ignored, errors })
   }
 }
