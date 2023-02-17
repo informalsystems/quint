@@ -1,4 +1,4 @@
-// -*- mode: ocaml; -*-
+// -*- mode: bsv; -*-
 /**
  * The famous Prisoners puzzle. See a detailed description in:
  *
