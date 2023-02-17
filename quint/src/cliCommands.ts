@@ -304,14 +304,22 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
       }
 
       // output errors, if there are any
-      if (isConsole) {
+      if (isConsole && namedErrors.length > 0) {
         const code = prev.sourceCode!
         const finder = lineColumn(code)
+        out('')
         namedErrors.forEach(([name, err], index) => {
           const details = formatError(code, finder, err)
-          out(`  ${index + 1}) ${name}`)
-          details.split('\n').forEach(line => {
-            out(chalk.red('    ' + line))
+          // output the header
+          out(`  ${index + 1}) ${name}:`)
+          const lines = details.split('\n')
+          // output the first line in red
+          if (lines.length > 0) {
+            out(chalk.red('      ' + lines[0]))
+          }
+          // and the rest in gray
+          lines.slice(1).forEach(line => {
+            out(chalk.gray('      ' + line))
           })
         })
         out('')
