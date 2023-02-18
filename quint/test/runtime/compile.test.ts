@@ -276,6 +276,13 @@ describe('compiling specs to runtime values', () => {
     })
   })
 
+  describe('compile constants', () => {
+    it('constant definitions', () => {
+      const input = 'const x: int'
+      assertDef('const', 'x', input)
+    })
+  })
+
   describe('compile over sets', () => {
     it('computes an interval', () => {
       const input = '2.to(5)'

@@ -12,7 +12,6 @@
 import { strict as assert } from 'assert'
 import { Maybe, just, merge, none } from '@sweet-monads/maybe'
 import { List, OrderedMap, Set } from 'immutable'
-import { range } from 'lodash'
 
 import { LookupTable, newTable, lookupValue } from '../../lookupTable'
 import { IRVisitor } from '../../IRVisitor'
@@ -24,7 +23,6 @@ import {
 } from '../runtime'
 
 import * as ir from '../../quintIr'
-import { QuintType } from '../../quintTypes'
 
 import { RuntimeValue, rv } from './runtimeValue'
 
@@ -155,6 +153,18 @@ export class CompilerVisitor implements IRVisitor {
     }
   }
 
+  exitConst(constDef: ir.QuintConst) {
+    // introduce a register for the constant, uninitialized
+    const register =
+      mkRegister('const', constDef.name, none(),
+        () => this.addRuntimeError(constDef.id,
+                                   `Constant ${constDef.name} is not set`))
+    this.vars.push(register)
+    // at the moment, we have to refer to variables both via id and name
+    this.context.set(kindName('const', constDef.name), register)
+    this.context.set(kindName('const', constDef.id), register)
+  }
+
   exitVar(vardef: ir.QuintVar) {
     // simply introduce two registers:
     //  one for the variable, and
@@ -195,7 +205,7 @@ export class CompilerVisitor implements IRVisitor {
     // The order is important, as defines the name priority.
     const comp =
       this.contextGet(name.name, ['shadow', 'arg'])
-        ?? this.contextLookup(name.name, name.id, ['var', 'callable'])
+        ?? this.contextLookup(name.name, name.id, ['const', 'var', 'callable'])
         // a backup case for Nat, Int, and Bool
         ?? this.contextGet(name.name, ['callable'])
     if (comp) {
@@ -879,16 +889,20 @@ export class CompilerVisitor implements IRVisitor {
         `Assignment '=' needs two arguments`)
       return
     }
-    const [register, rhs] = this.compStack.splice(-2)
-    const name = (register as Register).name
-    if (name === undefined) {
+    const [reg, rhs] = this.compStack.splice(-2)
+    const register = reg as Register
+    if (register.name === undefined
+        || (register.kind !== 'var' && register.kind !== 'const')) {
       this.addCompileError(sourceId,
-        `Assignment '=' applied to a non-variable`)
+        `Expected a variable or a constant in the left-hand side of assignment '='`)
       this.compStack.push(fail)
       return
     }
 
-    const nextvar = this.contextGet(name, ['nextvar']) as Register
+    const nextvar =
+      (register.kind === 'const')
+      ? register
+      : this.contextGet(register.name, ['nextvar']) as Register
     if (nextvar) {
       this.compStack.push(rhs)
       this.applyFun(sourceId, 1, (value) => {
@@ -897,7 +911,7 @@ export class CompilerVisitor implements IRVisitor {
       })
     } else {
       this.addCompileError(sourceId,
-        `Undefined next variable in ${name} = ...`)
+        `${register.name} is neither a state variable, nor a constant`)
       this.compStack.push(fail)
     }
   }
