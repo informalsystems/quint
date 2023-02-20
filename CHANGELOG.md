@@ -10,7 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - command `test` to run unit tests (#634)
-- the [Prisoners puzzle](./examples/puzzles/prisoners) (#634)
 
 ### Changed
 
@@ -30,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - REPL session is now a proper Quint file (#621)
 
 ### Security
+
+### Documentation
+
+- the [Prisoners puzzle](./examples/puzzles/prisoners) (#634)
 
 ## v0.5.5 -- 2023-02-03
 
