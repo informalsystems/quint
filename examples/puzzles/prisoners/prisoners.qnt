@@ -10,8 +10,14 @@ module prisoners {
     // The set of all prisoners
     const allPrisoners: Set[str]
 
-    // The prisoner who is counting
-    var counter: str
+    // The prisoner who is counting (any of allPrisoners)
+    const counter: str
+
+    assume _ = allPrisoners.contains(counter)
+
+    // All prisoners but the counter
+    val nonCounters = allPrisoners.exclude(Set(counter))
+
     // the state of the switch A
     var switchAUp: bool
     // the state of the switch B
@@ -20,9 +26,6 @@ module prisoners {
     var timesSwitched: str -> int
     // The number of times the Counter has switched switch A down.
     var count: int
-
-    // All prisoners but the counter
-    val nonCounters = allPrisoners.exclude(Set(counter))
 
     // The condition that tells the Counter that every other prisoner
     // has been in the room at least once.
@@ -33,12 +36,7 @@ module prisoners {
     // the state initializer
     action init = all {
         count' = 0,
-        // pick one prisoner as a counter
-        nondet c = allPrisoners.oneOf()
-        all {
-            counter' = c,
-            timesSwitched' = nonCounters.mapBy(p => 0),
-        },
+        timesSwitched' = nonCounters.mapBy(p => 0),
         // non-deterministically set the switches
         nondet aUp = Bool.oneOf()
         switchAUp' = aUp,
@@ -87,8 +85,7 @@ module prisoners {
     // All variables captures in a tuple.
     // Note that below the variables are passed by name (as in macros), not by value.
     // We will introduce a special construct for that soon.
-    val vars =
-        (counter, switchAUp, switchBUp, timesSwitched, count)
+    val vars = (switchAUp, switchBUp, timesSwitched, count)
 
     // This asserts that every prisoner is brought into the room infinitely
     // often. Note that we can write this fairness constraint,
@@ -134,7 +131,7 @@ module prisoners {
 
 // An instance of prisoners for the set of size 3
 module prisoners3 {
-    module P = prisoners(allPrisoners = Set("A", "B", "C"))
+    module P = prisoners(allPrisoners = Set("A", "B", "C"), counter = "A")
     
     import P.*
 }
