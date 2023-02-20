@@ -47,7 +47,7 @@ module prisoners {
     }
 
     // A prisoner other than the counter moves switch A up if it is down and
-    // if they has not already moved it up two times. Otherwise, they
+    // if they have not already moved it up two times. Otherwise, they
     // flips switch B.
     action nonCounterStep(p) = all {
         if (not(switchAUp) and (timesSwitched.get(p) < 2)) all {
