@@ -60,6 +60,7 @@ import { UnitContext } from "./QuintParser";
 import { OperDefContext } from "./QuintParser";
 import { QualifierContext } from "./QuintParser";
 import { InstanceModContext } from "./QuintParser";
+import { IdentityContext } from "./QuintParser";
 import { TypeContext } from "./QuintParser";
 import { TypeUnionRecOneContext } from "./QuintParser";
 import { RowContext } from "./QuintParser";
@@ -72,7 +73,6 @@ import { PathContext } from "./QuintParser";
 import { ArgListContext } from "./QuintParser";
 import { NormalCallNameContext } from "./QuintParser";
 import { NameAfterDotContext } from "./QuintParser";
-import { OperatorContext } from "./QuintParser";
 import { LiteralContext } from "./QuintParser";
 
 
@@ -534,6 +534,13 @@ export interface QuintVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitInstanceMod?: (ctx: InstanceModContext) => Result;
 
 	/**
+	 * Visit a parse tree produced by `QuintParser.identity`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitIdentity?: (ctx: IdentityContext) => Result;
+
+	/**
 	 * Visit a parse tree produced by `QuintParser.type`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -616,13 +623,6 @@ export interface QuintVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitNameAfterDot?: (ctx: NameAfterDotContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by `QuintParser.operator`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitOperator?: (ctx: OperatorContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `QuintParser.literal`.

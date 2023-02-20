@@ -59,9 +59,13 @@ qualifier : 'val'
 // which means that the missing parameters are identity, e.g., x = x, y = y
 instanceMod :   'module' IDENTIFIER '=' IDENTIFIER
                 '('
-                  (MUL |
-                  IDENTIFIER '=' expr (',' IDENTIFIER '=' expr)* (',' MUL)?)
+                  (identity |
+                  IDENTIFIER '=' expr (',' IDENTIFIER '=' expr)* (',' identity)?)
                 ')'
+        ;
+
+// substitute the parameters with the parameters of the same name
+identity :  '*'
         ;
 
 // Types in Type System 1.2 of Apalache, which supports discriminated unions
@@ -93,23 +97,23 @@ row : | (IDENTIFIER ':' type ',')* ((IDENTIFIER ':' type) (',' | '|' (IDENTIFIER
 // check the precedence table in Java:
 // https://www.cs.bilkent.edu.tr/~guvenir/courses/CS101/op_precedence.html
 expr:           // apply a built-in operator via the dot notation
-                expr '.' nameAfterDot (LPAREN argList? RPAREN)?     # dotCall
+                expr '.' nameAfterDot argList?                      # dotCall
         |       lambda                                              # lambdaCons
                 // Call a user-defined operator or a built-in operator.
                 // The operator has at least one argument (otherwise, it's a 'val').
-        |       normalCallName '(' argList? ')'                     # operApp
+        |       normalCallName argList                              # operApp
                 // list access via index
         |       expr '[' expr ']'                                   # listApp
                 // power over integers
         |       <assoc=right> expr op='^' expr                      # pow
         |       // unary minus
-                MINUS expr                                          # uminus
+                '-' expr                                            # uminus
                 // integer arithmetic
-        |       expr op=(MUL | DIV | MOD) expr                      # multDiv
-        |       expr op=(PLUS | MINUS) expr                         # plusMinus
+        |       expr op=('*' | '/' | '%') expr                      # multDiv
+        |       expr op=('+' | '-') expr                            # plusMinus
                 // standard relations
-        |       expr op=(GT | LT | GE | LE | NE | EQ) expr          # relations
-        |       IDENTIFIER '\'' ASGN expr                           # asgn
+        |       expr op=('>' | '<' | '>=' | '<=' | '!=' | '==') expr # relations
+        |       IDENTIFIER '\'' '=' expr                            # asgn
         |       expr '=' expr {
                   const m = "QNT006: unexpected '=', did you mean '=='?"
                   this.notifyErrorListeners(m)
@@ -117,12 +121,12 @@ expr:           // apply a built-in operator via the dot notation
                 // Boolean operators. Note that not(e) is just a normal call
                 // similar to indented /\ and indented \/ of TLA+
         |       'and' '{' expr (',' expr)* ','? '}'                 # andExpr
-        |       expr AND expr                                       # and
+        |       expr 'and' expr                                     # and
         |       'or'  '{' expr (',' expr)* ','? '}'                 # orExpr
-        |       expr OR expr                                        # or
-        |       expr IFF expr                                       # iff
-        |       expr IMPLIES expr                                   # implies
-        |       expr MATCH
+        |       expr 'or' expr                                      # or
+        |       expr 'iff' expr                                     # iff
+        |       expr 'implies' expr                                 # implies
+        |       expr 'match'
                     ('|' STRING ':' identOrHole '=>' expr)+         # match
         |       'all' '{' expr (',' expr)* ','? '}'                 # actionAll
         |       'any' '{' expr (',' expr)* ','? '}'                 # actionAny
@@ -167,25 +171,19 @@ identOrStar :   '*' | IDENTIFIER
 path    : IDENTIFIER ('.' IDENTIFIER)*
         ;
 
-argList :      expr (',' expr)*
+argList :      '(' expr? (',' expr)* ')'
         ;
 
 // operators in the normal call may use a few reserved names,
 // which are not recognized as identifiers.
 normalCallName :   IDENTIFIER
-        |       op=(AND | OR | IFF | IMPLIES | SET | LIST | MAP)
+        |       op=('and' | 'or' | 'iff' | 'implies' | SET | LIST | MAP)
         ;
 
 // A few infix operators may be called via lhs.oper(rhs),
 // without causing any ambiguity.
 nameAfterDot :  IDENTIFIER
-        |       op=(AND | OR | IFF | IMPLIES)
-        ;
-
-// special operators
-operator: (AND | OR | IFF | IMPLIES |
-           GT  | LT  | GE  | LE | NE | EQ |
-           MUL | DIV | MOD | PLUS | MINUS | '^')
+        |       op=('and' | 'or' | 'iff' | 'implies')
         ;
 
 // literals
@@ -204,28 +202,9 @@ BOOL            : ('false' | 'true') ;
 INT             : ('0' | [1-9]([0-9]|'_'[0-9])* | '0x' [0-9a-fA-F]([0-9a-fA-F]|'_'[0-9a-fA-F])*) ;
 
 // a few keywords
-AND             :   'and' ;
-OR              :   'or'  ;
-IFF             :   'iff' ;
-IMPLIES         :   'implies' ;
 SET             :   'Set' ;
 LIST            :   'List' ;
 MAP             :   'Map' ;
-MATCH           :   'match' ;
-PLUS            :   '+' ;
-MINUS           :   '-' ;
-MUL             :   '*' ;
-DIV             :   '/' ;
-MOD             :   '%' ;
-GT              :   '>' ;
-LT              :   '<' ;
-GE              :   '>=' ;
-LE              :   '<=' ;
-NE              :   '!=' ;
-EQ              :   '==' ;
-ASGN            :   '=' ;
-LPAREN          :   '(' ;
-RPAREN          :   ')' ;
 
 // other TLA+ identifiers
 IDENTIFIER             : SIMPLE_IDENTIFIER | SIMPLE_IDENTIFIER '::' IDENTIFIER ;

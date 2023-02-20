@@ -324,6 +324,7 @@ export class ToIrListener implements QuintListener {
   }
 
   // module Foo = Proto(x = a, y = b)
+  // module Foo = Proto(x = a, y = b, *)
   exitInstanceMod(ctx: p.InstanceModContext) {
     const identifiers = ctx.IDENTIFIER()!
     const instanceName = identifiers[0].text
@@ -337,7 +338,7 @@ export class ToIrListener implements QuintListener {
         overrides.push([name, exprs[i]])
       }
     }
-    const identityOverride = ctx.MUL() !== undefined
+    const identityOverride = ctx.identity() !== undefined
 
     const id = this.nextId()
     this.sourceMap.set(id, this.loc(ctx))
@@ -427,8 +428,7 @@ export class ToIrListener implements QuintListener {
       const ls = this.locStr(ctx)
       assert(false, `exitDotCall: ${ls} callee not found`)
     }
-    const hasParen = ctx.LPAREN()
-    if (hasParen) {
+    if (ctx.argList()) {
       // the UFCS form e_1.f(e_2, ..., e_n)
       let args: QuintEx[] = []
       if (wrappedArgs) {
@@ -581,7 +581,7 @@ export class ToIrListener implements QuintListener {
 
   // '+' or '-'
   exitPlusMinus(ctx: p.PlusMinusContext) {
-    const opcode = (ctx.PLUS() !== undefined) ? 'iadd' : 'isub'
+    const opcode = (ctx._op.text === '+') ? 'iadd' : 'isub'
     const args = this.popExprs(2)
     this.pushApplication(ctx, opcode, args)
   }
@@ -591,10 +591,10 @@ export class ToIrListener implements QuintListener {
     const op = ctx._op
     if (op) {
       let opcode = ''
-      switch (op.type) {
-        case p.QuintParser.MUL: opcode = 'imul'; break
-        case p.QuintParser.DIV: opcode = 'idiv'; break
-        case p.QuintParser.MOD: opcode = 'imod'; break
+      switch (ctx._op.text) {
+        case '*': opcode = 'imul'; break
+        case '/': opcode = 'idiv'; break
+        case '%': opcode = 'imod'; break
       }
       const args = this.popExprs(2)
       this.pushApplication(ctx, opcode, args)
@@ -634,13 +634,13 @@ export class ToIrListener implements QuintListener {
     const op = ctx._op
     if (op) {
       let opcode = ''
-      switch (op.type) {
-        case p.QuintParser.GT: opcode = 'igt'; break
-        case p.QuintParser.GE: opcode = 'igte'; break
-        case p.QuintParser.LT: opcode = 'ilt'; break
-        case p.QuintParser.LE: opcode = 'ilte'; break
-        case p.QuintParser.EQ: opcode = 'eq'; break
-        case p.QuintParser.NE: opcode = 'neq'; break
+      switch (ctx._op.text) {
+        case '>': opcode = 'igt'; break
+        case '>=': opcode = 'igte'; break
+        case '<': opcode = 'ilt'; break
+        case '<=': opcode = 'ilte'; break
+        case '==': opcode = 'eq'; break
+        case '!=': opcode = 'neq'; break
       }
       const args = this.popExprs(2)
       this.pushApplication(ctx, opcode, args)
