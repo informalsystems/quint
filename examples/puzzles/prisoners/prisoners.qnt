@@ -101,7 +101,7 @@ module prisoners {
     // Temporal behavior of the state machine.
     // Commented out atm, as the mode checker complains.
     /*
-    temporal spec = init and always(orKeep(step, vars)) and fairness
+    temporal spec = init and always(step.orKeep(vars)) and fairness
     */
 
     /**
