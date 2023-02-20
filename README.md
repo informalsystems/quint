@@ -67,7 +67,10 @@ We are preparing language and tools tutorials. Visit the [Tutorials][] page.
 ### Syntax :abcd:
 
 Check the [syntax documentation](./doc/lang.md) and the [Reference API
-documentation for built-in operators](./doc/builtin.md).
+documentation for built-in operators](./doc/builtin.md). If you prefer digging
+into the grammar first, check the [railroad diagram](./doc/railroad.md) and
+the [Quint grammar](./quint/src/generated/Quint.g4) in Antlr 4.
+
 
 ### Examples :musical_score:
 
