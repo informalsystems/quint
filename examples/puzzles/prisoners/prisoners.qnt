@@ -45,7 +45,7 @@ module prisoners {
     }
 
     // A prisoner other than the counter moves switch A up if it is down and
-    // if they has not already moved it up two times. Otherwise, they
+    // if they have not already moved it up two times. Otherwise, they
     // flips switch B.
     action nonCounterStep(p) = all {
         if (not(switchAUp) and (timesSwitched.get(p) < 2)) all {
@@ -98,7 +98,7 @@ module prisoners {
     // Temporal behavior of the state machine.
     // Commented out atm, as the mode checker complains.
     /*
-    temporal spec = init and always(orKeep(step, vars)) and fairness
+    temporal spec = init and always(step.orKeep(vars)) and fairness
     */
 
     /**
