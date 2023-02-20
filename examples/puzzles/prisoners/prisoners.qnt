@@ -108,7 +108,7 @@ module prisoners {
       * counter increments the count only when in the room, and Done implies
       * count > 0, it also implies that the counter has been in the room.
       */
-    val safetyInv = nonCounters.forall(p => timesSwitched.get(p) > 0)
+    val safetyInv = done.implies(nonCounters.forall(p => timesSwitched.get(p) > 0))
 
     // The safety property written as a temporal property.
     // Note that Quint would not do anything about this property at the moment.
