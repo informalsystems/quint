@@ -64,6 +64,7 @@ import {
   List, Map, OrderedMap, Set, ValueObject, hash, is as immutableIs
 } from 'immutable'
 
+import { globalIdGen } from '../../idGenerator'
 import { expressionToString } from '../../IRprinting'
 
 import { EvalResult } from '../runtime'
@@ -565,7 +566,7 @@ abstract class RuntimeValueBase implements RuntimeValue {
   toQuintEx(): QuintEx {
     // the default implementation, to make it compatible with RuntimeValue
     return {
-      id: 0n,
+      id: globalIdGen.nextId(),
       kind: 'bool',
       value: false,
     }
@@ -589,7 +590,7 @@ class RuntimeValueBool extends RuntimeValueBase implements RuntimeValue {
 
   toQuintEx(): QuintEx {
     return {
-      id: 0n,
+      id: globalIdGen.nextId(),
       kind: 'bool',
       value: this.value,
     }
@@ -614,7 +615,7 @@ class RuntimeValueInt extends RuntimeValueBase implements ValueObject {
 
   toQuintEx(): QuintEx {
     return {
-      id: 0n,
+      id: globalIdGen.nextId(),
       kind: 'int',
       value: this.value,
     }
@@ -638,7 +639,7 @@ class RuntimeValueStr extends RuntimeValueBase implements ValueObject {
 
   toQuintEx(): QuintEx {
     return {
-      id: 0n,
+      id: globalIdGen.nextId(),
       kind: 'str',
       value: this.value,
     }
@@ -685,7 +686,7 @@ class RuntimeValueTupleOrList extends RuntimeValueBase implements RuntimeValue {
     }
     // return the expression tup(...elems)
     return {
-      id: 0n,
+      id: globalIdGen.nextId(),
       kind: 'app',
       opcode: this.kind,
       args: elems,
@@ -719,12 +720,12 @@ class RuntimeValueRecord extends RuntimeValueBase implements RuntimeValue {
     // simply enumerate the values
     const elems: QuintEx[] = []
     for (const [key, value] of this.map) {
-      elems.push({ id: 0n, kind: 'str', value: key })
+      elems.push({ id: globalIdGen.nextId(), kind: 'str', value: key })
       elems.push(value.toQuintEx())
     }
     // return the expression Rec(...elems)
     return {
-      id: 0n,
+      id: globalIdGen.nextId(),
       kind: 'app',
       opcode: 'Rec',
       args: elems,
@@ -763,7 +764,7 @@ class RuntimeValueMap extends RuntimeValueBase implements RuntimeValue {
     if (set.kind === 'app') {
       // return the expression Map(pairs)
       return {
-        id: 0n,
+        id: globalIdGen.nextId(),
         kind: 'app',
         opcode: 'Map',
         args: set.args,
@@ -856,7 +857,7 @@ class RuntimeValueSet extends RuntimeValueBase implements RuntimeValue {
     elems.forEach(e => delete e.__str)
     // return the expression Set(...elems)
     return {
-      id: 0n,
+      id: globalIdGen.nextId(),
       kind: 'app',
       opcode: 'Set',
       args: elems,
@@ -940,7 +941,7 @@ class RuntimeValueInterval extends RuntimeValueBase implements RuntimeValue {
     }
     // return the expression Set(...elems)
     return {
-      id: 0n,
+      id: globalIdGen.nextId(),
       kind: 'app',
       opcode: 'Set',
       args: elems,
@@ -1088,7 +1089,7 @@ class RuntimeValueCrossProd
     }
     // return the expression Set(...elems)
     return {
-      id: 0n,
+      id: globalIdGen.nextId(),
       kind: 'app',
       opcode: 'Set',
       args: elems,
@@ -1169,7 +1170,7 @@ class RuntimeValuePowerset
     }
     // return the expression Set(...elems)
     return {
-      id: 0n,
+      id: globalIdGen.nextId(),
       kind: 'app',
       opcode: 'Set',
       args: elems,
@@ -1301,7 +1302,7 @@ class RuntimeValueMapSet
     }
     // return the expression set(...elems)
     return {
-      id: 0n,
+      id: globalIdGen.nextId(),
       kind: 'app',
       opcode: 'Set',
       args: elems,
@@ -1378,7 +1379,7 @@ class RuntimeValueInfSet extends RuntimeValueBase implements RuntimeValue {
   toQuintEx(): QuintEx {
     // return the built-in name
     return {
-      id: 0n,
+      id: globalIdGen.nextId(),
       kind: 'name',
       name: this.kind,
     }
