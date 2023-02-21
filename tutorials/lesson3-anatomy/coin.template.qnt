@@ -114,7 +114,7 @@ type [name] = [tp];
 ```
 
 In the above definition, `[name]` is a unique identifier that will be associated
-with the type, and `[type]` is the type to be associated with the name, e.g.,
+with the type, and `[tp]` is the type to be associated with the name, e.g.,
 `int` or `Set[int]`. To see a complete description of all available types, visit the Section
 [Type System 1.2](https://github.com/informalsystems/quint/blob/main/doc/lang.md#type-system-12)
 of the language manual.
@@ -157,7 +157,8 @@ The main property of pure values is that they always return the same value.
 Pure definitions always return the same value, if they are supplied with the
 same arguments.
 
-To see that no state is needed, evaluate these definitions in REPL:
+To see that no state is needed, evaluate these definitions in REPL
+(read-evaluate-print-loop):
 
             <run target="markdown">echo "MAX_UINT" | quint -r coin.qnt::Coin</run>
             <run target="codetour">echo "MAX_UINT" | quint -r ./lesson3-anatomy/coin.qnt::Coin</run>
@@ -216,9 +217,20 @@ still make sense. The typical parameters are:
  - timeout values.
 
 For this purpose, Quint offers `const` declarations. You can see one of them
-in the commented out section of the code above. Constant declarations are not
-fully supported yet. They will be available as soon as the issue
-[#528](https://github.com/informalsystems/quint/issues/528) is closed.
+in the commented out section of the code above. You may be wondering, what is
+the difference between `const` and `pure val`. They mean to express the same
+concept: A value that stays the same for all computations. However, they differ
+in the time when they are bound to a value:
+
+ - The `pure val` values are immediately defined via an expression in the
+   right-hand side.
+
+ - The `const` values are first declared and later they are substituted
+   with actual values via an `instance` declaration.
+
+Constant declarations are not fully supported yet. They will be available
+as soon as the issue [#528](https://github.com/informalsystems/quint/issues/528)
+is closed.
 
 At the moment, we simply declare the value for a small set of addresses `ADDR`,
 in order to be able to iterate on the protocol specification quickly.
@@ -247,9 +259,8 @@ a state of the protocol. In the above code, we introduce two such variables:
    The type of this variable is `Addr -> UInt`, which means a map from
    values of type `Addr` to values of type `UInt`.
 
-In contrast to operator definitions, variable definitions always require
-a type. Otherwise, it may be too hard for the type checker to infer the
-types of the state variables.
+Variable definitions always require type. Otherwise, it may be too hard
+for the type checker to infer the types of the state variables.
 
 If you compare the above variable definitions to the relevant variable
 declarations in the Solidity contract, you should see that our variable
@@ -268,7 +279,7 @@ of Solidity:
       </step>
     !*/
     // a handy definition to query the whole state in REPL at once
-    def state = { minter: minter, balances: balances }
+    val state = { minter: minter, balances: balances }
     /*!
       <step>
         <title>Declare operators over states</title>
@@ -278,8 +289,8 @@ It is often convenient to define a few helper operators.
 
 We start with the definition of `state` that represents the entire
 state as a record. This is what we do in the above code with the definition of
-`state`. Notice that the definition of `state` is not `pure` anymore. It is
-referring to the state variables and thus cannot be pure.
+`state`. Notice that the definition of `state` is prefixed with `val`, not `pure val`.
+Since `state` accesses state variables is it impure.
 
 You can try to evaluate the definition of `state` in REPL right away:
 
@@ -321,9 +332,8 @@ pieces:
  - The definition of `totalSupply` defines a value, but not a `pure` one.
    Hence, even though `totalSupply` does not take any parameters,
    it implicitly depends on the state. As a result, `totalSupply`
-   may evaluate to different values
-   in different states, that is, in those states where the values of
-   `balances` differ.
+   may evaluate to different values in different states, that is,
+   in those states where the values of `balances` differ.
 
  - `ADDR.fold(0, f)` iterates over the set of addresses in *some order*
    and for every address `a`, it applies `f(s, a)` for the accumulator value `s`,
