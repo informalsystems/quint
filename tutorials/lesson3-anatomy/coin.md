@@ -144,7 +144,7 @@ The main property of pure values is that they always return the same value.
 Pure definitions always return the same value, if they are supplied with the
 same arguments.
 
-To see that no state is needed, evaluate these definitions in REPL
+To see that no state is needed, evaluate these definitions in the REPL
 (read-evaluate-print-loop):
 
             
@@ -215,9 +215,7 @@ still make sense. The typical parameters are:
 
 For this purpose, Quint offers `const` declarations. You can see one of them
 in the commented out section of the code above. You may be wondering, what is
-the difference between `const` and `pure val`. They mean to express the same
-concept: A value that stays the same for all computations. However, they differ
-in the time when they are bound to a value:
+the difference between `const` and `pure val`. Both declare a value that stays the same throughout the execution of a computation, but the time at which they are bound to values differs:
 
  - The `pure val` values are immediately defined via an expression in the
    right-hand side.
@@ -225,7 +223,7 @@ in the time when they are bound to a value:
  - The `const` values are first declared and later they are substituted
    with actual values via an `instance` declaration.
 
-Constant declarations are not fully supported yet. They will be available
+**Note:** Constant declarations are not fully supported yet. They will be available
 as soon as the issue [#528](https://github.com/informalsystems/quint/issues/528)
 is closed.
 
@@ -258,8 +256,7 @@ a state of the protocol. In the above code, we introduce two such variables:
    The type of this variable is `Addr -> UInt`, which means a map from
    values of type `Addr` to values of type `UInt`.
 
-Variable definitions always require type. Otherwise, it may be too hard
-for the type checker to infer the types of the state variables.
+Variable definitions always require a type.
 
 If you compare the above variable definitions to the relevant variable
 declarations in the Solidity contract, you should see that our variable
@@ -290,8 +287,8 @@ It is often convenient to define a few helper operators.
 
 We start with the definition of `state` that represents the entire
 state as a record. This is what we do in the above code with the definition of
-`state`. Notice that the definition of `state` is prefixed with `val`, not `pure val`.
-Since `state` accesses state variables is it impure.
+`state`. Notice that the definition of `state` is prefixed with `val`, not `pure val`:
+since `state` accesses state variables, is it impure.
 
 You can try to evaluate the definition of `state` in REPL right away:
 
