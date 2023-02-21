@@ -37,7 +37,7 @@ export type stage =
 /** The data from a ProcedureStage that may be output to --out */
 interface OutputStage {
   stage: stage,
-  // the modules and the lookup table produced 'parse'
+  // the modules and the lookup table produced by 'parse'
   modules?: QuintModule[],
   table?: LookupTableByModule,
   // the tables produced by 'typecheck'
