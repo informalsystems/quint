@@ -178,7 +178,8 @@ executable and the VSCode plugin.
 ### quint executable
 
 - Prepare a release by running
-  [./quint/scripts/prepare-release.sh](./quint/scripts/prepare-release.sh).
+  [./quint/scripts/prepare-release.sh](./quint/scripts/prepare-release.sh) with
+  an argument to indicate the version increment: `patch`, `minor`, or `major`.
 - Get the release PR reviewed and merged
 - Checkout the release commit
 - Run the release script [./quint/scripts/release.sh](./quint/scripts/release.sh).
