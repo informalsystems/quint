@@ -71,7 +71,7 @@ ${version_heading}/" "$PLUGIN_CHANGELOG"
 sed -n "/## v$version/,/## v/p" "$PLUGIN_CHANGELOG" | head -n -1 > "$TMP_CHANGES"
 
 # Ensure we can build package?
-# TODO: I'm not sure why we build/install here
+# Ensure we can build the project
 (
     cd "$SERVER_DIR"
     yalc remove @informalsystems/quint

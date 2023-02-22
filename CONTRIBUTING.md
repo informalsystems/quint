@@ -189,5 +189,10 @@ executable and the VSCode plugin.
   
 ### VSCode Plugin
 
-To initiate a release of the VSCode plugin, run the script
-[./vscode/quint-vscode/scripts/prepare-release.sh](./vscode/quint-vscode/scripts/prepare-release.sh).
+- Prepare a release of the VSCode plugin by running the script
+  [./vscode/quint-vscode/scripts/prepare-release.sh](./vscode/quint-vscode/scripts/prepare-release.sh)
+  with an argument to indicate the version increment: `patch`, `minor`, or
+  `major`.
+- Get the release PR reviewed and merged
+- Checkout the release commit
+- Publish the plugin to the VSCode marketplace with `vsce publish`
