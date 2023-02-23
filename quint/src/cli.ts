@@ -131,11 +131,11 @@ const runCmd = {
         type: 'string',
       })
       .default('step', 'step')
-      .option('invariants', {
-        desc: 'invariants to check: definition names or expressions',
-        type: 'array',
+      .option('invariant', {
+        desc: 'invariant to check: a definition name or an expression',
+        type: 'string',
       })
-      .default('invariants', ['true'])
+      .default('invariant', ['true'])
       .option('seed', {
         desc: 'random seed to use for non-deterministic choice',
         type: 'string',

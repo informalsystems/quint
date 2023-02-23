@@ -30,7 +30,7 @@ import { DocumentationEntry, produceDocs, toMarkdown } from './docs'
 import { QuintAnalyzer } from './quintAnalyzer'
 import { QuintError, quintErrorToString } from './quintError'
 import { compileAndTest } from './runtime/testing'
-import { SimulatorOptions, SimulatorResult, compileAndRun } from './simulation'
+import { SimulatorOptions, compileAndRun } from './simulation'
 
 export type stage =
   'loading' | 'parsing' | 'typechecking' |
@@ -50,6 +50,9 @@ interface OutputStage {
   passed?: string[],
   failed?: string[],
   ignored?: string[],
+  // Test names output produced by 'run'
+  status?: 'ok' | 'violation',
+  trace?: QuintEx,
   /* Docstrings by defintion name by module name */
   documentation?: Map<string, Map<string, DocumentationEntry>>,
   errors?: ErrorMessage[],
@@ -62,21 +65,27 @@ interface OutputStage {
 function pickOutputStage(o: ProcedureStage): OutputStage {
   const picker = ({
     stage, warnings, modules, table, types, effects, errors, documentation,
-    passed, failed, ignored,
+    passed, failed, ignored, status, trace,
   }: ProcedureStage) => {
-    if (o.stage === 'parsing') {
-      if (o.args.withLookup) {
-        return { stage, warnings, modules, table, errors }
-      } else {
-        return { stage, warnings, modules, errors }
-      }
-    } else if (o.stage === 'testing') {
-      return { stage, errors, passed, failed, ignored }
-    } else {
-      return {
-        stage, warnings, modules, types, effects, errors,
-        passed, failed, ignored, documentation,
-      }
+    switch (o.stage) {
+      case 'parsing':
+        if (o.args.withLookup) {
+          return { stage, warnings, modules, table, errors }
+        } else {
+          return { stage, warnings, modules, errors }
+        }
+
+      case 'testing':
+        return { stage, errors, passed, failed, ignored }
+
+      case 'running':
+        return { stage, errors, status, trace }
+
+      default:
+        return {
+          stage, warnings, modules, types, effects, errors,
+          passed, failed, ignored, documentation,
+        }
     }
   }
   return picker(o)
@@ -114,7 +123,7 @@ interface TestedStage extends LoadedStage {
 }
 
 interface SimulatorStage extends LoadedStage {
-  status: 'ok' | 'violation' | 'error',
+  status: 'ok' | 'violation',
   trace?: QuintEx,
 }
 
@@ -348,18 +357,18 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
  */
 export function runSimulator(prev: TypecheckedStage):
   CLIProcedure<SimulatorStage> {
+  const mainArg = prev.args.main
+  const mainName = mainArg ? mainArg : basename(prev.args.input, '.qnt')
   const options: SimulatorOptions = {
     init: prev.args.init,
     step: prev.args.step,
-    invariants: prev.args.invariants,
+    invariant: prev.args.invariant,
     maxSamples: prev.args.maxSamples,
     maxSteps: prev.args.maxSteps,
   }
   const simulator = { ...prev, stage: 'running' as stage }
-  const r: Either<ErrorMessage[], SimulatorResult> =
-    compileAndRun(prev.args.sourceCode, prev.args.main, options)
-  const out: CLIProcedure<SimulatorStage> =
-    r.map(result => {
+  return compileAndRun(prev.sourceCode, mainName, options)
+    .map(result => {
       return {
         ...simulator,
         status: result.status,
@@ -371,8 +380,6 @@ export function runSimulator(prev: TypecheckedStage):
       const newStage = { ...simulator, errors }
       return { msg: 'run failed', stage: newStage }
     })
-
-  return out
 }
 
 /**

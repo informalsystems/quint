@@ -10,9 +10,12 @@
 
 import { Either, left, right } from '@sweet-monads/either'
 
-import { compileFromCode, contextLookup } from './runtime/compile'
+import {
+  compileFromCode, contextLookup, lastTraceName
+} from './runtime/compile'
 import { ErrorMessage } from './quintParserFrontend'
 import { QuintEx } from './quintIr'
+import { fail, kindName } from './runtime/runtime'
 
 /**
  * Various settings that have to be passed to the simulator to run.
@@ -20,7 +23,7 @@ import { QuintEx } from './quintIr'
 export interface SimulatorOptions {
   init: string,
   step: string,
-  invariants: string[],
+  invariant: string,
   maxSamples: number,
   maxSteps: number,
 }
@@ -53,24 +56,23 @@ compileAndRun(code: string,
   // Parse the code once again, but this time include the special definitions
   // that are required by the runner.
   // This code should be revisited in #618.
-  const s = options
+  const o = options
   const wrappedCode =
 `${code}
 
 module __run__ {
   import ${mainName}.*
 
-  def _test(__nruns, __nsteps, __init, __next, __inv) = false;
-
-  def __invariants = all {
-    ${s.invariants.join(',\n    ')}
-  }
-
+  val ${lastTraceName} = [];
+  def _test(__nrunsArg, __nstepsArg, __initArg, __nextArg, __invArg) = false;
+  action __init = { ${o.init} }
+  action __step = { ${o.step} }
+  val __inv = { ${o.invariant} }
   val __runResult =
-    _test(${s.maxSamples}, ${s.maxSteps}, "${s.init}", "${s.step}", "__invariants")
+    _test(${o.maxSamples}, ${o.maxSteps}, "__init", "__step", "__inv")
 }
 `
-
+ 
   const ctx = compileFromCode(wrappedCode, '__run__')
 
   if (ctx.compileErrors.length > 0
@@ -102,22 +104,27 @@ module __run__ {
         })
         .join()
 
-    return res.map(hasViolation => {
+    return res.map(noViolation => {
         // evaluate _lastTrace
-        return contextLookup(ctx, '__run__', '__runResult', 'callable')
-          .map(comp => {
-            const result = comp.eval()
-            if (result.isNone()) {
-              return left(ctx.getRuntimeErrors())
-            } else {
-              return right({
-                status: hasViolation ? 'violation' : 'ok',
-                trace: result.unwrap().toQuintEx(),
-              } as SimulatorResult)
-            }
-          })
-          .mapLeft(msg => [{ explanation: msg, locs: [] }])
-          .join()
+        const lastTrace =
+          ctx.values.get(kindName('shadow', lastTraceName)) ?? fail
+        const result = lastTrace.eval()
+        const runtimeErrors = ctx.getRuntimeErrors()
+        if (result.isNone() || runtimeErrors.length > 0) {
+          if (runtimeErrors.length > 0) {
+            return left(runtimeErrors)
+          } else {
+            return left([ {
+              explanation: `${lastTraceName} not found`,
+              locs: [],
+            } ])
+          }
+        } else {
+          return right({
+            status: noViolation ? 'ok' : 'violation',
+            trace: result.unwrap().toQuintEx(),
+          } as SimulatorResult)
+        }
       })
       .join()
   }

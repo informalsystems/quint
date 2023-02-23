@@ -1291,8 +1291,14 @@ export class CompilerVisitor implements IRVisitor {
 
     // lookup a callable by name in the current module
     const lookup = (name: string) => {
-      return this.contextLookup(name,
-                                this.currentModule.id, ['callable']) ?? fail
+      const callable =
+        this.contextLookup(name, this.currentModule.id, ['callable'])
+      if (callable) {
+        return callable
+      } else {
+        this.addRuntimeError(sourceId, `_test: Definition of ${name} not found`)
+        return fail
+      }
     }
 
     const args = this.compStack.splice(-5)
@@ -1306,6 +1312,8 @@ export class CompilerVisitor implements IRVisitor {
           }
           // the trace collected during the run
           let trace: RuntimeValue[] = []
+          // a failure flag for the case a runtime error is found
+          let failure = false
           // the value to be returned in the end of evaluation
           let errorFound = false
           // save the registers to recover them later
@@ -1313,12 +1321,15 @@ export class CompilerVisitor implements IRVisitor {
           const nextVars = this.snapshotNextVars()
           // do multiple runs, stop at the first failing run
           const nruns = (nrunsRes as RuntimeValue).toInt()
-          for (let runNo = 0; !errorFound && runNo < nruns; runNo++) {
+          for (let runNo = 0;
+               !errorFound && !failure && runNo < nruns; runNo++) {
             trace = []
             // check Init()
             const initName = (initRes as RuntimeValue).toStr()
             const init = lookup(initName)
-            if (isTrue(init.eval())) {
+            const initResult = init.eval()
+            failure = initResult.isNone() || failure
+            if (isTrue(initResult)) {
               // The initial action evaluates to true.
               // Our guess of values was good.
               this.shiftVars()
@@ -1326,24 +1337,23 @@ export class CompilerVisitor implements IRVisitor {
               // check the invariant Inv
               const invName = (invRes as RuntimeValue).toStr()
               const inv = lookup(invName)
-              if (!isTrue(inv.eval())) {
+              const invResult = inv.eval()
+              failure = invResult.isNone() || failure
+              if (!isTrue(invResult)) {
                 errorFound = true
               } else {
                 // check all { Next(), shift(), Inv } in a loop
                 const nsteps = (nstepsRes as RuntimeValue).toInt()
                 const nextName = (nextRes as RuntimeValue).toStr()
                 const next = lookup(nextName)
-                for (let i = 0; !errorFound && i < nsteps; i++) {
+                for (let i = 0; !errorFound && !failure && i < nsteps; i++) {
                   const nextResult = next.eval()
+                  failure = nextResult.isNone() || failure
                   if (isTrue(nextResult)) {
                     this.shiftVars()
                     trace.push(varsToRecord())
                     errorFound = !isTrue(inv.eval())
                   } else {
-                    // If the result is undefined, then we have found
-                    // a runtime error, which should be reported.
-                    errorFound = nextResult.isNone()
-
                     // Otherwise, the run cannot be extended.
                     // In some cases, this may indicate a deadlock.
                     // Since we are doing random simulation, it is very likely
@@ -1367,7 +1377,7 @@ export class CompilerVisitor implements IRVisitor {
             }
           })
           // finally, return true, if no error was found
-          return just(rv.mkBool(!errorFound))
+          return (!failure) ? just(rv.mkBool(!errorFound)) : none()
         }).join()
     }
     this.compStack.push(mkFunComputable(doRun))
