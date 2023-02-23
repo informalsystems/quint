@@ -53,7 +53,7 @@ const typecheckCmd = {
 // construct repl commands with yargs
 const replCmd = {
   command: ['repl', '*'],
-  desc: 'run REPL',
+  desc: 'run an interactive Read-Evaluate-Print-Loop',
   builder: (yargs: any) =>
     yargs
       .option('require', {
