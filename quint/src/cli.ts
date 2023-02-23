@@ -13,7 +13,7 @@
 import yargs from 'yargs/yargs'
 
 import {
-  docs, load, outputResult, parse, runRepl, runTests, typecheck
+  docs, load, outputResult, parse, runRepl, runTests, runSimulator, typecheck
 } from './cliCommands'
 
 // construct parsing commands with yargs
@@ -148,7 +148,7 @@ const runCmd = {
 //        type: 'number',
 //      })
   handler: (args: any) =>
-    outputResult(load(args).chain(parse).chain(typecheck).chain(runTests)),
+    outputResult(load(args).chain(parse).chain(typecheck).chain(runSimulator)),
 }
 
 // construct documenting commands with yargs

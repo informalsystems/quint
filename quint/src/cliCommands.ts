@@ -22,7 +22,7 @@ import { Either, left, right } from '@sweet-monads/either'
 import { Effect } from './effects/base'
 import { LookupTableByModule } from './lookupTable'
 import { ReplOptions, quintRepl } from './repl'
-import { OpQualifier, QuintModule, IrErrorMessage } from './quintIr'
+import { OpQualifier, QuintEx, QuintModule } from './quintIr'
 import { TypeScheme } from './types/base'
 import lineColumn from 'line-column'
 import { formatError } from './errorReporter'
@@ -30,9 +30,11 @@ import { DocumentationEntry, produceDocs, toMarkdown } from './docs'
 import { QuintAnalyzer } from './quintAnalyzer'
 import { QuintError, quintErrorToString } from './quintError'
 import { compileAndTest } from './runtime/testing'
+import { SimulatorOptions, SimulatorResult, compileAndRun } from './simulation'
 
 export type stage =
-  'loading' | 'parsing' | 'typechecking' | 'testing' | 'documentation'
+  'loading' | 'parsing' | 'typechecking' |
+  'testing' | 'running' | 'documentation'
 
 /** The data from a ProcedureStage that may be output to --out */
 interface OutputStage {
@@ -109,6 +111,11 @@ interface TestedStage extends LoadedStage {
   failed: string[],
   // the names of the ignored tests
   ignored: string[],
+}
+
+interface SimulatorStage extends LoadedStage {
+  status: 'ok' | 'violation' | 'error',
+  trace?: QuintEx,
 }
 
 interface DocumentationStage extends LoadedStage {
@@ -332,6 +339,40 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
     const errors = namedErrors.map(([_, e]) => e)
     return right({ ...testing, passed, failed, ignored, errors })
   }
+}
+
+/**
+ * Run the simulator.
+ *
+ * @param typedStage the procedure stage produced by `typecheck`
+ */
+export function runSimulator(prev: TypecheckedStage):
+  CLIProcedure<SimulatorStage> {
+  const options: SimulatorOptions = {
+    init: prev.args.init,
+    step: prev.args.step,
+    invariants: prev.args.invariants,
+    maxSamples: prev.args.maxSamples,
+    maxSteps: prev.args.maxSteps,
+  }
+  const simulator = { ...prev, stage: 'running' as stage }
+  const r: Either<ErrorMessage[], SimulatorResult> =
+    compileAndRun(prev.args.sourceCode, prev.args.main, options)
+  const out: CLIProcedure<SimulatorStage> =
+    r.map(result => {
+      return {
+        ...simulator,
+        status: result.status,
+        trace: result.trace,
+      }
+    })
+    .mapLeft(newErrs => {
+      const errors = prev.errors ? prev.errors.concat(newErrs) : newErrs
+      const newStage = { ...simulator, errors }
+      return { msg: 'run failed', stage: newStage }
+    })
+
+  return out
 }
 
 /**

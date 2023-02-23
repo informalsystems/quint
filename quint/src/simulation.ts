@@ -17,7 +17,7 @@ import { QuintEx } from './quintIr'
 /**
  * Various settings that have to be passed to the simulator to run.
  */
-export interface SimulatorSettings {
+export interface SimulatorOptions {
   init: string,
   step: string,
   invariants: string[],
@@ -38,14 +38,14 @@ export interface SimulatorResult {
  *
  * @param code the source code of the modules
  * @param mainName the module that should be used as a state machine
- * @param settings simulator settings
+ * @param options simulator settings
  * @returns either error messages (left),
     or the trace as an expression (right)
  */
 export function
 compileAndRun(code: string,
               mainName: string,
-              settings: SimulatorSettings):
+              options: SimulatorOptions):
                 Either<ErrorMessage[], SimulatorResult> {
   // Once we have 'import from ...' implemented, we should pass
   // a filename instead of the source code (see #8)
@@ -53,7 +53,7 @@ compileAndRun(code: string,
   // Parse the code once again, but this time include the special definitions
   // that are required by the runner.
   // This code should be revisited in #618.
-  const s = settings
+  const s = options
   const wrappedCode =
 `${code}
 
@@ -87,7 +87,7 @@ module __run__ {
         .map(comp => {
           const result = comp.eval()
           if (result.isNone()) {
-            return left(ctx.runtimeErrors)
+            return left(ctx.getRuntimeErrors())
           }
 
           const ex = result.unwrap().toQuintEx()
@@ -108,7 +108,7 @@ module __run__ {
           .map(comp => {
             const result = comp.eval()
             if (result.isNone()) {
-              return left(ctx.runtimeErrors)
+              return left(ctx.getRuntimeErrors())
             } else {
               return right({
                 status: hasViolation ? 'violation' : 'ok',

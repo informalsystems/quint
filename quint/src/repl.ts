@@ -538,9 +538,8 @@ ${textToAdd}
       .join()
       .mapLeft(msg => {
         // when #618 is implemented, we should remove this
-        console.log(`#runtimeErrors = ${context.runtimeErrors.length}`)
         printErrorMessages(out,
-          'runtime error', moduleText, lineOffset, context.runtimeErrors)
+          'runtime error', moduleText, lineOffset, context.getRuntimeErrors())
         // print the error message produced by the lookup
         out(chalk.red(msg))
         out('') // be nice to external programs

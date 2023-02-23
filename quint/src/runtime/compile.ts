@@ -47,7 +47,7 @@ export interface CompilationContext {
   // messages that are produced during compilation
   compileErrors: ErrorMessage[],
   // messages that get populated as the compiled code is executed
-  runtimeErrors: ErrorMessage[],
+  getRuntimeErrors: () => ErrorMessage[],
   // source mapping
   sourceMap: Map<bigint, Loc>,
 }
@@ -61,7 +61,7 @@ function errorContext(errors: ErrorMessage[]): CompilationContext {
     syntaxErrors: errors,
     analysisErrors: [],
     compileErrors: [],
-    runtimeErrors: [],
+    getRuntimeErrors: () => [],
     sourceMap: new Map(),
   }
 }
@@ -142,7 +142,6 @@ export function
       explanation: `Main module ${mainName} not found`,
       refs: [],
     }]
-  console.log(`#runtimeErrors = ${visitor.getRuntimeErrors().length}`)
   return {
     lookupTable: lookupTable,
     values: visitor.getContext(),
@@ -153,8 +152,11 @@ export function
     compileErrors:
       visitor.getCompileErrors().concat(mainNotFoundError)
       .map(fromIrErrorMessage(sourceMap)),
-    runtimeErrors:
-      visitor.getRuntimeErrors().map(fromIrErrorMessage(sourceMap)),
+    getRuntimeErrors: () => {
+      return visitor.getRuntimeErrors()
+        .splice(0)
+        .map(fromIrErrorMessage(sourceMap))
+    },
     sourceMap: sourceMap,
   }
 }
