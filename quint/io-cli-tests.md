@@ -266,11 +266,11 @@ quint test --main counters --seed 1 \
 
 ```
 
-### Run works as expected
+### Run finds an invariant violation
 
-The command `run` a violation.
+The command `run` finds an invariant violation.
 
-<!-- !test in run works -->
+<!-- !test in run finds violation -->
 ```
 quint run --init=Init --step=Next --seed=abcde --max-steps=4 \
   --invariant='n < 10' ../examples/language-features/counters.qnt 2>&1 | \
@@ -278,7 +278,7 @@ quint run --init=Init --step=Next --seed=abcde --max-steps=4 \
   sed 's#^.*counters.qnt#      HOME/counters.qnt#g'
 ```
 
-<!-- !test out run works -->
+<!-- !test out run finds violation -->
 ```
 [violation] (duration). See the example:
 ---------------------------------------------
@@ -300,6 +300,51 @@ action step3 = all {
 
 action step4 = all {
   counters::n' = 12,
+}
+
+run test = {
+  step0.then(step1).then(step2).then(step3).then(step4)
+}
+---------------------------------------------
+```
+
+### Run finds an example
+
+The command `run` finds an example.
+
+<!-- !test in run finds example -->
+```
+quint run --init=Init --step=Next --seed=abcde --max-steps=4 \
+  --invariant='n < 100' ../examples/language-features/counters.qnt 2>&1 | \
+  sed 's/([0-9]*ms)/(duration)/g' | \
+  sed 's#^.*counters.qnt#      HOME/counters.qnt#g'
+```
+
+<!-- !test out run finds example -->
+```
+[ok] No violation found (duration).
+ You may increase --max-samples and --max-steps.
+
+See the example:
+---------------------------------------------
+action step0 = all {
+  counters::n' = 1,
+}
+
+action step1 = all {
+  counters::n' = 2,
+}
+
+action step2 = all {
+  counters::n' = 3,
+}
+
+action step3 = all {
+  counters::n' = 4,
+}
+
+action step4 = all {
+  counters::n' = 2,
 }
 
 run test = {
