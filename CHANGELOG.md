@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## UNRELEASED
 
 ### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security
+
+## v0.6.0 -- 2023-02-22
+
+### Added
 
 - command `test` to run unit tests (#634)
 - option `--with-lookup` of the command `parse` (#639)
@@ -18,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mode errors are better explained and include a fix suggestion (#619)
 - Typechecking now reports errors when instance overrides are not compatible with
   the original definition (#622)
+- Effect errors for multiple updates of the same variable are clearer and more precise (#641)
 
 ### Deprecated
 ### Removed
@@ -28,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - REPL avoid name clashes in different modules (#621)
 - REPL session is now a proper Quint file (#621)
+- A regression in REPL caused by multiple modules (#650)
 
 ### Security
 
