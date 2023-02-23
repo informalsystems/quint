@@ -266,6 +266,48 @@ quint test --main counters --seed 1 \
 
 ```
 
+### Run works as expected
+
+The command `run` a violation.
+
+<!-- !test in run works -->
+```
+quint run --init=Init --step=Next --seed=abcde --max-steps=4 \
+  --invariant='n < 10' ../examples/language-features/counters.qnt 2>&1 | \
+  sed 's/([0-9]*ms)/(duration)/g' | \
+  sed 's#^.*counters.qnt#      HOME/counters.qnt#g'
+```
+
+<!-- !test out run works -->
+```
+[violation] (duration). See the example:
+---------------------------------------------
+action step0 = all {
+  counters::n' = 1,
+}
+
+action step1 = all {
+  counters::n' = 2,
+}
+
+action step2 = all {
+  counters::n' = 3,
+}
+
+action step3 = all {
+  counters::n' = 6,
+}
+
+action step4 = all {
+  counters::n' = 12,
+}
+
+run test = {
+  step0.then(step1).then(step2).then(step3).then(step4)
+}
+---------------------------------------------
+```
+
 ### Repl evaluates coin
 
 This is a regression test for #648.
