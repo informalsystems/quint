@@ -1,9 +1,9 @@
 import { describe, it } from 'mocha'
 import { assert } from 'chai'
 import { Either, left, right } from '@sweet-monads/either'
-import { Maybe, just } from '@sweet-monads/maybe'
+import { just } from '@sweet-monads/maybe'
 import { expressionToString } from '../../src/IRprinting'
-import { ComputableKind, fail, kindName, EvalResult } from '../../src/runtime/runtime'
+import { ComputableKind, fail, kindName } from '../../src/runtime/runtime'
 import {
   CompilationContext, compileFromCode, contextLookup
 } from '../../src/runtime/compile'

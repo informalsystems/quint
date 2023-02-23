@@ -11,7 +11,7 @@ import * as p from './generated/QuintParser'
 import { QuintListener } from './generated/QuintListener'
 import { ParseTreeWalker } from 'antlr4ts/tree/ParseTreeWalker'
 
-import { QuintModule, IrErrorMessage } from './quintIr'
+import { IrErrorMessage, QuintModule } from './quintIr'
 import { ToIrListener } from './ToIrListener'
 import { collectDefinitions } from './definitionsCollector'
 import { resolveNames } from './nameResolver'

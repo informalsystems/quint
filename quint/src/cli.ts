@@ -13,7 +13,7 @@
 import yargs from 'yargs/yargs'
 
 import {
-  docs, load, outputResult, parse, runRepl, runTests, runSimulator, typecheck
+  docs, load, outputResult, parse, runRepl, runSimulator, runTests, typecheck
 } from './cliCommands'
 
 // construct parsing commands with yargs

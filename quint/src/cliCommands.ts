@@ -11,7 +11,6 @@ import { existsSync, readFileSync, writeFileSync } from 'fs'
 import JSONbig from 'json-bigint'
 import { basename, resolve } from 'path'
 import { cwd } from 'process'
-import seedrandom = require("seedrandom")
 import chalk from 'chalk'
 
 import {
@@ -475,17 +474,6 @@ function replacer(_key: String, value: any): any {
 function writeToJson(filename: string, json: any) {
   const path = resolve(cwd(), filename)
   writeFileSync(path, JSONbig.stringify(json, replacer))
-}
-
-/**
- * Write text to a file.
- *
- * @param filename name of the file to write to
- * @param text is a string to write
- */
-function writeToFile(filename: string, text: string) {
-  const path = resolve(cwd(), filename)
-  writeFileSync(path, text)
 }
 
 /**
