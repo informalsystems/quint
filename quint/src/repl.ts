@@ -375,7 +375,7 @@ function loadShadowVars(state: ReplState, context: CompilationContext): void {
 }
 
 // convert a Quint expression to a colored string, tuned for REPL
-function chalkQuintEx(ex: QuintEx): string {
+export function chalkQuintEx(ex: QuintEx): string {
   switch (ex.kind) {
     case 'bool':
       return chalk.yellow(`${ex.value}`)

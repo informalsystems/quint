@@ -19,7 +19,7 @@ import {
 import { ErrorMessage } from './quintParserFrontend'
 import { QuintEx } from './quintIr'
 import { fail, kindName } from './runtime/runtime'
-import { expressionToString } from './IRprinting'
+import { chalkQuintEx } from './repl'
 
 /**
  * Various settings that have to be passed to the simulator to run.
@@ -42,7 +42,7 @@ export interface SimulatorResult {
 }
 
 /**
- * Print a trace.
+ * Print a trace with chalk.
  */
 export function printTrace(out: (line: string) => void, trace: QuintEx) {
   assert(trace.kind === 'app' && trace.opcode === 'List')
@@ -53,13 +53,16 @@ export function printTrace(out: (line: string) => void, trace: QuintEx) {
   const comma = chalk.gray(',')
   trace.args.forEach((state, index) => {
     assert(state.kind === 'app'
-           && state.opcode === 'Rec' && state.args.length === 2)
+           && state.opcode === 'Rec' && state.args.length % 2 === 0)
 
     out(`${kw('action')} step${index} ${eq} ${kw('all')} ` + lp)
-    const key = state.args[0]
-    assert(key.kind === 'str')
-    const valueText = expressionToString(state.args[1])
-    out(`  ${key.value}' ${eq} ${valueText}` + comma)
+    range(0, Math.trunc(state.args.length / 2))
+      .forEach(i => {
+        const key = state.args[2 * i]
+        assert(key.kind === 'str')
+        const valueText = chalkQuintEx(state.args[2 * i + 1])
+        out(`  ${key.value}' ${eq} ${valueText}` + comma)
+      })
     out(rp + '\n')
   })
 

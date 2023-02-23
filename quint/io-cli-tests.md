@@ -376,3 +376,40 @@ true
 >>> 
 ```
 
+### Run finds an overflow in Coin
+
+The command `run` finds an overflow in Coin.
+
+<!-- !test in run finds overflow -->
+```
+quint run --max-steps=5 --seed=123 --invariant=totalSupplyDoesNotOverflowInv \
+  ../examples/solidity/Coin/coin.qnt 2>&1 | \
+  sed 's/([0-9]*ms)/(duration)/g' | \
+  sed 's#^.*counters.qnt#      HOME/coin.qnt#g'
+```
+
+<!-- !test out run finds overflow -->
+```
+[violation] (duration). See the example:
+---------------------------------------------
+action step0 = all {
+  coin::minter' = "null",
+  coin::balances' = Map("alice" -> 0, "bob" -> 0, "charlie" -> 0, "eve" -> 0, "null" -> 0),
+}
+
+action step1 = all {
+  coin::minter' = "null",
+  coin::balances' = Map("alice" -> 0, "bob" -> 0, "charlie" -> 0, "eve" -> 0, "null" -> 112481458056655605601695545099703330518348568252135132870328821439856853909504),
+}
+
+action step2 = all {
+  coin::minter' = "null",
+  coin::balances' = Map("alice" -> 0, "bob" -> 0, "charlie" -> 31453788334862831322142706925277348799769195365499601992860029384416292765696, "eve" -> 0, "null" -> 112481458056655605601695545099703330518348568252135132870328821439856853909504),
+}
+
+run test = {
+  step0.then(step1).then(step2)
+}
+---------------------------------------------
+```
+
