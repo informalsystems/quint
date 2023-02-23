@@ -53,9 +53,10 @@ compileAndTest(modules: QuintModule[],
          sourceMap: Map<bigint, Loc>,
          lookupTable: LookupTableByModule,
          types: Map<bigint, TypeScheme>,
-         testMatch: (n: string) => boolean): Either<string, TestResult[]> {
+         testMatch: (n: string) => boolean,
+         seed: string): Either<string, TestResult[]> {
   const ctx =
-    compile(modules, sourceMap, lookupTable, types, main.name)
+    compile(modules, sourceMap, lookupTable, types, main.name, seed)
   const testDefs =
     main.defs.filter(d => d.kind === 'def' && testMatch(d.name)) as QuintOpDef[]
 

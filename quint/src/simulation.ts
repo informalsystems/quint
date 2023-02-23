@@ -9,6 +9,9 @@
  */
 
 import { Either, left, right } from '@sweet-monads/either'
+import { strict as assert } from 'assert'
+import { range } from 'lodash'
+import chalk from 'chalk'
 
 import {
   compileFromCode, contextLookup, lastTraceName
@@ -16,6 +19,7 @@ import {
 import { ErrorMessage } from './quintParserFrontend'
 import { QuintEx } from './quintIr'
 import { fail, kindName } from './runtime/runtime'
+import { expressionToString } from './IRprinting'
 
 /**
  * Various settings that have to be passed to the simulator to run.
@@ -26,6 +30,7 @@ export interface SimulatorOptions {
   invariant: string,
   maxSamples: number,
   maxSteps: number,
+  seed: string,
 }
 
 /**
@@ -34,6 +39,37 @@ export interface SimulatorOptions {
 export interface SimulatorResult {
   status: 'ok' | 'violation',
   trace: QuintEx
+}
+
+/**
+ * Print a trace.
+ */
+export function printTrace(out: (line: string) => void, trace: QuintEx) {
+  assert(trace.kind === 'app' && trace.opcode === 'List')
+  const kw = (s: string) => chalk.green(s)
+  const lp = chalk.gray('{')
+  const rp = chalk.gray('}')
+  const eq = chalk.gray('=')
+  const comma = chalk.gray(',')
+  trace.args.forEach((state, index) => {
+    assert(state.kind === 'app'
+           && state.opcode === 'Rec' && state.args.length === 2)
+
+    out(`${kw('action')} step${index} ${eq} ${kw('all')} ` + lp)
+    const key = state.args[0]
+    assert(key.kind === 'str')
+    const valueText = expressionToString(state.args[1])
+    out(`  ${key.value}' ${eq} ${valueText}` + comma)
+    out(rp + '\n')
+  })
+
+  out(`${kw('run')} test ${eq} ` + lp)
+  const testText =
+    range(0, trace.args.length)
+      .map(i => `step${i}`)
+      .reduce((left, name) => `${left}.then(${name})`)
+  out('  ' + testText)
+  out(rp)
 }
 
 /**
@@ -73,7 +109,7 @@ module __run__ {
 }
 `
  
-  const ctx = compileFromCode(wrappedCode, '__run__')
+  const ctx = compileFromCode(wrappedCode, '__run__', options.seed)
 
   if (ctx.compileErrors.length > 0
       || ctx.syntaxErrors.length > 0

@@ -30,7 +30,7 @@ import { DocumentationEntry, produceDocs, toMarkdown } from './docs'
 import { QuintAnalyzer } from './quintAnalyzer'
 import { QuintError, quintErrorToString } from './quintError'
 import { compileAndTest } from './runtime/testing'
-import { SimulatorOptions, compileAndRun } from './simulation'
+import { SimulatorOptions, compileAndRun, printTrace } from './simulation'
 
 export type stage =
   'loading' | 'parsing' | 'typechecking' |
@@ -278,9 +278,7 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
     let ignored: string[] = []
     let namedErrors: [string, ErrorMessage][] = []
 
-    if (prev.args.seed !== undefined) {
-      seedrandom(prev.args.seed)
-    }
+    const seed = prev.args.seed ?? 'seed'
     const startMs = Date.now()
     out(`\n  ${mainName}`)
 
@@ -289,7 +287,7 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
 
     const testOut =
       compileAndTest(prev.modules, main, prev.sourceMap,
-                     prev.table, prev.types, matchFun)
+                     prev.table, prev.types, matchFun, seed)
     if (testOut.isRight()) {
       const elapsedMs = Date.now() - startMs
       const results = testOut.unwrap()
@@ -365,10 +363,27 @@ export function runSimulator(prev: TypecheckedStage):
     invariant: prev.args.invariant,
     maxSamples: prev.args.maxSamples,
     maxSteps: prev.args.maxSteps,
+    seed: prev.args.seed ?? 'seed',
   }
+  const startMs = Date.now()
   const simulator = { ...prev, stage: 'running' as stage }
   return compileAndRun(prev.sourceCode, mainName, options)
     .map(result => {
+      const isConsole = !prev.args.out
+      if (isConsole) {
+        const elapsedMs = Date.now() - startMs
+        console.log(result.status === 'ok'
+          ? chalk.green('[ok]')
+            + ' No violation found ' + chalk.gray(`(${elapsedMs}ms).\n`)
+            + chalk.gray(' You may increase --max-samples and --max-steps.\n')
+            + '\nSee the example:'
+          : chalk.red('[violation]') + chalk.gray(` (${elapsedMs}ms).`)
+            + chalk.gray(' See the example:'))
+        console.log('---------------------------------------------')
+        printTrace(console.log, result.trace)
+        console.log('---------------------------------------------')
+      }
+
       return {
         ...simulator,
         status: result.status,

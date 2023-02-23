@@ -12,6 +12,7 @@
 import { strict as assert } from 'assert'
 import { Maybe, just, merge, none } from '@sweet-monads/maybe'
 import { List, OrderedMap, Set } from 'immutable'
+import seedrandom = require("seedrandom")
 
 import { LookupTable, lookupValue, newTable } from '../../lookupTable'
 import { IRVisitor } from '../../IRVisitor'
@@ -68,9 +69,12 @@ export class CompilerVisitor implements IRVisitor {
   private compileErrors: ir.IrErrorMessage[] = []
   // messages that get populated as the compiled code is executed
   private runtimeErrors: ir.IrErrorMessage[] = []
+  // pre-initialized random number generator
+  private rand
 
-  constructor(types: Map<bigint, TypeScheme>) {
+  constructor(types: Map<bigint, TypeScheme>, seed = 'abcdef') {
     this.types = types
+    this.rand = seedrandom(seed)
     const lastTrace =
       mkRegister('shadow', lastTraceName, none(),
         () => this.addRuntimeError(0n, '_lastTrace is not set'))
@@ -1203,7 +1207,7 @@ export class CompilerVisitor implements IRVisitor {
       } else {
         // randomly pick a successor and return true
         // https://stackoverflow.com/questions/4959975/generate-random-number-between-two-numbers-in-javascript
-        const choice = Math.floor(Math.random() * ncandidates)
+        const choice = Math.floor(this.rand() * ncandidates)
         this.recoverNextVars(successors[choice])
         return just(rv.mkBool(true))
       }
@@ -1217,7 +1221,7 @@ export class CompilerVisitor implements IRVisitor {
     this.applyFun(sourceId,
       1,
       set => {
-        const elem = set.pick(Math.random())
+        const elem = set.pick(this.rand())
         if (elem) {
           return just(elem)
         } else {
@@ -1249,7 +1253,7 @@ export class CompilerVisitor implements IRVisitor {
           // https://github.com/informalsystems/quint/issues/279
           for (let retries = 0; retries < 3; retries++) {
             // randomly pick an element
-            const elem = (set as RuntimeValue).pick(Math.random())
+            const elem = (set as RuntimeValue).pick(this.rand())
             callable.registers[0].registerValue = just(elem)
             const result = callable.eval()
             if (result.isNone()) {

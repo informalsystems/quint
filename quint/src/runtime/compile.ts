@@ -112,6 +112,7 @@ export function
  * @param lookupTable lookup table as produced by the parser
  * @param types type table as produced by the type checker
  * @param mainName the name of the module that may contain state varibles
+ * @param seed the value to initialize the random number generator
  * @returns the compilation context
  */
 export function
@@ -119,11 +120,12 @@ export function
           sourceMap: Map<bigint, Loc>,
           lookupTable: LookupTableByModule,
           types: Map<bigint, TypeScheme>,
-          mainName: string): CompilationContext {
+          mainName: string,
+          seed: string = '0'): CompilationContext {
   // Push back the main module to the end:
   // The compiler exposes the state variables of the last module only.
   const main = modules.find(m => m.name === mainName)
-  const visitor = new CompilerVisitor(types)
+  const visitor = new CompilerVisitor(types, seed)
   if (main) {
     const reorderedModules =
       modules.filter(m => m.name !== mainName).concat(main ? [main] : [])
@@ -169,10 +171,12 @@ export function
  * @param code text that stores one or several Quint modules,
  *        which should be parseable without any context
  * @param mainName the name of the module that may contain state varibles
+ * @param seed the value to initialize the random number generator
  * @returns the compilation context
  */
 export function
-  compileFromCode(code: string, mainName: string): CompilationContext {
+  compileFromCode(code: string, mainName: string, seed: string | undefined):
+    CompilationContext {
   // parse the module text
   return parsePhase1(code, '<input>')
     // On errors, we'll produce the computational context up to this point
@@ -188,7 +192,8 @@ export function
       // collect the errors, but do not stop immediately on error
       const [analysisErrors, analysisResult] = analyzer.getResult()
       const ctx =
-        compile(modules, sourceMap, table, analysisResult.types, mainName)
+        compile(modules,
+                sourceMap, table, analysisResult.types, mainName, seed)
       const errorLocator = mkErrorMessage(sourceMap)
       return right({
         ...ctx,
