@@ -17,7 +17,7 @@ import chalk from 'chalk'
 import { just } from '@sweet-monads/maybe'
 import { left, right } from '@sweet-monads/either'
 
-import { IrErrorMessage, QuintEx } from './quintIr'
+import { QuintEx } from './quintIr'
 import {
   CompilationContext, compileFromCode, contextLookup, lastTraceName
 } from './runtime/compile'
@@ -25,7 +25,7 @@ import { formatError } from './errorReporter'
 import {
   ComputableKind, EvalResult, Register, kindName
 } from './runtime/runtime'
-import { ErrorMessage, Loc, probeParse } from './quintParserFrontend'
+import { ErrorMessage, probeParse } from './quintParserFrontend'
 
 // tunable settings
 export const settings = {
@@ -470,9 +470,8 @@ function tryEval(out: writer, state: ReplState, newInput: string): boolean {
       'syntax error', moduleText, lineOffset, context.syntaxErrors)
     printErrorMessages(out,
       'static analysis error', moduleText, lineOffset, context.analysisErrors, chalk.yellow)
-    const resolved = resolveErrors(context.sourceMap, context.compileErrors)
     printErrorMessages(out,
-      'compile error', moduleText, lineOffset, resolved)
+      'compile error', moduleText, lineOffset, context.compileErrors)
     out('') // be nice to external programs
   }
 
@@ -538,9 +537,10 @@ ${textToAdd}
       })
       .join()
       .mapLeft(msg => {
-        const resolved = resolveErrors(context.sourceMap, context.runtimeErrors)
         // when #618 is implemented, we should remove this
-        printErrorMessages(out, 'runtime error', moduleText, lineOffset, resolved)
+        console.log(`#runtimeErrors = ${context.runtimeErrors.length}`)
+        printErrorMessages(out,
+          'runtime error', moduleText, lineOffset, context.runtimeErrors)
         // print the error message produced by the lookup
         out(chalk.red(msg))
         out('') // be nice to external programs
@@ -566,30 +566,16 @@ ${textToAdd}
   return true
 }
 
-// resolve source locations of IR errors
-function resolveErrors(sourceMap: Map<bigint, Loc>, errors: IrErrorMessage[]): ErrorMessage[] {
-  const unknownLoc = {
-    source: '<unknown>',
-    start: { line: 0, col: 0, index: 0 },
-  }
-  return errors.map(msg => {
-    return {
-      explanation: msg.explanation,
-      locs: msg.refs.map(id => sourceMap.get(id) ?? unknownLoc),
-    }
-  })
-}
-
 // print error messages with proper colors
 function printErrorMessages(out: writer,
   kind: string, text: string, lineOffset: number, messages: ErrorMessage[],
   color: (_text: string) => string = chalk.red) {
   // display the error messages and highlight the error places
   const finder = lineColumn(text)
-  for (const e of messages) {
+  messages.forEach(e => {
     const msg = formatError(text, finder, e, lineOffset)
     out(color(`${kind}: ${msg}`))
-  }
+  })
 }
 
 // if a line start with '>>> ' or '... ', trim these markers

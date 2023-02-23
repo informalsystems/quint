@@ -1,9 +1,9 @@
 /*
  * A compiler to the runtime environment.
  *
- * Igor Konnov, 2022
+ * Igor Konnov, 2022-2023
  *
- * Copyright (c) Informal Systems 2022. All rights reserved.
+ * Copyright (c) Informal Systems 2022-2023. All rights reserved.
  * Licensed under the Apache 2.0.
  * See License.txt in the project root for license information.
  */
@@ -11,10 +11,10 @@
 import { Either, left, right } from '@sweet-monads/either'
 
 import {
-  ErrorMessage, Loc, parsePhase1, parsePhase2
+  ErrorMessage, Loc, fromIrErrorMessage,parsePhase1, parsePhase2
 } from '../quintParserFrontend'
 import { Computable, ComputableKind, kindName } from './runtime'
-import { IrErrorMessage, QuintModule } from '../quintIr'
+import { QuintModule } from '../quintIr'
 import { CompilerVisitor } from './impl/compilerImpl'
 import { walkDefinition } from '../IRVisitor'
 import { treeFromModule } from '../scoping'
@@ -45,9 +45,9 @@ export interface CompilationContext {
   // messages that are produced by static analysis
   analysisErrors: ErrorMessage[],
   // messages that are produced during compilation
-  compileErrors: IrErrorMessage[],
+  compileErrors: ErrorMessage[],
   // messages that get populated as the compiled code is executed
-  runtimeErrors: IrErrorMessage[],
+  runtimeErrors: ErrorMessage[],
   // source mapping
   sourceMap: Map<bigint, Loc>,
 }
@@ -141,6 +141,7 @@ export function
       explanation: `Main module ${mainName} not found`,
       refs: [],
     }]
+  console.log(`#runtimeErrors = ${visitor.getRuntimeErrors().length}`)
   return {
     lookupTable: lookupTable,
     values: visitor.getContext(),
@@ -148,8 +149,11 @@ export function
     shadowVars: visitor.getShadowVars(),
     syntaxErrors: [],
     analysisErrors: [],
-    compileErrors: visitor.getCompileErrors().concat(mainNotFoundError),
-    runtimeErrors: visitor.getRuntimeErrors(),
+    compileErrors:
+      visitor.getCompileErrors().concat(mainNotFoundError)
+      .map(fromIrErrorMessage(sourceMap)),
+    runtimeErrors:
+      visitor.getRuntimeErrors().map(fromIrErrorMessage(sourceMap)),
     sourceMap: sourceMap,
   }
 }

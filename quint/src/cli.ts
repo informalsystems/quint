@@ -6,7 +6,7 @@
  * See the description at:
  * https://github.com/informalsystems/quint/blob/main/doc/quint.md
  *
- * @author Igor Konnov, Gabriela Moreira, Informal Systems, 2021-2022
+ * @author Igor Konnov, Gabriela Moreira, Shon Feder, Informal Systems, 2021-2023
  */
 
 
@@ -97,6 +97,60 @@ const testCmd = {
     outputResult(load(args).chain(parse).chain(typecheck).chain(runTests)),
 }
 
+// construct run commands with yargs
+const runCmd = {
+  command: 'run <input>',
+  desc: 'Simulate a Quint specification and (optionally) check invariants',
+  builder: (yargs: any) =>
+    yargs
+      .option('main', {
+        desc: 'name of the main module (by default, computed from filename)',
+        type: 'string',
+      })
+      .option('out', {
+        desc: 'output file (suppresses all console output)',
+        type: 'string',
+      })
+      .option('max-samples', {
+        desc: 'the maximum on the number of traces to try',
+        type: 'number',
+      })
+      .default('max-samples', 10000)
+      .option('max-steps', {
+        desc: 'the maximum on the number of steps in every trace',
+        type: 'number',
+      })
+      .default('max-steps', 20)
+      .option('init', {
+        desc: 'name of the initializer action',
+        type: 'string',
+      })
+      .default('init', 'init')
+      .option('step', {
+        desc: 'name of the step action',
+        type: 'string',
+      })
+      .default('step', 'step')
+      .option('invariants', {
+        desc: 'invariants to check: definition names or expressions',
+        type: 'array',
+      })
+      .default('invariants', ['true'])
+      .option('seed', {
+        desc: 'random seed to use for non-deterministic choice',
+        type: 'string',
+      }),
+// Timeouts are postponed for:
+// https://github.com/informalsystems/quint/issues/633
+//
+//      .option('timeout', {
+//        desc: 'timeout in seconds',
+//        type: 'number',
+//      })
+  handler: (args: any) =>
+    outputResult(load(args).chain(parse).chain(typecheck).chain(runTests)),
+}
+
 // construct documenting commands with yargs
 const docsCmd = {
   command: 'docs <input>',
@@ -114,6 +168,7 @@ yargs(process.argv.slice(2))
   .command(parseCmd)
   .command(typecheckCmd)
   .command(replCmd)
+  .command(runCmd)
   .command(testCmd)
   .command(docsCmd)
   .demandCommand(1)

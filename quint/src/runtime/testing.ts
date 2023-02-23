@@ -8,10 +8,10 @@
  * See License.txt in the project root for license information.
  */
 
-import { Either, left, merge } from '@sweet-monads/either'
+import { Either, merge } from '@sweet-monads/either'
 
-import { Loc } from '../quintParserFrontend'
-import { IrErrorMessage, QuintModule, QuintOpDef } from '../quintIr'
+import { ErrorMessage, Loc, fromIrErrorMessage } from '../quintParserFrontend'
+import { QuintModule, QuintOpDef } from '../quintIr'
 import { LookupTableByModule } from '../lookupTable'
 import { TypeScheme } from '../types/base'
 
@@ -33,7 +33,7 @@ export interface TestResult {
   /**
    * When status === 'failed', errors contain the explanatory error messages.
    */
-  errors: IrErrorMessage[]
+  errors: ErrorMessage[]
 }
 
 /**
@@ -78,10 +78,10 @@ compileAndTest(modules: QuintModule[],
           return { name, status: 'passed', errors: [] }
         }
   
-        const e = {
+        const e = fromIrErrorMessage(sourceMap)({
           explanation: `${name} returns false`,
           refs: [def.id],
-        }
+        })
         return { name, status: 'failed', errors: [e] }
       })
   }))

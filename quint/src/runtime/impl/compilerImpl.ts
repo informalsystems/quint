@@ -1331,12 +1331,17 @@ export class CompilerVisitor implements IRVisitor {
                 const next =
                   this.contextLookup(nextName, this.moduleId, ['callable']) ?? fail
                 for (let i = 0; !errorFound && i < nsteps; i++) {
-                  if (isTrue(next.eval())) {
+                  const nextResult = next.eval()
+                  if (isTrue(nextResult)) {
                     this.shiftVars()
                     trace.push(varsToRecord())
                     errorFound = !isTrue(inv.eval())
                   } else {
-                    // The run cannot be extended.
+                    // If the result is undefined, then we have found
+                    // a runtime error, which should be reported.
+                    errorFound = nextResult.isNone()
+
+                    // Otherwise, the run cannot be extended.
                     // In some cases, this may indicate a deadlock.
                     // Since we are doing random simulation, it is very likely
                     // that we have not generated good values for extending

@@ -286,13 +286,7 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
           const errNo = namedErrors.length + 1
           out('    ' + chalk.red(`${errNo}) `)  + res.name)
 
-          res.errors.forEach(e => {
-            const err = {
-              explanation: e.explanation,
-              locs: e.refs.map(id => prev.sourceMap.get(id)!),
-            }
-            namedErrors.push([res.name, err])
-          })
+          res.errors.forEach(e => namedErrors.push([res.name, e]))
         }
       })
 
