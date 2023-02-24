@@ -45,6 +45,7 @@ export interface TestResult {
  * @param lookupTable lookup table as produced by the parser
  * @param types type table as produced by the type checker
  * @param testMatch test name matcher
+ * @param rand a random number generator
  * @returns the results of running the tests
  */
 export function
@@ -54,9 +55,9 @@ compileAndTest(modules: QuintModule[],
          lookupTable: LookupTableByModule,
          types: Map<bigint, TypeScheme>,
          testMatch: (n: string) => boolean,
-         seed: string): Either<string, TestResult[]> {
+         rand: () => number): Either<string, TestResult[]> {
   const ctx =
-    compile(modules, sourceMap, lookupTable, types, main.name, seed)
+    compile(modules, sourceMap, lookupTable, types, main.name, rand)
   const testDefs =
     main.defs.filter(d => d.kind === 'def' && testMatch(d.name)) as QuintOpDef[]
 

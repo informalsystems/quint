@@ -500,7 +500,8 @@ ${textToAdd}
     const [moduleText, lineOffset] =
       prepareParserInput(`  action __input =\n${newInput}`)
     // compile the expression or definition and evaluate it
-    const context = compileFromCode(moduleText, '__repl__', undefined)
+    const context =
+      compileFromCode(moduleText, '__repl__', () => Math.random())
     if (context.syntaxErrors.length > 0 ||
         context.compileErrors.length > 0 || context.analysisErrors.length > 0) {
       printErrors(moduleText, context, lineOffset)
@@ -551,7 +552,8 @@ ${textToAdd}
     // embed expression text into a module at the top level
     const [moduleText, lineOffset] = prepareParserInput(newInput)
     // compile the module and add it to history if everything worked
-    const context = compileFromCode(moduleText, '__repl__', undefined)
+    const context =
+      compileFromCode(moduleText, '__repl__', () => Math.random())
     if (context.values.size === 0 ||
         context.compileErrors.length > 0 || context.syntaxErrors.length > 0) {
       printErrors(moduleText, context, lineOffset)

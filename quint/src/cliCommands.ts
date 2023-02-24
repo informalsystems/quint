@@ -12,6 +12,7 @@ import JSONbig from 'json-bigint'
 import { basename, resolve } from 'path'
 import { cwd } from 'process'
 import chalk from 'chalk'
+import seedrandom from 'seedrandom'
 
 import {
   ErrorMessage, Loc, compactSourceMap, parsePhase1, parsePhase2
@@ -277,7 +278,6 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
     let ignored: string[] = []
     let namedErrors: [string, ErrorMessage][] = []
 
-    const seed = prev.args.seed ?? 'seed'
     const startMs = Date.now()
     out(`\n  ${mainName}`)
 
@@ -286,7 +286,7 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
 
     const testOut =
       compileAndTest(prev.modules, main, prev.sourceMap,
-                     prev.table, prev.types, matchFun, seed)
+                     prev.table, prev.types, matchFun, mkRng(prev.args.seed))
     if (testOut.isRight()) {
       const elapsedMs = Date.now() - startMs
       const results = testOut.unwrap()
@@ -362,7 +362,7 @@ export function runSimulator(prev: TypecheckedStage):
     invariant: prev.args.invariant,
     maxSamples: prev.args.maxSamples,
     maxSteps: prev.args.maxSteps,
-    seed: prev.args.seed ?? 'seed',
+    rand: mkRng(prev.args.seed),
   }
   const startMs = Date.now()
   const simulator = { ...prev, stage: 'running' as stage }
@@ -462,6 +462,18 @@ function replacer(_key: String, value: any): any {
     return Object.fromEntries(value)
   } else {
     return value
+  }
+}
+
+/**
+ * Produce a random-number generator: Either a predictable one using a seed,
+ * or a reasonably unpredictable one.
+ */
+function mkRng(seed: string | undefined): () => number {
+  if (seed) {
+    return seedrandom(seed)
+  } else {
+    return seedrandom()
   }
 }
 

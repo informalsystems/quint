@@ -14,7 +14,8 @@ import { dedent } from '../textUtils'
 // compare the result. This is the easiest path to test the results.
 function assertResultAsString(input: string, expected: string | undefined) {
   const moduleText = `module __runtime { val __expr = ${input} }`
-  const context = compileFromCode(moduleText, '__runtime', 'seed')
+  const context =
+    compileFromCode(moduleText, '__runtime', () => Math.random())
   contextLookup(context, '__runtime', '__expr', 'callable')
     .mapLeft(msg => assert(false, msg))
     .mapRight(value => {
@@ -32,7 +33,8 @@ function assertResultAsString(input: string, expected: string | undefined) {
 // Compile an input and evaluate a callback in the context
 function evalInContext<T>(input: string, callable: (ctx: CompilationContext) => Either<string, T>) {
   const moduleText = `module __runtime { ${input} }`
-  const context = compileFromCode(moduleText, '__runtime', 'seed')
+  const context =
+    compileFromCode(moduleText, '__runtime', () => Math.random())
   return callable(context)
 }
 

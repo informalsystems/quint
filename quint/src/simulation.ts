@@ -30,7 +30,7 @@ export interface SimulatorOptions {
   invariant: string,
   maxSamples: number,
   maxSteps: number,
-  seed: string,
+  rand: () => number,
 }
 
 /**
@@ -112,7 +112,7 @@ module __run__ {
 }
 `
  
-  const ctx = compileFromCode(wrappedCode, '__run__', options.seed)
+  const ctx = compileFromCode(wrappedCode, '__run__', options.rand)
 
   if (ctx.compileErrors.length > 0
       || ctx.syntaxErrors.length > 0

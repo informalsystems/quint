@@ -112,7 +112,7 @@ export function
  * @param lookupTable lookup table as produced by the parser
  * @param types type table as produced by the type checker
  * @param mainName the name of the module that may contain state varibles
- * @param seed the value to initialize the random number generator
+ * @param rand the random number generator
  * @returns the compilation context
  */
 export function
@@ -121,11 +121,11 @@ export function
           lookupTable: LookupTableByModule,
           types: Map<bigint, TypeScheme>,
           mainName: string,
-          seed: string = '0'): CompilationContext {
+          rand: () => number): CompilationContext {
   // Push back the main module to the end:
   // The compiler exposes the state variables of the last module only.
   const main = modules.find(m => m.name === mainName)
-  const visitor = new CompilerVisitor(types, seed)
+  const visitor = new CompilerVisitor(types, rand)
   if (main) {
     const reorderedModules =
       modules.filter(m => m.name !== mainName).concat(main ? [main] : [])
@@ -171,11 +171,11 @@ export function
  * @param code text that stores one or several Quint modules,
  *        which should be parseable without any context
  * @param mainName the name of the module that may contain state varibles
- * @param seed the value to initialize the random number generator
+ * @param rand the random number generator
  * @returns the compilation context
  */
 export function
-  compileFromCode(code: string, mainName: string, seed: string | undefined):
+  compileFromCode(code: string, mainName: string, rand: () => number):
     CompilationContext {
   // parse the module text
   return parsePhase1(code, '<input>')
@@ -193,7 +193,7 @@ export function
       const [analysisErrors, analysisResult] = analyzer.getResult()
       const ctx =
         compile(modules,
-                sourceMap, table, analysisResult.types, mainName, seed)
+                sourceMap, table, analysisResult.types, mainName, rand)
       const errorLocator = mkErrorMessage(sourceMap)
       return right({
         ...ctx,

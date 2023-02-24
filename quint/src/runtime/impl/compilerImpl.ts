@@ -12,7 +12,6 @@
 import { strict as assert } from 'assert'
 import { Maybe, just, merge, none } from '@sweet-monads/maybe'
 import { List, OrderedMap, Set } from 'immutable'
-import seedrandom = require("seedrandom")
 
 import { LookupTable, lookupValue, newTable } from '../../lookupTable'
 import { IRVisitor } from '../../IRVisitor'
@@ -72,9 +71,9 @@ export class CompilerVisitor implements IRVisitor {
   // pre-initialized random number generator
   private rand
 
-  constructor(types: Map<bigint, TypeScheme>, seed = 'abcdef') {
+  constructor(types: Map<bigint, TypeScheme>, rand: () => number) {
     this.types = types
-    this.rand = seedrandom(seed)
+    this.rand = rand
     const lastTrace =
       mkRegister('shadow', lastTraceName, none(),
         () => this.addRuntimeError(0n, '_lastTrace is not set'))
