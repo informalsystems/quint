@@ -178,7 +178,8 @@ export function
 export function
   compileFromCode(idGen: IdGenerator,
                   code: string,
-                  mainName: string, rand: () => number): CompilationContext {
+                  mainName: string,
+                  rand: () => number): CompilationContext {
   // parse the module text
   return parsePhase1(idGen, code, '<input>')
     // On errors, we'll produce the computational context up to this point

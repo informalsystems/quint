@@ -367,7 +367,7 @@ export function runSimulator(prev: TypecheckedStage):
   }
   const startMs = Date.now()
   const simulator = { ...prev, stage: 'running' as stage }
-  return compileAndRun(prev.sourceCode, mainName, options)
+  return compileAndRun(newIdGenerator(), prev.sourceCode, mainName, options)
     .map(result => {
       const isConsole = !prev.args.out
       if (isConsole) {
