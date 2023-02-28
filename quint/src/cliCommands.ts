@@ -350,7 +350,7 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
 /**
  * Run the simulator.
  *
- * @param typedStage the procedure stage produced by `typecheck`
+ * @param prev the procedure stage produced by `typecheck`
  */
 export function runSimulator(prev: TypecheckedStage):
   CLIProcedure<SimulatorStage> {

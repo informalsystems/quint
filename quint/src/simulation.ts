@@ -134,7 +134,7 @@ module __run__ {
           const ex = result.unwrap().toQuintEx()
           if (ex.kind !== 'bool') {
             return left([{
-              explanation: 'Expected a Boolean results',
+              explanation: 'Expected a Boolean result',
               locs: [],
             }])
           } else {
