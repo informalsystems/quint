@@ -9,17 +9,21 @@ import {
 } from '../../src/runtime/compile'
 import { RuntimeValue } from '../../src/runtime/impl/runtimeValue'
 import { dedent } from '../textUtils'
+import { newIdGenerator } from '../../src/idGenerator'
+
+// Use a global id generator, limited to this test suite.
+const idGen = newIdGenerator()
 
 // Compile an expression, evaluate it, convert to QuintEx, then to a string,
 // compare the result. This is the easiest path to test the results.
 function assertResultAsString(input: string, expected: string | undefined) {
   const moduleText = `module __runtime { val __expr = ${input} }`
-  const context = compileFromCode(moduleText, '__runtime')
+  const context = compileFromCode(idGen, moduleText, '__runtime')
   contextLookup(context, '__runtime', '__expr', 'callable')
     .mapLeft(msg => assert(false, msg))
     .mapRight(value => {
       const result = value.eval()
-        .map(r => r.toQuintEx())
+        .map(r => r.toQuintEx(idGen))
         .map(expressionToString)
         .map(s => assert(s === expected, `Expected ${expected}, found ${s}`))
       if (result.isNone()) {
@@ -32,7 +36,7 @@ function assertResultAsString(input: string, expected: string | undefined) {
 // Compile an input and evaluate a callback in the context
 function evalInContext<T>(input: string, callable: (ctx: CompilationContext) => Either<string, T>) {
   const moduleText = `module __runtime { ${input} }`
-  const context = compileFromCode(moduleText, '__runtime')
+  const context = compileFromCode(idGen, moduleText, '__runtime')
   return callable(context)
 }
 
@@ -68,10 +72,10 @@ function evalVarAfterRun(runName: string,
               if (nextVal.isNone()) {
                 return left(`Value of the variable ${varName} is undefined`)
               } else {
-                return right(expressionToString(nextVal.value.toQuintEx()))
+                return right(expressionToString(nextVal.value.toQuintEx(idGen)))
               }
             } else {
-              const s = expressionToString(res.toQuintEx())
+              const s = expressionToString(res.toQuintEx(idGen))
               const m =
                 `Run ${runName} was expected to evaluate to true, found: ${s}`
               return left<string, string>(m)

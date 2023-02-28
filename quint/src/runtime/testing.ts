@@ -16,6 +16,7 @@ import { LookupTableByModule } from '../lookupTable'
 import { TypeScheme } from '../types/base'
 
 import { compile, contextLookup } from './compile'
+import { newIdGenerator } from './../idGenerator'
 
 /**
  * Evaluation result.
@@ -49,11 +50,11 @@ export interface TestResult {
  */
 export function
 compileAndTest(modules: QuintModule[],
-         main: QuintModule,
-         sourceMap: Map<bigint, Loc>,
-         lookupTable: LookupTableByModule,
-         types: Map<bigint, TypeScheme>,
-         testMatch: (n: string) => boolean): Either<string, TestResult[]> {
+             main: QuintModule,
+             sourceMap: Map<bigint, Loc>,
+             lookupTable: LookupTableByModule,
+             types: Map<bigint, TypeScheme>,
+             testMatch: (n: string) => boolean): Either<string, TestResult[]> {
   const ctx =
     compile(modules, sourceMap, lookupTable, types, main.name)
   const testDefs =
@@ -70,7 +71,7 @@ compileAndTest(modules: QuintModule[],
           return { name, status: 'failed', errors }
         }
   
-        const ex = result.value.toQuintEx()
+        const ex = result.value.toQuintEx(newIdGenerator())
         if (ex.kind !== 'bool') {
           return { name, status: 'ignored', errors: [] }
         }

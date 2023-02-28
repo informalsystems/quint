@@ -12,7 +12,7 @@ export function buildModuleWithExpressions(expressions: string[]): QuintModule {
 export function buildModuleWithDefs(defs: string[], name?: string): QuintModule {
   const quintModule: string = `module ${name ?? 'wrapper'} { ${defs.join('\n')} }`
 
-  const result = parsePhase1(quintModule, 'mocked_path', newIdGenerator())
+  const result = parsePhase1(newIdGenerator(), quintModule, 'mocked_path')
 
   if (result.isRight()) {
     return result.value.modules[0]

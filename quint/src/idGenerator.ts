@@ -33,9 +33,3 @@ export const newIdGenerator = () => {
   }
 }
 
-/**
- * A global implementation of IdGenerator that produces identifiers
- * in sequence. Since JavaScript is single-threaded, it does not seem to
- * need extra precautions.
- */
-export const globalIdGen = newIdGenerator()

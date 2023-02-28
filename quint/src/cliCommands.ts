@@ -30,6 +30,7 @@ import { DocumentationEntry, produceDocs, toMarkdown } from './docs'
 import { QuintAnalyzer } from './quintAnalyzer'
 import { QuintError, quintErrorToString } from './quintError'
 import { compileAndTest } from './runtime/testing'
+import { newIdGenerator } from './idGenerator'
 
 export type stage =
   'loading' | 'parsing' | 'typechecking' | 'testing' | 'documentation'
@@ -162,7 +163,7 @@ export function load(args: any): CLIProcedure<LoadedStage> {
 export function parse(loaded: LoadedStage): CLIProcedure<ParsedStage> {
   const { args, sourceCode, path } = loaded
   const parsing = { ...loaded, stage: 'parsing' as stage }
-  return parsePhase1(sourceCode, path)
+  return parsePhase1(newIdGenerator(), sourceCode, path)
     .mapLeft(newErrs => {
       const errors = parsing.errors ? parsing.errors.concat(newErrs) : newErrs
       return { msg: "parsing failed", stage: { ...parsing, errors } }
@@ -348,7 +349,7 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
 export function docs(loaded: LoadedStage): CLIProcedure<DocumentationStage> {
   const { sourceCode, path } = loaded
   const parsing = { ...loaded, stage: 'documentation' as stage }
-  return parsePhase1(sourceCode, path)
+  return parsePhase1(newIdGenerator(), sourceCode, path)
     .mapLeft(newErrs => {
       const errors = parsing.errors ? parsing.errors.concat(newErrs) : newErrs
       return { msg: "parsing failed", stage: { ...parsing, errors } }

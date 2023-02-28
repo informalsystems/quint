@@ -27,9 +27,8 @@ function readJson(name: string): any {
 function parseAndCompare(artifact: string): void {
   // read the input from the data directory and parse it
   const phase1Result =
-    parsePhase1(readQuint(artifact),
-                `mocked_path/testFixture/${artifact}.qnt`,
-                newIdGenerator())
+    parsePhase1(newIdGenerator(), readQuint(artifact),
+                `mocked_path/testFixture/${artifact}.qnt`)
   // read the expected result as JSON
   const expected = readJson(artifact)
   let outputToCompare
@@ -82,18 +81,18 @@ function parseAndCompare(artifact: string): void {
 describe('parsing', () => {
   it('parses empty module', () => {
     const result =
-      parsePhase1(readQuint('_0001emptyModule'),
-                  'mocked_path/testFixture/_0001emptyModule.qnt',
-                  newIdGenerator())
+      parsePhase1(newIdGenerator(),
+                  readQuint('_0001emptyModule'),
+                  'mocked_path/testFixture/_0001emptyModule.qnt')
     const module = { id: 1n, name: 'empty', defs: [] }
     assert.deepEqual(result.map(r => r.modules[0]), right(module))
   })
 
   it('parses SuperSpec', () => {
     const result =
-      parsePhase1(readQuint('SuperSpec'),
-                  'mocked_path/testFixture/SuperSpec.qnt',
-                  newIdGenerator())
+      parsePhase1(newIdGenerator(),
+                  readQuint('SuperSpec'),
+                  'mocked_path/testFixture/SuperSpec.qnt')
     assert(result.isRight())
   })
 

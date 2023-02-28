@@ -64,7 +64,7 @@ import {
   List, Map, OrderedMap, Set, ValueObject, hash, is as immutableIs
 } from 'immutable'
 
-import { globalIdGen } from '../../idGenerator'
+import { IdGenerator } from '../../idGenerator'
 import { expressionToString } from '../../IRprinting'
 
 import { EvalResult } from '../runtime'
@@ -563,10 +563,10 @@ abstract class RuntimeValueBase implements RuntimeValue {
     return 0
   }
 
-  toQuintEx(): QuintEx {
+  toQuintEx(gen: IdGenerator): QuintEx {
     // the default implementation, to make it compatible with RuntimeValue
     return {
-      id: globalIdGen.nextId(),
+      id: gen.nextId(),
       kind: 'bool',
       value: false,
     }
@@ -588,9 +588,9 @@ class RuntimeValueBool extends RuntimeValueBase implements RuntimeValue {
     return this.value ? 1 : 0
   }
 
-  toQuintEx(): QuintEx {
+  toQuintEx(gen: IdGenerator): QuintEx {
     return {
-      id: globalIdGen.nextId(),
+      id: gen.nextId(),
       kind: 'bool',
       value: this.value,
     }
@@ -613,9 +613,9 @@ class RuntimeValueInt extends RuntimeValueBase implements ValueObject {
     return Number(BigInt.asUintN(32, this.value))
   }
 
-  toQuintEx(): QuintEx {
+  toQuintEx(gen: IdGenerator): QuintEx {
     return {
-      id: globalIdGen.nextId(),
+      id: gen.nextId(),
       kind: 'int',
       value: this.value,
     }
@@ -637,9 +637,9 @@ class RuntimeValueStr extends RuntimeValueBase implements ValueObject {
     return hash(this.value)
   }
 
-  toQuintEx(): QuintEx {
+  toQuintEx(gen: IdGenerator): QuintEx {
     return {
-      id: globalIdGen.nextId(),
+      id: gen.nextId(),
       kind: 'str',
       value: this.value,
     }
@@ -678,15 +678,15 @@ class RuntimeValueTupleOrList extends RuntimeValueBase implements RuntimeValue {
     return this.list.hashCode()
   }
 
-  toQuintEx(): QuintEx {
+  toQuintEx(gen: IdGenerator): QuintEx {
     // simply enumerate the values
     const elems: QuintEx[] = []
     for (const e of this.list) {
-      elems.push(e.toQuintEx())
+      elems.push(e.toQuintEx(gen))
     }
     // return the expression tup(...elems)
     return {
-      id: globalIdGen.nextId(),
+      id: gen.nextId(),
       kind: 'app',
       opcode: this.kind,
       args: elems,
@@ -716,16 +716,16 @@ class RuntimeValueRecord extends RuntimeValueBase implements RuntimeValue {
     return this.map.hashCode()
   }
 
-  toQuintEx(): QuintEx {
+  toQuintEx(gen: IdGenerator): QuintEx {
     // simply enumerate the values
     const elems: QuintEx[] = []
     for (const [key, value] of this.map) {
-      elems.push({ id: globalIdGen.nextId(), kind: 'str', value: key })
-      elems.push(value.toQuintEx())
+      elems.push({ id: gen.nextId(), kind: 'str', value: key })
+      elems.push(value.toQuintEx(gen))
     }
     // return the expression Rec(...elems)
     return {
-      id: globalIdGen.nextId(),
+      id: gen.nextId(),
       kind: 'app',
       opcode: 'Rec',
       args: elems,
@@ -755,16 +755,16 @@ class RuntimeValueMap extends RuntimeValueBase implements RuntimeValue {
     return this.map.hashCode()
   }
 
-  toQuintEx(): QuintEx {
+  toQuintEx(gen: IdGenerator): QuintEx {
     // convert to a set of pairs and use its normal form
     const pairs: RuntimeValueTupleOrList[] = this.map.toArray().map(([k, v]) =>
       new RuntimeValueTupleOrList('Tup', List([k, v]))
     )
-    const set = new RuntimeValueSet(Set(pairs)).toQuintEx()
+    const set = new RuntimeValueSet(Set(pairs)).toQuintEx(gen)
     if (set.kind === 'app') {
       // return the expression Map(pairs)
       return {
-        id: globalIdGen.nextId(),
+        id: gen.nextId(),
         kind: 'app',
         opcode: 'Map',
         args: set.args,
@@ -835,7 +835,7 @@ class RuntimeValueSet extends RuntimeValueBase implements RuntimeValue {
     return this.set.size
   }
 
-  toQuintEx(): QuintEx {
+  toQuintEx(gen: IdGenerator): QuintEx {
     // Sets are tricky, as we have to normalize them when producing QuintEx.
     // The most common normal form is the one that sorts sets according
     // to their string representation. Instead of computing the string
@@ -849,7 +849,7 @@ class RuntimeValueSet extends RuntimeValueBase implements RuntimeValue {
     // Normalize the elements by sorting them
     const elems: (QuintEx & { __str?: string })[] =
       this.set
-        .map(e => e.toQuintEx())
+        .map(e => e.toQuintEx(gen))
         .map(cacheStr)
         .toArray()
         .sort((e1, e2) => e1.__str.localeCompare(e2.__str))
@@ -857,7 +857,7 @@ class RuntimeValueSet extends RuntimeValueBase implements RuntimeValue {
     elems.forEach(e => delete e.__str)
     // return the expression Set(...elems)
     return {
-      id: globalIdGen.nextId(),
+      id: gen.nextId(),
       kind: 'app',
       opcode: 'Set',
       args: elems,
@@ -888,13 +888,13 @@ class RuntimeValueInterval extends RuntimeValueBase implements RuntimeValue {
   [Symbol.iterator]() {
     const start = this.first
     const end = this.last
-    function * gen(): Generator<RuntimeValue> {
+    function * g(): Generator<RuntimeValue> {
       for (let i = start; i <= end; i++) {
         yield new RuntimeValueInt(i)
       }
     }
 
-    return gen()
+    return g()
   }
 
   hashCode(): number {
@@ -933,15 +933,15 @@ class RuntimeValueInterval extends RuntimeValueBase implements RuntimeValue {
     return Number(this.last - this.first) + 1
   }
 
-  toQuintEx(): QuintEx {
+  toQuintEx(gen: IdGenerator): QuintEx {
     // simply enumerate the values in the interval first..last
     const elems: QuintEx[] = []
     for (const i of this) {
-      elems.push(i.toQuintEx())
+      elems.push(i.toQuintEx(gen))
     }
     // return the expression Set(...elems)
     return {
-      id: globalIdGen.nextId(),
+      id: gen.nextId(),
       kind: 'app',
       opcode: 'Set',
       args: elems,
@@ -1081,15 +1081,15 @@ class RuntimeValueCrossProd
     return new RuntimeValueTupleOrList('Tup', List.of(...elems))
   }
 
-  toQuintEx(): QuintEx {
+  toQuintEx(gen: IdGenerator): QuintEx {
     // simply enumerate the values
     const elems: QuintEx[] = []
     for (const i of this) {
-      elems.push(i.toQuintEx())
+      elems.push(i.toQuintEx(gen))
     }
     // return the expression Set(...elems)
     return {
-      id: globalIdGen.nextId(),
+      id: gen.nextId(),
       kind: 'app',
       opcode: 'Set',
       args: elems,
@@ -1162,15 +1162,15 @@ class RuntimeValuePowerset
     return this.fromIndex(index)
   }
 
-  toQuintEx(): QuintEx {
+  toQuintEx(gen: IdGenerator): QuintEx {
     // simply enumerate the values
     const elems: QuintEx[] = []
     for (const i of this) {
-      elems.push(i.toQuintEx())
+      elems.push(i.toQuintEx(gen))
     }
     // return the expression Set(...elems)
     return {
-      id: globalIdGen.nextId(),
+      id: gen.nextId(),
       kind: 'app',
       opcode: 'Set',
       args: elems,
@@ -1294,15 +1294,15 @@ class RuntimeValueMapSet
     return rv.mkMap(keyValues)
   }
 
-  toQuintEx(): QuintEx {
+  toQuintEx(gen: IdGenerator): QuintEx {
     // simply enumerate the values
     const elems: QuintEx[] = []
     for (const i of this) {
-      elems.push(i.toQuintEx())
+      elems.push(i.toQuintEx(gen))
     }
     // return the expression set(...elems)
     return {
-      id: globalIdGen.nextId(),
+      id: gen.nextId(),
       kind: 'app',
       opcode: 'Set',
       args: elems,
@@ -1376,10 +1376,10 @@ class RuntimeValueInfSet extends RuntimeValueBase implements RuntimeValue {
     throw new Error(`The cardinality of an infinite set ${this.kind} is not a number`)
   }
 
-  toQuintEx(): QuintEx {
+  toQuintEx(gen: IdGenerator): QuintEx {
     // return the built-in name
     return {
-      id: globalIdGen.nextId(),
+      id: gen.nextId(),
       kind: 'name',
       name: this.kind,
     }
