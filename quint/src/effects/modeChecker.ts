@@ -18,7 +18,7 @@ import { qualifierToString } from '../IRprinting'
 import { IRVisitor, walkModule } from '../IRVisitor'
 import { QuintError } from '../quintError'
 import { OpQualifier, QuintInstance, QuintModule, QuintOpDef } from '../quintIr'
-import { ArrowEffect, ComponentKind, Effect, Variables } from './base'
+import { ArrowEffect, ComponentKind, EffectScheme, Variables, stateVariables, variablesNames } from './base'
 import { effectToString, variablesToString } from './printing'
 
 export type ModeCheckingResult = [Map<bigint, QuintError>, Map<bigint, OpQualifier>]
@@ -34,7 +34,7 @@ export class ModeChecker implements IRVisitor {
    *
    * @returns The mode errors, if any is found. Otherwise, a map with potential suggestions.
    */
-  checkModes(quintModule: QuintModule, effects: Map<bigint, Effect>): ModeCheckingResult {
+  checkModes(quintModule: QuintModule, effects: Map<bigint, EffectScheme>): ModeCheckingResult {
     this.effects = effects
     walkModule(this, quintModule)
     return [this.errors, this.suggestions]
@@ -43,7 +43,7 @@ export class ModeChecker implements IRVisitor {
   private errors: Map<bigint, QuintError> = new Map<bigint, QuintError>()
   private suggestions: Map<bigint, OpQualifier> = new Map<bigint, OpQualifier>()
 
-  private effects: Map<bigint, Effect> = new Map<bigint, Effect>()
+  private effects: Map<bigint, EffectScheme> = new Map<bigint, EffectScheme>()
 
   exitOpDef(def: QuintOpDef) {
     const effect = this.effects.get(def.id)
@@ -126,10 +126,24 @@ const modesForConcrete = new Map<ComponentKind, OpQualifier>([
   ['read', 'val'],
 ])
 
-function modeForEffect(effect: Effect): [OpQualifier, string] {
+function modeForEffect(scheme: EffectScheme): [OpQualifier, string] {
+  const effect = scheme.effect
+  const nonFreeVars = scheme.variables
+
   switch (effect.kind) {
     case 'concrete': {
-      const kind = componentKindPriority.find(kind => effect.components.some(c => c.kind === kind))
+      const kind = componentKindPriority.find(kind => {
+        return effect.components.some(c => {
+          if (c.kind !== kind) {
+            return false
+          }
+          const nonFreeVariables = variablesNames(c.variables).filter(v => nonFreeVars.has(v)).concat(
+            stateVariables(c.variables).map(v => v.name)
+          )
+
+          return nonFreeVariables && nonFreeVariables.length > 0
+        })
+      })
 
       if (!kind) {
         return ['pureval', "doesn't read or update any variable"]
@@ -157,8 +171,13 @@ function modeForEffect(effect: Effect): [OpQualifier, string] {
       })
 
       const kind = componentKindPriority.find(kind => {
-        const addedVariables = addedVariablesByComponentKind.get(kind)
-        return addedVariables && addedVariables.length > 0
+        const variables = addedVariablesByComponentKind.get(kind)
+        const nonFreeVariables = variables?.flatMap(vs => {
+          return variablesNames(vs).filter(v => nonFreeVars.has(v)).concat(
+            stateVariables(vs).map(v => v.name)
+          )
+        })
+        return nonFreeVariables && nonFreeVariables.length > 0
       })
 
       if (!kind) {
@@ -202,12 +221,27 @@ function paramVariablesByEffect(effect: ArrowEffect): Map<ComponentKind, Variabl
   const variablesByComponentKind: Map<ComponentKind, Variables[]> = new Map()
 
   effect.params.forEach(p => {
-    if (p.kind === 'concrete') {
-      p.components.forEach(c => {
-        const variables = variablesByComponentKind.get(c.kind) || []
-        variables.push(c.variables)
-        variablesByComponentKind.set(c.kind, variables)
-      })
+    switch (p.kind) {
+      case 'concrete': {
+        p.components.forEach(c => {
+          const existing = variablesByComponentKind.get(c.kind) || []
+          variablesByComponentKind.set(c.kind, existing.concat(c.variables))
+        })
+        break
+      }
+      case 'arrow': {
+        const nested = paramVariablesByEffect(p)
+        nested.forEach((variables, kind) => {
+          const existing = variablesByComponentKind.get(kind) || []
+          variablesByComponentKind.set(kind, existing.concat(variables))
+        })
+        if (p.result.kind === 'concrete') {
+          p.result.components.forEach(c => {
+            const existing = variablesByComponentKind.get(c.kind) || []
+            variablesByComponentKind.set(c.kind, existing.concat(c.variables))
+          })
+        }
+      }
     }
   })
 

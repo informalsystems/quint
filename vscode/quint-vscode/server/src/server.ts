@@ -29,7 +29,7 @@ import {
   TextDocument
 } from 'vscode-languageserver-textdocument'
 
-import { AnalyzisOutput, DocumentationEntry, Loc, ParserPhase2, QuintAnalyzer, QuintError, QuintErrorData, builtinDocs, effectToString, lookupValue, parsePhase1, parsePhase2, produceDocs, treeFromModule, typeSchemeToString, newIdGenerator } from '@informalsystems/quint'
+import { AnalyzisOutput, DocumentationEntry, Loc, ParserPhase2, QuintAnalyzer, QuintError, QuintErrorData, builtinDocs, effectSchemeToString, lookupValue, parsePhase1, parsePhase2, produceDocs, treeFromModule, typeSchemeToString, newIdGenerator } from '@informalsystems/quint'
 import { assembleDiagnostic, diagnosticsFromErrors, findBestMatchingResult, findName, locToRange } from './reporting'
 
 // Create one generator of unique identifiers
@@ -129,7 +129,7 @@ connection.onHover((params: HoverParams): Hover | undefined => {
 
     if (effectResult) {
       const [, effect] = effectResult
-      hoverText.push(`**effect**: \`${effectToString(effect)}\`\n`)
+      hoverText.push(`**effect**: \`${effectSchemeToString(effect)}\`\n`)
     }
 
     return hoverText

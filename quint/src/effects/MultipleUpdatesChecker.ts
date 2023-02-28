@@ -14,7 +14,7 @@
 
 
 import { QuintError } from "../quintError";
-import { ConcreteEffect, Effect, StateVariable, Variables } from "./base";
+import { ConcreteEffect, EffectScheme, Variables, stateVariables } from "./base";
 import { EffectVisitor, walkEffect } from "./EffectVisitor";
 import { groupBy, pickBy, values } from "lodash";
 
@@ -31,8 +31,8 @@ export class MultipleUpdatesChecker implements EffectVisitor {
    *
    * @returns a map of errors, where the key is the variable id
    */
-  checkEffects(effects: Effect[]): Map<bigint, QuintError> {
-    effects.forEach(e => walkEffect(this, e))
+  checkEffects(effects: EffectScheme[]): Map<bigint, QuintError> {
+    effects.forEach(e => walkEffect(this, e.effect))
     return this.errors
   }
 
@@ -44,8 +44,10 @@ export class MultipleUpdatesChecker implements EffectVisitor {
       return updates;
     }, [])
 
-    const vars = findVars({ kind: 'union', variables: updateVariables })
+    const vars = stateVariables({ kind: 'union', variables: updateVariables })
+
     const repeated = values(pickBy(groupBy(vars, v => v.name), x => x.length > 1)).flat()
+
     if (repeated.length > 0) {
       repeated.forEach(v => {
         this.errors.set(v.reference, {
@@ -55,16 +57,5 @@ export class MultipleUpdatesChecker implements EffectVisitor {
         })
       })
     }
-  }
-}
-
-function findVars(variables: Variables): StateVariable[] {
-  switch (variables.kind) {
-    case 'quantified':
-      return []
-    case 'concrete':
-      return variables.vars
-    case 'union':
-      return variables.variables.flatMap(findVars)
   }
 }
