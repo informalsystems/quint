@@ -257,11 +257,42 @@ We have decided to remove support for nested modules in the issue
 of this decision, the syntax of instances became surprising: It refers to the
 concept that is not supported by the language anymore.
 
+The most obvious approach would be to replace the keyword `module` with
+`instance`. However, the keyword `instance` seems to produce false expectations
+that instances behave like objects. In Quint (as well as in TLA+), an instance
+is a copy of a module, in which some names are substituited with expressions.
+We feel that the keywords such as `instance` and `extends` are heavily
+overloaded in the PL world, so it would be better to avoid them.
+
 ## 3. Options
 
 ### Make IR classes rich and use references
 
-TBD
+A straightforward solution to the issue D2 would be to introduce the results of
+the analyses directly into the intermediate representation. For instance, we
+could extend `QuintName` with an optional type, an optional effect, an optional
+reference to the definition that the name refers to:
+
+```ts
+export interface QuintName extends WithId {
+  /** Expressions kind ('name' -- name reference) */
+  kind: 'name',
+  /** A name of: a variable, constant, parameter, user-defined operator */
+  name: string,
+  /** an optional type computed by the type checker */
+  _type?: QuintType,
+  /** an optional reference to the definition */
+  _ref?: QuintDef,
+  /** an optional effect */
+  _effect?: Effect,
+}
+```
+
+This approach is perhaps the most computationally efficient one. We have seen
+compiler and static analysis frameworks that follow this approach. The issue
+with this approach is that this rich data structure may be modified in various
+places in the code. It is hard to see how this data structure is assembled and
+whether it is consistent.
 
 ## 4. Solution
 
@@ -508,10 +539,15 @@ module fixed {
 
 We believe that this syntax better reflects the nature of instances in Quint:
 
- - all names of an instance are included into the namespace of the containing
-   module, possibly with a prefix, e.g., with `I3` or `I5`;
+ - All names of an instance are included into the namespace of the containing
+   module, possibly with a prefix, e.g., with `I3` or `I5`.
 
- - some names replaced with expressions, e.g., `N`;
+ - Some names replaced with expressions, e.g., `N`.
 
- - the behavior is different from `import`. 
+ - The behavior is different from `import`.
 
+Interestingly, it is hard to find a direct analogy of `include` in the modern
+programming languages. In TLA<sup>+</sup>, `INSTANCE` behaves as a safer
+version of `C++` namespaces combined with `#include`, providing semantic tests
+for action operators. Although the word `include` is not as nice as `instance`,
+the word `include` reflects the behavior of this construct better.
