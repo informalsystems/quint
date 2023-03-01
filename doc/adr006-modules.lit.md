@@ -27,6 +27,37 @@ related parts of the implementation.
 
 ### 2.1. Current approach
 
+From the high-level overview, the current pipeline looks as in the following
+figure:
+
+```mermaid
+graph LR
+   repl["REPL"]
+   cli["CLI"] --> repl
+   cli --> loader["Source loader"] --> parser["Parser"]
+   repl --> loader
+   parser --> resolver["Name resolver"] --> analyzer
+   analyzer --> js
+   analyzer --> apalache["Apalache transpiler"]
+
+   subgraph analyzer["Analyzer"]
+     types["Type inferrer"]
+     effects["Effect inferrer"]
+     updates["Updates checker"]
+     modes["Modes checker"]
+     types --> effects --> updates --> modes
+   end
+
+   subgraph runtime["JS runtime"]
+     js["JS transpiler"]
+     simulator["Simulator"]
+     testing["Unit testing"]
+
+     js --> simulator --> testing
+   end
+```
+
+
 #### 2.1.1. Modules and imports
 
 We encapsulate pure functional definitions in a distinct module (called `fun`
@@ -245,6 +276,10 @@ as an output. In this map:
    example, this could be the inferred type (for the type checker), the effect
    (for the effect checker), or the definition itself (for name resolution).
 
+If we maintain this principle, it should be easy to add and remove analysis
+passes without the need to refactor and maintain a rich intermediate
+representation.
+
 ### 4.1. Addressing D1 and D2
 
 To address the issue D1, we propose to simply introduce identifiers in the
@@ -380,5 +415,39 @@ graph TB
 The interesting outcome of this approach is that we do not need a separate
 lookup table per module. Since we are using unique identifiers as keys, we
 could simply produce a flat table for all modules.
+
+### 4.2. Addressing the issue D3
+
+To address the need for treating variables of different instances as different
+objects, we propose to introduce a new flattening stage in the pipeline:
+
+```mermaid
+graph LR
+   repl["REPL"]
+   cli["CLI"] --> repl
+   cli --> loader["Source loader"] --> parser["Parser"]
+   repl --> loader
+   parser --> resolver["Name resolver"] --> analyzer
+   flattener["Flattener"]
+   analyzer --> flattener --> js
+   flattener --> apalache["Apalache transpiler"]
+
+   subgraph analyzer["Analyzer"]
+     types["Type inferrer"]
+     effects["Effect inferrer"]
+     updates["Updates checker"]
+     modes["Modes checker"]
+     types --> effects --> updates --> modes
+   end
+
+   subgraph runtime["JS runtime"]
+     js["JS transpiler"]
+     simulator["Simulator"]
+     testing["Unit testing"]
+
+     js --> simulator --> testing
+   end
+```
+
 
 
