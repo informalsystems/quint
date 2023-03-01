@@ -82,8 +82,8 @@ We define constants, variables, and actions of `general` as follows:
   const N: int
   var x: int
 
-  action init = x' = N
-  action step = x' = dec(x)
+  action init = { x' = N }
+  action step = { x' = dec(x) }
 ```
 
 #### 2.1.2. Instances
@@ -335,8 +335,8 @@ module general {
   const N: int
   var x: int
 
-  action init = x' = N
-  action step = x' = dec(x)
+  action init = { x' = N }
+  action step = { x' = dec(x) }
 }
 ```
 
