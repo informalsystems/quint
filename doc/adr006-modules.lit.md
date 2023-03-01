@@ -228,10 +228,22 @@ concept that is not supported by the language anymore.
 
 ## 3. Options
 
+### Make IR classes rich and use references
+
 TBD
 
-
 ## 4. Solution
+
+**The general design principle:** All static analyses, including
+name resolution and type inference, should produce a map `Map<bigint, T>`
+as an output. In this map:
+
+ - `bigint` is the unique identifier of an IR object. For example, the
+   identifier of a definition or of a parameter.
+
+ - `T` is a data structure representing the result of the analysis.  For
+   example, this could be the inferred type (for the type checker), the effect
+   (for the effect checker), or the definition itself (for name resolution).
 
 ### 4.1. Addressing D1 and D2
 
@@ -326,8 +338,47 @@ module general {
   action init = x' = N
   action step = x' = dec(x)
 }
-
-TBD
 ```
+
+As you see, we do not change anything in the syntax. Similar to the table
+of `fun`, we organize the lookup table of `general` as follows:
+
+```mermaid
+graph TB
+    subgraph "table for 'general'"
+      fdec["4"]
+      finc["8"]
+      i1["1"]
+      i2["5"]
+      i3["10"]
+      i4["11"]
+      gN["13"]
+      gx["15"]
+      ...
+    end
+
+    subgraph "Intermediate representation"
+      dec["def 'dec': { id: 4, ... }"]
+      inc["def 'inc': { id: 8, ... }"]
+      dec_i["param 'i': { id: 10, ...}"]
+      inc_i["param 'i': { id: 11, ...}"]
+      N["const 'N': { id: 13 }"]
+      x["const 'x': { id: 15 }"]
+      ...
+    end
+
+    finc --> inc
+    fdec --> dec
+    i1 --> dec_i
+    i2 --> inc_i
+    i3 --> dec_i
+    i4 --> inc_i
+    gN --> N
+    gx --> x
+```
+
+The interesting outcome of this approach is that we do not need a separate
+lookup table per module. Since we are using unique identifiers as keys, we
+could simply produce a flat table for all modules.
 
 
