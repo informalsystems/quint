@@ -256,7 +256,6 @@ Let's have a look at how the IR of `dec` should look like in JSON:
           "expr": {
             "id": 4, "kind": "lambda",
             "params": [
-              // new representation of parameters:
               { "id": 10, "kind": "param", "name": "i" }
             ],
             "qualifier": "puredef",
@@ -274,8 +273,17 @@ Let's have a look at how the IR of `dec` should look like in JSON:
 It is important to note that the parameter name `i` appears in two places
 in this data structure:
 
- - once in the parameter definition (carrying the id of 10),
- - once in the name (carrying the id of 1).
+ - once in the parameter definition (carrying the id of 10), that is:
+
+    ```json
+              { "id": 10, "kind": "param", "name": "i" }
+    ```
+
+ - once in the name (carrying the id of 1), that is:
+
+    ```json
+                { "id": 1, "kind": "name", "name": "i" },
+    ```
 
 If we use identifiers instead of names in the lookup tables, then the
 table for `fun` would look as simple as:
