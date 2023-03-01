@@ -10,8 +10,8 @@ module general {
   const N: int
   var x: int
 
-  action init = x' = N
-  action step = x' = dec(x)
+  action init = { x' = N }
+  action step = { x' = dec(x) }
 }
 module fixed {
   module I3 = general(N = 3)

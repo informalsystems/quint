@@ -251,9 +251,9 @@ module general {
 }
 ```
 
-In the earlier versions of the language, `I3` and `I5` were indeed treated as
-modules. We have decided to remove support for nested modules in the issue
-[#548](https://github.com/informalsystems/quint/issues/548).  As a consequence
+In the earlier versions of the language, `I3` and `I5` were treated as modules.
+We have decided to remove support for nested modules in the issue
+[#548](https://github.com/informalsystems/quint/issues/548). As a consequence
 of this decision, the syntax of instances became surprising: It refers to the
 concept that is not supported by the language anymore.
 
@@ -329,7 +329,7 @@ in this data structure:
  - once in the name (carrying the id of 1), that is:
 
     ```json
-                { "id": 1, "kind": "name", "name": "i" },
+              { "id": 1, "kind": "name", "name": "i" },
     ```
 
 If we use identifiers instead of names in the lookup tables, then the
@@ -449,5 +449,69 @@ graph LR
    end
 ```
 
+The job of the flattener would be to clone all definitions of the instantiated
+module and tune them with the supplied expressions for the constants.
+Effectively, the flattener would transform the module `fixed` of our example
+into the following code:
 
+```bluespec generated/adr006instances.qnt +=
+module fixed {
+  // the instance general(N = 3)
+
+  // this is how `import fun.*` is transformed
+  import fun.* as I3
+
+  val I3::N = 3
+  var I3::x: int
+
+  action I3::init = { I3::x' = I3::N }
+  action I3::step = { I3::x' = I3::dec(x) }
+
+  // the instance general(N = 5)
+
+  // this is how `import fun.*` is transformed
+  import fun.* as I5
+
+  val I5::N = 3
+  var I5::x: int
+
+  action I5::init = { I5::x' = I5::N }
+  action I5::step = { I5::x' = I5::dec(x) }
+
+  // import I3.* is not allowed, see Section 4.3
+}
+```
+
+Note that the syntax `import fun.* as I3` is not supported yet. However,
+it does not seem too be hard to implement, if it's needed at all.
+
+### 4.3. Addressing the issue D4
+
+We propose the new syntax for declaring an instance:
+
+```antlr4
+  'include' name '(' [name = expr (',' name = expr)*] ')' 'as' name
+```
+
+The last name may be replaced with `_` to indicate that no prefix is required.
+
+Using this syntax, our example looks like follows:
+
+```bluespec
+module fixed {
+  include general(N = 3) as I3
+  include general(N = 5) as I5
+  
+  ...
+}
+```
+
+We believe that this syntax better reflects the nature of instances in Quint:
+
+ - all names of an instance are included into the namespace of the containing
+   module, possibly with a prefix, e.g., with `I3` or `I5`;
+
+ - some names replaced with expressions, e.g., `N`;
+
+ - the behavior is different from `import`. 
 
