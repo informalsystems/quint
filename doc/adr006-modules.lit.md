@@ -197,6 +197,8 @@ To deal with this issue, `ValueDefinition` contains an optional identifier
 called `scope`. This identifier is used to filter out the potential name
 clashes. This filtering happens on every lookup, which potentially slows down
 large specification. We could have done it once in the name resolution stage.
+This is tracked in the issue
+[#625](https://github.com/informalsystems/quint/issues/625).
 
 #### 2.3.3. D3: No distinction between variables produced by multiple instances
 
