@@ -33,7 +33,7 @@ We encapsulate pure functional definitions in a distinct module (called `fun`
 below), and import its definitions in the module that specifies the general
 behavior of the state machine (called `general` below):
 
-```scala generated/adr006before.qnt +=
+```bluespec generated/adr006before.qnt +=
 module fun {
   pure def dec(i) = i - 1
   pure def inc(i) = i + 1
@@ -78,7 +78,7 @@ graph LR
 We define constants, variables, and actions of `general` as follows:
 
 
-```scala "definitions" +=
+```bluespec "definitions" +=
   const N: int
   var x: int
 
@@ -91,7 +91,7 @@ We define constants, variables, and actions of `general` as follows:
 Having defined `general`, we define its fixed-size instances in the module
 `fixed`:
 
-```scala generated/adr006before.qnt +=
+```bluespec generated/adr006before.qnt +=
 module fixed {
   module I3 = general(N = 3)
   module I5 = general(N = 5)
@@ -212,7 +212,7 @@ currently point to the same variable.
 
 Recall how we produced new instances in our example:
 
-```scala
+```bluespec
 module general {
   module I3 = general(N = 3)
   module I5 = general(N = 5)
@@ -253,7 +253,7 @@ operator parameters. This rework is planned in [issue
 
 Let's revisit the definition of the module `fun`:
 
-```scala generated/adr006after.qnt +=
+```bluespec generated/adr006after.qnt +=
 module fun {
   pure def dec(i) = i - 1
   pure def inc(i) = i + 1
@@ -328,7 +328,7 @@ graph TB
 
 Now, let's have a look at the module `general`:
 
-```scala generated/adr006after.qnt +=
+```bluespec generated/adr006after.qnt +=
 module general {
   import fun.*
 
