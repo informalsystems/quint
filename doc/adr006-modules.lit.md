@@ -233,10 +233,93 @@ TBD
 
 ## 4. Solution
 
-### 4.3.1. Addressing D1
+### 4.1. Addressing D1 and D2
 
 To address the issue D1, we propose to simply introduce identifiers in the
 operator parameters. This rework is planned in [issue
 624](https://github.com/informalsystems/quint/issues/624).
+
+Let's revisit the definition of the module `fun`:
+
+```scala generated/adr006after.qnt +=
+module fun {
+  pure def dec(i) = i - 1
+  pure def inc(i) = i + 1
+}
+```
+
+Let's have a look at how the IR of `dec` should look like in JSON:
+
+```json
+        {
+          "id": 4, "kind": "def", "name": "dec", "qualifier": "puredef",
+          "expr": {
+            "id": 4, "kind": "lambda",
+            "params": [
+              // new representation of parameters:
+              { "id": 10, "kind": "param", "name": "i" }
+            ],
+            "qualifier": "puredef",
+            "expr": {
+              "id": 3, "kind": "app", "opcode": "isub",
+              "args": [
+                { "id": 1, "kind": "name", "name": "i" },
+                { "id": 2, "kind": "int", "value": 1 }
+              ]
+            }
+          }
+        },
+```
+
+It is important to note that the parameter name `i` appears in two places
+in this data structure:
+
+ - once in the parameter definition (carrying the id of 10),
+ - once in the name (carrying the id of 1).
+
+If we use identifiers instead of names in the lookup tables, then the
+table for `fun` would look as simple as:
+
+```mermaid
+graph TB
+    subgraph "table for 'fun':{ id: 9, ...}"
+      fdec["4"]
+      finc["8"]
+      i1["1"]
+      i2["5"]
+      i3["10"]
+      i4["11"]
+    end
+
+    subgraph "Intermediate representation"
+      dec["def 'dec': { id: 4, ... }"]
+      inc["def 'inc': { id: 8, ... }"]
+      dec_i["param 'i': { id: 10, ...}"]
+      inc_i["param 'i': { id: 11, ...}"]
+    end
+
+    finc --> inc
+    fdec --> dec
+    i1 --> dec_i
+    i2 --> inc_i
+    i3 --> dec_i
+    i4 --> inc_i
+```
+
+Now, let's have a look at the module `general`:
+
+```scala generated/adr006after.qnt +=
+module general {
+  import fun.*
+
+  const N: int
+  var x: int
+
+  action init = x' = N
+  action step = x' = dec(x)
+}
+
+TBD
+```
 
 
