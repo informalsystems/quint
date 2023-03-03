@@ -2,7 +2,7 @@
 
 | Revision | Date       | Author           |
 | :------- | :--------- | :--------------- |
-| 1        | 01.03.2023 | Igor Konnov      |
+| 2        | 03.03.2023 | Igor Konnov      |
 
 <!-- 
 This ADR is written as a literate programming document, preprocessed by:
@@ -266,7 +266,7 @@ overloaded in the PL world, so it would be better to avoid them.
 
 ## 3. Options
 
-### Make IR classes rich and use references
+### Option 1: Make IR classes rich and use references
 
 A straightforward solution to the issue D2 would be to introduce the results of
 the analyses directly into the intermediate representation. For instance, we
@@ -293,6 +293,32 @@ compiler and static analysis frameworks that follow this approach. The issue
 with this approach is that this rich data structure may be modified in various
 places in the code. It is hard to see how this data structure is assembled and
 whether it is consistent.
+
+One example of a rich IR is the `SemanticNode` and its descendants in the
+package
+[semantic](https://github.com/tlaplus/tlaplus/tree/master/tlatools/org.lamport.tlatools/src/tla2sany/semantic)
+of [tlaplus](https://github.com/tlaplus/tlaplus). But this is just one example,
+many projects tend to introduce rich data structures.
+
+### Option 2: Keep the IR slim and use maps
+
+The second option is to store the result of each analysis as `Map<bigint,
+T>`,were `T` is the analysis result that is assigned to an IR object with the
+respective identifier (of type `bigint`). The benefit of this approach is that
+the analyses are easier to add, compose, and remove. This approach is also
+similar to the mathematical reasoning about a static analysis framework.
+Additionally, this allows for different results of the same analysis (e.g.,
+under different conditions) attached to the same IR object.
+
+At the moment, we are inclined to use this approach.
+
+### Option 3: Provide an abstract API that imitates maps but stores in objects
+
+In principle, we do not have to use `Map<bigint, T>` to store the results. If
+efficiency becomes an issue, we could store the analysis results as object
+fields, which is quite easy to do in JavaScript. However, the API would behave
+as a map, so the API would not provoke the user to access the analysis results
+as object fields.
 
 ## 4. Solution
 
