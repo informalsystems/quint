@@ -37,7 +37,7 @@ analyze:
 | EVMOS    | JUNO    |
 | EVMOS    | OSMO    |
 
-For example, @KryptoCoffeeCat wants to know whether they could exchange BTC
+For example, @KryptoCoffeeCat want to know whether they could exchange BTC
 for ATOM by doing up to three swaps. Unfortunately, @KryptoCoffeeCat have lost
 access to their browser, as they did not update it as often as it was required.
 Now they are stuck with the
@@ -240,7 +240,7 @@ the definition `hasAtomRight`. This makes them happy. Time to have a coffee!
       <step>
         <title>Filtering sets</title>
         <description>
-The next thing @KryptoCoffeeCat wants to do with `availableUnorderedPairs` is
+The next thing @KryptoCoffeeCat want to do with `availableUnorderedPairs` is
 to see, which pairs can be swapped with Atom.
 To this end, they filter the set `availableUnorderedPairs` as in `atomPairs`:
 
@@ -264,7 +264,7 @@ condition.
         <title>Counting the number of elements</title>
         <description>
 To see how many swap pairs are available, @KryptoCoffeeCat
-uses the operator `size` in the definition `howMany`:
+use the operator `size` in the definition `howMany`:
 
             <run target="markdown">echo 'howMany' | quint -r sets.qnt::sets</run>
             <run target="codetour">echo 'howMany' | quint -r ./lesson4-sets/sets.qnt::sets</run>
@@ -283,7 +283,7 @@ uses the operator `size` in the definition `howMany`:
       <step>
         <title>Flattening sets</title>
         <description>
-Now @KryptoCoffeeCat wonders what kind of coins could be swapped at all.
+Now @KryptoCoffeeCat wonder what kind of coins could be swapped at all.
 This seems to be hard to figure out. Fortunately, they discover the right
 operator in the cheatsheet. It's called `flatten`:
 
@@ -331,13 +331,13 @@ the coins that could be bought by one or two swaps. This sounds hard but it
 is not.
 
 How to find, whether a pair from `availableUnorderedPairs` involves a
-coin from `someCoins`. For example, assume that we have an unordered pair
+coin from `someCoins`? For example, assume that we have an unordered pair
 `Set("ATOM", "EVMOS")` and a set `someCoinsExample` that is defined as
 `Set("ATOM", "ETH", "USDT")`.
 Since `Set("ATOM", "EVMOS")` is a two-element set,
 it's easy: We compute the intersection of `Set("ATOM", "EVMOS")`
 and `someCoinsExample`. If the pair involves a coin from
-`somsomeCoinsExampleeCoins`, such an intersection should contain exactly
+`someCoinsExample`, such an intersection should contain exactly
 one coin. Let's check that:
 
             <run target="markdown">echo 'Set("ATOM", "EVMOS").intersect(someCoinsExample)' | quint -r sets.qnt::sets</run>
@@ -402,7 +402,7 @@ Also easy: Just take the set union of what is possible in one or two swaps:
       <step>
         <title>Reachability via multiple swaps</title>
         <description>
-@KryptoCoffeeCat wants to know how to find the coins that could be bought
+@KryptoCoffeeCat want to know how to find the coins that could be bought
 after a given number of swaps, not just 1 or 2. This is also quite easy.
 First, we have to understand how to iterate over numbers 1, 2, ..., n.
 There are several ways to do that in Quint. Since we are talking about sets
@@ -414,7 +414,7 @@ Let's try it:
             <run>echo '3.to(10)' | quint</run>
 
             <block>
-Now @KryptoCoffeeCat wants to write something like this in pseudo JavaScript:
+Now @KryptoCoffeeCat want to write something like this in pseudo JavaScript:
 
 ```
 var prevCoins = someCoins

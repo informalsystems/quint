@@ -30,7 +30,7 @@ analyze:
 | EVMOS    | JUNO    |
 | EVMOS    | OSMO    |
 
-For example, @KryptoCoffeeCat wants to know whether they could exchange BTC
+For example, @KryptoCoffeeCat want to know whether they could exchange BTC
 for ATOM by doing up to three swaps. Unfortunately, @KryptoCoffeeCat have lost
 access to their browser, as they did not update it as often as it was required.
 Now they are stuck with the
@@ -268,7 +268,7 @@ the definition `hasAtomRight`. This makes them happy. Time to have a coffee!
 ```
 
 
-The next thing @KryptoCoffeeCat wants to do with `availableUnorderedPairs` is
+The next thing @KryptoCoffeeCat want to do with `availableUnorderedPairs` is
 to see, which pairs can be swapped with Atom.
 To this end, they filter the set `availableUnorderedPairs` as in `atomPairs`:
 
@@ -296,7 +296,7 @@ condition.
 
 
 To see how many swap pairs are available, @KryptoCoffeeCat
-uses the operator `size` in the definition `howMany`:
+use the operator `size` in the definition `howMany`:
 
             
 
@@ -320,7 +320,7 @@ echo 'howMany' | quint -r sets.qnt::sets
 ```
 
 
-Now @KryptoCoffeeCat wonders what kind of coins could be swapped at all.
+Now @KryptoCoffeeCat wonder what kind of coins could be swapped at all.
 This seems to be hard to figure out. Fortunately, they discover the right
 operator in the cheatsheet. It's called `flatten`:
 
@@ -372,13 +372,13 @@ the coins that could be bought by one or two swaps. This sounds hard but it
 is not.
 
 How to find, whether a pair from `availableUnorderedPairs` involves a
-coin from `someCoins`. For example, assume that we have an unordered pair
+coin from `someCoins`? For example, assume that we have an unordered pair
 `Set("ATOM", "EVMOS")` and a set `someCoinsExample` that is defined as
 `Set("ATOM", "ETH", "USDT")`.
 Since `Set("ATOM", "EVMOS")` is a two-element set,
 it's easy: We compute the intersection of `Set("ATOM", "EVMOS")`
 and `someCoinsExample`. If the pair involves a coin from
-`somsomeCoinsExampleeCoins`, such an intersection should contain exactly
+`someCoinsExample`, such an intersection should contain exactly
 one coin. Let's check that:
 
             
@@ -453,7 +453,7 @@ echo 'buyableVia1or2Swaps(Set("ATOM"))' | quint -r sets.qnt::sets
 ```
 
 
-@KryptoCoffeeCat wants to know how to find the coins that could be bought
+@KryptoCoffeeCat want to know how to find the coins that could be bought
 after a given number of swaps, not just 1 or 2. This is also quite easy.
 First, we have to understand how to iterate over numbers 1, 2, ..., n.
 There are several ways to do that in Quint. Since we are talking about sets
@@ -469,7 +469,7 @@ echo '3.to(10)' | quint
 ```
 
 
-Now @KryptoCoffeeCat wants to write something like this in pseudo JavaScript:
+Now @KryptoCoffeeCat want to write something like this in pseudo JavaScript:
 
 ```
 var prevCoins = someCoins
