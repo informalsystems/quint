@@ -416,7 +416,7 @@ Let's try it:
             <block>
 Now @KryptoCoffeeCat want to write something like this in pseudo JavaScript:
 
-```
+```js
 var prevCoins = someCoins
 for (let i = 0; i &lt; n; i++) {
   prevCoins = buyableVia1Swap(prevCoins)
@@ -424,10 +424,12 @@ for (let i = 0; i &lt; n; i++) {
 // use prevCoins
 ```
 
-It happens that Quint supports exactly this pattern, though it has a slightly
-different syntax:
+@KryptoCoffeeCat find a blog post on medium.com about
+[Exploring folds](https://medium.com/@zaid.naom/exploring-folds-a-powerful-pattern-of-functional-programming-3036974205c8)
+in JavaScript. It happens that Quint supports exactly this pattern, though it
+has a slightly different syntax:
 
-```
+```bluespec
 1.to(n)
  .fold(someCoins,
        (prevCoins, i) => buyableVia1Swap(prevCoins))
@@ -441,7 +443,7 @@ are not even using `i`. @KryptoCoffeeCat could even have written `_`
 instead of `i` in the above expression, which would indicate that the second
 argument is not used:
 
-```
+```bluespec
 1.to(n)
  .fold(someCoins,
        (prevCoins, _) => buyableVia1Swap(prevCoins))

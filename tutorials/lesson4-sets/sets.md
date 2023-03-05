@@ -59,7 +59,7 @@ the details, check [sets.qnt](./sets.qnt).
 
 **Code snippet:**
 
-```scala
+```bluespec
 module sets {
   // We represent swap pairs as tuples of two strings
   type Pair = (str, str)
@@ -106,7 +106,7 @@ echo '("BTC", "ETH")._2' | quint
 
 **Code snippet:**
 
-```scala
+```bluespec
 
   // all available swap pairs as a set of tuples
   pure val availablePairs = Set(
@@ -146,7 +146,7 @@ echo 'availablePairs' | quint -r sets.qnt::sets
 
 **Code snippet:**
 
-```scala
+```bluespec
 
   pure val hasAtomJuno = ("ATOM", "JUNO").in(availablePairs)
 
@@ -175,7 +175,7 @@ echo 'hasEvmosEth' | quint -r sets.qnt::sets
 
 **Code snippet:**
 
-```scala
+```bluespec
 
   pure val hasAtom = availablePairs.exists(p => p._1 == "ATOM")
 
@@ -223,7 +223,7 @@ Yes, @KryptoCoffeeCat, this is the way!
 
 **Code snippet:**
 
-```scala
+```bluespec
 
   // swap pairs as two-element sets (unordered pairs)
   pure val availableUnorderedPairs =
@@ -261,7 +261,7 @@ the definition `hasAtomRight`. This makes them happy. Time to have a coffee!
 
 **Code snippet:**
 
-```scala
+```bluespec
 
   // all unordered pairs that contain ATOM at one end
   pure val atomPairs = availableUnorderedPairs.filter(p => p.contains("ATOM"))
@@ -288,7 +288,7 @@ condition.
 
 **Code snippet:**
 
-```scala
+```bluespec
 
   // the number of swap pairs
   pure val howMany = availableUnorderedPairs.size()
@@ -310,7 +310,7 @@ echo 'howMany' | quint -r sets.qnt::sets
 
 **Code snippet:**
 
-```scala
+```bluespec
 
   // get all coins that appear in pairs
   pure def coinsInPairs(pairs: Set[Set[str]]): Set[str] = pairs.flatten()
@@ -342,7 +342,7 @@ themselves.
 
 **Code snippet:**
 
-```scala
+```bluespec
 
   // an example of `someCoins` in `buyableVia1Swap`
   pure def someCoinsExample = Set("ATOM", "ETH", "USDT")
@@ -444,7 +444,7 @@ echo 'buyableVia1or2Swaps(Set("ATOM"))' | quint -r sets.qnt::sets
 
 **Code snippet:**
 
-```scala
+```bluespec
 
   // which coins can we buy via n swaps when starting from `someCoins`
   val buyableNSwaps(someCoins, n) =
@@ -471,7 +471,7 @@ echo '3.to(10)' | quint
 
 Now @KryptoCoffeeCat want to write something like this in pseudo JavaScript:
 
-```
+```js
 var prevCoins = someCoins
 for (let i = 0; i < n; i++) {
   prevCoins = buyableVia1Swap(prevCoins)
@@ -479,10 +479,12 @@ for (let i = 0; i < n; i++) {
 // use prevCoins
 ```
 
-It happens that Quint supports exactly this pattern, though it has a slightly
-different syntax:
+@KryptoCoffeeCat find a blog post on medium.com about
+[Exploring folds](https://medium.com/@zaid.naom/exploring-folds-a-powerful-pattern-of-functional-programming-3036974205c8)
+in JavaScript. It happens that Quint supports exactly this pattern, though it
+has a slightly different syntax:
 
-```
+```bluespec
 1.to(n)
  .fold(someCoins,
        (prevCoins, i) => buyableVia1Swap(prevCoins))
@@ -496,7 +498,7 @@ are not even using `i`. @KryptoCoffeeCat could even have written `_`
 instead of `i` in the above expression, which would indicate that the second
 argument is not used:
 
-```
+```bluespec
 1.to(n)
  .fold(someCoins,
        (prevCoins, _) => buyableVia1Swap(prevCoins))
@@ -525,7 +527,7 @@ echo 'buyableNSwaps(Set("ATOM"), 5)' | quint -r sets.qnt::sets
 
 **Code snippet:**
 
-```scala
+```bluespec
 
   // Higher-order operators do not work in REPL atm:
   // https://github.com/informalsystems/quint/issues/221
@@ -569,7 +571,7 @@ are much easier to read.
 
 **Code snippet:**
 
-```scala
+```bluespec
 
   // all combinations of unordered pairs that have exactly 4 pairs
   pure val quads =

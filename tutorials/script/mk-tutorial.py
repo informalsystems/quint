@@ -134,7 +134,7 @@ def xmlToMarkdown(root, code, out):
             isEmpty = list(filter(lambda l: l.strip() != "", snippet)) == []
             if not isEmpty:
                 out.write('\n**Code snippet:**\n\n')
-                out.write('```scala\n')
+                out.write('```bluespec\n')
                 for l in snippet:
                     out.write(l)
 
