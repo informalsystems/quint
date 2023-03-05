@@ -1,7 +1,7 @@
 # Lesson 4 - Fun with sets
 ## 1. Introduction
 
-*14 more steps to the finish line*
+*Progress:*  0%
 
 In this tutorial, we explain the most powerful data structure of Quint.
 Yes, that's right, sets are the most powerful data structure.
@@ -55,7 +55,7 @@ the details, check [sets.qnt](./sets.qnt).
         
 ## 2. Defining swap pairs
 
-*13 more steps to the finish line*
+*Progress:*  7%
 
 **Code snippet:**
 
@@ -102,7 +102,7 @@ echo '("BTC", "ETH")._2' | quint
 
 ## 3. Defining available pairs
 
-*12 more steps to the finish line*
+*Progress:*  14%
 
 **Code snippet:**
 
@@ -142,7 +142,7 @@ echo 'availablePairs' | quint -r sets.qnt::sets
 
 ## 4. Testing set elements
 
-*11 more steps to the finish line*
+*Progress:*  21%
 
 **Code snippet:**
 
@@ -171,7 +171,7 @@ echo 'hasEvmosEth' | quint -r sets.qnt::sets
 
 ## 5. Testing some elements and all elements
 
-*10 more steps to the finish line*
+*Progress:*  28%
 
 **Code snippet:**
 
@@ -219,7 +219,7 @@ Yes, @KryptoCoffeeCat, this is the way!
             
 ## 6. Mapping pairs to sets
 
-*9 more steps to the finish line*
+*Progress:*  35%
 
 **Code snippet:**
 
@@ -257,7 +257,7 @@ the definition `hasAtomRight`. This makes them happy. Time to have a coffee!
             
 ## 7. Filtering sets
 
-*8 more steps to the finish line*
+*Progress:*  42%
 
 **Code snippet:**
 
@@ -284,7 +284,7 @@ condition.
             
 ## 8. Counting the number of elements
 
-*7 more steps to the finish line*
+*Progress:*  50%
 
 **Code snippet:**
 
@@ -306,7 +306,7 @@ echo 'howMany' | quint -r sets.qnt::sets
 
 ## 9. Flattening sets
 
-*6 more steps to the finish line*
+*Progress:*  57%
 
 **Code snippet:**
 
@@ -338,7 +338,7 @@ themselves.
             
 ## 10. Reachability via one or two swaps
 
-*5 more steps to the finish line*
+*Progress:*  64%
 
 **Code snippet:**
 
@@ -440,7 +440,7 @@ echo 'buyableVia1or2Swaps(Set("ATOM"))' | quint -r sets.qnt::sets
 
 ## 11. Reachability via multiple swaps
 
-*4 more steps to the finish line*
+*Progress:*  71%
 
 **Code snippet:**
 
@@ -523,7 +523,7 @@ echo 'buyableNSwaps(Set("ATOM"), 5)' | quint -r sets.qnt::sets
 
 ## 12. Power to the folds!
 
-*3 more steps to the finish line*
+*Progress:*  78%
 
 **Code snippet:**
 
@@ -567,7 +567,7 @@ are much easier to read.
         
 ## 13. Computing cycles with powersets
 
-*2 more steps to the finish line*
+*Progress:*  85%
 
 **Code snippet:**
 
@@ -639,7 +639,7 @@ echo 'cycles4' | quint -r sets.qnt::sets
 
 ## 14. Conclusions
 
-*1 more step to the finish line*
+*Progress:*  92%
 
 
 @KryptoCoffeeCat has learned a lot in this tutorial.
