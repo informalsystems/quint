@@ -146,7 +146,7 @@ implementation details. In this case, the set is the best data structure:
         <title>Testing set elements</title>
         <description>
 The simplest thing @KryptoCoffeeCat can do with `availablePairs` is
-to check, which pairs are in the table. For example, check they try the
+to check, which pairs are in the table. For example, try the
 following definitions:
 
             <run target="markdown">echo 'hasAtomJuno' | quint -r sets.qnt::sets</run>
@@ -179,7 +179,7 @@ and that they cannot swap Secret for any coin:
             <run target="codetour">echo 'missingScrt' | quint -r ./lesson4-sets/sets.qnt::sets</run>
 
             <block>
-This works. However, @KryptoCoffeeCat notices that their definition of
+This works. However, @KryptoCoffeeCat notice that their definition of
 `hasAtom` was not exactly right. The definition tests only the first element
 of the pair. Actually, @KryptoCoffeeCat realizes that the order of coins in
 every pair does not matter. So we should treat the pair `("ATOM", "JUNO")`
