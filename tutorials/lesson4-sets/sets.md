@@ -72,7 +72,7 @@ module sets {
 ```
 
 
-Since @KryptoCoffeeCat writes down swap pairs in their table,
+Since @KryptoCoffeeCat write down swap pairs in their table,
 the most natural way of representing a row in this table is a pair.
 Hence, we declare the type `Pair` as `(str, str)`. This type is a special
 case of a tuple.
@@ -155,7 +155,7 @@ echo 'availablePairs' | quint -r sets.qnt::sets
 
 
 The simplest thing @KryptoCoffeeCat can do with `availablePairs` is
-to check, which pairs are in the table. For example, check they try the
+to check, which pairs are in the table. For example, try the
 following definitions:
 
             
@@ -185,7 +185,7 @@ echo 'hasEvmosEth' | quint -r sets.qnt::sets
 ```
 
 
-Now @KryptoCoffeeCat checks whether they could swap Atom for some coins
+Now @KryptoCoffeeCat check whether they could swap Atom for some coins
 and that they cannot swap Secret for any coin:
 
             
@@ -200,9 +200,9 @@ echo 'missingScrt' | quint -r sets.qnt::sets
 ```
 
 
-This works. However, @KryptoCoffeeCat notices that their definition of
+This works. However, @KryptoCoffeeCat notice that their definition of
 `hasAtom` was not exactly right. The definition tests only the first element
-of the pair. Actually, @KryptoCoffeeCat realizes that the order of coins in
+of the pair. Actually, @KryptoCoffeeCat realize that the order of coins in
 every pair does not matter. So we should treat the pair `("ATOM", "JUNO")`
 to be the same as the pair `("JUNO", "ATOM")`. But this does not work as
 expected:
@@ -213,7 +213,7 @@ echo '("ATOM", "JUNO") == ("JUNO", "ATOM")' | quint
 ```
 
 
-After a bit of thinking @KryptoCoffeeCat realizes that they already know how to
+After a bit of thinking @KryptoCoffeeCat realizs that they already know how to
 express that the order of coins does not matter: Just use a set instead of a tuple.
 Yes, @KryptoCoffeeCat, this is the way!
             
@@ -233,7 +233,7 @@ Yes, @KryptoCoffeeCat, this is the way!
 ```
 
 
-After having the moment of revelation @KryptoCoffeeCat, decides to redefine the
+After having the moment of revelation @KryptoCoffeeCat, decide to redefine the
 set `availablePairs`. This time the set should contain sets like
 `Set("ATOM", "JUNO")` instead of pairs like `("ATOM", "JUNO")`.
 @KryptoCoffeeCat does not want to write the whole table again. So they quickly
@@ -388,7 +388,7 @@ echo 'Set("ATOM", "EVMOS").intersect(someCoinsExample)' | quint -r sets.qnt::set
 ```
 
 
-This works, so @KryptoCoffeeCat filters the whole set of `availableUnorderedPairs`
+This works, so @KryptoCoffeeCat filter the whole set of `availableUnorderedPairs`
 with the following condition:
             
 
@@ -601,7 +601,7 @@ one coin and ends with the same coin? Degens love swap cycles!
 
 To do that, they first write `availableUnorderedPairs.powerset()`, which
 blasts `availableUnorderedPairs` into a huge set that contains all combinations
-of pairs. These sets have all possible sizes. @KryptoCoffeeCat filters out the
+of pairs. These sets have all possible sizes. @KryptoCoffeeCat filter out the
 sets that are not quadruples. How many quadruples are there? Let's see:
 
             
@@ -628,7 +628,7 @@ Leonard Euler about 300 years ago, when he analyzed
 [the bridges of Königsberg](https://en.wikipedia.org/wiki/Seven_Bridges_of_K%C3%B6nigsberg).
 Not bad, @KryptoCoffeeCat!
 
-After figuring out the cycles, @KryptoCoffeeCat writes the predicate `isCycle`
+After figuring out the cycles, @KryptoCoffeeCat write the predicate `isCycle`
 and finally the definition `cycles4`. Now they compute all these cycles in a
 single click:
             
