@@ -14,11 +14,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Deprecated
 ### Removed
+
+- Nested modules are no longer supported (#674)
+
 ### Fixed
 
 - Modes for nested definitions are now properly checked (#661)
 - All basic operators can now be used with temporal formulas (#646)
 - Effect checking performance for large specs is massively improved (#669)
+- A module can no longer import or instance itself (#676)
 
 ### Security
 
