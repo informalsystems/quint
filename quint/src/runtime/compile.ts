@@ -194,15 +194,18 @@ export function
       // since the type checker and effects checker are incomplete,
       // collect the errors, but do not stop immediately on error
       const [analysisErrors, analysisResult] = analyzer.getResult()
-      const ctx =
-        compile(modules,
-                sourceMap, table, analysisResult.types, mainName, rand)
-      const errorLocator = mkErrorMessage(sourceMap)
-      return right({
-        ...ctx,
-        analysisErrors: Array.from(analysisErrors, errorLocator),
-      })
+      if (analysisErrors.length === 0) {
+        const ctx =
+          compile(modules, sourceMap, table, analysisResult.types, mainName, rand)
+        return left<CompilationContext, CompilationContext>(ctx)
+      } else {
+        const errorLocator = mkErrorMessage(sourceMap)
+        const ctx = {
+          ...errorContext([]),
+          analysisErrors: Array.from(analysisErrors, errorLocator),
+        }
+        return right<CompilationContext, CompilationContext>(ctx)
+      }
     }
-  // we produce CompilationContext in any case
   ).value
 }

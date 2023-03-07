@@ -509,9 +509,7 @@ ${textToAdd}
     if (context.syntaxErrors.length > 0 ||
         context.compileErrors.length > 0 || context.analysisErrors.length > 0) {
       printErrors(moduleText, context, lineOffset)
-      if (context.syntaxErrors.length > 0 || context.compileErrors.length > 0) {
-        return false
-      } // else: provisionally, continue on type & effects errors
+      return false
     }
 
     loadVars(state, context)

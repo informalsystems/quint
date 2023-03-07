@@ -817,40 +817,74 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   private applyUserDefined(app: ir.QuintApp) {
-    const callable =
-      this.contextLookup(app.opcode, app.id, ['callable', 'arg']) as Callable
-    if (callable === undefined || callable.registers === undefined) {
+    let computable =
+      this.contextLookup(app.opcode, app.id, ['callable', 'arg'])
+    if (computable === undefined) {
       this.addCompileError(app.id, `Called unknown operator ${app.opcode}`)
       this.compStack.push(fail)
-    } else {
-      const nactual = this.compStack.length
-      const nexpected = callable.registers.length
-      if (nactual < nexpected) {
-        this.addCompileError(app.id,
-          `Expected ${nexpected} arguments for ${app.opcode}, found: ${nactual}`)
-        this.compStack.push(fail)
-      } else {
-        this.applyFun(app.id,
-          callable.registers.length,
-          (...args: RuntimeValue[]) => {
-            for (let i = 0; i < args.length; i++) {
-              callable.registers[i].registerValue = just(args[i])
-            }
-            return callable.eval() as Maybe<RuntimeValue>
-          }
-        )
-      }
+      return
     }
+
+    const nactual = this.compStack.length
+    const nargs = app.args.length
+    if (nactual < nargs) {
+      this.addCompileError(app.id,
+        `Expected ${nargs} arguments for ${app.opcode}, found: ${nactual}`)
+      this.compStack.push(fail)
+      return
+    }
+
+    this.applyFun(app.id,
+      nargs,
+      (...args: RuntimeValue[]) => {
+        let callable = computable as Callable
+        if (callable.registers === undefined) {
+          // This is a register for a higher-order lambda parameter.
+          // Extract a callable from the register.
+          const r = (computable as Register).registerValue
+          if (r.isNone()) {
+            this.addRuntimeError(app.id, `Expected ${app.opcode} to be callable`)
+            return none()
+          }
+
+          callable = r.value as Callable
+        }
+        // bind the parameters to the actual arguments
+        for (let i = 0; i < nargs; i++) {
+          callable.registers[i].registerValue = just(args[i])
+        }
+        return callable.eval() as Maybe<RuntimeValue>
+      }
+    )
   }
 
   enterLambda(lam: ir.QuintLambda) {
-    // introduce a register for every parameter
-    lam.params.forEach(p =>
-      this.context.set(kindName('arg', p),
-        mkRegister('arg', p, none(), () => `Parameter ${p} is not set`)))
-    // After this point, the body of the lambda gets compiled.
-    // The body of the lambda may refer to the parameter via names,
-    // which are stored in the registers we've just created.
+    const lambdaType = this.types.get(lam.id)
+    if (lambdaType === undefined) {
+      // this means that the integration with the type checker is broken
+      this.addCompileError(lam.id, `No type for lambda ${lam.id}`)
+    } else {
+      if (lambdaType.type.kind !== 'oper') {
+        this.addCompileError(lam.id,
+          `Expected an operator type, found: ${lambdaType.type}`)
+      } else {
+        // we need types as some parameters may be operators
+        const paramTypes = lambdaType.type.args
+        // introduce a register for every parameter
+        lam.params.forEach(p => {
+          const reg =
+            mkRegister('arg', p, none(), () => `Parameter ${p} is not set`)
+          // use only identifiers, when this is fixed:
+          // https://github.com/informalsystems/quint/issues/624
+          this.context.set(kindName('arg', p), reg)
+          // FIXME: blocked by #624, as lam.id is not unique for parameters
+          this.context.set(kindName('arg', lam.id), reg)
+          // After this point, the body of the lambda gets compiled.
+          // The body of the lambda may refer to the parameter via names,
+          // which are stored in the registers we've just created.
+        })
+      }
+    }
   }
 
   exitLambda(lam: ir.QuintLambda) {
