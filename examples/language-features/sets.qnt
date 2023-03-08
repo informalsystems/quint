@@ -25,7 +25,7 @@ module sets {
     s.in(powerset(s)),
     s == flatten(Set(s)),
     // TODO: Enable after support for lists is added
-    // Set(List(1)) == Set(1).allLists(),
+    // List(1, 1, 1).in(Set(1).allLists()),
     chooseSome(s).in(s),
     s.isFinite(),
     n + 1 == size(s),
