@@ -85,6 +85,8 @@ editor (currently, VSCode, Emacs and Vim are supported).
 
    - [Manual](./doc/quint.md)
 
+   - [REPL](./tutorials/repl/repl.md)
+
  - VSCode plugin:
 
    We strongly encourage you to use the VSCode plugin for Quint. It provides
