@@ -1,3 +1,4 @@
+// -*- mode: Bluespec; -*-
 // The example from the REPL tutorial
 module kettle {
     // an example of a definition
