@@ -214,7 +214,7 @@ a declared but unassigned state variable will produce a runtime error:
 
 ```bluespec ./repl/replTest.txt +=
 >>> temperature
-runtime error: <input>:0:1 - error: Variable temperature is not set
+runtime error: <input>:0:1 - error: Variable kettle::temperature is not set
 0: var temperature: int
    ^^^^^^^^^^^^^^^^^^^^
 
@@ -534,6 +534,7 @@ Now it is time to define all possible transitions of the kettle in one place:
       depressButton,
       failover,
     }
+
 ```
 
 Having defined `step`, we can conveniently execute steps without specifying
@@ -631,12 +632,15 @@ You can save the REPL session with the builtin command `.save`:
 
 ```bluespec ./repl/replTest.txt +=
 >>> .save kettle.qnt
+Session saved to: kettle.qnt
 ```
 
 This command saves all definitions and evaluated expressions in a file.
 You can edit this file in your editor of choice and load it back to REPL:
 
-```bluespec ./repl/replTest.txt +=
+<!-- don't add this to replTest.txt, as .load prints all values again -->
+
+```bluespec
 >>> .clear
 >>> .load kettle.qnt
 ```

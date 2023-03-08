@@ -58,5 +58,3 @@ kettleState
 initNondet
 kettleState
 .save kettle.qnt
-.clear
-.load kettle.qnt

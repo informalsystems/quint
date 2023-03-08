@@ -61,3 +61,4 @@ true
 { heatingOn: false, beeping: false, temperature: -40 }
 true
 { heatingOn: false, beeping: false, temperature: 26 }
+Session saved to: kettle.qnt

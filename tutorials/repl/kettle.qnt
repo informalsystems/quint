@@ -81,6 +81,7 @@ module kettle {
       depressButton,
       failover,
     }
+
     // initialize the state machine with non-determinism
     action initNondet = all {
       heatingOn' = false,
