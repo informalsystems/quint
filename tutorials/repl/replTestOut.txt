@@ -1,3 +1,5 @@
+true
+
 4
 Set(2, 4, 6)
 32
@@ -6,11 +8,12 @@ false
 true
 -40
 104
-runtime error: <input>:0:1 - error: Variable temperature is not set
-0: var temperature: int
-   ^^^^^^^^^^^^^^^^^^^^
+runtime error: error: Variable kettle::temperature is not set
+    var temperature: int
+    ^^^^^^^^^^^^^^^^^^^^
 
-<result undefined>
+<undefined value>
+
 true
 20
 false
@@ -45,20 +48,13 @@ true
 true
 true
 { heatingOn: false, beeping: true, temperature: 100 }
->> all { heatingOn' = true, temperature' = 100, beeping' = false }
-true
-...
 true
 true
 true
 true
 true
 true
-{ heatingOn: true, beeping: false, temperature: 21 }
 true
-{ heatingOn: false, beeping: false, temperature: -27 }
 true
-{ heatingOn: false, beeping: false, temperature: -40 }
-true
-{ heatingOn: false, beeping: false, temperature: 26 }
 Session saved to: kettle.qnt
+

@@ -8,6 +8,11 @@
 This ADR is written as a literate programming document, preprocessed by:
 
 https://github.com/driusan/lmt
+
+As a result, this document produces two checkable artifacts:
+
+ 1. ./repl/kettle.qnt is the specification that we construct.
+ 2. ./repl/replTest.txt is the replayable REPL session.
 -->
 
 A [REPL][] is a read-eval-print loop. A REPL is usually a good way to start
@@ -55,7 +60,34 @@ Type ".exit" to exit, or ".help" for more information
 
 You can type `.help` and then press `<ENTER>` for supported REPL commands.
 
-## 3. Evaluating expressions
+## 3. Preloading definitions
+
+In this tutorial, we are interactively constructing the module
+[kettle.qnt](./kettle.qnt). You can load this file in the [VSCode Plugin][] and
+read it, if you would like to have a better overview of the module that we are
+constructing. You can also load this file into REPL, if you only want to
+evaluate expressions without copying the definitions by hand:
+
+```sh
+$ quint -r kettle.qnt::kettle
+```
+
+When you load `kettle.qnt` this way, REPL prints `true` indicating that the
+module has been loaded successfully:
+
+```bluespec ./repl/replTest.txt +=
+true
+
+```
+
+If you check the source of this markdown file, then you will see that it is
+written by following the principles of [Literate programming][], using the tool
+[lmt][]. As a result, all definitions and the REPL session of this tutorial are
+automatically extracted from this file and checked with continuous integration.
+This approach may be useful to you, if you are writing your own protocol
+specifications in Markdown and like to connect it to Quint specifications.
+
+## 4. Evaluating expressions
 
 The core interaction with a REPL is to enter an expression and get back the
 result of its evaluation. Like this:
@@ -72,14 +104,10 @@ Or like this:
 Set(2, 4, 6)
 ```
 
-## 4. Writing definitions
+## 5. Writing definitions
 
 In this tutorial, we are interactively constructing the module
-[kettle.qnt](./kettle.qnt). If you check the source of this markdown file, then
-you will see that it is written by following the principles of [Literate
-programming][], using the tool [lmt][]. Actually, all definitions and the REPL
-session of this tutorial are extracted from this file and checked with continuous
-integration. The module `kettle.qnt` has the following structure:
+[kettle.qnt](./kettle.qnt) that has the following structure:
 
 ```bluespec ./repl/kettle.qnt +=
 // The example from the REPL tutorial
@@ -88,26 +116,19 @@ module kettle {
 }
 ```
 
-Hence, whenever we are writing four leading spaces `    ` instead of `>>> ` and
-`... `, we append the contents to the file [kettle.qnt](./kettle.qnt). For
-example:
+We do not introduce this module in REPL, as REPL internally introduces an
+implicit module.
+
+Whenever we write four leading spaces `    ` instead of `>>> ` and `... `, we
+append the contents to the file [kettle.qnt](./kettle.qnt). For example:
 
 ```bluespec "definitions" +=
     // an example of a definition
     val isThisMyFirstDefinition = true
 ```
 
-You can load [kettle.qnt](./kettle.qnt) in the [VSCode Plugin][] and read it,
-if you would like to have a better overview of the module that we are
-constructing. You can also load this file into REPL, if you only want to
-evaluate expressions without copying the definitions:
-
-```sh
-$ quint -r kettle.qnt::kettle
-```
-
 *Do not forget to copy the definitions in REPL, if you want to reproduce
-the full REPL session.*
+the full REPL session without loading `kettle.qnt`.*
 
 ## 4. Introducing values and definitions
 
@@ -214,11 +235,12 @@ a declared but unassigned state variable will produce a runtime error:
 
 ```bluespec ./repl/replTest.txt +=
 >>> temperature
-runtime error: <input>:0:1 - error: Variable kettle::temperature is not set
-0: var temperature: int
-   ^^^^^^^^^^^^^^^^^^^^
+runtime error: error: Variable kettle::temperature is not set
+    var temperature: int
+    ^^^^^^^^^^^^^^^^^^^^
 
-<result undefined>
+<undefined value>
+
 ```
 
 ### 5.2. Initializing state variables
@@ -506,13 +528,13 @@ whichever happens first, and we do not control which one? Quint has the operator
 `any` to do exactly this:
 
 ```bluespec ./repl/replTest.txt +=
->> all { heatingOn' = true, temperature' = 100, beeping' = false }
+>>> all { heatingOn' = true, temperature' = 100, beeping' = false }
 true
 >>> any {
 ...   depressButton,
 ...   failover,
 ... }
-...
+... 
 true
 ```
 
@@ -551,9 +573,21 @@ true
 true
 >>> step
 true
+```
+
+If we print the current state after executing four steps, we will see
+that the state is different from the initial one:
+
+<!-- do not save this session in replTest.txt,
+     as outputs may differ due to randomness -->
+
+```bluespec
 >>> kettleState
 { heatingOn: true, beeping: false, temperature: 21 }
 ```
+
+**Note:** your REPL session may end up in a different state, due to randomness
+of `nondet` in REPL.
 
 **Exercise**. Figure out how REPL ended up in the above state.
 
@@ -588,13 +622,27 @@ temperature should be somewhere in the range of -40 to 40 degrees:
 
 ```
 
-Let's see how it works:
+Let's see how it works. Execute `initNondet` for the first time:
 
 ```bluespec ./repl/replTest.txt +=
 >>> initNondet
 true
+```
+
+Here is an example of a state that we may get into:
+
+<!-- do not save this session to replTest.txt, due to randomness -->
+
+```bluespec
 >>> kettleState
 { heatingOn: false, beeping: false, temperature: -27 }
+```
+
+If we execute `initNondet` more, we obtain different states. Try it:
+
+<!-- do not save this session to replTest.txt, due to randomness -->
+
+```bluespec
 >>> initNondet
 true
 >>> kettleState
@@ -633,6 +681,7 @@ You can save the REPL session with the builtin command `.save`:
 ```bluespec ./repl/replTest.txt +=
 >>> .save kettle.qnt
 Session saved to: kettle.qnt
+
 ```
 
 This command saves all definitions and evaluated expressions in a file.

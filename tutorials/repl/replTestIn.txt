@@ -41,20 +41,16 @@ kettleState
 all { heatingOn' = true, temperature' = 100, beeping' = false }
 failover
 kettleState
+all { heatingOn' = true, temperature' = 100, beeping' = false }
 any {
   depressButton,
   failover,
 }
+
 init
 step
 step
 step
 step
-kettleState
 initNondet
-kettleState
-initNondet
-kettleState
-initNondet
-kettleState
 .save kettle.qnt
