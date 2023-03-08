@@ -1,3 +1,4 @@
+// -*- mode: Bluespec; -*-
 module sets {
   var n: int
   var s: Set[int]
