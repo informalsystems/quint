@@ -1,3 +1,4 @@
+// -*- mode: Bluespec; -*-
 module erc20 {
   type ADDR = str
 
@@ -147,7 +148,7 @@ module erc20 {
     balanceOf' = balanceOf,
     val failed = or {
      tx.value < 0,
-     tx.sender > tx.spender,
+     tx.sender == tx.spender,
     }
     all {
       lastTx' = tx.with("failed", failed),
