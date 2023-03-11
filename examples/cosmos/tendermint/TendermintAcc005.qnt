@@ -169,34 +169,24 @@ module TendermintAcc {
           { src: p._1, round: r, proposal: p._2, validRound: p._3 })
 
   val AllFaultyProposals =
-      tuples(Faulty, Rounds, Values, RoundsOrNil)
-        .map(p =>
-          { src: p._1, round: p._2, proposal: p._3, validRound: p._4 })
+      Rounds.map(r => FaultyProposals(r))
+            .flatten()
 
   def FaultyPrevotes(r) =
       tuples(Faulty, Values)
         .map(p => { src: p._1, round: r, id: p._2 })
 
   val AllFaultyPrevotes =
-      tuples(Faulty, Rounds, Values)
-        .map(p => { src: p._1, round: p._2, id: p._3 })
+      Rounds.map(r => FaultyPrevotes(r))
+            .flatten()
 
   def FaultyPrecommits(r) =
       tuples(Faulty, Values)
         .map(p => { src: p._1, round: r, id: p._2 })
 
-  val AllFaultyPrecommits: Set[Pre_t] =
-      tuples(Faulty, Rounds, Values)
-        .map(p => { src: p._1, round: p._2, id: p._3 })
-
-
-  // the message function never contains a message for a wrong round
-  pure def BenignRoundsInMessages(msgfun) =
-      Rounds.forall( r =>
-        msgfun.get(r).forall( m =>
-          r == m.round
-        )
-      )
+  val AllFaultyPrecommits =
+      Rounds.map(r => FaultyPrecommits(r))
+            .flatten()
 
   // The initial states of the protocol. Some faults can be in the system already.
   action Init = all {
@@ -207,24 +197,12 @@ module TendermintAcc {
     lockedRound' = Corr.mapBy( _ => NilRound ),
     validValue' = Corr.mapBy( _ => NilValue ),
     validRound' = Corr.mapBy( _ => NilRound ),
-    nondet faultyProposals =
-      setOfMaps(Rounds, AllFaultyProposals.powerset()).oneOf()
-    all {
-      BenignRoundsInMessages(faultyProposals),
-      msgsPropose' = faultyProposals,
-    },
-    nondet faultyPrevotes =
-      setOfMaps(Rounds, AllFaultyPrevotes.powerset()).oneOf()
-    all {
-      BenignRoundsInMessages(faultyPrevotes),
-      msgsPrevote' = faultyPrevotes,
-    },
-    nondet faultyPrecommits =
-      setOfMaps(Rounds, AllFaultyPrecommits.powerset()).oneOf()
-    all {
-      BenignRoundsInMessages(faultyPrecommits),
-      msgsPrecommit' = faultyPrecommits,
-    },
+    nondet faultyProposals = AllFaultyProposals.powerset().oneOf()
+    msgsPropose' = Rounds.mapBy(r => faultyProposals.filter(m => m.round == r)),
+    nondet faultyPrevotes = AllFaultyPrevotes.powerset().oneOf()
+    msgsPrevote' = Rounds.mapBy(r => faultyPrevotes.filter(m => m.round == r)),
+    nondet faultyPrecommits = AllFaultyPrecommits.powerset().oneOf()
+    msgsPrecommit' = Rounds.mapBy(r => faultyPrecommits.filter(m => m.round == r)),
     evidencePropose' = Set(),
     evidencePrevote' = Set(),
     evidencePrecommit' = Set(),
