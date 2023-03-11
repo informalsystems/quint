@@ -200,13 +200,13 @@ module TendermintAcc {
 
   // The initial states of the protocol. Some faults can be in the system already.
   action Init = all {
-    round          ' = Corr.mapBy( _ => 0 ),
-    step           ' = Corr.mapBy( _ => "propose" ),
-    decision       ' = Corr.mapBy( _ => NilValue ),
-    lockedValue    ' = Corr.mapBy( _ => NilValue ),
-    lockedRound    ' = Corr.mapBy( _ => NilRound ),
-    validValue     ' = Corr.mapBy( _ => NilValue ),
-    validRound     ' = Corr.mapBy( _ => NilRound ),
+    round' = Corr.mapBy( _ => 0 ),
+    step' = Corr.mapBy( _ => "propose" ),
+    decision' = Corr.mapBy( _ => NilValue ),
+    lockedValue' = Corr.mapBy( _ => NilValue ),
+    lockedRound' = Corr.mapBy( _ => NilRound ),
+    validValue' = Corr.mapBy( _ => NilValue ),
+    validRound' = Corr.mapBy( _ => NilRound ),
     nondet faultyProposals =
       setOfMaps(Rounds, AllFaultyProposals.powerset()).oneOf()
     all {
@@ -228,7 +228,7 @@ module TendermintAcc {
     evidencePropose' = Set(),
     evidencePrevote' = Set(),
     evidencePrecommit' = Set(),
-    fired_action   ' = "Init",
+    fired_action' = "Init",
   }
 
   //************************ MESSAGE PASSING *******************************
