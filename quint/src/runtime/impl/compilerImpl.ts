@@ -931,7 +931,11 @@ export class CompilerVisitor implements IRVisitor {
     // lambda translated to Callable
     const callable = this.compStack.pop() as Callable
     // this method supports only 1-argument callables
-    assert(callable.registers.length === 1)
+    if (callable.registers.length !== 1) {
+      const nargs = callable.registers.length
+      this.addCompileError(sourceId, `Expected 1 argument, found ${nargs}`)
+      return
+    }
     // apply the lambda to a single element of the set
     const evaluateElem = function(elem: RuntimeValue):
         Maybe<[RuntimeValue, RuntimeValue]> {
