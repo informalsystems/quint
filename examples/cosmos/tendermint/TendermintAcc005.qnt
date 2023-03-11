@@ -56,11 +56,11 @@ module TendermintAcc {
 
   // the set of correct processes
   //const Corr: Set[Proc_t]
-  pure val Corr = Set("p1", "p2", "p3", "p4")
+  pure val Corr = Set("p1", "p2")
 
   // the set of Byzantine processes, may be empty
   //const Faulty: Set[Proc_t]
-  pure val Faulty = Set("p4")
+  pure val Faulty = Set("p3", "p4")
 
   // the total number of processes: correct, defective, and Byzantine
   //const N: int
@@ -481,7 +481,12 @@ module TendermintAcc {
     }
 
   // lines 55-56
-  action OnRoundCatchup(p, r, EvPropose, EvPrevote, EvPrecommit) = {
+  action OnRoundCatchup(p) = all {
+    round.get(p) < MaxRound,
+    nondet r = Rounds.filter(rr => rr > round.get(p)).oneOf()
+    nondet EvPropose = msgsPropose.get(r).powerset().oneOf()
+    nondet EvPrevote = msgsPrevote.get(r).powerset().oneOf()
+    nondet EvPrecommit = msgsPrecommit.get(r).powerset().oneOf()
     def Src(E) = E.map(m => m.src)
     val Faster = Src(EvPropose).union(Src(EvPrevote)).union(Src(EvPrecommit))
     all {
@@ -509,32 +514,28 @@ module TendermintAcc {
   action Next =
     nondet p = oneOf(Corr)
     any {
-      nondet v = ValidValues.oneOf()
+      nondet v = oneOf(ValidValues)
       InsertProposal(p, v),
-      nondet v = Values.oneOf()
+      nondet v = oneOf(Values)
       UponProposalInPropose(p, v),
-      nondet v = Values.oneOf()
-      nondet vr = Rounds.oneOf()
+      nondet v = oneOf(Values)
+      nondet vr = oneOf(Rounds)
       UponProposalInProposeAndPrevote(p, v, vr),
       nondet Evidence = msgsPrevote.get(round.get(p)).powerset().oneOf()
       UponQuorumOfPrevotesAny(p, Evidence),
-      nondet v = ValidValues.oneOf()
-      nondet vr = RoundsOrNil.oneOf()
+      nondet v = oneOf(ValidValues)
+      nondet vr = oneOf(RoundsOrNil)
       UponProposalInPrevoteOrCommitAndPrevote(p, v, vr),
       nondet Evidence = msgsPrecommit.get(round.get(p)).powerset().oneOf()
       UponQuorumOfPrecommitsAny(p, Evidence),
-      nondet v = ValidValues.oneOf()
-      nondet r = Rounds.oneOf()
-      nondet vr = RoundsOrNil.oneOf()
+      nondet v = oneOf(ValidValues)
+      nondet r = oneOf(Rounds)
+      nondet vr = oneOf(RoundsOrNil)
       UponProposalInPrecommitNoDecision(p, v, r, vr),
       // the actions below are not essential for safety, but added for completeness
       OnTimeoutPropose(p),
       OnQuorumOfNilPrevotes(p),
-      nondet r = Rounds.filter(rr => rr > round.get(p)).oneOf()
-      nondet EvPropose = msgsPropose.get(r).powerset().oneOf()
-      nondet EvPrevote = msgsPrevote.get(r).powerset().oneOf()
-      nondet EvPrecommit = msgsPrecommit.get(r).powerset().oneOf()
-      OnRoundCatchup(p, r, EvPropose, EvPrevote, EvPrecommit),
+      OnRoundCatchup(p),
     }
 
   //**************************** FORK SCENARIOS  ***************************
