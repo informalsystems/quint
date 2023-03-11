@@ -238,7 +238,7 @@ module TendermintAcc {
   }
 
   // lines 14-19, a proposal may be sent later
-  action InsertProposal(p) = {
+  action InsertProposal(p, v) = {
     val r = round.get(p)
     all {
       p == Proposer.get(r),
@@ -246,15 +246,8 @@ module TendermintAcc {
       // if the proposer is sending a proposal, then there are no other proposals
       // by the correct processes for the same round
       msgsPropose.get(r).forall(m => m.src != p),
-      {
-        nondet v = ValidValues.oneOf()
-        val proposal =
-          if (validValue.get(p) != NilValue)
-            validValue.get(p)
-          else
-            v
-        BroadcastProposal(p, round.get(p), proposal, validRound.get(p))
-      },
+      val proposal = if (validValue.get(p) == NilValue) v else validValue.get(p)
+      BroadcastProposal(p, round.get(p), proposal, validRound.get(p)),
       fired_action' = "InsertProposal",
       round' = round,
       step' = step,
@@ -272,8 +265,7 @@ module TendermintAcc {
   }
 
   // lines 22-27
-  action UponProposalInPropose(p) =
-    nondet v = Values.oneOf()
+  action UponProposalInPropose(p, v) =
     val msg = {
       src: Proposer.get(round.get(p)),
       round: round.get(p), proposal: v, validRound: NilRound
@@ -302,9 +294,7 @@ module TendermintAcc {
     }
 
   // lines 28-33
-  action UponProposalInProposeAndPrevote(p) =
-    nondet v = Values.oneOf()
-    nondet vr = Rounds.oneOf()
+  action UponProposalInProposeAndPrevote(p, v, vr) =
     val msg = {
       src: Proposer.get(round.get(p)),
       round: round.get(p), proposal: v, validRound: vr
@@ -338,16 +328,14 @@ module TendermintAcc {
     }
 
   // lines 34-35 + lines 61-64 (onTimeoutPrevote)
-  action UponQuorumOfPrevotesAny(p) =
-    nondet MyEvidence = powerset(msgsPrevote.get(round.get(p))).oneOf()
+  action UponQuorumOfPrevotesAny(p, Evidence) =
     // find the unique voters in the evidence
-    val Voters = MyEvidence.map(m => m.src)
-
+    val Voters = Evidence.map(m => m.src)
     // compare the number of the unique voters against the threshold
     all {
       step.get(p) == "prevote", // line 34 and 61
       size(Voters) >= THRESHOLD2, // line 34
-      evidencePrevote' = MyEvidence.union(evidencePrevote),
+      evidencePrevote' = Evidence.union(evidencePrevote),
       BroadcastPrecommit(p, round.get(p), NilValue),
       step' = step.set(p, "precommit"),
       fired_action' = "UponQuorumOfPrevotesAny",
@@ -364,9 +352,7 @@ module TendermintAcc {
     }
 
   // lines 36-46
-  action UponProposalInPrevoteOrCommitAndPrevote(p) =
-    nondet v = ValidValues.oneOf()
-    nondet vr = RoundsOrNil.oneOf()
+  action UponProposalInPrevoteOrCommitAndPrevote(p, v, vr) =
     val msg = {
       src: Proposer.get(round.get(p)),
       round: round.get(p), proposal: v, validRound: vr
@@ -402,15 +388,13 @@ module TendermintAcc {
     }
 
   // lines 47-48 + 65-67 (onTimeoutPrecommit)
-  action UponQuorumOfPrecommitsAny(p) =
-    nondet MyEvidence =
-      powerset(msgsPrecommit.get(round.get(p))).oneOf()
+  action UponQuorumOfPrecommitsAny(p, Evidence) =
     // find the unique committers in the evidence
-    val Committers =  MyEvidence.map( m => m.src )
+    val Committers =  Evidence.map( m => m.src )
     // compare the number of the unique committers against the threshold
     all {
       size(Committers) >= THRESHOLD2,  // line 47
-      evidencePrecommit' = MyEvidence.union(evidencePrecommit),
+      evidencePrecommit' = Evidence.union(evidencePrecommit),
       (round.get(p) + 1).in(Rounds),
       StartRound(p, round.get(p) + 1),
       fired_action' = "UponQuorumOfPrecommitsAny",
@@ -427,11 +411,8 @@ module TendermintAcc {
     }
 
   // lines 49-54
-  action UponProposalInPrecommitNoDecision(p) =
+  action UponProposalInPrecommitNoDecision(p, v, r, vr) =
     // line 50
-    nondet v = ValidValues.oneOf()
-    nondet r = Rounds.oneOf()
-    nondet vr = RoundsOrNil.oneOf()
     val msg = { src: Proposer.get(r), round: r, proposal: v, validRound: vr }
     val PV = msgsPrecommit.get(r).filter(m => m.id == Id(v))
     all {
@@ -500,11 +481,7 @@ module TendermintAcc {
     }
 
   // lines 55-56
-  action OnRoundCatchup(p) = {
-    nondet r = Rounds.filter(rr => rr > round.get(p)).oneOf()
-    nondet EvPropose = msgsPropose.get(r).powerset().oneOf()
-    nondet EvPrevote = msgsPrevote.get(r).powerset().oneOf()
-    nondet EvPrecommit = msgsPrecommit.get(r).powerset().oneOf()
+  action OnRoundCatchup(p, r, EvPropose, EvPrevote, EvPrecommit) = {
     def Src(E) = E.map(m => m.src)
     val Faster = Src(EvPropose).union(Src(EvPrevote)).union(Src(EvPrecommit))
     all {
@@ -532,17 +509,32 @@ module TendermintAcc {
   action Next =
     nondet p = oneOf(Corr)
     any {
-      InsertProposal(p),
-      UponProposalInPropose(p),
-      UponProposalInProposeAndPrevote(p),
-      UponQuorumOfPrevotesAny(p),
-      UponProposalInPrevoteOrCommitAndPrevote(p),
-      UponQuorumOfPrecommitsAny(p),
-      UponProposalInPrecommitNoDecision(p),
+      nondet v = ValidValues.oneOf()
+      InsertProposal(p, v),
+      nondet v = Values.oneOf()
+      UponProposalInPropose(p, v),
+      nondet v = Values.oneOf()
+      nondet vr = Rounds.oneOf()
+      UponProposalInProposeAndPrevote(p, v, vr),
+      nondet Evidence = msgsPrevote.get(round.get(p)).powerset().oneOf()
+      UponQuorumOfPrevotesAny(p, Evidence),
+      nondet v = ValidValues.oneOf()
+      nondet vr = RoundsOrNil.oneOf()
+      UponProposalInPrevoteOrCommitAndPrevote(p, v, vr),
+      nondet Evidence = msgsPrecommit.get(round.get(p)).powerset().oneOf()
+      UponQuorumOfPrecommitsAny(p, Evidence),
+      nondet v = ValidValues.oneOf()
+      nondet r = Rounds.oneOf()
+      nondet vr = RoundsOrNil.oneOf()
+      UponProposalInPrecommitNoDecision(p, v, r, vr),
       // the actions below are not essential for safety, but added for completeness
       OnTimeoutPropose(p),
       OnQuorumOfNilPrevotes(p),
-      OnRoundCatchup(p),
+      nondet r = Rounds.filter(rr => rr > round.get(p)).oneOf()
+      nondet EvPropose = msgsPropose.get(r).powerset().oneOf()
+      nondet EvPrevote = msgsPrevote.get(r).powerset().oneOf()
+      nondet EvPrecommit = msgsPrecommit.get(r).powerset().oneOf()
+      OnRoundCatchup(p, r, EvPropose, EvPrevote, EvPrecommit),
     }
 
   //**************************** FORK SCENARIOS  ***************************
