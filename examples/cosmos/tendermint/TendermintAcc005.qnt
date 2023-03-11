@@ -591,10 +591,14 @@ module TendermintAcc {
 
   // amnesic behavior by a process p
   def AmnesiaBy(p) =
-      tuples(Rounds, Rounds).exists((r1, r2) =>
+      tuples(Rounds, Rounds).exists(rs =>
+          val r1 = rs._1
+          val r2 = rs._2
           and {
             r1 < r2,
-            tuples(ValidValues, ValidValues).exists((v1, v2) =>
+            tuples(ValidValues, ValidValues).exists(vs =>
+              val v1 = vs._1
+              val v2 = vs._2
               and {
                 v1 != v2,
                 evidencePrecommit.contains({
@@ -620,10 +624,13 @@ module TendermintAcc {
 
   // the safety property -- agreement
   val Agreement =
-    tuples(Corr, Corr).forall((p, q) => or {
-      decision.get(p) == NilValue,
-      decision.get(q) == NilValue,
-      decision.get(p) == decision.get(q)
+    tuples(Corr, Corr).forall(ps =>
+      val p = ps._1
+      val q = ps._2
+      or {
+        decision.get(p) == NilValue,
+        decision.get(q) == NilValue,
+        decision.get(p) == decision.get(q)
     })
 
   // the protocol validity
@@ -660,12 +667,14 @@ module TendermintAcc {
   // It is not exactly ~Agreement, as we do not want to see the states where
   // decision.get(p) = NilValue
   val NoAgreement =
-    tuples(Corr, Corr).forall((p, q) =>
-          and {
-            p != q,
-            decision.get(p) != NilValue,
-            decision.get(q) != NilValue
-          } implies (decision.get(p) != decision.get(q))
+    tuples(Corr, Corr).forall(ps =>
+      val p = ps._1
+      val q = ps._2
+      and {
+        p != q,
+        decision.get(p) != NilValue,
+        decision.get(q) != NilValue
+      } implies (decision.get(p) != decision.get(q))
     )
   // Either agreement holds, or the faulty processes indeed demonstrate amnesia.
   // This property is violated. A counterexample should demonstrate equivocation.
