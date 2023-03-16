@@ -183,15 +183,15 @@ export class CompilerVisitor implements IRVisitor {
     // Once the evaluation is done, the value is reset, so that
     // a new random value may be produced later.
     const undecoratedEval = exprUnderLet.eval
+    const boundValueEval = boundValue.eval
     exprUnderLet.eval = function(): Maybe<EvalResult> {
-      const savedEval = boundValue.eval
-      const cachedValue = savedEval()
+      const cachedValue = boundValueEval()
       boundValue.eval = function() {
         return cachedValue
       }
       // compute the result and immediately reset the cache
       const result = undecoratedEval()
-      boundValue.eval = savedEval
+      boundValue.eval = boundValueEval
       return result
     }
   }
