@@ -56,11 +56,11 @@ module TendermintAcc {
 
   // the set of correct processes
   //const Corr: Set[Proc_t]
-  pure val Corr = Set("p1", "p2")
+  pure val Corr = Set("p1", "p2", "p3")
 
-  // the set of Byzantine processes, may be empty
+  // The set of Byzantine processes, may be empty.
   //const Faulty: Set[Proc_t]
-  pure val Faulty = Set("p3", "p4")
+  pure val Faulty = Set("p4")
 
   // the total number of processes: correct, defective, and Byzantine
   //const N: int
@@ -677,4 +677,47 @@ module TendermintAcc {
       AllInMax implies AllDecided
   )
 
+}
+
+// Tests that demonstrate typical behavior.
+module TendermintTest {
+  import TendermintAcc.*
+
+  // Quint will automatically compute the unchanged block in the future
+  action unchangedAll = all {
+    step' = step,
+    fired_action' = fired_action,
+    round' = round,
+    validValue' = validValue,
+    validRound' = validRound,
+    msgsPrevote' = msgsPrevote,
+    msgsPropose' = msgsPropose,
+    msgsPrecommit' = msgsPrecommit,
+    decision' = decision,
+    lockedValue' = lockedValue,
+    lockedRound' = lockedRound,
+    evidencePropose' = evidencePropose,
+    evidencePrevote' = evidencePrevote,
+    evidencePrecommit' = evidencePrecommit,
+  }
+
+  run happyPathTest = {
+    nondet v = oneOf(ValidValues)
+    Init.then(InsertProposal("p1", v))
+        .then(UponProposalInPropose("p1", v))
+        .then(UponProposalInPropose("p2", v))
+        .then(UponProposalInPropose("p3", v))
+        .then(UponProposalInPrevoteOrCommitAndPrevote("p1", v, NilRound))
+        .then(UponProposalInPrevoteOrCommitAndPrevote("p2", v, NilRound))
+        .then(UponProposalInPrevoteOrCommitAndPrevote("p3", v, NilRound))
+        .then(UponProposalInPrecommitNoDecision("p1", v, 0, NilRound))
+        .then(UponProposalInPrecommitNoDecision("p2", v, 0, NilRound))
+        .then(UponProposalInPrecommitNoDecision("p3", v, 0, NilRound))
+        .then(all {
+          assert(decision.get("p1") == v),
+          assert(decision.get("p2") == v),
+          assert(decision.get("p3") == v),
+          unchangedAll,
+        })
+  }
 }
