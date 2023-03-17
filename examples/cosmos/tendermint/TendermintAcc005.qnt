@@ -701,23 +701,45 @@ module TendermintTest {
     evidencePrecommit' = evidencePrecommit,
   }
 
-  run happyPathTest = {
+  // three correct processes behave and decide on the same value
+  run decisionTest = {
     nondet v = oneOf(ValidValues)
-    Init.then(InsertProposal("p1", v))
-        .then(UponProposalInPropose("p1", v))
-        .then(UponProposalInPropose("p2", v))
-        .then(UponProposalInPropose("p3", v))
-        .then(UponProposalInPrevoteOrCommitAndPrevote("p1", v, NilRound))
-        .then(UponProposalInPrevoteOrCommitAndPrevote("p2", v, NilRound))
-        .then(UponProposalInPrevoteOrCommitAndPrevote("p3", v, NilRound))
-        .then(UponProposalInPrecommitNoDecision("p1", v, 0, NilRound))
-        .then(UponProposalInPrecommitNoDecision("p2", v, 0, NilRound))
-        .then(UponProposalInPrecommitNoDecision("p3", v, 0, NilRound))
+    val p1 = Proposer.get(0)
+    nondet p2 = Corr.exclude(Set(p1)).oneOf()
+    nondet p3 = Corr.exclude(Set(p1, p2)).oneOf()
+    Init.then(InsertProposal(p1, v))
+        .then(UponProposalInPropose(p1, v))
+        .then(UponProposalInPropose(p2, v))
+        .then(UponProposalInPropose(p3, v))
+        .then(UponProposalInPrevoteOrCommitAndPrevote(p1, v, NilRound))
+        .then(UponProposalInPrevoteOrCommitAndPrevote(p2, v, NilRound))
+        .then(UponProposalInPrevoteOrCommitAndPrevote(p3, v, NilRound))
+        .then(UponProposalInPrecommitNoDecision(p1, v, 0, NilRound))
+        .then(UponProposalInPrecommitNoDecision(p2, v, 0, NilRound))
+        .then(UponProposalInPrecommitNoDecision(p3, v, 0, NilRound))
         .then(all {
-          assert(decision.get("p1") == v),
-          assert(decision.get("p2") == v),
-          assert(decision.get("p3") == v),
+          assert(decision.get(p1) == v),
+          assert(decision.get(p2) == v),
+          assert(decision.get(p3) == v),
           unchangedAll,
         })
+  }
+
+  // a correct proposer cannot propose twice in the same round
+  run noProposeTwiceTest = {
+    val p1 = Proposer.get(0)
+    Init.then(InsertProposal(p1, "v0"))
+        .then(InsertProposal(p1, "v1"))
+        .fail()
+  }
+
+  // a correct proposer proposes but other processes timeout
+  run timeoutProposeTest = {
+    val p1 = Proposer.get(0)
+    nondet p2 = Corr.exclude(Set(p1)).oneOf()
+    nondet p3 = Corr.exclude(Set(p1, p2)).oneOf()
+    Init.then(InsertProposal(p1, "v0"))
+        .then(OnTimeoutPropose(p2))
+        .then(OnTimeoutPropose(p3))
   }
 }
