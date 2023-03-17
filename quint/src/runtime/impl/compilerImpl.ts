@@ -1171,8 +1171,7 @@ export class CompilerVisitor implements IRVisitor {
     const lazyCompute = () => {
       let result: Maybe<EvalResult> = defaultValue
       // Evaluate arguments iteratively.
-      // Stop as soon as one of the arguments returns breakoutValue.
-      // This is a form of Boolean short-circuiting.
+      // Stop as soon as shortCircuit tells us to stop.
       let no = 0
       for (const arg of args) {
         // either the argument is evaluated to a Boolean, or fails
