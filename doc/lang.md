@@ -1500,8 +1500,8 @@ select(l, Test)
 l.select(e => P)
 // Left fold. There is no standard operator for that in TLA+,
 // but you can define it with a recursive operator.
-l.foldl(init, (i, v => e))
-foldl(l, init, (i, v => e))
+l.foldl(init, (v, i => e))
+foldl(l, init, (v, i => e))
 // Right fold. There is no standard operator for that in TLA+,
 // but you can define it with a recursive operator.
 l.foldr(init, (i, v => e))
