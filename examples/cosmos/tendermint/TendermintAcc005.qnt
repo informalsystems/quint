@@ -739,7 +739,25 @@ module TendermintTest {
     nondet p2 = Corr.exclude(Set(p1)).oneOf()
     nondet p3 = Corr.exclude(Set(p1, p2)).oneOf()
     Init.then(InsertProposal(p1, "v0"))
+        .then(UponProposalInPropose(p1, "v0"))
         .then(OnTimeoutPropose(p2))
         .then(OnTimeoutPropose(p3))
+        .then(
+          val E = msgsPrevote.get(0).filter(m => m.src.in(Corr))
+          UponQuorumOfPrevotesAny(p1, E)
+            .then(UponQuorumOfPrevotesAny(p2, E))
+            .then(UponQuorumOfPrevotesAny(p3, E))
+        )
+        .then(
+          val E = msgsPrecommit.get(0).filter(m => m.src.in(Corr))
+          UponQuorumOfPrecommitsAny(p1, E)
+            .then(UponQuorumOfPrecommitsAny(p2, E))
+            .then(UponQuorumOfPrecommitsAny(p3, E))
+        )
+        .then(all {
+          // all correct processes switch to the next round
+          assert(Corr.forall(p => round.get(p) == 1)),
+          unchangedAll,
+        })
   }
 }
