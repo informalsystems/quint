@@ -873,18 +873,27 @@ export class CompilerVisitor implements IRVisitor {
       this.addCompileError(app.id, `Called unknown operator ${app.opcode}`)
       this.compStack.push(fail)
     } else {
+      const nparams = callable.registers.length
+      // nparams === nargs, unless a tuple is passed to an n-ary operator.
+      // The type checker should have checked the types before.
+      const nargs = (app.args.length === 1 && nparams > 1) ? 1 : nparams
+
       const nactual = this.compStack.length
-      const nexpected = callable.registers.length
-      if (nactual < nexpected) {
+      if (nactual < nargs) {
         this.addCompileError(app.id,
-          `Expected ${nexpected} arguments for ${app.opcode}, found: ${nactual}`)
+          `Expected ${nargs} arguments for ${app.opcode}, found: ${nactual}`)
         this.compStack.push(fail)
       } else {
         this.applyFun(app.id,
-          callable.registers.length,
+          nargs,
           (...args: RuntimeValue[]) => {
-            for (let i = 0; i < args.length; i++) {
-              callable.registers[i].registerValue = just(args[i])
+            let actualArgs = args
+            if (nparams > nargs && args.length === 1) {
+              // unpack the tuple
+              actualArgs = [...args[0]]
+            }
+            for (let i = 0; i < actualArgs.length; i++) {
+              callable.registers[i].registerValue = just(actualArgs[i])
             }
             return callable.eval() as Maybe<RuntimeValue>
           }
