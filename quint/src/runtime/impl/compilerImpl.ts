@@ -997,17 +997,23 @@ export class CompilerVisitor implements IRVisitor {
     }
     // lambda translated to Callable
     const callable = this.compStack.pop() as Callable
-    // this method supports only 1-argument callables
-    if (callable.registers.length !== 1) {
-      const nargs = callable.registers.length
-      this.addCompileError(sourceId, `Expected 1 argument, found ${nargs}`)
-      return
-    }
+    const nargs = callable.registers.length
     // apply the lambda to a single element of the set
     const evaluateElem = function(elem: RuntimeValue):
       Maybe<[RuntimeValue, RuntimeValue]> {
-      // store the set element in the register
-      callable.registers[0].registerValue = just(elem)
+      if (nargs === 1) {
+        // store the set element in the register
+        callable.registers[0].registerValue = just(elem)
+      } else {
+        // unpack a tuple and store its elements in the registers
+        const tupleElems = [...elem]
+        if (tupleElems.length !== nargs) {
+          return none()
+        }
+        for (let i = 0; i < nargs; i++) {
+          callable.registers[i].registerValue = just(tupleElems[i])
+        }
+      }
       // evaluate the predicate using the register
       // (cast the result to RuntimeValue, as we use runtime values)
       const result = callable.eval().map(e => e as RuntimeValue)
