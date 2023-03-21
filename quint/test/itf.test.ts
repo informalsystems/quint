@@ -1,6 +1,5 @@
 import { describe, it } from 'mocha'
 import { assert } from 'chai'
-import { Either, left, right } from '@sweet-monads/either'
 
 import { buildExpression } from './builders/ir'
 import { toItf } from '../src/itf'
