@@ -561,6 +561,7 @@ Using this syntax, our example looks like follows:
 module fixed {
   import general(N = 3).*
   import general(N = 5) as I5
+  import statelessModule as M
   ...
 }
 ```
