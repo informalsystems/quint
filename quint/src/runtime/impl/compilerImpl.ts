@@ -1335,6 +1335,8 @@ export class CompilerVisitor implements IRVisitor {
         }
         // the trace collected during the run
         let trace: RuntimeValue[] = []
+        // the length of a previously saved trace
+        let savedTraceLen = 0
         // a failure flag for the case a runtime error is found
         let failure = false
         // the value to be returned in the end of evaluation
@@ -1390,7 +1392,11 @@ export class CompilerVisitor implements IRVisitor {
         // save the trace (there are a few shadow variables, hence, the loop)
         this.shadowVars.forEach(r => {
           if (r.name === lastTraceName) {
-            r.registerValue = just(rv.mkList(trace))
+            if (r.registerValue.isNone()
+                || this.isPreferredTrace(errorFound, savedTraceLen, trace.length)) {
+              r.registerValue = just(rv.mkList(trace))
+              savedTraceLen = trace.length
+            }
           }
         })
         // finally, return true, if no error was found
@@ -1398,6 +1404,13 @@ export class CompilerVisitor implements IRVisitor {
       }).join()
     }
     this.compStack.push(mkFunComputable(doRun))
+  }
+
+  // For examples, the longer trace is preferred.
+  // For counterexamples, the shorter trace is preferred.
+  private isPreferredTrace(isErrorFound: boolean,
+      oldLen: number, newLen: number): boolean {
+    return isErrorFound ? oldLen >= newLen : oldLen <= newLen
   }
 
   private shiftVars() {
