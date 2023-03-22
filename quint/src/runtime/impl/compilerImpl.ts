@@ -1410,7 +1410,9 @@ export class CompilerVisitor implements IRVisitor {
   // For counterexamples, the shorter trace is preferred.
   private isBetterTrace(isErrorFound: boolean,
       oldLen: number, newLen: number): boolean {
-    return isErrorFound ? oldLen >= newLen : oldLen <= newLen
+    return isErrorFound
+      ? oldLen == 0 || oldLen >= newLen
+      : oldLen <= newLen
   }
 
   private shiftVars() {
