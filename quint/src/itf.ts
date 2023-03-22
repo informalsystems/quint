@@ -10,7 +10,7 @@
  */
 
 import { Either, left, right, merge } from '@sweet-monads/either'
-import { zip } from 'lodash'
+import { chunk } from 'lodash'
 
 import { QuintEx } from './quintIr'
 
@@ -65,10 +65,8 @@ export function toItf(vars: string[], trace: QuintEx): Either<string, any> {
               return left('record: expected an even number of arguments, found:' + ex.args.length)
             }
             return merge(ex.args.map(exprToItf)).mapRight(kvs => {
-              const keys = kvs.filter((k, i) => i % 2 == 0)
-              const values = kvs.filter((k, i) => i % 2 == 1)
               let obj: any = {}
-              zip(keys, values).forEach(([k, v]) => {
+              chunk(kvs, 2).forEach(([k, v]) => {
                 obj[k] = v
               })
               return obj
