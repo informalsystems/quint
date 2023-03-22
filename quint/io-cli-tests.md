@@ -414,6 +414,25 @@ run test = {
 [nok] Found a violation (duration).
 ```
 
+### Run outputs ITF
+
+<!-- !test in run itf -->
+```
+quint run --out-itf=out-itf-example.itf.json --max-steps=5 --seed=123 \
+  --invariant=totalSupplyDoesNotOverflowInv \
+  ../examples/solidity/Coin/coin.qnt
+cat out-itf-example.itf.json | jq '.states[0]."coin::balances"."#map"[0]'
+rm out-itf-example.itf.json
+```
+
+<!-- !test out run itf -->
+```
+[
+  "alice",
+  0
+]
+```
+
 ### OK REPL tutorial
 
 The REPL tutorial is reproducible in REPL.
