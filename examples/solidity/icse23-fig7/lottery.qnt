@@ -6,7 +6,7 @@
 // A specification of the lottery contract.
 // We write this specification by following functional idioms,
 // as this way allows us to easily compose this contract with mempool.
-// A non-functional way would be more concise but not that easier to compose.
+// A non-functional way would be more concise but more difficult to compose.
 module lottery {
     type Address = str
     // here we simply ignore the number of bits and do not check for overflows

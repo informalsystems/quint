@@ -9,7 +9,7 @@ the paper (Fig. 7):
 The paper and the accompanying material can be found at
 [Web3bugs](https://github.com/ZhangZhuoSJTU/Web3Bugs).
 
-This example belongs to one of the issues that are not detected
+This example belongs to a class of issues that are not detected
 automatically by static analysis tools. But even if this behavior
 cannot be automatically detected, can it be specified? The ability
 to specify it is the first step towards automatic verification.
