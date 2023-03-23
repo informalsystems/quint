@@ -15,7 +15,7 @@ cannot be automatically detected, can it be specified? The ability
 to specify it is the first step towards automatic verification.
 
 To be more exact, the problematic behavior is formally specified
-with the test:
+and can be reproduced with the test:
 
 ```bluespec
     // This is the scenario reported in the paper.
@@ -43,7 +43,7 @@ We can also specify a state invariant that is broken by the above test:
     }
 ```
 
-We can try to disprove this invariant in the random simulator:
+Instead of specifying a run with the steps leading to the bug, we can try to disprove this invariant in the random simulator:
 
 ```sh
 quint run --max-samples 1000000 --max-steps 6 \
