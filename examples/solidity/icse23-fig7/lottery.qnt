@@ -212,7 +212,7 @@ module lotteryMempool {
 
     // We fix a set of addresses for testing purposes.
     // This can be generalized with an instance.
-    val ADDR = Set("alice", "bob", "eve", "owner")
+    val ADDR = Set("alice", "bob", "eve")
     // identifiers to be used in the lottery
     val IDS = 1.to(5)
     // amounts of tickets that can be used in buy transactions

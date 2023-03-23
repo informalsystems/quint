@@ -66,50 +66,50 @@ quint run --max-samples 100000 --max-steps 5 \
   --invariant noBuyInDrawingInv --main lotteryMempool lottery.qnt
 ```
 
-With a bit of luck, quint finds a violation in 6 seconds:
+With a bit of luck, quint finds a violation in 29 seconds:
 
 ```bluespec
 An example execution:
 ---------------------------------------------
 action step0 = all {
-  lotteryMempool::lotteryState' = { tickets: Map(), winningId: 0, drawingPhase: false, owner: "alice" },
+  lotteryMempool::lotteryState' = { tickets: Map(), winningId: 0, drawingPhase: false, owner: "eve" },
   lotteryMempool::mempool' = Set(),
   lotteryMempool::lastTx' = { kind: "none", status: "none", sender: "", id: 0, amount: 0, ids: [], amounts: [] },
 }
 
 action step1 = all {
-  lotteryMempool::lotteryState' = { tickets: Map(), winningId: 0, drawingPhase: false, owner: "alice" },
-  lotteryMempool::mempool' = Set({ kind: "enterDrawingPhase", status: "pending", sender: "alice", id: 0, amount: 0, ids: [], amounts: [] }),
-  lotteryMempool::lastTx' = { kind: "enterDrawingPhase", status: "pending", sender: "alice", id: 0, amount: 0, ids: [], amounts: [] },
+  lotteryMempool::lotteryState' = { tickets: Map(), winningId: 0, drawingPhase: false, owner: "eve" },
+  lotteryMempool::mempool' = Set({ kind: "enterDrawingPhase", status: "pending", sender: "eve", id: 0, amount: 0, ids: [], amounts: [] }),
+  lotteryMempool::lastTx' = { kind: "enterDrawingPhase", status: "pending", sender: "eve", id: 0, amount: 0, ids: [], amounts: [] },
 }
 
 action step2 = all {
-  lotteryMempool::lotteryState' = { tickets: Map(), winningId: 0, drawingPhase: true, owner: "alice" },
+  lotteryMempool::lotteryState' = { tickets: Map(), winningId: 0, drawingPhase: true, owner: "eve" },
   lotteryMempool::mempool' = Set(),
-  lotteryMempool::lastTx' = { kind: "enterDrawingPhase", status: "success", sender: "alice", id: 0, amount: 0, ids: [], amounts: [] },
+  lotteryMempool::lastTx' = { kind: "enterDrawingPhase", status: "success", sender: "eve", id: 0, amount: 0, ids: [], amounts: [] },
 }
 
 action step3 = all {
-  lotteryMempool::lotteryState' = { tickets: Map(), winningId: 0, drawingPhase: true, owner: "alice" },
-  lotteryMempool::mempool' = Set({ kind: "multiBuy", status: "pending", sender: "eve", id: 0, amount: 0, ids: [2, 1, 4], amounts: [7, 4, 0] }),
-  lotteryMempool::lastTx' = { kind: "multiBuy", status: "pending", sender: "eve", id: 0, amount: 0, ids: [2, 1, 4], amounts: [7, 4, 0] },
+  lotteryMempool::lotteryState' = { tickets: Map(), winningId: 0, drawingPhase: true, owner: "eve" },
+  lotteryMempool::mempool' = Set({ kind: "draw", status: "pending", sender: "eve", id: 3, amount: 0, ids: [], amounts: [] }),
+  lotteryMempool::lastTx' = { kind: "draw", status: "pending", sender: "eve", id: 3, amount: 0, ids: [], amounts: [] },
 }
 
 action step4 = all {
-  lotteryMempool::lotteryState' = { tickets: Map(), winningId: 0, drawingPhase: true, owner: "alice" },
-  lotteryMempool::mempool' = Set({ kind: "draw", status: "pending", sender: "alice", id: 1, amount: 0, ids: [], amounts: [] }, { kind: "multiBuy", status: "pending", sender: "eve", id: 0, amount: 0, ids: [2, 1, 4], amounts: [7, 4, 0] }),
-  lotteryMempool::lastTx' = { kind: "draw", status: "pending", sender: "alice", id: 1, amount: 0, ids: [], amounts: [] },
+  lotteryMempool::lotteryState' = { tickets: Map(), winningId: 0, drawingPhase: true, owner: "eve" },
+  lotteryMempool::mempool' = Set({ kind: "draw", status: "pending", sender: "eve", id: 3, amount: 0, ids: [], amounts: [] }, { kind: "multiBuy", status: "pending", sender: "eve", id: 0, amount: 0, ids: [3, 5], amounts: [5, 9] }),
+  lotteryMempool::lastTx' = { kind: "multiBuy", status: "pending", sender: "eve", id: 0, amount: 0, ids: [3, 5], amounts: [5, 9] },
 }
 
 action step5 = all {
-  lotteryMempool::lotteryState' = { tickets: Map("eve" -> Map(1 -> 4, 2 -> 7, 4 -> 0)), winningId: 0, drawingPhase: true, owner: "alice" },
-  lotteryMempool::mempool' = Set({ kind: "draw", status: "pending", sender: "alice", id: 1, amount: 0, ids: [], amounts: [] }),
-  lotteryMempool::lastTx' = { kind: "multiBuy", status: "success", sender: "eve", id: 0, amount: 0, ids: [2, 1, 4], amounts: [7, 4, 0] },
+  lotteryMempool::lotteryState' = { tickets: Map("eve" -> Map(3 -> 5, 5 -> 9)), winningId: 0, drawingPhase: true, owner: "eve" },
+  lotteryMempool::mempool' = Set({ kind: "draw", status: "pending", sender: "eve", id: 3, amount: 0, ids: [], amounts: [] }),
+  lotteryMempool::lastTx' = { kind: "multiBuy", status: "success", sender: "eve", id: 0, amount: 0, ids: [3, 5], amounts: [5, 9] },
 }
 
 run test = {
   step0.then(step1).then(step2).then(step3).then(step4).then(step5)
 }
 ---------------------------------------------
-[nok] Found a violation (5897ms).
+[nok] Found a violation (28752ms).
 ```
