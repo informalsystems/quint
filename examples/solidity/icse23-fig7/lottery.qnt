@@ -362,11 +362,7 @@ module lotteryTests {
     // This is the scenario reported in the paper.
     // By modeling the mempool, we can specify this scenario.
     run lotteryMultiBuyTest = {
-        init.then(submit(ResetTx("owner")))
-            .then(commit(ResetTx("owner")))
-            .then(submit(BuyTx("alice", 1, 1000)))
-            .then(commit(BuyTx("alice", 1, 1000)))
-            .then(submit(EnterDrawingPhaseTx("owner")))
+        init.then(submit(EnterDrawingPhaseTx("owner")))
             .then(commit(EnterDrawingPhaseTx("owner")))
             .then(submit(DrawTx("owner", 3)))
             // Bob can buy lottery tickets in the drawing phase,
