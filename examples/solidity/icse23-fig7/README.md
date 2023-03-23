@@ -21,11 +21,7 @@ with the test:
     // This is the scenario reported in the paper.
     // By modeling the mempool, we can specify this scenario.
     run lotteryMultiBuyTest = {
-        init.then(submit(ResetTx("owner")))
-            .then(commit(ResetTx("owner")))
-            .then(submit(BuyTx("alice", 1, 1000)))
-            .then(commit(BuyTx("alice", 1, 1000)))
-            .then(submit(EnterDrawingPhaseTx("owner")))
+        init.then(submit(EnterDrawingPhaseTx("owner")))
             .then(commit(EnterDrawingPhaseTx("owner")))
             .then(submit(DrawTx("owner", 3)))
             // Bob can buy lottery tickets in the drawing phase,
@@ -35,3 +31,25 @@ with the test:
             .then(commit(DrawTx("owner", 3)))
     }
 ```
+
+We can also specify a state invariant that is broken by the above test:
+
+```bluespec
+    val noBuyInDrawingInv = {
+        and {
+            lastTx.status == "success",
+            lastTx.kind == "buy" or lastTx.kind == "multiBuy"
+        } implies not(lotteryState.drawingPhase)
+    }
+```
+
+We can try to disprove this invariant in the random simulator:
+
+```sh
+quint run --max-samples 1000000 --max-steps 6 \
+  --invariant noBuyInDrawingInv --main lotteryMempool lottery.qnt
+```
+
+Unfortunately, random simulation does not find this example.
+This seems to be a good use case for symbolic model checking with
+[Apalache](https://github.com/informalsystems/apalache/).

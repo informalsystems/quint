@@ -13,6 +13,9 @@ module lottery {
     type Uint64 = int
     type Uint = int
 
+    pure def MAX_UINT64 = 2^64
+    pure def MAX_UINT = 2^256
+
     // the contract in the paper uses "onlyOwner", we fix the owner for simplicity
     pure def onlyOwner(addr: Address): str = {
         if (addr == "owner") "" else "must be the owner"
@@ -80,7 +83,7 @@ module lottery {
         if (err != "") {
             returnError(err, state)
         } else {
-            // receivePayment(sender, amount)
+            // omitted in the paper: receivePayment(sender, amount)
             pure val senderTickets = state.tickets.getOrElse(sender, Map())
             pure val newAmounts = senderTickets.put(id, senderTickets.getOrElse(id, amount))
             returnState(state.with("tickets", state.tickets.put(sender, newAmounts)))
@@ -114,7 +117,7 @@ module lottery {
         if (err != "") {
             returnError(err, state)
         } else {
-            // how rewards are claimed is not specified
+            // how rewards are claimed is not specified in the paper
             returnState(state)
         }
     }
@@ -160,49 +163,54 @@ module lotteryMempool {
     type Transaction = {
         kind: str,
         sender: Address,
+        status: str,
         id: Uint64,
         amount: Uint,
         ids: List[Uint64],
         amounts: List[Uint]
     }
 
+    pure val NoneTx: Transaction = {
+        kind: "none", status: "none", sender: "", id: 0, amount: 0, ids: [], amounts: []
+    }
+
     pure def ResetTx(sender: Address): Transaction = {
-        kind: "reset", sender: sender, id: 0, amount: 0, ids: [], amounts: []
+        kind: "reset", status: "pending", sender: sender, id: 0, amount: 0, ids: [], amounts: []
     }
 
     pure def BuyTx(sender: Address, id: Uint64, amount: Uint): Transaction = {
-        kind: "buy", sender: sender, id: id, amount: amount, ids: [], amounts: []
+        kind: "buy", status: "pending", sender: sender, id: id, amount: amount, ids: [], amounts: []
     }
 
     pure def EnterDrawingPhaseTx(sender: Address): Transaction = {
-        kind: "enterDrawingPhase", sender: sender, id: 0, amount: 0, ids: [], amounts: []
+        kind: "enterDrawingPhase", status: "pending", sender: sender, id: 0, amount: 0, ids: [], amounts: []
     }
 
     pure def DrawTx(sender: Address, id: Uint64): Transaction = {
-        kind: "draw", sender: sender, id: id, amount: 0, ids: [], amounts: []
+        kind: "draw", status: "pending", sender: sender, id: id, amount: 0, ids: [], amounts: []
     }
 
     pure def ClaimRewardTx(sender: Address): Transaction = {
-        kind: "claimReward", sender: sender, id: 0, amount: 0, ids: [], amounts: []
+        kind: "claimReward", status: "pending", sender: sender, id: 0, amount: 0, ids: [], amounts: []
     }
 
     pure def MultiBuyTx(sender: Address, ids: List[Uint64], amounts: List[Uint]): Transaction = {
-        kind: "multiBuy", sender: sender, id: 0, amount: 0, ids: ids, amounts: amounts
+        kind: "multiBuy", status: "pending", sender: sender, id: 0, amount: 0, ids: ids, amounts: amounts
     }
 
-    // the state of the lottery contract (we have just one here)
+    // the state of the lottery contract (we have just one contract here)
     var lotteryState: LotteryState
     // The state of the mempool. Recall that transactions are not ordered!
     // For simplicity, we do not count identical transactions twice.
     // If we needed that, we could add an id field to a transaction.
     var mempool: Set[Transaction]
-    // The status of the last transaction (either an error message, or "")
-    var lastStatus: str
+    // The last submitted or executed transaction
+    var lastTx: Transaction
 
     action init = all {
         lotteryState' = newLottery,
         mempool' = Set(),
-        lastStatus' = "",
+        lastTx' = NoneTx,
     }
 
     // Submit a transaction to the memory pool.
@@ -210,12 +218,13 @@ module lotteryMempool {
     action submit(tx: Transaction): bool = all {
         mempool' = mempool.union(Set(tx)),
         lotteryState' = lotteryState,
-        lastStatus' = lastStatus,
+        lastTx' = tx,
     }
 
     // an auxilliary action that assigns variables from a method execution result
-    action fromResult(r: LotteryResult): bool = all {
-        lastStatus' = r._1,
+    action fromResult(tx: Transaction, r: LotteryResult): bool = all {
+        val status = if (r._1 != "") r._1 else "success"
+        lastTx' = tx.with("status", status),
         lotteryState' = r._2,
     }
 
@@ -225,29 +234,86 @@ module lotteryMempool {
         any {
             all {
                 tx.kind == "reset",
-                fromResult(reset(lotteryState, tx.sender))
+                fromResult(tx, reset(lotteryState, tx.sender))
             },
             all {
                 tx.kind == "buy",
-                fromResult(buy(lotteryState, tx.sender, tx.id, tx.amount))
+                fromResult(tx, buy(lotteryState, tx.sender, tx.id, tx.amount))
             },
             all {
                 tx.kind == "enterDrawingPhase",
-                fromResult(enterDrawingPhase(lotteryState, tx.sender))
+                fromResult(tx, enterDrawingPhase(lotteryState, tx.sender))
             },
             all {
                 tx.kind == "draw",
-                fromResult(draw(lotteryState, tx.sender, tx.id))
+                fromResult(tx, draw(lotteryState, tx.sender, tx.id))
             },
             all {
                 tx.kind == "claimReward",
-                fromResult(claimReward(lotteryState, tx.sender))
+                fromResult(tx, claimReward(lotteryState, tx.sender))
             },
             all {
                 tx.kind == "multiBuy",
-                fromResult(multiBuy(lotteryState, tx.sender, tx.ids, tx.amounts))
+                fromResult(tx, multiBuy(lotteryState, tx.sender, tx.ids, tx.amounts))
             },
         }
+    }
+
+    // We fix a set of addresses for testing purposes.
+    // This can be generalized with an instance.
+    val ADDR = Set("alice", "bob", "eve")
+    // identifiers to be used in the lottery
+    val IDS = 1.to(5)
+    // amounts of tickets that can be used in buy transactions
+    val AMOUNTS = 0.to(10)
+    // A utility function to convert a map to a list
+    pure def mapToList(m: int -> a, n: int): List[a] = {
+         range(0, n).foldl([], (l, i) => l.append(m.get(i)))
+    }
+
+    // Possible behavior of the mempool and lottery
+    // (constrained by the above parameters)
+    action step =
+        any {
+            // Post the contract transactions.
+            // Generate a sender's address.
+            nondet sender = oneOf(ADDR)
+            any {
+                submit(ResetTx(sender)),
+                submit(EnterDrawingPhaseTx(sender)),
+                submit(ClaimRewardTx(sender)),
+                // generate a lottery id
+                nondet id = oneOf(IDS)
+                submit(DrawTx(sender, id)),
+                // generate a lottery id and amount
+                nondet id = oneOf(IDS)
+                nondet amount = oneOf(AMOUNTS)
+                submit(BuyTx(sender, id, amount)),
+                // Generate up to 3 ids, up to 3 amounts, and the actual number of tickets.
+                // TODO: it should be easier to generate lists without using maps.
+                nondet ids = 0.to(3).setOfMaps(IDS).oneOf()
+                nondet amounts = 0.to(3).setOfMaps(AMOUNTS).oneOf()
+                nondet nTickets = 0.to(3).oneOf()
+                submit(MultiBuyTx(sender, ids.mapToList(nTickets), amounts.mapToList(nTickets)))
+            },
+            // commit one of the contract transactions
+            all {
+                mempool != Set(),
+                nondet tx = oneOf(mempool)
+                commit(tx)
+            }
+        }
+
+    // This state invariant captures the key desired property:
+    // No user can buy tickets while the lottery contract is in the drawing phase.
+    // This invariant does not hold true. See the test lotteryMultiBuyTest below.
+    // However, it cannot be easily found by random search.
+    // This probably needs symbolic execution.
+    val noBuyInDrawingInv = {
+        and {
+            lastTx.status == "success",
+            lastTx.kind == "buy" or lastTx.kind == "multiBuy"
+        } implies not(lotteryState.drawingPhase)
     }
 }
 
@@ -259,7 +325,7 @@ module lotteryTests {
     action allUnchanged = all {
         mempool' = mempool,
         lotteryState' = lotteryState,
-        lastStatus' = lastStatus,
+        lastTx' = lastTx,
     }
 
     run buyDrawTest = {
@@ -288,7 +354,7 @@ module lotteryTests {
             // bob's transaction arrives too late
             .then(commit(BuyTx("bob", 3, 2000)))
             .then(all {
-                assert(lastStatus == "drawing"),
+                assert(lastTx.status == "drawing"),
                 allUnchanged,
             })
     }
