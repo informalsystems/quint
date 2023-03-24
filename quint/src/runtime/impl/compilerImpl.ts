@@ -18,8 +18,8 @@ import { IRVisitor } from '../../IRVisitor'
 import { ScopeTree } from '../../scoping'
 import { TypeScheme } from '../../types/base'
 import {
-  Callable, Computable, ComputableKind, EvalResult, Register,
-  fail, kindName, mkCallable, mkRegister
+  Callable, Computable, ComputableKind, EvalResult, ExecutionListener,
+  Register, fail, kindName, mkCallable, mkRegister
 } from '../runtime'
 
 import * as ir from '../../quintIr'
@@ -80,11 +80,15 @@ export class CompilerVisitor implements IRVisitor {
   private runtimeErrors: ir.IrErrorMessage[] = []
   // pre-initialized random number generator
   private rand
+  // execution listener
+  private execListener?: ExecutionListener
 
-  constructor(lookupTable: LookupTable, types: Map<bigint, TypeScheme>, rand: () => number) {
+  constructor(lookupTable: LookupTable, types: Map<bigint, TypeScheme>,
+      rand: () => number, listener?: ExecutionListener) {
     this.lookupTable = lookupTable
     this.types = types
     this.rand = rand
+    this.execListener = listener
     const lastTrace =
       mkRegister('shadow', lastTraceName, none(),
         () => this.addRuntimeError(0n, '_lastTrace is not set'))
@@ -895,7 +899,14 @@ export class CompilerVisitor implements IRVisitor {
             for (let i = 0; i < actualArgs.length; i++) {
               callable.registers[i].registerValue = just(actualArgs[i])
             }
-            return callable.eval() as Maybe<RuntimeValue>
+            if (this.execListener) {
+              this.execListener.onUserOperatorCall(app, actualArgs)
+            }
+            const result = callable.eval() as Maybe<RuntimeValue>
+            if (this.execListener) {
+              this.execListener.onUserOperatorReturn(app, result)
+            }
+            return result
           }
         )
       }
@@ -1258,12 +1269,18 @@ export class CompilerVisitor implements IRVisitor {
       if (ncandidates === 0) {
         // no successor: restore the state and return false
         this.recoverNextVars(valuesBefore)
+        if (this.execListener) {
+          this.execListener.onAnyReturn(args.length, -1)
+        }
         return just(rv.mkBool(false))
       } else {
         // randomly pick a successor and return true
         // https://stackoverflow.com/questions/4959975/generate-random-number-between-two-numbers-in-javascript
         const choice = Math.floor(this.rand() * ncandidates)
         this.recoverNextVars(successors[choice])
+        if (this.execListener) {
+          this.execListener.onAnyReturn(args.length, choice)
+        }
         return just(rv.mkBool(true))
       }
     }
@@ -1347,7 +1364,10 @@ export class CompilerVisitor implements IRVisitor {
         // do multiple runs, stop at the first failing run
         const nruns = (nrunsRes as RuntimeValue).toInt()
         for (let runNo = 0;
-          !errorFound && !failure && runNo < nruns; runNo++) {
+            !errorFound && !failure && runNo < nruns; runNo++) {
+          if (this.execListener) {
+            this.execListener.onRunCall()
+          }
           trace = []
           // check Init()
           const initResult = init.eval()
@@ -1388,11 +1408,17 @@ export class CompilerVisitor implements IRVisitor {
           // recover the state variables
           this.recoverVars(vars)
           this.recoverNextVars(nextVars)
+          // TODO: the trace selection should be done in the listener
           // save the trace if it was better
           if (this.isBetterTrace(errorFound, bestTrace.length, trace.length)) {
             bestTrace = trace
           }
+          if (this.execListener) {
+            this.execListener.onRunReturn(errorFound || failure, trace)
+          }
         } // end of a single random run
+
+        // TODO: the trace selection should be done in the listener
         // save the trace (there are a few shadow variables, hence, the loop)
         this.shadowVars.forEach(r => {
           if (r.name === lastTraceName) {

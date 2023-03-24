@@ -23,7 +23,7 @@ import {
 } from './runtime/compile'
 import { formatError } from './errorReporter'
 import {
-  ComputableKind, EvalResult, Register, kindName
+  ComputableKind, EvalResult, Register, emptyExecutionListener, kindName
 } from './runtime/runtime'
 import { ErrorMessage, probeParse } from './quintParserFrontend'
 import { IdGenerator, newIdGenerator } from './idGenerator'
@@ -492,7 +492,8 @@ ${textToAdd}
     const moduleText = prepareParserInput(`  action __input =\n${newInput}`)
     // compile the expression or definition and evaluate it
     const context =
-      compileFromCode(state.idGen, moduleText, '__repl__', () => Math.random())
+      compileFromCode(state.idGen,
+        moduleText, '__repl__', emptyExecutionListener, () => Math.random())
     if (context.syntaxErrors.length > 0 ||
         context.compileErrors.length > 0 || context.analysisErrors.length > 0) {
       printErrors(moduleText, context)
@@ -544,7 +545,8 @@ ${textToAdd}
     const moduleText = prepareParserInput(newInput)
     // compile the module and add it to history if everything worked
     const context =
-      compileFromCode(state.idGen, moduleText, '__repl__', () => Math.random())
+      compileFromCode(state.idGen,
+        moduleText, '__repl__', emptyExecutionListener, () => Math.random())
     if (context.values.size === 0 ||
         context.compileErrors.length > 0 || context.syntaxErrors.length > 0) {
       printErrors(moduleText, context)

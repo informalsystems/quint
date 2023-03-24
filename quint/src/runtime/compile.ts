@@ -1,7 +1,7 @@
 /*
  * A compiler to the runtime environment.
  *
- * Igor Konnov, 2022-2023
+ * Igor Konnov, Informal Systems, 2022-2023
  *
  * Copyright (c) Informal Systems 2022-2023. All rights reserved.
  * Licensed under the Apache 2.0.
@@ -9,11 +9,10 @@
  */
 
 import { Either, left, right } from '@sweet-monads/either'
-
 import {
   ErrorMessage, Loc, fromIrErrorMessage, parsePhase1, parsePhase2
 } from '../quintParserFrontend'
-import { Computable, ComputableKind, kindName } from './runtime'
+import { Computable, ComputableKind, ExecutionListener, kindName } from './runtime'
 import { QuintModule } from '../quintIr'
 import { CompilerVisitor } from './impl/compilerImpl'
 import { walkDefinition } from '../IRVisitor'
@@ -117,6 +116,7 @@ export function contextNameLookup(
  * @param lookupTable lookup table as produced by the parser
  * @param types type table as produced by the type checker
  * @param mainName the name of the module that may contain state varibles
+ * @param execListener execution listener
  * @param rand the random number generator
  * @returns the compilation context
  */
@@ -126,6 +126,7 @@ export function compile(
   lookupTable: LookupTable,
   types: Map<bigint, TypeScheme>,
   mainName: string,
+  execListener: ExecutionListener,
   rand: () => number): CompilationContext {
   const modulesByName = new Map(modules.map(m => [m.name, m]))
   const flattenedModules = modules.map(m => flatten(m, lookupTable, modulesByName))
@@ -187,6 +188,7 @@ export function compile(
  * @param code text that stores one or several Quint modules,
  *        which should be parseable without any context
  * @param mainName the name of the module that may contain state varibles
+ * @param execListener execution listener
  * @param rand the random number generator
  * @returns the compilation context
  */
@@ -194,6 +196,7 @@ export function compileFromCode(
   idGen: IdGenerator,
   code: string,
   mainName: string,
+  execListener: ExecutionListener,
   rand: () => number): CompilationContext {
   // parse the module text
   return parsePhase1(idGen, code, '<input>')
@@ -210,8 +213,8 @@ export function compileFromCode(
       // collect the errors, but do not stop immediately on error
       const [analysisErrors, analysisResult] = analyzer.getResult()
       const ctx =
-        compile(modules,
-          sourceMap, table, analysisResult.types, mainName, rand)
+        compile(modules, sourceMap, table,
+                analysisResult.types, mainName, execListener, rand)
       const errorLocator = mkErrorMessage(sourceMap)
       return right({
         ...ctx,

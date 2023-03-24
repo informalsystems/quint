@@ -18,7 +18,7 @@ import {
 } from './runtime/compile'
 import { ErrorMessage } from './quintParserFrontend'
 import { QuintEx } from './quintIr'
-import { fail, kindName } from './runtime/runtime'
+import { emptyExecutionListener, fail, kindName } from './runtime/runtime'
 import { chalkQuintEx } from './repl'
 import { IdGenerator } from './idGenerator'
 
@@ -116,7 +116,8 @@ module __run__ {
 }
 `
 
-  const ctx = compileFromCode(idGen, wrappedCode, '__run__', options.rand)
+  const ctx = compileFromCode(idGen,
+    wrappedCode, '__run__', emptyExecutionListener, options.rand)
 
   if (ctx.compileErrors.length > 0
       || ctx.syntaxErrors.length > 0

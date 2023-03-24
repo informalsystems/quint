@@ -17,7 +17,7 @@ import { TypeScheme } from '../types/base'
 import { CompilationContext, compile } from './compile'
 import { newIdGenerator } from './../idGenerator'
 import { LookupTable } from '../lookupTable'
-import { Computable, kindName } from './runtime'
+import { Computable, emptyExecutionListener, kindName } from './runtime'
 
 /**
  * Evaluation result.
@@ -59,7 +59,8 @@ export function
     testMatch: (n: string) => boolean,
     rand: () => number): Either<string, TestResult[]> {
   const ctx =
-    compile(modules, sourceMap, lookupTable, types, main.name, rand)
+    compile(modules, sourceMap, lookupTable,
+            types, main.name, emptyExecutionListener, rand)
 
   if(!ctx.main) {
     return left('Cannot find main module')

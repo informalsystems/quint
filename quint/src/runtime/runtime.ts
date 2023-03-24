@@ -16,7 +16,7 @@ import { Maybe, none } from '@sweet-monads/maybe'
 
 import { ValueObject } from 'immutable'
 
-import { QuintEx } from '../quintIr'
+import { QuintApp, QuintEx } from '../quintIr'
 
 import { IdGenerator } from '../idGenerator'
 
@@ -144,3 +144,65 @@ export interface ExecError {
  * during execution.
  */
 export type ExecErrorHandler = (_error: ExecError) => void;
+
+/**
+ * A listener that receives events in the course of Quint evaluation.
+ * This listener may be used to collect a trace, or to record profiling data.
+ */
+export interface ExecutionListener {
+  /**
+   * This callback is called whenever a user-defined operator is called.
+   *
+   * @param app operator application in Quint IR
+   * @param args the actual arguments obtained in evaluation
+   */
+  onUserOperatorCall(app: QuintApp, args: EvalResult[]): void
+
+  /**
+   * This callback is called whenever a user-defined operator returns
+   * from its evaluation. Note that it is the runtime's obligation to
+   * balance the Call and Return events.
+   *
+   * @param app operator application in Quint IR
+   * @param args the actual arguments obtained in evaluation
+   */
+  onUserOperatorReturn(app: QuintApp, result: Maybe<EvalResult>): void
+
+  /**
+   * This callback is called when leaving `any { A_1, ..., A_n }`.
+   * It instructs the listener to discard the top `noptions` records
+   * except the one in the `choice` position.
+   *
+   * @param noptions the number of translated options, that is, `n`.
+   * @param choice is a number between -1 and n (exclusive),
+   *        where -1 means that no option was chosen (discard all).
+   */
+  onAnyReturn(noptions: number, choice: number): void
+
+  /**
+   * This callback is called when a new run is executed,
+   * e.g., when multiple runs are executed in the simulator.
+   */
+  onRunCall(): void
+
+  /**
+   * This callback is called when the previous run has finished.
+   *
+   * @param failed whether the run has failed, e.g., there was a runtime
+   *        error or invariant violation
+   * @param trace the array of produced states (each state is a record)
+   */
+  onRunReturn(failed: boolean, trace: EvalResult[]): void
+}
+
+/**
+ * An implementation of ExecutionListener that does nothing.
+ */
+export const emptyExecutionListener: ExecutionListener = {
+  onUserOperatorCall: (_app: QuintApp, _args: EvalResult[]) => {},
+  onUserOperatorReturn: (_app: QuintApp, _result: Maybe<EvalResult>) => {},
+  onAnyReturn: (_noptions: number, _choice: number) => {},
+  onRunCall: () => {},
+  onRunReturn: (_failed: boolean, _trace: EvalResult[]) => {},
+}
+
