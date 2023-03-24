@@ -5,9 +5,9 @@
  *  - Give the language user fast feedback via interpretation of expressions.
  *  - Let the user simulate their specification similar to property-based testing.
  *
- * Igor Konnov, 2022
+ * Igor Konnov, 2022-2023
  *
- * Copyright (c) Informal Systems 2022. All rights reserved.
+ * Copyright (c) Informal Systems 2022-2023. All rights reserved.
  * Licensed under the Apache 2.0.
  * See License.txt in the project root for license information.
  */
@@ -188,11 +188,13 @@ export interface ExecutionListener {
   /**
    * This callback is called when the previous run has finished.
    *
-   * @param failed whether the run has failed, e.g., there was a runtime
-   *        error or invariant violation
+   * @param outcome whether the run has:
+   *        - failed, that is, `none()`,
+   *        - finished after finding no violation, `just(mkBool(true))`,
+   *        - finished after finding a violation, `just(mkBool(false))`
    * @param trace the array of produced states (each state is a record)
    */
-  onRunReturn(failed: boolean, trace: EvalResult[]): void
+  onRunReturn(outcome: Maybe<EvalResult>, trace: EvalResult[]): void
 }
 
 /**
@@ -203,6 +205,6 @@ export const emptyExecutionListener: ExecutionListener = {
   onUserOperatorReturn: (_app: QuintApp, _result: Maybe<EvalResult>) => {},
   onAnyReturn: (_noptions: number, _choice: number) => {},
   onRunCall: () => {},
-  onRunReturn: (_failed: boolean, _trace: EvalResult[]) => {},
+  onRunReturn: (_outcome: Maybe<EvalResult>, _trace: EvalResult[]) => {},
 }
 

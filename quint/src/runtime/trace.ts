@@ -8,8 +8,10 @@
  * See License.txt in the project root for license information.
  */
 
+import { Maybe } from '@sweet-monads/maybe'
+
 import { QuintApp } from '../quintIr'
-import { RuntimeValue } from './impl/runtimeValue'
+import { EvalResult } from './runtime'
 
 /**
  * A snapshot of how a single operator (e.g., an action) was executed.
@@ -24,7 +26,11 @@ export interface ExecutionFrame {
   /**
    * The actual runtime values that were used in the call.
    */
-  args: RuntimeValue[]
+  args: EvalResult[],
+  /**
+   * An optional result of the execution.
+   */
+  result: Maybe<EvalResult>,
   /**
    * The frames of the operators that were called by this operator.
    */ 

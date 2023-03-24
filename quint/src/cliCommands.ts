@@ -53,8 +53,8 @@ interface OutputStage {
   failed?: string[],
   ignored?: string[],
   // Test names output produced by 'run'
-  status?: 'ok' | 'violation',
-  trace?: QuintEx,
+  status?: 'ok' | 'violation' | 'failure',
+  trace?: QuintEx[],
   /* Docstrings by defintion name by module name */
   documentation?: Map<string, Map<string, DocumentationEntry>>,
   errors?: ErrorMessage[],
@@ -125,8 +125,8 @@ interface TestedStage extends LoadedStage {
 }
 
 interface SimulatorStage extends LoadedStage {
-  status: 'ok' | 'violation',
-  trace?: QuintEx,
+  status: 'ok' | 'violation' | 'failure',
+  trace?: QuintEx[],
 }
 
 interface DocumentationStage extends LoadedStage {
@@ -369,14 +369,21 @@ export function runSimulator(prev: TypecheckedStage):
   }
   const startMs = Date.now()
   const simulator = { ...prev, stage: 'running' as stage }
-  return compileAndRun(newIdGenerator(), prev.sourceCode, mainName, options)
-    .map(result => {
+  const result =
+    compileAndRun(newIdGenerator(), prev.sourceCode, mainName, options)
+  
+  if (result.status === 'error') {
+      const errors =
+        prev.errors ? prev.errors.concat(result.errors) : result.errors
+      const newStage = { ...simulator, errors }
+      return cliErr('run failed', newStage)
+  } else {
       const isConsole = !prev.args.out && !prev.args.outItf
       if (isConsole) {
         const elapsedMs = Date.now() - startMs
         console.log(chalk.gray('An example execution:'))
         console.log('---------------------------------------------')
-        printTrace(console.log, result.trace)
+        printTrace(console.log, result)
         console.log('---------------------------------------------')
         if (result.status === 'ok') {
           console.log(chalk.green('[ok]')
@@ -389,7 +396,7 @@ export function runSimulator(prev: TypecheckedStage):
       }
 
       if (prev.args.outItf) {
-        const trace = toItf(result.vars, result.trace)
+        const trace = toItf(result.vars, result.states)
         if (trace.isRight()) {
           const jsonObj = {
             '#meta': {
@@ -402,24 +409,17 @@ export function runSimulator(prev: TypecheckedStage):
           }
           writeToJson(prev.args.outItf, jsonObj)
         } else {
-          return left([
-            { explanation: `ITF conversion failed: ${trace.value}`, locs: [] },
-          ])
+          const newStage = { ...simulator, errors: [] }
+          return cliErr(`ITF conversion failed: ${trace.value}`, newStage)
         }
       }
 
       return right({
           ...simulator,
           status: result.status,
-          trace: result.trace,
+          trace: result.states,
       })
-    })
-    .join()
-    .mapLeft(newErrs => {
-      const errors = prev.errors ? prev.errors.concat(newErrs) : newErrs
-      const newStage = { ...simulator, errors }
-      return { msg: 'run failed', stage: newStage }
-    })
+    }
 }
 
 /**

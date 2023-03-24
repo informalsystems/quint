@@ -1406,7 +1406,8 @@ export class CompilerVisitor implements IRVisitor {
             bestTrace = trace
           }
           if (this.execListener) {
-            this.execListener.onRunReturn(errorFound || failure, trace)
+            const outcome = (!failure) ? just(rv.mkBool(!errorFound)) : none()
+            this.execListener.onRunReturn(outcome, trace)
           }
         } // end of a single random run
 

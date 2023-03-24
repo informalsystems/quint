@@ -8,17 +8,18 @@
  * See License.txt in the project root for license information.
  */
 
-import { Either, left, right } from '@sweet-monads/either'
+import { Maybe, none } from '@sweet-monads/maybe'
 import { strict as assert } from 'assert'
 import { range } from 'lodash'
 import chalk from 'chalk'
 
 import {
-  compileFromCode, contextNameLookup, lastTraceName
+  compileFromCode, lastTraceName
 } from './runtime/compile'
 import { ErrorMessage } from './quintParserFrontend'
-import { QuintEx } from './quintIr'
-import { emptyExecutionListener, fail, kindName } from './runtime/runtime'
+import { QuintApp, QuintEx } from './quintIr'
+import { EvalResult } from './runtime/runtime'
+import { ExecutionFrame } from './runtime/trace'
 import { chalkQuintEx } from './repl'
 import { IdGenerator } from './idGenerator'
 
@@ -34,26 +35,31 @@ export interface SimulatorOptions {
   rand: () => number,
 }
 
+export type SimulatorResultStatus =
+  'ok' | 'violation' | 'failure' | 'error'
+
 /**
  * A result returned by the simulator.
  */
 export interface SimulatorResult {
-  status: 'ok' | 'violation',
+  status: SimulatorResultStatus,
   vars: string[],
-  trace: QuintEx,
+  states: QuintEx[],
+  frames: ExecutionFrame[],
+  errors: ErrorMessage[],
 }
 
 /**
  * Print a trace with chalk.
  */
-export function printTrace(out: (line: string) => void, trace: QuintEx) {
-  assert(trace.kind === 'app' && trace.opcode === 'List')
+export function printTrace(out: (line: string) => void,
+                           result: SimulatorResult) {
   const kw = (s: string) => chalk.green(s)
   const lp = chalk.gray('{')
   const rp = chalk.gray('}')
   const eq = chalk.gray('=')
   const comma = chalk.gray(',')
-  trace.args.forEach((state, index) => {
+  result.states.forEach((state, index) => {
     assert(state.kind === 'app'
            && state.opcode === 'Rec' && state.args.length % 2 === 0)
 
@@ -70,7 +76,7 @@ export function printTrace(out: (line: string) => void, trace: QuintEx) {
 
   out(`${kw('run')} test ${eq} ` + lp)
   const testText =
-    range(0, trace.args.length)
+    range(0, result.states.length)
       .map(i => `step${i}`)
       .reduce((left, name) => `${left}.then(${name})`)
   out('  ' + testText)
@@ -78,7 +84,7 @@ export function printTrace(out: (line: string) => void, trace: QuintEx) {
 }
 
 /**
- * Run a test suite of a single module.
+ * Execute a run.
  *
  * @param idGen a unique generator of identifiers
  * @param code the source code of the modules
@@ -91,8 +97,7 @@ export function
 compileAndRun(idGen: IdGenerator,
               code: string,
               mainName: string,
-              options: SimulatorOptions):
-                Either<ErrorMessage[], SimulatorResult> {
+              options: SimulatorOptions): SimulatorResult {
   // Once we have 'import from ...' implemented, we should pass
   // a filename instead of the source code (see #8)
 
@@ -116,61 +121,119 @@ module __run__ {
 }
 `
 
+  const recorder = newTraceRecorder()
   const ctx = compileFromCode(idGen,
-    wrappedCode, '__run__', emptyExecutionListener, options.rand)
+    wrappedCode, '__run__', recorder, options.rand)
 
   if (ctx.compileErrors.length > 0
       || ctx.syntaxErrors.length > 0
       || ctx.analysisErrors.length > 0) {
-    return left(ctx.syntaxErrors
+    return {
+      status: 'failure',
+      vars: ctx.vars,
+      states: [],
+      frames: [],
+      errors: ctx.syntaxErrors
                 .concat(ctx.analysisErrors)
-                .concat(ctx.compileErrors))
+                .concat(ctx.compileErrors),
+    }
   } else {
-    // evaluate __runResult
-    const res: Either<ErrorMessage[], boolean> =
-      contextNameLookup(ctx, '__runResult', 'callable')
-        .mapLeft(msg => [{ explanation: msg, locs: [] }] as ErrorMessage[])
-        .map(comp => {
-          const result = comp.eval()
-          if (result.isNone()) {
-            return left(ctx.getRuntimeErrors())
-          }
+    const frame = recorder.getBestTrace()
+    let status: SimulatorResultStatus = 'failure'
+    if (frame.result.isJust()) {
+      const ex = frame.result.unwrap().toQuintEx(idGen)
+      if (ex.kind === 'bool') {
+        status = ex.value ? 'ok' : 'violation'
+      }
+    }
 
-          const ex = result.unwrap().toQuintEx(idGen)
-          if (ex.kind !== 'bool') {
-            return left([{
-              explanation: 'Expected a Boolean result',
-              locs: [],
-            }])
-          } else {
-            return right(ex.value)
-          }
-        })
-        .join()
+    return {
+      status: status,
+      vars: ctx.vars,
+      states: frame.args.map(e => e.toQuintEx(idGen)),
+      frames: frame.subframes,
+      errors: ctx.getRuntimeErrors(),
+    }
+  }
+}
 
-    return res.map(noViolation => {
-        // evaluate _lastTrace
-        const lastTrace =
-          ctx.values.get(kindName('shadow', lastTraceName)) ?? fail
-        const result = lastTrace.eval()
-        const runtimeErrors = ctx.getRuntimeErrors()
-        if (result.isNone() || runtimeErrors.length > 0) {
-          if (runtimeErrors.length > 0) {
-            return left(runtimeErrors)
-          } else {
-            return left([ {
-              explanation: `${lastTraceName} not found`,
-              locs: [],
-            } ])
-          }
-        } else {
-          return right({
-            status: noViolation ? 'ok' : 'violation',
-            vars: ctx.vars,
-            trace: result.unwrap().toQuintEx(idGen),
-          } as SimulatorResult)
+// a trace recording listener
+const newTraceRecorder = () => {
+  // the bottom frame encodes the whole trace
+  const bottomFrame = (): ExecutionFrame => {
+    return {
+      // this is just a dummy operator application
+      app: { id: 0n, kind: 'app', opcode: 'Rec', args: [] },
+      // we will store the sequence of states here
+      args: [],
+      // the result of the trace evaluation
+      result: none(),
+      // and here we store the subframes for the top-level actions
+      subframes: [],
+    }
+  }
+
+  // the best trace is stored here
+  let bestTrace = bottomFrame()
+  // during simulation, a trace is built here
+  let frameStack: ExecutionFrame[] = [ bestTrace ]
+
+  return {
+    getBestTrace: (): ExecutionFrame => {
+      return bestTrace
+    },
+
+    onUserOperatorCall: (app: QuintApp, args: EvalResult[]) => {
+      const newFrame = { app: app, args: args, result: none(), subframes: [] }
+      if (frameStack.length > 0) {
+        frameStack[frameStack.length - 1].subframes.push(newFrame)
+        frameStack.push(newFrame)
+      }
+    },
+
+    onUserOperatorReturn: (app: QuintApp, result: Maybe<EvalResult>) => {
+      const top = frameStack.pop()
+      if (top) {
+        // since this frame is connected via the parent frame,
+        // the result will not disappear
+        top.result = result
+      }
+    },
+
+    onAnyReturn: (noptions: number, choice: number) => {
+      const top = frameStack[frameStack.length - 1]
+      const start = top.subframes.length - noptions
+      top.subframes =
+        top.subframes.filter((_, i) =>
+          start <= i && i < start + noptions && i !== start + choice)
+    },
+
+    onRunCall: () => {
+      // reset the stack
+      frameStack = [ bottomFrame() ]
+    },
+
+    onRunReturn: (outcome: Maybe<EvalResult>, trace: EvalResult[]) => {
+      const bottom = frameStack[0]
+      bottom.result = outcome
+      bottom.args = trace
+
+      let failureOrViolation = true
+      if (outcome.isJust()) {
+        const r = outcome.value.toQuintEx({ nextId: () => 0n })
+        failureOrViolation = (r.kind === 'bool') && !r.value
+      }
+
+      if (failureOrViolation) {
+        if (bestTrace.args.length === 0
+            || bestTrace.args.length >= bottom.subframes.length) {
+          bestTrace = bottom
         }
-      })
-      .join()
+      } else {
+        if (bestTrace.args.length <= bottom.subframes.length) {
+          bestTrace = bottom
+        }
+      }
+    },
   }
 }
