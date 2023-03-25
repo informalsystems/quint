@@ -79,10 +79,10 @@ export class CompilerVisitor implements IRVisitor {
   // pre-initialized random number generator
   private rand
   // execution listener
-  private execListener?: ExecutionListener
+  private execListener: ExecutionListener
 
   constructor(lookupTable: LookupTable, types: Map<bigint, TypeScheme>,
-      rand: () => number, listener?: ExecutionListener) {
+      rand: () => number, listener: ExecutionListener) {
     this.lookupTable = lookupTable
     this.types = types
     this.rand = rand
@@ -891,13 +891,9 @@ export class CompilerVisitor implements IRVisitor {
             for (let i = 0; i < actualArgs.length; i++) {
               callable.registers[i].registerValue = just(actualArgs[i])
             }
-            if (this.execListener) {
-              this.execListener.onUserOperatorCall(app, actualArgs)
-            }
+            this.execListener.onUserOperatorCall(app, actualArgs)
             const result = callable.eval() as Maybe<RuntimeValue>
-            if (this.execListener) {
-              this.execListener.onUserOperatorReturn(app, result)
-            }
+            this.execListener.onUserOperatorReturn(app, result)
             return result
           }
         )
@@ -1261,18 +1257,14 @@ export class CompilerVisitor implements IRVisitor {
       if (ncandidates === 0) {
         // no successor: restore the state and return false
         this.recoverNextVars(valuesBefore)
-        if (this.execListener) {
-          this.execListener.onAnyReturn(args.length, -1)
-        }
+        this.execListener.onAnyReturn(args.length, -1)
         return just(rv.mkBool(false))
       } else {
         // randomly pick a successor and return true
         // https://stackoverflow.com/questions/4959975/generate-random-number-between-two-numbers-in-javascript
         const choice = Math.floor(this.rand() * ncandidates)
         this.recoverNextVars(successors[choice])
-        if (this.execListener) {
-          this.execListener.onAnyReturn(args.length, choice)
-        }
+        this.execListener.onAnyReturn(args.length, choice)
         return just(rv.mkBool(true))
       }
     }
@@ -1357,9 +1349,7 @@ export class CompilerVisitor implements IRVisitor {
         const nruns = (nrunsRes as RuntimeValue).toInt()
         for (let runNo = 0;
             !errorFound && !failure && runNo < nruns; runNo++) {
-          if (this.execListener) {
-            this.execListener.onRunCall()
-          }
+          this.execListener.onRunCall()
           trace = []
           // check Init()
           const initResult = init.eval()
@@ -1405,10 +1395,8 @@ export class CompilerVisitor implements IRVisitor {
           if (this.isBetterTrace(errorFound, bestTrace.length, trace.length)) {
             bestTrace = trace
           }
-          if (this.execListener) {
-            const outcome = (!failure) ? just(rv.mkBool(!errorFound)) : none()
-            this.execListener.onRunReturn(outcome, trace)
-          }
+          const outcome = (!failure) ? just(rv.mkBool(!errorFound)) : none()
+          this.execListener.onRunReturn(outcome, trace)
         } // end of a single random run
 
         // TODO: the trace selection should be done in the listener

@@ -375,8 +375,7 @@ export function runSimulator(prev: TypecheckedStage):
   if (result.status === 'error') {
       const errors =
         prev.errors ? prev.errors.concat(result.errors) : result.errors
-      const newStage = { ...simulator, errors }
-      return cliErr('run failed', newStage)
+      return cliErr('run failed', { ...simulator, errors })
   } else {
       const isConsole = !prev.args.out && !prev.args.outItf
       if (isConsole) {
@@ -390,8 +389,8 @@ export function runSimulator(prev: TypecheckedStage):
             + ' No violation found ' + chalk.gray(`(${elapsedMs}ms).`))
           console.log(chalk.gray('You may increase --max-samples and --max-steps.'))
         } else {
-          console.log(chalk.red('[nok]')
-            + ' Found a violation ' + chalk.gray(`(${elapsedMs}ms).`))
+          console.log(chalk.red(`[${result.status}]`)
+            + ' Found an issue ' + chalk.gray(`(${elapsedMs}ms).`))
         }
       }
 
@@ -409,16 +408,21 @@ export function runSimulator(prev: TypecheckedStage):
           }
           writeToJson(prev.args.outItf, jsonObj)
         } else {
-          const newStage = { ...simulator, errors: [] }
+          const newStage = { ...simulator, errors: result.errors }
           return cliErr(`ITF conversion failed: ${trace.value}`, newStage)
         }
       }
 
-      return right({
-          ...simulator,
-          status: result.status,
-          trace: result.states,
-      })
+      if (result.errors.length != 0) {
+        // in case of 'failure', there may still be errors
+        return cliErr('run failed', { ...simulator, errors: result.errors })
+      } else {
+        return right({
+            ...simulator,
+            status: result.status,
+            trace: result.states,
+        })
+      }
     }
 }
 

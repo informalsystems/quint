@@ -156,7 +156,7 @@ export function compile(
 
   const main = flattenedModules.find(m => m.name === mainName)
 
-  const visitor = new CompilerVisitor(latestTable, types, rand)
+  const visitor = new CompilerVisitor(latestTable, types, rand, execListener)
   if (main) {
     main.defs.forEach(def => walkDefinition(visitor, def))
   }

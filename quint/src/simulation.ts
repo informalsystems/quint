@@ -8,17 +8,18 @@
  * See License.txt in the project root for license information.
  */
 
+import { Either } from '@sweet-monads/either'
 import { Maybe, none } from '@sweet-monads/maybe'
 import { strict as assert } from 'assert'
 import { range } from 'lodash'
 import chalk from 'chalk'
 
 import {
-  compileFromCode, lastTraceName
+  compileFromCode, contextNameLookup, lastTraceName
 } from './runtime/compile'
 import { ErrorMessage } from './quintParserFrontend'
 import { QuintApp, QuintEx } from './quintIr'
-import { EvalResult } from './runtime/runtime'
+import { Computable, EvalResult } from './runtime/runtime'
 import { ExecutionFrame } from './runtime/trace'
 import { chalkQuintEx } from './repl'
 import { IdGenerator } from './idGenerator'
@@ -49,6 +50,17 @@ export interface SimulatorResult {
   errors: ErrorMessage[],
 }
 
+function errSimulationResult(status: SimulatorResultStatus,
+                             errors: ErrorMessage[]): SimulatorResult {
+  return {
+    status: 'failure',
+    vars: [],
+    states: [],
+    frames: [],
+    errors: errors,
+  }
+}
+
 /**
  * Print a trace with chalk.
  */
@@ -73,14 +85,6 @@ export function printTrace(out: (line: string) => void,
       })
     out(rp + '\n')
   })
-
-  out(`${kw('run')} test ${eq} ` + lp)
-  const testText =
-    range(0, result.states.length)
-      .map(i => `step${i}`)
-      .reduce((left, name) => `${left}.then(${name})`)
-  out('  ' + testText)
-  out(rp)
 }
 
 /**
@@ -128,16 +132,22 @@ module __run__ {
   if (ctx.compileErrors.length > 0
       || ctx.syntaxErrors.length > 0
       || ctx.analysisErrors.length > 0) {
-    return {
-      status: 'failure',
-      vars: ctx.vars,
-      states: [],
-      frames: [],
-      errors: ctx.syntaxErrors
-                .concat(ctx.analysisErrors)
-                .concat(ctx.compileErrors),
-    }
+    const errors =
+      ctx.syntaxErrors
+        .concat(ctx.analysisErrors)
+        .concat(ctx.compileErrors)
+    return errSimulationResult('error', errors)
   } else {
+    // evaluate __runResult, which triggers the simulator
+    const res: Either<string, Computable> =
+      contextNameLookup(ctx, '__runResult', 'callable')
+    if (res.isLeft()) {
+      const errors = [{ explanation: res.value, locs: [] }] as ErrorMessage[]
+      return errSimulationResult('error', errors)
+    } else {
+      const _ = res.value.eval()
+    }
+
     const frame = recorder.getBestTrace()
     let status: SimulatorResultStatus = 'failure'
     if (frame.result.isJust()) {
@@ -201,6 +211,7 @@ const newTraceRecorder = () => {
     },
 
     onAnyReturn: (noptions: number, choice: number) => {
+      assert(frameStack.length > 0)
       const top = frameStack[frameStack.length - 1]
       const start = top.subframes.length - noptions
       top.subframes =
@@ -214,6 +225,7 @@ const newTraceRecorder = () => {
     },
 
     onRunReturn: (outcome: Maybe<EvalResult>, trace: EvalResult[]) => {
+      assert(frameStack.length > 0)
       const bottom = frameStack[0]
       bottom.result = outcome
       bottom.args = trace
