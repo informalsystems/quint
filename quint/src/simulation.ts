@@ -62,15 +62,21 @@ function errSimulationResult(status: SimulatorResultStatus,
 }
 
 export function
-printFrame(out: (line: string) => void, frame: ExecutionFrame, indent: number) {
+printFrame(out: (line: string) => void,
+           frame: ExecutionFrame, indent: number, isLast: boolean) {
   const args =
     frame.args.map(a => chalkQuintEx(a.toQuintEx(zeroIdGen))).join(', ')
   const r =
     frame.result.isNone()
       ? 'none'
       : chalkQuintEx(frame.result.value.toQuintEx(zeroIdGen))
-  out("-> ".padStart(indent + 3, '-') + `${frame.app.opcode}(${args}) => ${r}`)
-  frame.subframes.forEach(f => printFrame(out, f, indent + 1))
+  let s =
+    (indent === 0)
+      ? ''
+      : ''.padStart((indent - 1) * 3, '│  ') + ''.padStart(3, isLast ? '└─ ' : '├─ ')
+  out(`${s}${frame.app.opcode}(${args}) => ${r}`)
+  const n = frame.subframes.length
+  frame.subframes.forEach((f, i) => printFrame(out, f, indent + 1, i === n - 1))
 }
 
 /**
@@ -84,10 +90,10 @@ export function printTrace(out: (line: string) => void,
            && state.opcode === 'Rec' && state.args.length % 2 === 0)
 
     if (index < result.frames.length) {
-      printFrame(out, result.frames[index], 0)
+      printFrame(out, result.frames[index], 0, false)
     }
 
-    out('----')
+    out(''.padStart(80, '═'))
     range(0, Math.trunc(state.args.length / 2))
       .forEach(i => {
         const key = state.args[2 * i]
@@ -95,7 +101,7 @@ export function printTrace(out: (line: string) => void,
         const valueText = chalkQuintEx(state.args[2 * i + 1])
         out(`${key.value}${colon} ${valueText}`)
       })
-    out('----\n')
+    out(''.padStart(80, '═') + '\n')
   })
 }
 
