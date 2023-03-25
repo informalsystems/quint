@@ -1240,9 +1240,10 @@ export class CompilerVisitor implements IRVisitor {
       // save the values of the next variables, as actions may update them
       const valuesBefore = this.snapshotNextVars()
       // we store the potential successor values in this array
-      const successors = []
+      const successors: Maybe<RuntimeValue>[][] = []
+      const successorIndices: number[] = []
       // Evaluate arguments iteratively.
-      for (const arg of args) {
+      args.forEach((arg, i) => {
         this.recoverNextVars(valuesBefore)
         // either the argument is evaluated to false, or fails
         const result = arg.eval().or(just(rv.mkBool(false)))
@@ -1250,8 +1251,9 @@ export class CompilerVisitor implements IRVisitor {
         // if this arm evaluates to true, save it in the candidates
         if (boolResult === true) {
           successors.push(this.snapshotNextVars())
+          successorIndices.push(i)
         }
-      }
+      })
 
       const ncandidates = successors.length
       if (ncandidates === 0) {
@@ -1264,7 +1266,7 @@ export class CompilerVisitor implements IRVisitor {
         // https://stackoverflow.com/questions/4959975/generate-random-number-between-two-numbers-in-javascript
         const choice = Math.floor(this.rand() * ncandidates)
         this.recoverNextVars(successors[choice])
-        this.execListener.onAnyReturn(args.length, choice)
+        this.execListener.onAnyReturn(args.length, successorIndices[choice])
         return just(rv.mkBool(true))
       }
     }
@@ -1352,15 +1354,25 @@ export class CompilerVisitor implements IRVisitor {
           this.execListener.onRunCall()
           trace = []
           // check Init()
+          const initApp: ir.QuintApp =
+            { id: 0n, kind: 'app', opcode: 'q::init', args: [] }
+          this.execListener.onUserOperatorCall(initApp, [])
           const initResult = init.eval()
           failure = initResult.isNone() || failure
-          if (isTrue(initResult)) {
+          if (!isTrue(initResult)) {
+            this.execListener.onUserOperatorReturn(initApp, initResult)
+          } else {
             // The initial action evaluates to true.
             // Our guess of values was good.
             this.shiftVars()
             trace.push(varsToRecord())
             // check the invariant Inv
+            const invApp: ir.QuintApp =
+              { id: 0n, kind: 'app', opcode: 'q::inv', args: [] }
+            this.execListener.onUserOperatorCall(invApp, [])
             const invResult = inv.eval()
+            this.execListener.onUserOperatorReturn(invApp, invResult)
+            this.execListener.onUserOperatorReturn(initApp, initResult)
             failure = invResult.isNone() || failure
             if (!isTrue(invResult)) {
               errorFound = true
@@ -1368,12 +1380,18 @@ export class CompilerVisitor implements IRVisitor {
               // check all { Next(), shift(), Inv } in a loop
               const nsteps = (nstepsRes as RuntimeValue).toInt()
               for (let i = 0; !errorFound && !failure && i < nsteps; i++) {
+                const nextApp: ir.QuintApp =
+                  { id: 0n, kind: 'app', opcode: 'q::step', args: [] }
+                this.execListener.onUserOperatorCall(nextApp, [])
                 const nextResult = next.eval()
                 failure = nextResult.isNone() || failure
                 if (isTrue(nextResult)) {
                   this.shiftVars()
                   trace.push(varsToRecord())
+                  this.execListener.onUserOperatorCall(invApp, [])
                   errorFound = !isTrue(inv.eval())
+                  this.execListener.onUserOperatorReturn(invApp, invResult)
+                  this.execListener.onUserOperatorReturn(nextApp, nextResult)
                 } else {
                   // Otherwise, the run cannot be extended.
                   // In some cases, this may indicate a deadlock.
@@ -1382,6 +1400,7 @@ export class CompilerVisitor implements IRVisitor {
                   // the run. Hence, do not report an error here, but simply
                   // drop the run. Otherwise, we would have a lot of false
                   // positives, which look like deadlocks but they are not.
+                  this.execListener.onUserOperatorReturn(nextApp, nextResult)
                   break
                 }
               }

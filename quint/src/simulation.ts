@@ -22,7 +22,7 @@ import { QuintApp, QuintEx } from './quintIr'
 import { Computable, EvalResult } from './runtime/runtime'
 import { ExecutionFrame } from './runtime/trace'
 import { chalkQuintEx } from './repl'
-import { IdGenerator } from './idGenerator'
+import { IdGenerator, zeroIdGen } from './idGenerator'
 
 /**
  * Various settings that have to be passed to the simulator to run.
@@ -61,29 +61,41 @@ function errSimulationResult(status: SimulatorResultStatus,
   }
 }
 
+export function
+printFrame(out: (line: string) => void, frame: ExecutionFrame, indent: number) {
+  const args =
+    frame.args.map(a => chalkQuintEx(a.toQuintEx(zeroIdGen))).join(', ')
+  const r =
+    frame.result.isNone()
+      ? 'none'
+      : chalkQuintEx(frame.result.value.toQuintEx(zeroIdGen))
+  out("-> ".padStart(indent + 3, '-') + `${frame.app.opcode}(${args}) => ${r}`)
+  frame.subframes.forEach(f => printFrame(out, f, indent + 1))
+}
+
 /**
  * Print a trace with chalk.
  */
 export function printTrace(out: (line: string) => void,
                            result: SimulatorResult) {
-  const kw = (s: string) => chalk.green(s)
-  const lp = chalk.gray('{')
-  const rp = chalk.gray('}')
-  const eq = chalk.gray('=')
-  const comma = chalk.gray(',')
+  const colon = chalk.gray(':')
   result.states.forEach((state, index) => {
     assert(state.kind === 'app'
            && state.opcode === 'Rec' && state.args.length % 2 === 0)
 
-    out(`${kw('action')} step${index} ${eq} ${kw('all')} ` + lp)
+    if (index < result.frames.length) {
+      printFrame(out, result.frames[index], 0)
+    }
+
+    out('----')
     range(0, Math.trunc(state.args.length / 2))
       .forEach(i => {
         const key = state.args[2 * i]
         assert(key.kind === 'str')
         const valueText = chalkQuintEx(state.args[2 * i + 1])
-        out(`  ${key.value}' ${eq} ${valueText}` + comma)
+        out(`${key.value}${colon} ${valueText}`)
       })
-    out(rp + '\n')
+    out('----\n')
   })
 }
 
@@ -214,9 +226,9 @@ const newTraceRecorder = () => {
       assert(frameStack.length > 0)
       const top = frameStack[frameStack.length - 1]
       const start = top.subframes.length - noptions
+      // leave only the chosen frame as well as the older ones
       top.subframes =
-        top.subframes.filter((_, i) =>
-          start <= i && i < start + noptions && i !== start + choice)
+        top.subframes.filter((_, i) => i < start || i == start + choice)
     },
 
     onRunCall: () => {
@@ -238,11 +250,11 @@ const newTraceRecorder = () => {
 
       if (failureOrViolation) {
         if (bestTrace.args.length === 0
-            || bestTrace.args.length >= bottom.subframes.length) {
+            || bestTrace.args.length >= bottom.args.length) {
           bestTrace = bottom
         }
       } else {
-        if (bestTrace.args.length <= bottom.subframes.length) {
+        if (bestTrace.args.length <= bottom.args.length) {
           bestTrace = bottom
         }
       }
