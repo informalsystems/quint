@@ -12,10 +12,9 @@ import * as readline from 'readline'
 import { Readable, Writable } from 'stream'
 import { readFileSync, writeFileSync } from 'fs'
 import lineColumn from 'line-column'
-import chalk from 'chalk'
-
 import { just, none } from '@sweet-monads/maybe'
 import { left, right } from '@sweet-monads/either'
+import chalk from 'chalk'
 
 import { QuintEx } from './quintIr'
 import {
@@ -27,6 +26,7 @@ import {
 } from './runtime/runtime'
 import { ErrorMessage, probeParse } from './quintParserFrontend'
 import { IdGenerator, newIdGenerator } from './idGenerator'
+import { chalkQuintEx } from './graphics'
 
 // tunable settings
 export const settings = {
@@ -382,71 +382,6 @@ function loadVars(state: ReplState, context: CompilationContext): void {
 
 function loadShadowVars(state: ReplState, context: CompilationContext): void {
   loadRegisters('shadow', state.shadowVars, context)
-}
-
-// convert a Quint expression to a colored string, tuned for REPL
-export function chalkQuintEx(ex: QuintEx): string {
-  switch (ex.kind) {
-    case 'bool':
-      return chalk.yellow(`${ex.value}`)
-
-    case 'int':
-      return chalk.yellow(`${ex.value}`)
-
-    case 'str':
-      return chalk.green(`"${ex.value}"`)
-
-    case 'app':
-      switch (ex.opcode) {
-        case 'Set': {
-          const as = ex.args.map(chalkQuintEx).join(', ')
-          return chalk.green('Set') + `(${as})`
-        }
-
-        case 'Map': {
-          const ps = ex.args.map(tup => {
-            if (tup.kind === 'app' &&
-                   tup.opcode === 'Tup' && tup.args.length === 2) {
-              const [k, v] = tup.args
-              return `${chalkQuintEx(k)} -> ${chalkQuintEx(v)}`
-            } else {
-              return '<expected-pair>'
-            }
-          })
-          const as = ps.join(', ')
-          return chalk.green('Map') + `(${as})`
-        }
-
-        case 'Tup': {
-          const as = ex.args.map(chalkQuintEx).join(', ')
-          return `(${as})`
-        }
-
-        case 'List': {
-          const as = ex.args.map(chalkQuintEx).join(', ')
-          return `[${as}]`
-        }
-
-        case 'Rec': {
-          const kvs = []
-          for (let i = 0; i < ex.args.length / 2; i++) {
-            const key = ex.args[2 * i]
-            if (key && key.kind === 'str') {
-              const value = chalkQuintEx(ex.args[2 * i + 1])
-              kvs.push(`${chalk.green(key.value)}: ${value}`)
-            }
-          }
-          return `{ ${kvs.join(', ')} }`
-        }
-
-        default:
-          // instead of throwing, show it in red
-          return chalk.red(`unsupported operator: ${ex.opcode}(...)`)
-      }
-
-    default:
-      return chalk.red(`unsupported operator: ${ex.kind}`)
-  }
 }
 
 // Declarations that are overloaded by the simulator.

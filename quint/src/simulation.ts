@@ -3,7 +3,7 @@
  *
  * Igor Konnov, 2023
  *
- * Copyright (c) Informal Systems 2022. All rights reserved.
+ * Copyright (c) Informal Systems 2023. All rights reserved.
  * Licensed under the Apache 2.0.
  * See License.txt in the project root for license information.
  */
@@ -11,8 +11,6 @@
 import { Either } from '@sweet-monads/either'
 import { Maybe, none } from '@sweet-monads/maybe'
 import { strict as assert } from 'assert'
-import { range } from 'lodash'
-import chalk from 'chalk'
 
 import {
   compileFromCode, contextNameLookup, lastTraceName
@@ -21,7 +19,7 @@ import { ErrorMessage } from './quintParserFrontend'
 import { QuintApp, QuintEx } from './quintIr'
 import { Computable, EvalResult } from './runtime/runtime'
 import { ExecutionFrame } from './runtime/trace'
-import { chalkQuintEx } from './repl'
+import { chalkQuintEx } from './graphics'
 import { IdGenerator, zeroIdGen } from './idGenerator'
 
 /**
@@ -59,60 +57,6 @@ function errSimulationResult(status: SimulatorResultStatus,
     frames: [],
     errors: errors,
   }
-}
-
-export function
-printFrameRec(out: (line: string) => void,
-           frame: ExecutionFrame, isLast: boolean[]) {
-  // convert the arguments and the result to strings
-  const args =
-    frame.args.map(a => chalkQuintEx(a.toQuintEx(zeroIdGen))).join(', ')
-  const r =
-    frame.result.isNone()
-      ? 'none'
-      : chalkQuintEx(frame.result.value.toQuintEx(zeroIdGen))
-  const depth = isLast.length
-  // generate the tree ASCII graphics for this frame
-  let treeArt = isLast.map((il, i) =>
-    (i < depth - 1)
-      // continue the ancestor's branch, unless it's the last one
-      ? (il ? '   ' : '│  ')
-      // close or close & continue the leaf branch,
-      // depending on whether this frame is the last one
-      : (il ? '└─ ' : '├─ ')
-  ).join('')
-  out(`${treeArt}${frame.app.opcode}(${args}) => ${r}`)
-  const n = frame.subframes.length
-  // visualize the children
-  frame.subframes.forEach((f, i) =>
-    printFrameRec(out, f, isLast.concat([i === n - 1]))
-  )
-}
-
-/**
- * Print a trace with chalk.
- */
-export function printTrace(out: (line: string) => void,
-                           result: SimulatorResult) {
-  const colon = chalk.gray(':')
-  result.states.forEach((state, index) => {
-    assert(state.kind === 'app'
-           && state.opcode === 'Rec' && state.args.length % 2 === 0)
-
-    if (index < result.frames.length) {
-      printFrameRec(out, result.frames[index], [])
-    }
-
-    out(''.padStart(80, '═'))
-    range(0, Math.trunc(state.args.length / 2))
-      .forEach(i => {
-        const key = state.args[2 * i]
-        assert(key.kind === 'str')
-        const valueText = chalkQuintEx(state.args[2 * i + 1])
-        out(`${key.value}${colon} ${valueText}`)
-      })
-    out(''.padStart(80, '═') + '\n')
-  })
 }
 
 /**

@@ -31,8 +31,9 @@ import { QuintAnalyzer } from './quintAnalyzer'
 import { QuintError, quintErrorToString } from './quintError'
 import { compileAndTest } from './runtime/testing'
 import { newIdGenerator } from './idGenerator'
-import { SimulatorOptions, compileAndRun, printTrace } from './simulation'
+import { SimulatorOptions, compileAndRun } from './simulation'
 import { toItf } from './itf'
+import { printTrace } from './graphics'
 
 export type stage =
   'loading' | 'parsing' | 'typechecking' |
@@ -382,7 +383,7 @@ export function runSimulator(prev: TypecheckedStage):
         const elapsedMs = Date.now() - startMs
         console.log(chalk.gray('An example execution:'))
         console.log('---------------------------------------------')
-        printTrace(console.log, result)
+        printTrace(console.log, result.states, result.frames)
         console.log('---------------------------------------------')
         if (result.status === 'ok') {
           console.log(chalk.green('[ok]')
