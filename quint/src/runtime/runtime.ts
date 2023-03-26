@@ -154,9 +154,8 @@ export interface ExecutionListener {
    * This callback is called whenever a user-defined operator is called.
    *
    * @param app operator application in Quint IR
-   * @param args the actual arguments obtained in evaluation
    */
-  onUserOperatorCall(app: QuintApp, args: EvalResult[]): void
+  onUserOperatorCall(app: QuintApp): void
 
   /**
    * This callback is called whenever a user-defined operator returns
@@ -165,8 +164,10 @@ export interface ExecutionListener {
    *
    * @param app operator application in Quint IR
    * @param args the actual arguments obtained in evaluation
+   * @param result optional result of the evaluation
    */
-  onUserOperatorReturn(app: QuintApp, result: Maybe<EvalResult>): void
+  onUserOperatorReturn(app: QuintApp,
+                       args: EvalResult[], result: Maybe<EvalResult>): void
 
   /**
    * This callback is called when leaving `any { A_1, ..., A_n }`.
@@ -201,8 +202,9 @@ export interface ExecutionListener {
  * An implementation of ExecutionListener that does nothing.
  */
 export const emptyExecutionListener: ExecutionListener = {
-  onUserOperatorCall: (_app: QuintApp, _args: EvalResult[]) => {},
-  onUserOperatorReturn: (_app: QuintApp, _result: Maybe<EvalResult>) => {},
+  onUserOperatorCall: (_app: QuintApp) => {},
+  onUserOperatorReturn: (_app: QuintApp,
+                         _args: EvalResult[], _result: Maybe<EvalResult>) => {},
   onAnyReturn: (_noptions: number, _choice: number) => {},
   onRunCall: () => {},
   onRunReturn: (_outcome: Maybe<EvalResult>, _trace: EvalResult[]) => {},

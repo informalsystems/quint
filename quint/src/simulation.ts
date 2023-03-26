@@ -62,21 +62,31 @@ function errSimulationResult(status: SimulatorResultStatus,
 }
 
 export function
-printFrame(out: (line: string) => void,
-           frame: ExecutionFrame, indent: number, isLast: boolean) {
+printFrameRec(out: (line: string) => void,
+           frame: ExecutionFrame, isLast: boolean[]) {
+  // convert the arguments and the result to strings
   const args =
     frame.args.map(a => chalkQuintEx(a.toQuintEx(zeroIdGen))).join(', ')
   const r =
     frame.result.isNone()
       ? 'none'
       : chalkQuintEx(frame.result.value.toQuintEx(zeroIdGen))
-  let s =
-    (indent === 0)
-      ? ''
-      : ''.padStart((indent - 1) * 3, '│  ') + ''.padStart(3, isLast ? '└─ ' : '├─ ')
-  out(`${s}${frame.app.opcode}(${args}) => ${r}`)
+  const depth = isLast.length
+  // generate the tree ASCII graphics for this frame
+  let treeArt = isLast.map((il, i) =>
+    (i < depth - 1)
+      // continue the ancestor's branch, unless it's the last one
+      ? (il ? '   ' : '│  ')
+      // close or close & continue the leaf branch,
+      // depending on whether this frame is the last one
+      : (il ? '└─ ' : '├─ ')
+  ).join('')
+  out(`${treeArt}${frame.app.opcode}(${args}) => ${r}`)
   const n = frame.subframes.length
-  frame.subframes.forEach((f, i) => printFrame(out, f, indent + 1, i === n - 1))
+  // visualize the children
+  frame.subframes.forEach((f, i) =>
+    printFrameRec(out, f, isLast.concat([i === n - 1]))
+  )
 }
 
 /**
@@ -90,7 +100,7 @@ export function printTrace(out: (line: string) => void,
            && state.opcode === 'Rec' && state.args.length % 2 === 0)
 
     if (index < result.frames.length) {
-      printFrame(out, result.frames[index], 0, false)
+      printFrameRec(out, result.frames[index], [])
     }
 
     out(''.padStart(80, '═'))
@@ -211,19 +221,21 @@ const newTraceRecorder = () => {
       return bestTrace
     },
 
-    onUserOperatorCall: (app: QuintApp, args: EvalResult[]) => {
-      const newFrame = { app: app, args: args, result: none(), subframes: [] }
+    onUserOperatorCall: (app: QuintApp) => {
+      const newFrame = { app: app, args: [], result: none(), subframes: [] }
       if (frameStack.length > 0) {
         frameStack[frameStack.length - 1].subframes.push(newFrame)
         frameStack.push(newFrame)
       }
     },
 
-    onUserOperatorReturn: (app: QuintApp, result: Maybe<EvalResult>) => {
+    onUserOperatorReturn: (app: QuintApp,
+                           args: EvalResult[], result: Maybe<EvalResult>) => {
       const top = frameStack.pop()
       if (top) {
         // since this frame is connected via the parent frame,
         // the result will not disappear
+        top.args = args
         top.result = result
       }
     },

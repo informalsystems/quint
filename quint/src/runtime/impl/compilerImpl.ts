@@ -880,23 +880,36 @@ export class CompilerVisitor implements IRVisitor {
           `Expected ${nargs} arguments for ${app.opcode}, found: ${nactual}`)
         this.compStack.push(fail)
       } else {
-        this.applyFun(app.id,
-          nargs,
-          (...args: RuntimeValue[]) => {
-            let actualArgs = args
-            if (nparams > nargs && args.length === 1) {
-              // unpack the tuple
-              actualArgs = [...args[0]]
+        // pop nargs elements of the compStack
+        const args = this.compStack.splice(-nargs, nargs)
+        // Produce the new computable value.
+        // This code is similar to applyFun, but it calls the listener before
+        const comp = {
+          eval: (): Maybe<RuntimeValue> => {
+            this.execListener.onUserOperatorCall(app)
+            // compute the values of the arguments at this point
+            const merged = merge(args.map(a => a.eval()))
+            if (merged.isNone()) {
+              this.execListener.onUserOperatorReturn(app, [], none())
             }
-            for (let i = 0; i < actualArgs.length; i++) {
-              callable.registers[i].registerValue = just(actualArgs[i])
-            }
-            this.execListener.onUserOperatorCall(app, actualArgs)
-            const result = callable.eval() as Maybe<RuntimeValue>
-            this.execListener.onUserOperatorReturn(app, result)
-            return result
-          }
-        )
+            return merged.map(values => {
+              // if they are all defined, check whether unpacking is needed
+              let actualArgs: RuntimeValue[] = values as RuntimeValue[]
+              if (nparams > nargs && args.length === 1) {
+                // unpack the tuple
+                actualArgs = [...actualArgs[0]]
+              }
+              for (let i = 0; i < actualArgs.length; i++) {
+                callable.registers[i].registerValue = just(actualArgs[i])
+              }
+              const result = callable.eval() as Maybe<RuntimeValue>
+              this.execListener.onUserOperatorReturn(app, actualArgs, result)
+              return result
+            })
+            .join()
+          },
+        }
+        this.compStack.push(comp)
       }
     }
   }
@@ -1356,11 +1369,11 @@ export class CompilerVisitor implements IRVisitor {
           // check Init()
           const initApp: ir.QuintApp =
             { id: 0n, kind: 'app', opcode: 'q::init', args: [] }
-          this.execListener.onUserOperatorCall(initApp, [])
+          this.execListener.onUserOperatorCall(initApp)
           const initResult = init.eval()
           failure = initResult.isNone() || failure
           if (!isTrue(initResult)) {
-            this.execListener.onUserOperatorReturn(initApp, initResult)
+            this.execListener.onUserOperatorReturn(initApp, [], initResult)
           } else {
             // The initial action evaluates to true.
             // Our guess of values was good.
@@ -1369,10 +1382,10 @@ export class CompilerVisitor implements IRVisitor {
             // check the invariant Inv
             const invApp: ir.QuintApp =
               { id: 0n, kind: 'app', opcode: 'q::inv', args: [] }
-            this.execListener.onUserOperatorCall(invApp, [])
+            this.execListener.onUserOperatorCall(invApp)
             const invResult = inv.eval()
-            this.execListener.onUserOperatorReturn(invApp, invResult)
-            this.execListener.onUserOperatorReturn(initApp, initResult)
+            this.execListener.onUserOperatorReturn(invApp, [], invResult)
+            this.execListener.onUserOperatorReturn(initApp, [], initResult)
             failure = invResult.isNone() || failure
             if (!isTrue(invResult)) {
               errorFound = true
@@ -1382,16 +1395,16 @@ export class CompilerVisitor implements IRVisitor {
               for (let i = 0; !errorFound && !failure && i < nsteps; i++) {
                 const nextApp: ir.QuintApp =
                   { id: 0n, kind: 'app', opcode: 'q::step', args: [] }
-                this.execListener.onUserOperatorCall(nextApp, [])
+                this.execListener.onUserOperatorCall(nextApp)
                 const nextResult = next.eval()
                 failure = nextResult.isNone() || failure
                 if (isTrue(nextResult)) {
                   this.shiftVars()
                   trace.push(varsToRecord())
-                  this.execListener.onUserOperatorCall(invApp, [])
+                  this.execListener.onUserOperatorCall(invApp)
                   errorFound = !isTrue(inv.eval())
-                  this.execListener.onUserOperatorReturn(invApp, invResult)
-                  this.execListener.onUserOperatorReturn(nextApp, nextResult)
+                  this.execListener.onUserOperatorReturn(invApp, [], invResult)
+                  this.execListener.onUserOperatorReturn(nextApp, [], nextResult)
                 } else {
                   // Otherwise, the run cannot be extended.
                   // In some cases, this may indicate a deadlock.
@@ -1400,7 +1413,7 @@ export class CompilerVisitor implements IRVisitor {
                   // the run. Hence, do not report an error here, but simply
                   // drop the run. Otherwise, we would have a lot of false
                   // positives, which look like deadlocks but they are not.
-                  this.execListener.onUserOperatorReturn(nextApp, nextResult)
+                  this.execListener.onUserOperatorReturn(nextApp, [], nextResult)
                   break
                 }
               }
