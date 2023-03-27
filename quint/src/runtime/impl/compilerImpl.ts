@@ -897,11 +897,11 @@ export class CompilerVisitor implements IRVisitor {
             return merged.map(values => {
               // if they are all defined, check whether unpacking is needed
               let actualArgs: RuntimeValue[] = values as RuntimeValue[]
-              if (nparams > nargs && args.length === 1) {
+              if (nparams > nargs && nargs === 1) {
                 // unpack the tuple
                 actualArgs = [...actualArgs[0]]
               }
-              for (let i = 0; i < actualArgs.length; i++) {
+              for (let i = 0; i < nparams; i++) {
                 callable.registers[i].registerValue = just(actualArgs[i])
               }
               const result = callable.eval() as Maybe<RuntimeValue>
