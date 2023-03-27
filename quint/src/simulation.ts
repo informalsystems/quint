@@ -31,6 +31,7 @@ export interface SimulatorOptions {
   maxSamples: number,
   maxSteps: number,
   rand: () => number,
+  verbosity: number,
 }
 
 export type SimulatorResultStatus =

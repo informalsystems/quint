@@ -367,6 +367,7 @@ export function runSimulator(prev: TypecheckedStage):
     maxSamples: prev.args.maxSamples,
     maxSteps: prev.args.maxSteps,
     rand: mkRng(prev.args.seed),
+    verbosity: prev.args.verbosity,
   }
   const startMs = Date.now()
   const simulator = { ...prev, stage: 'running' as stage }

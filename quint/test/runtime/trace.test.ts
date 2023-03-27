@@ -26,6 +26,7 @@ describe('newTraceRecorder', () => {
     const rec = newTraceRecorder()
     const A: QuintApp = { id: 0n, kind: 'app', opcode: 'A', args: [] }
     const B: QuintApp = { id: 0n, kind: 'app', opcode: 'B', args: [] }
+    // (A calls (B, after that it calls A)), after that another A is called
     rec.onUserOperatorCall(A)
     rec.onUserOperatorCall(B)
     rec.onUserOperatorReturn(B, [], none())
