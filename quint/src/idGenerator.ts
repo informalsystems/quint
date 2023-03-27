@@ -36,6 +36,6 @@ export const newIdGenerator = (initialId: bigint = 0n) => {
 /**
  * An id generator that always returns 0n, instead of a unique id.
  */
-export const zeroIdGen = {
+export const zerog = {
   nextId: (): bigint => 0n,
 }

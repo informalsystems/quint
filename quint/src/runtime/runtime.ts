@@ -170,6 +170,26 @@ export interface ExecutionListener {
                        args: EvalResult[], result: Maybe<EvalResult>): void
 
   /**
+   * This callback is called *before* one of the arguments of `any {...}`
+   * is evaluated. This is a very important call, as it introduces a
+   * branching point in the execution.
+   *
+   * @param anyExpr the expression `any { ... }` that contains the option
+   * @param position the position of the option in `anyExpr.args`
+   */
+  onAnyOptionCall(anyExpr: QuintApp, position: number): void
+
+  /**
+   * This callback is called *after* one of the arguments of `any {...}`
+   * is evaluated. Note that it is the runtime's
+   * obligation to balance the Call and Return events.
+   *
+   * @param anyExpr the expression `any { ... }` that contains the option
+   * @param position the position of the option in `anyExpr.args`
+   */
+  onAnyOptionReturn(anyExpr: QuintApp, position: number): void
+
+  /**
    * This callback is called when leaving `any { A_1, ..., A_n }`.
    * It instructs the listener to discard the top `noptions` records
    * except the one in the `choice` position.
@@ -205,6 +225,8 @@ export const emptyExecutionListener: ExecutionListener = {
   onUserOperatorCall: (_app: QuintApp) => {},
   onUserOperatorReturn: (_app: QuintApp,
                          _args: EvalResult[], _result: Maybe<EvalResult>) => {},
+  onAnyOptionCall: (_anyExpr: QuintApp, _position: number) => {},
+  onAnyOptionReturn: (_anyExpr: QuintApp, _position: number) => {},
   onAnyReturn: (_noptions: number, _choice: number) => {},
   onRunCall: () => {},
   onRunReturn: (_outcome: Maybe<EvalResult>, _trace: EvalResult[]) => {},

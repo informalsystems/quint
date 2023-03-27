@@ -14,7 +14,7 @@ import { range } from 'lodash'
 
 import { QuintEx } from './quintIr'
 import { ExecutionFrame } from './runtime/trace'
-import { zeroIdGen } from './idGenerator'
+import { zerog } from './idGenerator'
 
 // convert a Quint expression to a colored string, tuned for REPL
 export function chalkQuintEx(ex: QuintEx): string {
@@ -88,11 +88,11 @@ printExecutionFrameRec(out: (line: string) => void,
     prefix: string = '') {
   // convert the arguments and the result to strings
   const args =
-    frame.args.map(a => chalkQuintEx(a.toQuintEx(zeroIdGen))).join(', ')
+    frame.args.map(a => chalkQuintEx(a.toQuintEx(zerog))).join(', ')
   const r =
     frame.result.isNone()
       ? 'none'
-      : chalkQuintEx(frame.result.value.toQuintEx(zeroIdGen))
+      : chalkQuintEx(frame.result.value.toQuintEx(zerog))
   const depth = isLast.length
   // generate the tree ASCII graphics for this frame
   let treeArt = isLast.map((il, i) =>
@@ -127,7 +127,7 @@ export function printTrace(out: (line: string) => void,
       printExecutionFrameRec(out, frames[index], [], `[${index}] `)
     }
 
-    out(''.padStart(80, '═'))
+    out(''.padStart(80, '─'))
     range(0, Math.trunc(state.args.length / 2))
       .forEach(i => {
         const key = state.args[2 * i]

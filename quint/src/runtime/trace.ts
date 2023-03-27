@@ -8,10 +8,11 @@
  * See License.txt in the project root for license information.
  */
 
-import { Maybe } from '@sweet-monads/maybe'
+import { Maybe, none } from '@sweet-monads/maybe'
+import { strict as assert } from 'assert'
 
 import { QuintApp } from '../quintIr'
-import { EvalResult } from './runtime'
+import { EvalResult, ExecutionListener } from './runtime'
 
 /**
  * A snapshot of how a single operator (e.g., an action) was executed.
@@ -49,4 +50,123 @@ export interface ExecutionTree {
    * may produce multiple frames, when it executes several actions in a row.
    */
   frames: ExecutionFrame[]
+}
+
+// a trace recording listener
+export const newTraceRecorder = () => {
+  // the bottom frame encodes the whole trace
+  const bottomFrame = (): ExecutionFrame => {
+    return {
+      // this is just a dummy operator application
+      app: { id: 0n, kind: 'app', opcode: 'Rec', args: [] },
+      // we will store the sequence of states here
+      args: [],
+      // the result of the trace evaluation
+      result: none(),
+      // and here we store the subframes for the top-level actions
+      subframes: [],
+    }
+  }
+
+  // the best trace is stored here
+  let bestTrace = bottomFrame()
+  // during simulation, a trace is built here
+  let frameStack: ExecutionFrame[] = [ bestTrace ]
+
+  return {
+    getBestTrace: (): ExecutionFrame => {
+      return bestTrace
+    },
+
+    onUserOperatorCall: (app: QuintApp) => {
+      const newFrame = { app: app, args: [], result: none(), subframes: [] }
+      if (frameStack.length > 0) {
+        frameStack[frameStack.length - 1].subframes.push(newFrame)
+        frameStack.push(newFrame)
+      } else {
+        frameStack = [ newFrame ]
+      }
+    },
+
+    onUserOperatorReturn: (app: QuintApp,
+                           args: EvalResult[], result: Maybe<EvalResult>) => {
+      const top = frameStack.pop()
+      if (top) {
+        // since this frame is connected via the parent frame,
+        // the result will not disappear
+        top.args = args
+        top.result = result
+      }
+    },
+
+    onAnyOptionCall: (anyExpr: QuintApp, _position: number) => {
+      // the option has to be hidden under its own frame,
+      // so it can be popped as a single frame later
+      const newFrame = {
+        app: anyExpr,
+        args: [],
+        result: none(),
+        subframes: [],
+      }
+      if (frameStack.length > 0) {
+        // add the option directly to the stack of the current expression
+        // that contains `any { ... }`.
+        frameStack[frameStack.length - 1].subframes.push(newFrame)
+        frameStack.push(newFrame)
+      } else {
+        frameStack = [ newFrame ]
+      }
+    },
+
+    onAnyOptionReturn: (_anyExpr: QuintApp, _position: number) => {
+      frameStack.pop()
+    },
+
+    onAnyReturn: (noptions: number, choice: number) => {
+      assert(frameStack.length > 0)
+      const top = frameStack[frameStack.length - 1]
+      const start = top.subframes.length - noptions
+      // leave only the chosen frame as well as the older ones
+      top.subframes =
+        top.subframes.filter((_, i) => i < start || i == start + choice)
+      if (choice >= 0) {
+        // The top frame contains the frames of the chosen option that are
+        // wrapped in anyExpr.args[position], see onAnyOptionCall.
+        // Unwrap the option, as we do not need it any longer.
+        const optionFrame = top.subframes.pop()
+        if (optionFrame) {
+          top.subframes = top.subframes.concat(optionFrame.subframes)
+        }
+      }
+    },
+
+    onRunCall: () => {
+      // reset the stack
+      frameStack = [ bottomFrame() ]
+    },
+
+    onRunReturn: (outcome: Maybe<EvalResult>, trace: EvalResult[]) => {
+      assert(frameStack.length > 0)
+      const bottom = frameStack[0]
+      bottom.result = outcome
+      bottom.args = trace
+
+      let failureOrViolation = true
+      if (outcome.isJust()) {
+        const r = outcome.value.toQuintEx({ nextId: () => 0n })
+        failureOrViolation = (r.kind === 'bool') && !r.value
+      }
+
+      if (failureOrViolation) {
+        if (bestTrace.args.length === 0
+            || bestTrace.args.length >= bottom.args.length) {
+          bestTrace = bottom
+        }
+      } else {
+        if (bestTrace.args.length <= bottom.args.length) {
+          bestTrace = bottom
+        }
+      }
+    },
+  }
 }
