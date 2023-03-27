@@ -1261,10 +1261,10 @@ export class CompilerVisitor implements IRVisitor {
       args.forEach((arg, i) => {
         this.recoverNextVars(valuesBefore)
         // either the argument is evaluated to false, or fails
-        this.execListener.onUserOperatorCall(app)
+        this.execListener.onAnyOptionCall(app, i)
         const result = arg.eval().or(just(rv.mkBool(false)))
         const boolResult = (result.unwrap() as RuntimeValue).toBool()
-        this.execListener.onUserOperatorReturn(app, [], result)
+        this.execListener.onAnyOptionReturn(app, i)
         // if this arm evaluates to true, save it in the candidates
         if (boolResult === true) {
           successors.push(this.snapshotNextVars())
