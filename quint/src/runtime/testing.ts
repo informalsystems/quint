@@ -18,7 +18,7 @@ import { CompilationContext, compile } from './compile'
 import { newIdGenerator } from './../idGenerator'
 import { LookupTable } from '../lookupTable'
 import { Computable, kindName } from './runtime'
-import { emptyExecutionListener } from './trace'
+import { noExecutionListener } from './trace'
 
 /**
  * Evaluation result.
@@ -61,7 +61,7 @@ export function
     rand: () => number): Either<string, TestResult[]> {
   const ctx =
     compile(modules, sourceMap, lookupTable,
-            types, main.name, emptyExecutionListener, rand)
+            types, main.name, noExecutionListener, rand)
 
   if(!ctx.main) {
     return left('Cannot find main module')

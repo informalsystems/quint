@@ -24,7 +24,7 @@ import { formatError } from './errorReporter'
 import {
   ComputableKind, EvalResult, Register, kindName
 } from './runtime/runtime'
-import { emptyExecutionListener } from './runtime/trace'
+import { noExecutionListener } from './runtime/trace'
 import { ErrorMessage, probeParse } from './quintParserFrontend'
 import { IdGenerator, newIdGenerator } from './idGenerator'
 import { chalkQuintEx } from './graphics'
@@ -429,7 +429,7 @@ ${textToAdd}
     // compile the expression or definition and evaluate it
     const context =
       compileFromCode(state.idGen,
-        moduleText, '__repl__', emptyExecutionListener, () => Math.random())
+        moduleText, '__repl__', noExecutionListener, () => Math.random())
     if (context.syntaxErrors.length > 0 ||
         context.compileErrors.length > 0 || context.analysisErrors.length > 0) {
       printErrors(moduleText, context)
@@ -482,7 +482,7 @@ ${textToAdd}
     // compile the module and add it to history if everything worked
     const context =
       compileFromCode(state.idGen,
-        moduleText, '__repl__', emptyExecutionListener, () => Math.random())
+        moduleText, '__repl__', noExecutionListener, () => Math.random())
     if (context.values.size === 0 ||
         context.compileErrors.length > 0 || context.syntaxErrors.length > 0) {
       printErrors(moduleText, context)

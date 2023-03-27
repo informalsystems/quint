@@ -128,7 +128,7 @@ export interface ExecutionListener {
 /**
  * An implementation of ExecutionListener that does nothing.
  */
-export const emptyExecutionListener: ExecutionListener = {
+export const noExecutionListener: ExecutionListener = {
   onUserOperatorCall: (_app: QuintApp) => {},
   onUserOperatorReturn: (_app: QuintApp,
                          _args: EvalResult[], _result: Maybe<EvalResult>) => {},
