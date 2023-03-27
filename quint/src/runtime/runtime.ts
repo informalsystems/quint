@@ -87,18 +87,23 @@ export function mkRegister(kind: ComputableKind,
   initValue: Maybe<any>,
   onUndefined: () => void
 ): Register {
-  return {
+  const reg: Register = {
     name: registerName,
     kind,
     registerValue: initValue,
-    // computing a register just evaluates to the contents that it stores
-    eval: function() {
-      if (this.registerValue.isNone()) {
-        onUndefined()
-      }
-      return this.registerValue
-    },
+    // first, define a fruitless eval, as we cannot refer to registerValue yet
+    eval: () => { return none() },
   }
+  // override `eval`, as we can use `reg` now
+  reg.eval = () => {
+    // computing a register just evaluates to the contents that it stores
+    if (reg.registerValue.isNone()) {
+      onUndefined()
+    }
+    return reg.registerValue
+  }
+
+  return reg
 }
 
 /**

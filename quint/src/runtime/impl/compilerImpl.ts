@@ -893,6 +893,7 @@ export class CompilerVisitor implements IRVisitor {
             const merged = merge(args.map(a => a.eval()))
             if (merged.isNone()) {
               this.execListener.onUserOperatorReturn(app, [], none())
+              return none()
             }
             return merged.map(values => {
               // if they are all defined, check whether unpacking is needed
