@@ -281,32 +281,29 @@ quint run --init=Init --step=Next --seed=abcde --max-steps=4 \
 <!-- !test out run finds violation -->
 ```
 An example execution:
----------------------------------------------
-action step0 = all {
-  n' = 1,
-}
 
-action step1 = all {
-  n' = 2,
-}
+[State 0]
+ n: 1
+────────────────────────────────────────────────────────────────────────────────
 
-action step2 = all {
-  n' = 3,
-}
+[State 1]
+ n: 2
+────────────────────────────────────────────────────────────────────────────────
 
-action step3 = all {
-  n' = 6,
-}
+[State 2]
+ n: 3
+────────────────────────────────────────────────────────────────────────────────
 
-action step4 = all {
-  n' = 12,
-}
+[State 3]
+ n: 6
+────────────────────────────────────────────────────────────────────────────────
 
-run test = {
-  step0.then(step1).then(step2).then(step3).then(step4)
-}
----------------------------------------------
-[nok] Found a violation (duration).
+[State 4]
+ n: 12
+────────────────────────────────────────────────────────────────────────────────
+
+[violation] Found an issue (duration).
+Use --verbosity to produce more (or less) output.
 ```
 
 ### Run finds an example
@@ -324,33 +321,30 @@ quint run --init=Init --step=Next --seed=abcde --max-steps=4 \
 <!-- !test out run finds example -->
 ```
 An example execution:
----------------------------------------------
-action step0 = all {
-  n' = 1,
-}
 
-action step1 = all {
-  n' = 2,
-}
+[State 0]
+ n: 1
+────────────────────────────────────────────────────────────────────────────────
 
-action step2 = all {
-  n' = 3,
-}
+[State 1]
+ n: 2
+────────────────────────────────────────────────────────────────────────────────
 
-action step3 = all {
-  n' = 4,
-}
+[State 2]
+ n: 3
+────────────────────────────────────────────────────────────────────────────────
 
-action step4 = all {
-  n' = 2,
-}
+[State 3]
+ n: 4
+────────────────────────────────────────────────────────────────────────────────
 
-run test = {
-  step0.then(step1).then(step2).then(step3).then(step4)
-}
----------------------------------------------
+[State 4]
+ n: 2
+────────────────────────────────────────────────────────────────────────────────
+
 [ok] No violation found (duration).
 You may increase --max-samples and --max-steps.
+Use --verbosity to produce more (or less) output.
 ```
 
 ### Repl evaluates coin
@@ -391,22 +385,20 @@ quint run --max-steps=5 --seed=123 --invariant=totalSupplyDoesNotOverflowInv \
 <!-- !test out run finds overflow -->
 ```
 An example execution:
----------------------------------------------
-action step0 = all {
-  minter' = "alice",
-  balances' = Map("alice" -> 0, "bob" -> 0, "charlie" -> 0, "eve" -> 0, "null" -> 0),
-}
 
-action step1 = all {
-  minter' = "alice",
-  balances' = Map("alice" -> 0, "bob" -> 0, "charlie" -> 0, "eve" -> 0, "null" -> 60111170443858436966126692514148478804869009443507772171903863504622757871616),
-}
+[State 0]
+ minter: "alice"
+ balances: Map("alice" -> 0, "bob" -> 0, "charlie" -> 0, "eve" -> 0, "null" -> 0)
+────────────────────────────────────────────────────────────────────────────────
 
-run test = {
-  step0.then(step1)
-}
----------------------------------------------
-[nok] Found a violation (duration).
+[State 1]
+ minter: "alice"
+ balances: Map("alice" -> 0, "bob" -> 0, "charlie" -> 0, "eve" -> 0, "null" -> 60111170443858436966126692514148478804869009443507772171903863504622757871616)
+────────────────────────────────────────────────────────────────────────────────
+
+[ok] No violation found (duration).
+You may increase --max-samples and --max-steps.
+Use --verbosity to produce more (or less) output.
 ```
 
 ### Run outputs ITF
