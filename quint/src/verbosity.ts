@@ -12,6 +12,11 @@
 
 export const verbosity = {
   /**
+   * The maximal verbosity level.
+   */
+  maxVerbosity: 5,
+
+  /**
    * Shall the tool output the execution results.
    */
   hasResults: (level: number): boolean => {
@@ -43,6 +48,6 @@ export const verbosity = {
    * Shall the tool track and output user-defined operators (not only actions).
    */
   hasUserOpTracking: (level: number): boolean => {
-    return level >= 4
+    return level >= 3
   },
 }

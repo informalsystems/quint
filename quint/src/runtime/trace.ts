@@ -11,8 +11,9 @@
 import { Maybe, none } from '@sweet-monads/maybe'
 import { strict as assert } from 'assert'
 
-import { QuintApp } from '../quintIr'
+import { OpQualifier, QuintApp } from '../quintIr'
 import { EvalResult } from './runtime'
+import { verbosity } from './../verbosity'
 
 /**
  * A snapshot of how a single operator (e.g., an action) was executed.
@@ -140,7 +141,7 @@ export const noExecutionListener: ExecutionListener = {
 }
 
 // a trace recording listener
-export const newTraceRecorder = () => {
+export const newTraceRecorder = (verbosityLevel: number) => {
   // the bottom frame encodes the whole trace
   const bottomFrame = (): ExecutionFrame => {
     return {
@@ -166,63 +167,75 @@ export const newTraceRecorder = () => {
     },
 
     onUserOperatorCall: (app: QuintApp) => {
-      const newFrame = { app: app, args: [], result: none(), subframes: [] }
-      if (frameStack.length > 0) {
-        frameStack[frameStack.length - 1].subframes.push(newFrame)
-        frameStack.push(newFrame)
-      } else {
-        frameStack = [ newFrame ]
+      // For now, we cannot tell apart actions from other user definitions.
+      // https://github.com/informalsystems/quint/issues/747
+      if (verbosity.hasUserOpTracking(verbosityLevel)) {
+        const newFrame = { app: app, args: [], result: none(), subframes: [] }
+        if (frameStack.length > 0) {
+          frameStack[frameStack.length - 1].subframes.push(newFrame)
+          frameStack.push(newFrame)
+        } else {
+          frameStack = [ newFrame ]
+        }
       }
     },
 
     onUserOperatorReturn: (app: QuintApp,
                            args: EvalResult[], result: Maybe<EvalResult>) => {
-      const top = frameStack.pop()
-      if (top) {
-        // since this frame is connected via the parent frame,
-        // the result will not disappear
-        top.args = args
-        top.result = result
+      if (verbosity.hasUserOpTracking(verbosityLevel)) {
+        const top = frameStack.pop()
+        if (top) {
+          // since this frame is connected via the parent frame,
+          // the result will not disappear
+          top.args = args
+          top.result = result
+        }
       }
     },
 
     onAnyOptionCall: (anyExpr: QuintApp, _position: number) => {
-      // the option has to be hidden under its own frame,
-      // so it can be popped as a single frame later
-      const newFrame = {
-        app: anyExpr,
-        args: [],
-        result: none(),
-        subframes: [],
-      }
-      if (frameStack.length > 0) {
-        // add the option directly to the stack of the current expression
-        // that contains `any { ... }`.
-        frameStack[frameStack.length - 1].subframes.push(newFrame)
-        frameStack.push(newFrame)
-      } else {
-        frameStack = [ newFrame ]
+      if (verbosity.hasActionTracking(verbosityLevel)) {
+        // the option has to be hidden under its own frame,
+        // so it can be popped as a single frame later
+        const newFrame = {
+          app: anyExpr,
+          args: [],
+          result: none(),
+          subframes: [],
+        }
+        if (frameStack.length > 0) {
+          // add the option directly to the stack of the current expression
+          // that contains `any { ... }`.
+          frameStack[frameStack.length - 1].subframes.push(newFrame)
+          frameStack.push(newFrame)
+        } else {
+          frameStack = [ newFrame ]
+        }
       }
     },
 
     onAnyOptionReturn: (_anyExpr: QuintApp, _position: number) => {
-      frameStack.pop()
+      if (verbosity.hasActionTracking(verbosityLevel)) {
+        frameStack.pop()
+      }
     },
 
     onAnyReturn: (noptions: number, choice: number) => {
-      assert(frameStack.length > 0)
-      const top = frameStack[frameStack.length - 1]
-      const start = top.subframes.length - noptions
-      // leave only the chosen frame as well as the older ones
-      top.subframes =
-        top.subframes.filter((_, i) => i < start || i == start + choice)
-      if (choice >= 0) {
-        // The top frame contains the frames of the chosen option that are
-        // wrapped in anyExpr.args[position], see onAnyOptionCall.
-        // Unwrap the option, as we do not need it any longer.
-        const optionFrame = top.subframes.pop()
-        if (optionFrame) {
-          top.subframes = top.subframes.concat(optionFrame.subframes)
+      if (verbosity.hasActionTracking(verbosityLevel)) {
+        assert(frameStack.length > 0)
+        const top = frameStack[frameStack.length - 1]
+        const start = top.subframes.length - noptions
+        // leave only the chosen frame as well as the older ones
+        top.subframes =
+          top.subframes.filter((_, i) => i < start || i == start + choice)
+        if (choice >= 0) {
+          // The top frame contains the frames of the chosen option that are
+          // wrapped in anyExpr.args[position], see onAnyOptionCall.
+          // Unwrap the option, as we do not need it any longer.
+          const optionFrame = top.subframes.pop()
+          if (optionFrame) {
+            top.subframes = top.subframes.concat(optionFrame.subframes)
+          }
         }
       }
     },

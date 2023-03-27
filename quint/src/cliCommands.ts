@@ -386,21 +386,22 @@ export function runSimulator(prev: TypecheckedStage):
       if (verbosity.hasResults(verbosityLevel)) {
         const elapsedMs = Date.now() - startMs
         if (verbosity.hasStateOutput(options.verbosity)) {
-          console.log(chalk.gray('An example execution:'))
-          console.log('---------------------------------------------')
+          console.log(chalk.gray('An example execution:\n'))
           printTrace(console.log, result.states, result.frames)
-          console.log('---------------------------------------------')
         }
         if (result.status === 'ok') {
           console.log(chalk.green('[ok]')
             + ' No violation found ' + chalk.gray(`(${elapsedMs}ms).`))
           if (verbosity.hasHints(options.verbosity)) {
             console.log(chalk.gray('You may increase --max-samples and --max-steps.'))
-            console.log(chalk.gray('Check --verbosity to produce more (or less) output.'))
+            console.log(chalk.gray('Use --verbosity to produce more (or less) output.'))
           }
         } else {
           console.log(chalk.red(`[${result.status}]`)
             + ' Found an issue ' + chalk.gray(`(${elapsedMs}ms).`))
+          if (verbosity.hasHints(options.verbosity)) {
+            console.log(chalk.gray('Use --verbosity to produce more (or less) output.'))
+          }
         }
       }
 

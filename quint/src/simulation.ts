@@ -18,7 +18,9 @@ import {
 import { ErrorMessage } from './quintParserFrontend'
 import { QuintApp, QuintEx } from './quintIr'
 import { Computable, EvalResult } from './runtime/runtime'
-import { ExecutionFrame, newTraceRecorder } from './runtime/trace'
+import {
+  ExecutionFrame, newTraceRecorder, noExecutionListener
+} from './runtime/trace'
 import { IdGenerator } from './idGenerator'
 import { verbosity } from './verbosity'
 
@@ -98,7 +100,7 @@ module __run__ {
 }
 `
 
-  const recorder = newTraceRecorder()
+  const recorder = newTraceRecorder(options.verbosity)
   const ctx = compileFromCode(idGen,
     wrappedCode, '__run__', recorder, options.rand)
 

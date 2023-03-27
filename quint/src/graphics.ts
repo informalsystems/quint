@@ -84,8 +84,7 @@ export function chalkQuintEx(ex: QuintEx): string {
 export function
 printExecutionFrameRec(out: (line: string) => void,
     frame: ExecutionFrame,
-    isLast: boolean[],
-    prefix: string = '') {
+    isLast: boolean[]) {
   // convert the arguments and the result to strings
   const args =
     frame.args.map(a => chalkQuintEx(a.toQuintEx(zerog))).join(', ')
@@ -103,7 +102,7 @@ printExecutionFrameRec(out: (line: string) => void,
       // depending on whether this frame is the last one
       : (il ? '└─ ' : '├─ ')
   ).join('')
-  out(`${prefix}${treeArt}${frame.app.opcode}(${args}) => ${r}`)
+  out(`${treeArt}${frame.app.opcode}(${args}) => ${r}`)
   const n = frame.subframes.length
   // visualize the children
   frame.subframes.forEach((f, i) =>
@@ -124,18 +123,21 @@ export function printTrace(out: (line: string) => void,
 
     if (index < frames.length) {
       // be lenient to broken input
-      printExecutionFrameRec(out, frames[index], [], `[${index}] `)
+      out(`[Frame ${index}]`)
+      printExecutionFrameRec(l => out(' ' + l), frames[index], [])
+      out('')
     }
 
-    out(''.padStart(80, '─'))
+    out(`[State ${index}]`)
     range(0, Math.trunc(state.args.length / 2))
       .forEach(i => {
         const key = state.args[2 * i]
         assert(key.kind === 'str')
         const valueText = chalkQuintEx(state.args[2 * i + 1])
-        out(`${key.value}${colon} ${valueText}`)
+        out(` ${key.value}${colon} ${valueText}`)
       })
-    out(''.padStart(80, '═') + '\n')
+
+    out(''.padStart(80, '─') + '\n')
   })
 }
 
