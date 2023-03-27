@@ -4,7 +4,7 @@
  * See the description at:
  * https://github.com/informalsystems/quint/blob/main/doc/quint.md
  *
- * @author Igor Konnov, Gabriela Moreira, Shon Feder, Informal Systems, 2021-2022
+ * @author Igor Konnov, Gabriela Moreira, Shon Feder, Informal Systems, 2021-2023
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'fs'
@@ -34,6 +34,7 @@ import { newIdGenerator } from './idGenerator'
 import { SimulatorOptions, compileAndRun } from './simulation'
 import { toItf } from './itf'
 import { printTrace } from './graphics'
+import { verbosity } from './verbosity'
 
 export type stage =
   'loading' | 'parsing' | 'typechecking' |
@@ -360,6 +361,8 @@ export function runSimulator(prev: TypecheckedStage):
   CLIProcedure<SimulatorStage> {
   const mainArg = prev.args.main
   const mainName = mainArg ? mainArg : basename(prev.args.input, '.qnt')
+  const verbosityLevel =
+    (!prev.args.out && !prev.args.outItf) ? prev.args.verbosity : 0
   const options: SimulatorOptions = {
     init: prev.args.init,
     step: prev.args.step,
@@ -367,7 +370,7 @@ export function runSimulator(prev: TypecheckedStage):
     maxSamples: prev.args.maxSamples,
     maxSteps: prev.args.maxSteps,
     rand: mkRng(prev.args.seed),
-    verbosity: prev.args.verbosity,
+    verbosity: verbosityLevel,
   }
   const startMs = Date.now()
   const simulator = { ...prev, stage: 'running' as stage }
@@ -380,16 +383,21 @@ export function runSimulator(prev: TypecheckedStage):
       return cliErr('run failed', { ...simulator, errors })
   } else {
       const isConsole = !prev.args.out && !prev.args.outItf
-      if (isConsole) {
+      if (verbosity.hasResults(verbosityLevel)) {
         const elapsedMs = Date.now() - startMs
-        console.log(chalk.gray('An example execution:'))
-        console.log('---------------------------------------------')
-        printTrace(console.log, result.states, result.frames)
-        console.log('---------------------------------------------')
+        if (verbosity.hasStateOutput(options.verbosity)) {
+          console.log(chalk.gray('An example execution:'))
+          console.log('---------------------------------------------')
+          printTrace(console.log, result.states, result.frames)
+          console.log('---------------------------------------------')
+        }
         if (result.status === 'ok') {
           console.log(chalk.green('[ok]')
             + ' No violation found ' + chalk.gray(`(${elapsedMs}ms).`))
-          console.log(chalk.gray('You may increase --max-samples and --max-steps.'))
+          if (verbosity.hasHints(options.verbosity)) {
+            console.log(chalk.gray('You may increase --max-samples and --max-steps.'))
+            console.log(chalk.gray('Check --verbosity to produce more (or less) output.'))
+          }
         } else {
           console.log(chalk.red(`[${result.status}]`)
             + ' Found an issue ' + chalk.gray(`(${elapsedMs}ms).`))

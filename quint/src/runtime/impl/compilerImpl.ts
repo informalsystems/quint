@@ -18,9 +18,11 @@ import { IRVisitor } from '../../IRVisitor'
 import { ScopeTree } from '../../scoping'
 import { TypeScheme } from '../../types/base'
 import {
-  Callable, Computable, ComputableKind, EvalResult, ExecutionListener,
+  Callable, Computable, ComputableKind, EvalResult,
   Register, fail, kindName, mkCallable, mkRegister
 } from '../runtime'
+
+import { ExecutionListener } from '../trace'
 
 import * as ir from '../../quintIr'
 

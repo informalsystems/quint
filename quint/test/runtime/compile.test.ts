@@ -3,9 +3,8 @@ import { assert } from 'chai'
 import { Either, left, right } from '@sweet-monads/either'
 import { just } from '@sweet-monads/maybe'
 import { expressionToString } from '../../src/IRprinting'
-import {
-  ComputableKind, emptyExecutionListener, fail, kindName
-} from '../../src/runtime/runtime'
+import { ComputableKind, fail, kindName } from '../../src/runtime/runtime'
+import { emptyExecutionListener } from '../../src/runtime/trace'
 import {
   CompilationContext, compileFromCode, contextNameLookup
 } from '../../src/runtime/compile'

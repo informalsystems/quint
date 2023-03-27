@@ -151,10 +151,10 @@ const runCmd = {
         type: 'string',
       })
       .option('verbosity', {
-        desc: 'control how much output is produced (0 to 4)',
+        desc: 'control how much output is produced (0 to 5)',
         type: 'number',
       })
-      .default('verbosity', 1),
+      .default('verbosity', 3),
 // Timeouts are postponed for:
 // https://github.com/informalsystems/quint/issues/633
 //

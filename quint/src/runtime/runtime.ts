@@ -16,7 +16,7 @@ import { Maybe, none } from '@sweet-monads/maybe'
 
 import { ValueObject } from 'immutable'
 
-import { QuintApp, QuintEx } from '../quintIr'
+import { QuintEx } from '../quintIr'
 
 import { IdGenerator } from '../idGenerator'
 
@@ -144,91 +144,4 @@ export interface ExecError {
  * during execution.
  */
 export type ExecErrorHandler = (_error: ExecError) => void;
-
-/**
- * A listener that receives events in the course of Quint evaluation.
- * This listener may be used to collect a trace, or to record profiling data.
- */
-export interface ExecutionListener {
-  /**
-   * This callback is called whenever a user-defined operator is called.
-   *
-   * @param app operator application in Quint IR
-   */
-  onUserOperatorCall(app: QuintApp): void
-
-  /**
-   * This callback is called whenever a user-defined operator returns
-   * from its evaluation. Note that it is the runtime's obligation to
-   * balance the Call and Return events.
-   *
-   * @param app operator application in Quint IR
-   * @param args the actual arguments obtained in evaluation
-   * @param result optional result of the evaluation
-   */
-  onUserOperatorReturn(app: QuintApp,
-                       args: EvalResult[], result: Maybe<EvalResult>): void
-
-  /**
-   * This callback is called *before* one of the arguments of `any {...}`
-   * is evaluated. This is a very important call, as it introduces a
-   * branching point in the execution.
-   *
-   * @param anyExpr the expression `any { ... }` that contains the option
-   * @param position the position of the option in `anyExpr.args`
-   */
-  onAnyOptionCall(anyExpr: QuintApp, position: number): void
-
-  /**
-   * This callback is called *after* one of the arguments of `any {...}`
-   * is evaluated. Note that it is the runtime's
-   * obligation to balance the Call and Return events.
-   *
-   * @param anyExpr the expression `any { ... }` that contains the option
-   * @param position the position of the option in `anyExpr.args`
-   */
-  onAnyOptionReturn(anyExpr: QuintApp, position: number): void
-
-  /**
-   * This callback is called when leaving `any { A_1, ..., A_n }`.
-   * It instructs the listener to discard the top `noptions` records
-   * except the one in the `choice` position.
-   *
-   * @param noptions the number of translated options, that is, `n`.
-   * @param choice is a number between -1 and n (exclusive),
-   *        where -1 means that no option was chosen (discard all).
-   */
-  onAnyReturn(noptions: number, choice: number): void
-
-  /**
-   * This callback is called when a new run is executed,
-   * e.g., when multiple runs are executed in the simulator.
-   */
-  onRunCall(): void
-
-  /**
-   * This callback is called when the previous run has finished.
-   *
-   * @param outcome whether the run has:
-   *        - failed, that is, `none()`,
-   *        - finished after finding no violation, `just(mkBool(true))`,
-   *        - finished after finding a violation, `just(mkBool(false))`
-   * @param trace the array of produced states (each state is a record)
-   */
-  onRunReturn(outcome: Maybe<EvalResult>, trace: EvalResult[]): void
-}
-
-/**
- * An implementation of ExecutionListener that does nothing.
- */
-export const emptyExecutionListener: ExecutionListener = {
-  onUserOperatorCall: (_app: QuintApp) => {},
-  onUserOperatorReturn: (_app: QuintApp,
-                         _args: EvalResult[], _result: Maybe<EvalResult>) => {},
-  onAnyOptionCall: (_anyExpr: QuintApp, _position: number) => {},
-  onAnyOptionReturn: (_anyExpr: QuintApp, _position: number) => {},
-  onAnyReturn: (_noptions: number, _choice: number) => {},
-  onRunCall: () => {},
-  onRunReturn: (_outcome: Maybe<EvalResult>, _trace: EvalResult[]) => {},
-}
 

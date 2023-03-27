@@ -22,8 +22,9 @@ import {
 } from './runtime/compile'
 import { formatError } from './errorReporter'
 import {
-  ComputableKind, EvalResult, Register, emptyExecutionListener, kindName
+  ComputableKind, EvalResult, Register, kindName
 } from './runtime/runtime'
+import { emptyExecutionListener } from './runtime/trace'
 import { ErrorMessage, probeParse } from './quintParserFrontend'
 import { IdGenerator, newIdGenerator } from './idGenerator'
 import { chalkQuintEx } from './graphics'

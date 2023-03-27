@@ -17,7 +17,8 @@ import { TypeScheme } from '../types/base'
 import { CompilationContext, compile } from './compile'
 import { newIdGenerator } from './../idGenerator'
 import { LookupTable } from '../lookupTable'
-import { Computable, emptyExecutionListener, kindName } from './runtime'
+import { Computable, kindName } from './runtime'
+import { emptyExecutionListener } from './trace'
 
 /**
  * Evaluation result.

@@ -20,6 +20,7 @@ import { QuintApp, QuintEx } from './quintIr'
 import { Computable, EvalResult } from './runtime/runtime'
 import { ExecutionFrame, newTraceRecorder } from './runtime/trace'
 import { IdGenerator } from './idGenerator'
+import { verbosity } from './verbosity'
 
 /**
  * Various settings that have to be passed to the simulator to run.

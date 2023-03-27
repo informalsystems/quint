@@ -12,7 +12,8 @@ import { Either, left, right } from '@sweet-monads/either'
 import {
   ErrorMessage, Loc, fromIrErrorMessage, parsePhase1, parsePhase2
 } from '../quintParserFrontend'
-import { Computable, ComputableKind, ExecutionListener, kindName } from './runtime'
+import { Computable, ComputableKind, kindName } from './runtime'
+import { ExecutionListener } from './trace'
 import { QuintModule } from '../quintIr'
 import { CompilerVisitor } from './impl/compilerImpl'
 import { walkDefinition } from '../IRVisitor'
