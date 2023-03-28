@@ -25,7 +25,7 @@ module erc20 {
     type Uint = int
     pure def MAX_UINT = 2^256
 
-    // a state of an ERC20 contract/token
+    // A state of an ERC20 contract/token
     type Erc20State = {
         balanceOf: Address -> Uint,
         totalSupply: Uint,
@@ -107,7 +107,7 @@ module erc20 {
     }
 
     /**
-     * ERC20: Moves amount tokens from the caller’s account to to.
+     * ERC20: Moves amount tokens from the caller’s account to `toAddress`.
      * Returns a boolean value indicating whether the operation succeeded.
      *
      * Quint: also return an error code and the new state.
@@ -123,7 +123,7 @@ module erc20 {
      * ERC20: Returns the remaining number of tokens that spender will be allowed to
      * spend on behalf of owner through transferFrom. This is zero by default.
      *
-     * This value changes when approve or transferFrom are called.
+     * This value may change when approve or transferFrom are called.
      */
     pure def allowance(state: Erc20State, owner: Address, spender: Address): Uint = {
         state.allowance.get((owner, spender))
