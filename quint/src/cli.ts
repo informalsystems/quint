@@ -92,7 +92,7 @@ const testCmd = {
         desc: 'control how much output is produced (0 to 5)',
         type: 'number',
       })
-      .default('verbosity', 2),
+      .default('verbosity', 2)
 // Timeouts are postponed for:
 // https://github.com/informalsystems/quint/issues/633
 //
