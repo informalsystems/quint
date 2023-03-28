@@ -339,11 +339,21 @@ module mempool {
      * A test that demonstrates that the above invariant may be violated.
      * Yes, we have copied it from the simulator output.
      */
-    run transferFromWhileApproveInFlight = {
+    run transferFromWhileApproveInFlightTest = {
         all {
             erc20State' = newErc20("alice", 91),
             mempool' = Set(),
             lastTx' = NoneTx,
         }
+        // alice set a high approval for bob
+        .then(submit(ApproveTx("alice", "bob", 92)))
+        // bob immediately initiates his transferFrom transaction
+        .then(submit(TransferFromTx("bob", "alice", "eve", 54)))
+        // alice changes her mind and lowers her approval to bob
+        .then(submit(ApproveTx("alice", "bob", 9)))
+        // but the previous approval arrives at the ledger
+        .then(commit(ApproveTx("alice", "bob", 92)))
+        // ...and bob manages to transfer more than alice wanted to
+        .then(commit(TransferFromTx("bob", "alice", "eve", 54)))
     }
 }
