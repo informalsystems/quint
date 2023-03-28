@@ -107,7 +107,7 @@ module erc20 {
     }
 
     /**
-     * ERC20: Moves amount tokens from the caller’s account to `toAddress`.
+     * ERC20: Moves amount tokens from the sender’s account to `toAddress`.
      * Returns a boolean value indicating whether the operation succeeded.
      *
      * Quint: also return an error code and the new state.
@@ -124,6 +124,8 @@ module erc20 {
      * spend on behalf of owner through transferFrom. This is zero by default.
      *
      * This value may change when approve or transferFrom are called.
+     *
+     * Quint: the actual allowance is set up to 0 in newErc20.
      */
     pure def allowance(state: Erc20State, owner: Address, spender: Address): Uint = {
         state.allowance.get((owner, spender))
@@ -152,7 +154,7 @@ module erc20 {
     }
 
     /**
-     * Moves amount tokens from from to to using the allowance mechanism.
+     * Moves amount tokens from `fromAddr` to `toAddr` using the allowance mechanism.
      * amount is then deducted from the caller’s allowance.
      *
      * Returns a boolean value indicating whether the operation succeeded.
