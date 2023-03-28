@@ -225,7 +225,7 @@ Temporarily disabled.
 ### OK on test erc20.qnt
 
 <!-- !test check erc20 - Syntax/Types & Effects/Unit tests -->
-    quint test --main=mempool ../examples/solidity/erc20/erc20.qnt
+    quint test --main=mempool ../examples/solidity/ERC20/erc20.qnt
 
 ### OK on typecheck SuperSpec.qnt
 
