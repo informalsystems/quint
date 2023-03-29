@@ -260,10 +260,9 @@ quint test --main counters --seed 1 \
 
   1) failingTest:
       HOME/counters.qnt:84:9 - error: Assertion failed
-      84:         assert(n == 0),
-                  ^^^^^^^^^^^^^^
-      
 
+
+  Use --verbosity=3 to show executions.
 ```
 
 ### Run finds an invariant violation
