@@ -342,10 +342,10 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
           // output the header
           out(`  ${index + 1}) ${name}:`)
           const lines = details.split('\n')
-          // output the first line in red
-          if (lines.length > 0) {
-            out(chalk.red('      ' + lines[0]))
-          }
+          // output the first two lines in red
+          lines.slice(0, 2).forEach(l =>
+            out(chalk.red('      ' + l))
+          )
 
           if (verbosity.hasActionTracking(verbosityLevel)) {
             out('')
