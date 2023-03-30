@@ -354,6 +354,10 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
               printExecutionFrameRec(l => out('    ' + l), f, [])
               out('')
             })
+
+            if (testResult.frames.length == 0) {
+              out('    [No execution]')
+            }
           }
         })
         out('')

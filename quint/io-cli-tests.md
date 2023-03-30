@@ -266,6 +266,38 @@ quint test --main counters --seed 1 \
   Use --verbosity=3 to show executions.
 ```
 
+### test counters produces no execution
+
+`test` should handle the special case of when an execution has not been
+recorded yet.
+
+<!-- !test in test empty trace -->
+```
+quint test --seed 1 --verbosity=3 \
+  ../examples/language-features/counters.qnt 2>&1 | \
+  sed 's/([0-9]*ms)/(duration)/g' | \
+  sed 's#^.*counters.qnt#      HOME/counters.qnt#g'
+```
+
+<!-- !test out test empty trace -->
+```
+
+  counters
+    ok passingTest
+    1) failingTest
+
+  1 passing (duration)
+  1 failed
+  1 ignored
+
+  1) failingTest:
+      HOME/counters.qnt:84:9 - error: Assertion failed
+      84:         assert(n == 0),
+
+    [No execution]
+
+```
+
 ### Run finds an invariant violation
 
 The command `run` finds an invariant violation.
