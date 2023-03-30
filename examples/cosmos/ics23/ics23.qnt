@@ -652,7 +652,7 @@ module trees {
     // go over the nodes from max to min
     val maxNode = 2^height
     0.range(2^height)
-      .fold(Map(),
+      .foldl(Map(),
         (m, key) =>
           if (isNode(t, maxNode - key)) putNodeHash(m, maxNode - key) else m
     )
