@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 ### Deprecated
 ### Removed
+
+- remove `foldr` (#760)
+
 ### Fixed
 ### Security
 
