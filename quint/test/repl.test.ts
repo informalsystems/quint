@@ -227,6 +227,30 @@ describe('repl ok', () => {
     await assertRepl(input, output)
   })
 
+  it('change verbosity and track executions', async() => {
+    const input = dedent(
+      `pure def plus(x, y) = x + y
+      |.verbosity=4
+      |plus(2, 3)
+      |`
+    )
+    const output = dedent(
+      `>>> pure def plus(x, y) = x + y
+      |
+      |>>> .verbosity=4
+      |.verbosity=4
+      |>>> plus(2, 3)
+      |5
+      |
+      | [Frame 0]
+      | q::input() => 5
+      | └─ plus(2, 3) => 5
+      |
+      |>>> `
+    )
+    await assertRepl(input, output)
+  })
+
   it('handle exceptions', async() => {
     const input = dedent(
       `Set(Int)
