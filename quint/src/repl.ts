@@ -12,7 +12,7 @@ import * as readline from 'readline'
 import { Readable, Writable } from 'stream'
 import { readFileSync, writeFileSync } from 'fs'
 import lineColumn from 'line-column'
-import { just, none } from '@sweet-monads/maybe'
+import { Maybe, just, none } from '@sweet-monads/maybe'
 import { left, right } from '@sweet-monads/either'
 import chalk from 'chalk'
 
@@ -24,7 +24,7 @@ import { formatError } from './errorReporter'
 import {
   ComputableKind, EvalResult, Register, kindName
 } from './runtime/runtime'
-import { noExecutionListener } from './runtime/trace'
+import { noExecutionListener, newTraceRecorder } from './runtime/trace'
 import { ErrorMessage, probeParse } from './quintParserFrontend'
 import { IdGenerator, newIdGenerator } from './idGenerator'
 import { chalkQuintEx } from './graphics'
@@ -53,7 +53,9 @@ interface ReplState {
   // variables internal to the simulator and REPL
   shadowVars: Map<string, EvalResult>,
   // filename and module name that were loaded with .load filename module
-  lastLoadedFileAndModule: [string?, string?]
+  lastLoadedFileAndModule: [string?, string?],
+  // verbosity level
+  verbosityLevel: number
 }
 
 // The default exit terminates the process.
@@ -102,6 +104,7 @@ export function quintRepl(input: Readable,
     vars: new Map<string, EvalResult>(),
     shadowVars: new Map<string, EvalResult>(),
     lastLoadedFileAndModule: [undefined, undefined],
+    verbosityLevel: options.verbosity,
   }
   // we let the user type a multiline string, which is collected here:
   let multilineText = ''
@@ -252,9 +255,9 @@ export function quintRepl(input: Readable,
         if (!args[1] || args[1].match(/^[0-5]$/) === null) {
           out(r('.verbosity requires a level from 0 to 5'))
         } else {
-          options.verbosity = Number(args[1])
-          if (verbosity.hasReplPrompt(options.verbosity)) {
-            out(g(`.verbosity is set to ${options.verbosity}`))
+          state.verbosityLevel = Number(args[1])
+          if (verbosity.hasReplPrompt(state.verbosityLevel)) {
+            out(g(`.verbosity is set to ${state.verbosityLevel}`))
           }
           rl.setPrompt(prompt(settings.prompt))
         }
@@ -366,7 +369,8 @@ function evalAndSaveRegisters(kind: ComputableKind, names: string[],
   }
 }
 
-function saveVars(state: ReplState, context: CompilationContext): void {
+function saveVars
+    (state: ReplState, context: CompilationContext): Maybe<string[]> {
   function isNextSet(name: string) {
     const register = context.values.get(kindName('nextvar', name)) as Register
     if (register) {
@@ -378,6 +382,11 @@ function saveVars(state: ReplState, context: CompilationContext): void {
   const isAction = [...context.vars].some(name => isNextSet(name))
   if (isAction) {
     evalAndSaveRegisters('nextvar', context.vars, context, state.vars)
+
+    // return the names of the variables that have not been updated
+    return just([...context.vars].filter(name => !isNextSet(name)))
+  } else {
+    return none()
   }
 }
 
@@ -445,9 +454,10 @@ ${textToAdd}
     // embed expression text into a value definition inside a module
     const moduleText = prepareParserInput(`  action __input =\n${newInput}`)
     // compile the expression or definition and evaluate it
+    const recorder = newTraceRecorder(state.verbosityLevel)
     const context =
       compileFromCode(state.idGen,
-        moduleText, '__repl__', noExecutionListener, () => Math.random())
+        moduleText, '__repl__', recorder, () => Math.random())
     if (context.syntaxErrors.length > 0 ||
         context.compileErrors.length > 0 || context.analysisErrors.length > 0) {
       printErrors(moduleText, context)
@@ -468,10 +478,14 @@ ${textToAdd}
             const ex = value.toQuintEx(state.idGen)
             out(chalkQuintEx(ex))
             if (ex.kind === 'bool' && ex.value) {
-              // if this was an action and it was successful, save the state
-              // as actions are always boolean,
-              // don't even try to save the state for non-boolean expressions
-              saveVars(state, context)
+              // A Boolean expression may be an action or a run.
+              // Save the state, if there were any updates to variables.
+              saveVars(state, context).map(missing => {
+                if (missing.length > 0) {
+                  out(chalk.yellow('Warning: Some variables are undefined: '
+                                   + missing.join(', ')))
+                }
+              })
             }
             // save shadow vars in any case, e.g., the example trace
             saveShadowVars(state, context)
