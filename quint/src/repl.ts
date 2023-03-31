@@ -435,8 +435,8 @@ function loadShadowVars(state: ReplState, context: CompilationContext): void {
 // In the future, we will declare them in a separate module.
 const simulatorBuiltins =
 `val ${lastTraceName} = [];
-def _test(__nruns, __nsteps, __init, __next, __inv) = false;
-def _testOnce(__nsteps, __init, __next, __inv) = false;
+def q::test(q::nruns, q::nsteps, q::init, q::next, q::inv) = false;
+def q::testOnce(q::nsteps, q::init, q::next, q::inv) = false;
 `
 
 // try to evaluate the expression in a string and print it, if successful
@@ -471,7 +471,7 @@ ${textToAdd}
   }
   if (probeResult.kind === 'expr') {
     // embed expression text into a value definition inside a module
-    const moduleText = prepareParserInput(`  action __input =\n${newInput}`)
+    const moduleText = prepareParserInput(`  action q::input =\n${newInput}`)
     // compile the expression or definition and evaluate it
     const recorder = newTraceRecorder(state.verbosityLevel)
     const context =
@@ -487,7 +487,7 @@ ${textToAdd}
 
     loadVars(state, context)
     loadShadowVars(state, context)
-    const computable = contextNameLookup(context, '__input', 'callable')
+    const computable = contextNameLookup(context, 'q::input', 'callable')
     const result =
       computable
       .mapRight(comp => {
@@ -514,7 +514,7 @@ ${textToAdd}
               // Save the state, if there were any updates to variables.
               saveVars(state, context).map(missing => {
                 if (missing.length > 0) {
-                  out(chalk.yellow('Warning: Some variables are undefined: '
+                  out(chalk.yellow('[warning] some variables are undefined: '
                                    + missing.join(', ')))
                 }
               })
