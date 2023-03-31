@@ -27,7 +27,7 @@ import {
 import { noExecutionListener, newTraceRecorder } from './runtime/trace'
 import { ErrorMessage, probeParse } from './quintParserFrontend'
 import { IdGenerator, newIdGenerator } from './idGenerator'
-import { chalkQuintEx } from './graphics'
+import { chalkQuintEx, printExecutionFrameRec } from './graphics'
 import { verbosity } from './verbosity'
 
 // tunable settings
@@ -251,17 +251,20 @@ export function quintRepl(input: Readable,
         rl.prompt()
         break
 
-      case '.verbosity':
-        if (!args[1] || args[1].match(/^[0-5]$/) === null) {
+      case '.verbosity': {
+        // similar to yargs, accept: .verbosity n, .verbosity=n, .verbosity = n
+        const m = line.match(/^\.verbosity\s*=?\s*([0-5])$/)
+        if (!args[1] || m === null) {
           out(r('.verbosity requires a level from 0 to 5'))
         } else {
-          state.verbosityLevel = Number(args[1])
+          state.verbosityLevel = Number(m[1])
           if (verbosity.hasReplPrompt(state.verbosityLevel)) {
             out(g(`.verbosity is set to ${state.verbosityLevel}`))
           }
           rl.setPrompt(prompt(settings.prompt))
         }
-        break
+      }
+      break
 
       default:
         nextLine(line)
@@ -477,6 +480,19 @@ ${textToAdd}
           .map(value => {
             const ex = value.toQuintEx(state.idGen)
             out(chalkQuintEx(ex))
+
+            if (verbosity.hasUserOpTracking(state.verbosityLevel)) {
+              const trace = recorder.getBestTrace()
+              if (trace.subframes.length > 0) {
+                out('')
+                trace.subframes.forEach((f, i) => {
+                  out(` [Frame ${i}]`)
+                  printExecutionFrameRec(l => out(' ' + l), f, [])
+                  out('')
+                })
+              }
+            }
+
             if (ex.kind === 'bool' && ex.value) {
               // A Boolean expression may be an action or a run.
               // Save the state, if there were any updates to variables.
