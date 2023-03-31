@@ -42,7 +42,7 @@ const parseCmd = {
 // construct typecheck commands with yargs
 const typecheckCmd = {
   command: 'typecheck <input>',
-  desc: 'check types (TBD) and effects of a Quint specification',
+  desc: 'check types and effects of a Quint specification',
   builder: (yargs: any) =>
     yargs
       .option('out', {
