@@ -28,6 +28,7 @@ import { noExecutionListener } from './runtime/trace'
 import { ErrorMessage, probeParse } from './quintParserFrontend'
 import { IdGenerator, newIdGenerator } from './idGenerator'
 import { chalkQuintEx } from './graphics'
+import { verbosity } from './verbosity'
 
 // tunable settings
 export const settings = {
@@ -65,21 +66,23 @@ function defaultExit() {
 export interface ReplOptions {
   preloadFilename?: string,
   importModule?: string,
-  quiet?: boolean,
+  verbosity: number,
 }
 
 // the entry point to the REPL
 export function quintRepl(input: Readable,
                           output: Writable,
-                          options: ReplOptions = {},
+                          options: ReplOptions = {
+                            verbosity: verbosity.defaultLevel
+                          },
                           exit: () => void = defaultExit) {
   function out(text: string) {
     output.write(text + '\n')
   }
   function prompt(text: string) {
-    return options.quiet ? "" : text
+    return verbosity.hasReplPrompt(options.verbosity) ? text : ""
   }
-  if (!options.quiet) {
+  if (verbosity.hasReplBanners(options.verbosity)) {
     out(chalk.gray('Quint REPL v0.0.3'))
     out(chalk.gray('Type ".exit" to exit, or ".help" for more information'))
   }
