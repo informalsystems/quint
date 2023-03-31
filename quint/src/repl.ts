@@ -194,81 +194,97 @@ export function quintRepl(input: Readable,
 
   // the read-eval-print loop
   rl.on('line', (line) => {
-    const args = line.trim().split(/\s+/)
     const r = (s: string): string => { return chalk.red(s) }
     const g = (s: string): string => { return chalk.gray(s) }
-    switch (args[0]) {
-      case '.help':
-        out(`${r('.clear')}\tClear the history`)
-        out(`${r('.exit')}\tExit the REPL`)
-        out(`${r('.help')}\tPrint this help message`)
-        out(`${r('.load')} <filename> ${g('[<module>]')}\tClear the history,`)
-        out('     \tload the code from a file into the REPL session')
-        out('     \tand optionally import all definitions from <module>')
-        out(`${r('.reload')}\tClear the history, load and (optionally) import the last loaded file.`)
-        out('     \t^ a productivity hack')
-        out(`${r('.save')} <filename>\tSave the accumulated definitions to a file`)
-        out(`${r('.verbosity')} [0-5]\tSet the output level (0 = quiet, 5 = very detailed).`)
-        out('\nType an expression and press Enter to evaluate it.')
-        out('When the REPL switches to multiline mode "...", finish it with an empty line.')
-        out('\nPress Ctrl+C to abort current expression, Ctrl+D to exit the REPL')
-        break
+    if (!line.startsWith('.')) {
+      // an input to evaluate
+      nextLine(line)
+    } else {
+      // a special command to REPL, extract the command name
+      const m = line.match(/^\s*\.(\w+)/)
+      if (m === null) {
+        out(r(`Unexpected command: ${line}`))
+        out(g(`Type .help to see the list of commands`))
+      } else {
+        switch (m[1]) {
+          case 'help':
+            out(`${r('.clear')}\tClear the history`)
+            out(`${r('.exit')}\tExit the REPL`)
+            out(`${r('.help')}\tPrint this help message`)
+            out(`${r('.load')} <filename> ${g('[<module>]')}\tClear the history,`)
+            out('     \tload the code from a file into the REPL session')
+            out('     \tand optionally import all definitions from <module>')
+            out(`${r('.reload')}\tClear the history, load and (optionally) import the last loaded file.`)
+            out('     \t^ a productivity hack')
+            out(`${r('.save')} <filename>\tSave the accumulated definitions to a file`)
+            out(`${r('.verbosity')}=[0-5]\tSet the output level (0 = quiet, 5 = very detailed).`)
+            out('\nType an expression and press Enter to evaluate it.')
+            out('When the REPL switches to multiline mode "...", finish it with an empty line.')
+            out('\nPress Ctrl+C to abort current expression, Ctrl+D to exit the REPL')
+            break
 
-      case '.exit':
-        exit()
-        break
+          case 'exit':
+            exit()
+            break
 
-      case '.clear':
-        out('') // be nice to external programs
-        clearHistory()
-        break
+          case 'clear':
+            out('') // be nice to external programs
+            clearHistory()
+            break
 
-      case '.load': {
-        const [filename, moduleName] = [args[1], args[2]]
-        if (!filename) {
-          out(r('.load requires a filename'))
-        } else {
-          load(filename, moduleName)
-        }
-        rl.prompt()
-        break
-      }
+          case 'load': {
+            const args = line.trim().split(/\s+/)
+            const [filename, moduleName] = [args[1], args[2]]
+            if (!filename) {
+              out(r('.load requires a filename'))
+            } else {
+              load(filename, moduleName)
+            }
+            rl.prompt()
 
-      case '.reload':
-        if (state.lastLoadedFileAndModule[0] !== undefined) {
-          load(state.lastLoadedFileAndModule[0], state.lastLoadedFileAndModule[1])
-        } else {
-          out(r('Nothing to reload. Use: .load filename [moduleName].'))
-        }
-        break
-
-      case '.save':
-        if (!args[1]) {
-          out(r('.save requires a filename'))
-        } else {
-          saveToFile(out, state, args[1])
-        }
-        rl.prompt()
-        break
-
-      case '.verbosity': {
-        // similar to yargs, accept: .verbosity n, .verbosity=n, .verbosity = n
-        const m = line.match(/^\.verbosity\s*=?\s*([0-5])$/)
-        if (!args[1] || m === null) {
-          out(r('.verbosity requires a level from 0 to 5'))
-        } else {
-          state.verbosityLevel = Number(m[1])
-          if (verbosity.hasReplPrompt(state.verbosityLevel)) {
-            out(g(`.verbosity is set to ${state.verbosityLevel}`))
           }
-          rl.setPrompt(prompt(settings.prompt))
+          break
+
+          case 'reload':
+            if (state.lastLoadedFileAndModule[0] !== undefined) {
+              load(state.lastLoadedFileAndModule[0], state.lastLoadedFileAndModule[1])
+            } else {
+              out(r('Nothing to reload. Use: .load filename [moduleName].'))
+            }
+            break
+
+          case 'save': {
+            const args = line.trim().split(/\s+/)
+            if (!args[1]) {
+              out(r('.save requires a filename'))
+            } else {
+              saveToFile(out, state, args[1])
+            }
+            rl.prompt()
+          }
+          break
+
+          case 'verbosity': {
+            // similar to yargs, accept: .verbosity n, .verbosity=n, .verbosity = n
+            const m = line.match(/^\.verbosity\s*=?\s*([0-5])$/)
+            if (m === null) {
+              out(r('.verbosity requires a level from 0 to 5'))
+            } else {
+              state.verbosityLevel = Number(m[1])
+              if (verbosity.hasReplPrompt(state.verbosityLevel)) {
+                out(g(`.verbosity=${state.verbosityLevel}`))
+              }
+              rl.setPrompt(prompt(settings.prompt))
+            }
+          }
+          break
+
+          default:
+            out(r(`Unexpected command: ${line}`))
+            out(g(`Type .help to see the list of commands`))
+            break
         }
       }
-      break
-
-      default:
-        nextLine(line)
-        break
     }
     rl.prompt()
   }).on('close', () => {
