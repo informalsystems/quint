@@ -192,17 +192,20 @@ export function quintRepl(input: Readable,
   // the read-eval-print loop
   rl.on('line', (line) => {
     const args = line.trim().split(/\s+/)
+    const r = (s: string): string => { return chalk.red(s) }
+    const g = (s: string): string => { return chalk.gray(s) }
     switch (args[0]) {
       case '.help':
-        out('.clear\tClear the history')
-        out('.exit\tExit the REPL')
-        out('.help\tPrint this help message')
-        out('.load <filename> [<module>]\tClear the history,')
+        out(`${r('.clear')}\tClear the history`)
+        out(`${r('.exit')}\tExit the REPL`)
+        out(`${r('.help')}\tPrint this help message`)
+        out(`${r('.load')} <filename> ${g('[<module>]')}\tClear the history,`)
         out('     \tload the code from a file into the REPL session')
         out('     \tand optionally import all definitions from <module>')
-        out('.reload\tClear the history, load and (optionally) import the last loaded file.')
+        out(`${r('.reload')}\tClear the history, load and (optionally) import the last loaded file.`)
         out('     \t^ a productivity hack')
-        out('.save <filename>\tSave the accumulated definitions to a file')
+        out(`${r('.save')} <filename>\tSave the accumulated definitions to a file`)
+        out(`${r('.verbosity')} [0-5]\tSet the output level (0 = quiet, 5 = very detailed).`)
         out('\nType an expression and press Enter to evaluate it.')
         out('When the REPL switches to multiline mode "...", finish it with an empty line.')
         out('\nPress Ctrl+C to abort current expression, Ctrl+D to exit the REPL')
