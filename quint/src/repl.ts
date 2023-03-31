@@ -223,7 +223,7 @@ export function quintRepl(input: Readable,
       case '.load': {
         const [filename, moduleName] = [args[1], args[2]]
         if (!filename) {
-          out(chalk.red('.load requires a filename'))
+          out(r('.load requires a filename'))
         } else {
           load(filename, moduleName)
         }
@@ -235,17 +235,29 @@ export function quintRepl(input: Readable,
         if (state.lastLoadedFileAndModule[0] !== undefined) {
           load(state.lastLoadedFileAndModule[0], state.lastLoadedFileAndModule[1])
         } else {
-          out(chalk.red('Nothing to reload. Use: .load filename [moduleName].'))
+          out(r('Nothing to reload. Use: .load filename [moduleName].'))
         }
         break
 
       case '.save':
         if (!args[1]) {
-          out(chalk.red('.save requires a filename'))
+          out(r('.save requires a filename'))
         } else {
           saveToFile(out, state, args[1])
         }
         rl.prompt()
+        break
+
+      case '.verbosity':
+        if (!args[1] || args[1].match(/^[0-5]$/) === null) {
+          out(r('.verbosity requires a level from 0 to 5'))
+        } else {
+          options.verbosity = Number(args[1])
+          if (verbosity.hasReplPrompt(options.verbosity)) {
+            out(g(`.verbosity is set to ${options.verbosity}`))
+          }
+          rl.setPrompt(prompt(settings.prompt))
+        }
         break
 
       default:
