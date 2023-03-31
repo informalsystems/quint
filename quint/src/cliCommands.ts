@@ -260,7 +260,6 @@ export function runRepl(_argv: any) {
  * @param typedStage the procedure stage produced by `typecheck`
  */
 export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
-  // output to the console, unless the json output is enabled
   const verbosityLevel = !prev.args.out ? prev.args.verbosity : 0
   const out = console.log
 
