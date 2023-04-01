@@ -192,13 +192,14 @@ module erc20 {
     // Properties that do not belong to the original EIP20 spec,
     // but they should hold true.
 
+    pure def sumOverBalances(balances: Address -> int): int = {
+        balances.keys().fold(0, (sum, a) => sum + balances.get(a))
+    }
+
     // The total supply, as stored in the state,
     // is equal to the sum of amounts over all balances.
     pure def isTotalSupplyCorrect(state: Erc20State): bool = {
-      pure val actualTotalSupply = {
-        state.balanceOf.keys().fold(0, (sum, a) => sum + state.balanceOf.get(a))
-      }
-      state.totalSupply == actualTotalSupply
+      state.balanceOf.sumOverBalances() == state.totalSupply
     }
 
     // Zero address should not carry coins.
@@ -266,6 +267,54 @@ module erc20Tests {
     val zeroAddressInv = isZeroAddressEmpty(erc20State)
 
     val noOverflowsInv = isNoOverflows(erc20State)
+
+    // Randomized tests that test whether postconditions holds true.
+
+    // Since we want to test ERC20 methods in arbitrary states,
+    // not just in the initial states, we have to describe "reasonable" states.
+    action initArbitrary = all {
+        nondet owner = ADDR.exclude(Set("")).oneOf()
+        nondet balances = ADDR.setOfMaps(AMOUNTS).oneOf()
+        nondet allowances = tuples(ADDR, ADDR).setOfMaps(AMOUNTS).oneOf()
+        erc20State' = {
+            balanceOf: balances,
+            totalSupply: sumOverBalances(balances),
+            allowance: allowances,
+            owner: owner,
+        }
+    }
+
+    // the result of transfer matches our intuition
+    run transferTest = {
+        nondet sender = oneOf(ADDR)
+        nondet amount = oneOf(AMOUNTS)
+        nondet toAddr = oneOf(ADDR)
+        initArbitrary.then(
+            val result = erc20State.transfer(sender, toAddr, amount)
+            val newState = result._2._2
+            val ob = erc20State.balanceOf
+            val nb = newState.balanceOf
+            all {
+                assert(or {
+                    not(result._1),
+                    result._2._1 != "",
+                    if (sender != toAddr) and {
+                        nb.get(sender) == ob.get(sender) - amount,
+                        nb.get(toAddr) == ob.get(toAddr) + amount,
+                        ADDR.forall(a =>
+                            a == sender or a == toAddr or nb.get(a) == ob.get(a)
+                        ),
+                    } else {
+                        nb == ob
+                    },
+                }),
+                assert(newState.allowance == erc20State.allowance),
+                assert(newState.owner == erc20State.owner),
+                assert(newState.totalSupply == erc20State.totalSupply),
+                erc20State' = erc20State
+            }
+        )
+    }
 }
 
 // executing ERC20 transactions together with the mempool
