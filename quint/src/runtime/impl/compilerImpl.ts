@@ -1432,8 +1432,9 @@ export class CompilerVisitor implements IRVisitor {
                   // the run. Hence, do not report an error here, but simply
                   // drop the run. Otherwise, we would have a lot of false
                   // positives, which look like deadlocks but they are not.
-                  break
                   this.execListener.onUserOperatorReturn(nextApp, [], nextResult)
+                  break
+
                 }
               }
             }
