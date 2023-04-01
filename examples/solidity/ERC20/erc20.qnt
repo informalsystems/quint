@@ -23,7 +23,8 @@ module erc20 {
     // An EVM integer is 256 bits.
     // We are using big integers and check for overflows manually.
     type Uint = int
-    pure def MAX_UINT = 2^256
+    pure val MAX_UINT = 2^256 - 1
+    pure def isUint(i: int): bool = 0 <= i and i <= MAX_UINT
 
     // A state of an ERC20 contract/token
     type Erc20State = {
@@ -187,6 +188,84 @@ module erc20 {
             (true, _transfer(updatedState, fromAddr, toAddr, amount))
         }
     }
+
+    // Properties that do not belong to the original EIP20 spec,
+    // but they should hold true.
+
+    // The total supply, as stored in the state,
+    // is equal to the sum of amounts over all balances.
+    pure def isTotalSupplyCorrect(state: Erc20State): bool = {
+      pure val actualTotalSupply = {
+        state.balanceOf.keys().fold(0, (sum, a) => sum + state.balanceOf.get(a))
+      }
+      state.totalSupply == actualTotalSupply
+    }
+
+    // Zero address should not carry coins.
+    pure def isZeroAddressEmpty(state: Erc20State): bool = {
+        state.balanceOf.get("") == 0
+    }
+
+    // There are no overflows in totalSupply, balanceOf, and approve.
+    pure def isNoOverflows(state: Erc20State): bool = and {
+        isUint(state.totalSupply),
+        state.balanceOf.keys().forall(a => isUint(state.balanceOf.get(a))),
+        state.allowance.keys().forall(a => isUint(state.allowance.get(a))),
+    }
+}
+
+// A set of tests to check the contract
+module erc20Tests {
+    // We are using this module to test the contract,
+    // so we fix the set of addresses right away.
+    pure val ADDR = Set("alice", "bob", "eve", "")
+    // import all definitions from erc20 for the fixed addresses
+    import erc20(AllAddresses = ADDR).*
+
+    // We also restrict the amounts to restrict the search scope.
+    // When #566 is fixed, we would be able to use 256-bit integers.
+    pure val AMOUNTS = 0.to(100)
+
+    var erc20State: erc20State
+
+    action init = all {
+        nondet sender = ADDR.exclude(Set("")).oneOf()
+        nondet initialSupply = oneOf(AMOUNTS)
+        erc20State' = newErc20(sender, initialSupply),
+    }
+
+    // a helper action that assigns to state, provided that there are no errors
+    action fromResult(result: (bool, Erc20Result)): bool = all {
+        result._1,
+        result._2._1 != "",
+        erc20State' = result._2._2,
+    }
+
+    action step = {
+        // run the contract methods
+        nondet sender = oneOf(ADDR)
+        nondet amount = oneOf(AMOUNTS)
+        any {
+            // transfer
+            nondet toAddr = oneOf(ADDR)
+            fromResult(erc20State.transfer(sender, toAddr, amount)),
+            // approve
+            nondet spender = oneOf(ADDR)
+            fromResult(erc20State.approve(sender, spender, amount)),
+            // transferFrom
+            nondet fromAddr = oneOf(ADDR)
+            nondet toAddr = oneOf(ADDR)
+            fromResult(erc20State.transferFrom(sender, fromAddr, toAddr, amount)),
+        }
+    }
+
+    // test the following invariants via:
+    // quint run --verbosity=3 --main=erc20Tests --invariant=noOverflowsInv erc20.qnt
+    val totalSupplyInv = isTotalSupplyCorrect(erc20State)
+
+    val zeroAddressInv = isZeroAddressEmpty(erc20State)
+
+    val noOverflowsInv = isNoOverflows(erc20State)
 }
 
 // executing ERC20 transactions together with the mempool
@@ -195,6 +274,7 @@ module mempool {
     // so we fix the set of addresses right away.
     pure val ADDR = Set("alice", "bob", "eve", "")
     // We also restrict the amounts to restrict the search scope.
+    // When #566 is fixed, we would be able to use 256-bit integers.
     pure val AMOUNTS = 0.to(100)
     // import all definitions from erc20 for the fixed addresses
     import erc20(AllAddresses = ADDR).*
