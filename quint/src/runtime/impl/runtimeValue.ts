@@ -1377,7 +1377,7 @@ class RuntimeValueInfSet extends RuntimeValueBase implements RuntimeValue {
       // Simply return the position. It's up to the caller to pick the position.
       return just(rv.mkInt(position))
     } else {
-      // Return the absolute value of the position.
+      // Nat: return the absolute value of the position.
       return just(rv.mkInt(position >= 0n ? position : -position))
     }
   }
