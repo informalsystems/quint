@@ -477,7 +477,7 @@ ${textToAdd}
     // embed expression text into a value definition inside a module
     const moduleText = prepareParserInput(`  action q::input =\n${newInput}`)
     // compile the expression or definition and evaluate it
-    const recorder = newTraceRecorder(state.verbosityLevel)
+    const recorder = newTraceRecorder(state.verbosityLevel, rng)
     const context =
       compileFromCode(state.idGen,
         moduleText, '__repl__', recorder, rng.next)

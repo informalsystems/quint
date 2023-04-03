@@ -289,7 +289,7 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
     const rng = mkRng(prev.args.seed)
     const options: TestOptions = {
       testMatch: (n: string) => { return isMatchingTest(prev.args.match, n) },
-      rand: rng.next,
+      rng,
       verbosity: verbosityLevel,
     }
     const testOut =
@@ -359,6 +359,8 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
               out('    [No execution]')
             }
           }
+          // output the seed
+          out(chalk.gray(`    Use --seed=${testResult.seed} --match=${testResult.name} to repeat.`))
         })
         out('')
       }
@@ -392,7 +394,7 @@ export function runSimulator(prev: TypecheckedStage):
     invariant: prev.args.invariant,
     maxSamples: prev.args.maxSamples,
     maxSteps: prev.args.maxSteps,
-    rand: rng.next,
+    rng,
     verbosity: verbosityLevel,
   }
   const startMs = Date.now()
@@ -421,8 +423,10 @@ export function runSimulator(prev: TypecheckedStage):
         } else {
           console.log(chalk.red(`[${result.status}]`)
             + ' Found an issue ' + chalk.gray(`(${elapsedMs}ms).`))
+          console.log(chalk.gray(`Use --seed=${result.seed} to reproduce.`))
+
           if (verbosity.hasHints(options.verbosity)) {
-            console.log(chalk.gray('Use --verbosity to produce more (or less) output.'))
+            console.log(chalk.gray('Use --verbosity=3 to show executions.'))
           }
         }
       }
