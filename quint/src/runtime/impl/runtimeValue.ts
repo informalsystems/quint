@@ -1067,7 +1067,7 @@ class RuntimeValueCrossProd
         return none()
       }
       const card = cardOrNone.value
-      const elemOrNone = set.pick((index % card) / card)
+      const elemOrNone = set.pick(index % card)
       if (elemOrNone.isNone()) {
         return none()
       } else {
@@ -1270,7 +1270,6 @@ class RuntimeValueMapSet
     return merge([this.rangeSet.cardinality(), this.domainSet.cardinality()]).map(([rc, dc]) =>
       rc ** dc
     )
-    // return this.rangeSet.cardinality() ** this.domainSet.cardinality()
   }
 
   pick(position: bigint): Maybe<RuntimeValue> {
@@ -1289,8 +1288,8 @@ class RuntimeValueMapSet
     }
 
     for (let i = 0n; i < domainSize; i++) {
-      const keyOrNone = this.domainSet.pick((i % domainSize) / domainSize)
-      const valueOrNone = this.rangeSet.pick((index % rangeSize) / rangeSize)
+      const keyOrNone = this.domainSet.pick(i)
+      const valueOrNone = this.rangeSet.pick(index % rangeSize)
       index = index / rangeSize
       if (keyOrNone.isJust() && valueOrNone.isJust()) {
         keyValues.push([keyOrNone.value, valueOrNone.value])
