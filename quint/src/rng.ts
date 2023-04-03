@@ -2,9 +2,10 @@
  * The interface to a pseudo random number generator. Currently, we are using
  * the "squares" fast random number generator.
  *
- * See: Bernard Widynski. Squares: A Fast Counter-Based RNG. Arxiv, May 5, 2020.
+ * See:
+ * Bernard Widynski. Squares: A Fast Counter-Based RNG. Arxiv, Mar 13, 2022.
  *
- * [1]: https://arxiv.org/pdf/2004.06278v2.pdf
+ * [1]: https://arxiv.org/pdf/2004.06278v7.pdf
  *
  * We have tried to use the package 'squares-rng', but it was too hard to make
  * it run with NodeJS and VSCode, as 'squares-rng' is using the ESM modules.
@@ -126,25 +127,29 @@ const key: bigint = 0xfb9e125878fa6cb3n
  * The C code from the paper [1]:
  *
  * ```c
- * inline static uint32_t squares(uint64_t ctr, uint64_t key) {
- *   uint64_t x, y, z;
- *   y = x = ctr * key; z = y + key;
- *   x = x*x + y; x = (x>>32) | (x<<32); // round 1
- *   x = x*x + z; x = (x>>32) | (x<<32); // round 2
- *   return (x*x + y) >> 32; // round 3
- * }
+ *  inline static uint32_t squares32(uint64_t ctr, uint64_t key) {
+ *  uint64_t x, y, z;
+ *  y = x = ctr * key; z = y + key;
+ *  x = x*x + y; x = (x>>32) | (x<<32); // round 1
+ *  x = x*x + z; x = (x>>32) | (x<<32); // round 2
+ *  x = x*x + y; x = (x>>32) | (x<<32); // round 3
+ *  return (x*x + z) >> 32; // round 4
+ *  }
  * ```
  */
 const squares64 = (counter: bigint): bigint => {
   let x = (counter * key) % U64
   let y = x
   let z = (y + key) % U64
-  x = (((x * x) % U64) + y) % U64
   // round 1
+  x = (((x * x) % U64) + y) % U64
   x = ((x / U32) + ((x * U32) % U64)) % U64
-  x = (((x * x) % U64) + z) % U64
   // round 2
+  x = (((x * x) % U64) + z) % U64
   x = ((x / U32) + ((x * U32) % U64)) % U64
   // round 3
-  return ((((x * x) % U64) + y) % U64) / U32
+  x = (((x * x) % U64) + y) % U64
+  x = ((x / U32) + ((x * U32) % U64)) % U64
+  // round 4
+  return ((((x * x) % U64) + z) % U64) / U32
 }
