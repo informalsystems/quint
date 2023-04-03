@@ -85,7 +85,7 @@ export const newRng = (): Rng => {
         // while shifting the previous output to the left
         output = (output * U32) + squares64(state)
         // advance the RNG state, while staying within 64 bits
-        state = (state + 1) % U64
+        state = (state + 1n) % U64
         // forget the least significant 32 bits of the input
         input /= U32
         // shift the base by 32 bits to the left
@@ -99,7 +99,7 @@ export const newRng = (): Rng => {
       // we should figure out, how to make the distribution uniform.
       output = (squares64(state) % input) * base + output
       // advance the RNG state, while staying within 64 bits
-      state = (state + 1) % U64
+      state = (state + 1n) % U64
       return output
     },
   }
