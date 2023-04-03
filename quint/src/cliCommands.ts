@@ -12,7 +12,6 @@ import JSONbig from 'json-bigint'
 import { basename, resolve } from 'path'
 import { cwd } from 'process'
 import chalk from 'chalk'
-import seedrandom from 'seedrandom'
 
 import {
   ErrorMessage, Loc, compactSourceMap, parsePhase1, parsePhase2
@@ -35,6 +34,7 @@ import { SimulatorOptions, compileAndRun } from './simulation'
 import { toItf } from './itf'
 import { printTrace, printExecutionFrameRec } from './graphics'
 import { verbosity } from './verbosity'
+import { Rng, newRng } from './rng'
 
 export type stage =
   'loading' | 'parsing' | 'typechecking' |
@@ -286,9 +286,10 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
     const matchFun =
       (n: string): boolean => isMatchingTest(prev.args.match, n)
 
+    const rng = mkRng(prev.args.seed)
     const options: TestOptions = {
       testMatch: (n: string) => { return isMatchingTest(prev.args.match, n) },
-      rand: mkRng(prev.args.seed),
+      rand: rng.next,
       verbosity: verbosityLevel,
     }
     const testOut =
@@ -384,13 +385,14 @@ export function runSimulator(prev: TypecheckedStage):
   const mainName = mainArg ? mainArg : basename(prev.args.input, '.qnt')
   const verbosityLevel =
     (!prev.args.out && !prev.args.outItf) ? prev.args.verbosity : 0
+  const rng = mkRng(prev.args.seed)
   const options: SimulatorOptions = {
     init: prev.args.init,
     step: prev.args.step,
     invariant: prev.args.invariant,
     maxSamples: prev.args.maxSamples,
     maxSteps: prev.args.maxSteps,
-    rand: mkRng(prev.args.seed),
+    rand: rng.next,
     verbosity: verbosityLevel,
   }
   const startMs = Date.now()
@@ -530,12 +532,12 @@ function replacer(_key: String, value: any): any {
  * Produce a random-number generator: Either a predictable one using a seed,
  * or a reasonably unpredictable one.
  */
-function mkRng(seed: string | undefined): () => number {
+function mkRng(seed: string | undefined): Rng {
+  const r = newRng()
   if (seed) {
-    return seedrandom(seed)
-  } else {
-    return seedrandom()
+    r.setState(seed)
   }
+  return r
 }
 
 /**

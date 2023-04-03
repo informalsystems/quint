@@ -25,7 +25,7 @@ import { ExecutionFrame, newTraceRecorder } from './trace'
  */
 export interface TestOptions {
   testMatch: (n: string) => boolean,
-  rand: () => number,
+  rand: (bound: bigint) => bigint,
   verbosity: number,
 }
 

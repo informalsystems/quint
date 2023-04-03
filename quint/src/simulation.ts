@@ -33,7 +33,7 @@ export interface SimulatorOptions {
   invariant: string,
   maxSamples: number,
   maxSteps: number,
-  rand: () => number,
+  rand: (bound: bigint) => bigint,
   verbosity: number,
 }
 
