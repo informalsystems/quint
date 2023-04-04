@@ -1325,7 +1325,7 @@ export class CompilerVisitor implements IRVisitor {
           return set.pick(this.rand(sizeOrNone.value))
         }
         // an infinite set, pick an integer from the range [-2^255, 2^255)
-        return set.pick(this.rand(-(2n ** 255n) + this.rand(2n ** 256n)))
+        return set.pick(-(2n ** 255n) + this.rand(2n ** 256n))
       }
     )
   }
