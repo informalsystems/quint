@@ -37,7 +37,7 @@ export interface Rng {
   getState(): string
 
   /**
-   * Reset the RNG with the previously obtained state.
+   * Reset the RNG with a previously obtained state.
    */
   setState(state: string): void
 
