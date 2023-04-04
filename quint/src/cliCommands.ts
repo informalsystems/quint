@@ -360,7 +360,7 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
             }
           }
           // output the seed
-          out(chalk.gray(`    Use --seed=${testResult.seed} --match=${testResult.name} to repeat.`))
+          out(chalk.gray(`    Use --seed=${testResult.seed.toString(16)} --match=${testResult.name} to repeat.`))
         })
         out('')
       }
@@ -423,7 +423,7 @@ export function runSimulator(prev: TypecheckedStage):
         } else {
           console.log(chalk.red(`[${result.status}]`)
             + ' Found an issue ' + chalk.gray(`(${elapsedMs}ms).`))
-          console.log(chalk.gray(`Use --seed=${result.seed} to reproduce.`))
+          console.log(chalk.gray(`Use --seed=${result.seed.toString(16)} to reproduce.`))
 
           if (verbosity.hasHints(options.verbosity)) {
             console.log(chalk.gray('Use --verbosity=3 to show executions.'))
@@ -536,12 +536,20 @@ function replacer(_key: String, value: any): any {
  * Produce a random-number generator: Either a predictable one using a seed,
  * or a reasonably unpredictable one.
  */
-function mkRng(seed: string | undefined): Rng {
-  const r = newRng()
-  if (seed) {
-    r.setState(seed)
+function mkRng(seedText?: string): Rng {
+  let seed
+  if (seedText !== undefined) {
+      // since yargs does not has a type for big integers,
+      // we do it with a fallback
+      try {
+      seed = BigInt(seedText)
+    } catch (SyntaxError) {
+      console.error(`--seed must be a big integer, found: ${seedText}`)
+      seed = undefined
+    }
   }
-  return r
+
+  return seed ? newRng(seed) : newRng()
 }
 
 /**

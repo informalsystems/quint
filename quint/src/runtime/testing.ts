@@ -46,7 +46,7 @@ export interface TestResult {
   /**
    * The seed value to repeat the test.
    */
-  seed: string,
+  seed: bigint,
   /**
    * When status === 'failed', errors contain the explanatory error messages.
    */

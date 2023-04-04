@@ -171,7 +171,7 @@ export const newTraceRecorder = (verbosityLevel: number, rng: Rng) => {
       return bestTrace
     },
 
-    getBestTraceSeed: (): string => {
+    getBestTraceSeed: (): bigint => {
       return bestTraceSeed
     },
 

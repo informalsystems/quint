@@ -25,6 +25,8 @@
  * information.
  */
 
+import { strict as assert } from "assert"
+
 /**
  * An interface to a random number generator that has the following property:
  * At any point in time we can extract the current state `s` and use it later to
@@ -34,12 +36,12 @@ export interface Rng {
   /**
    * Get the current state of the RNG, which can be reset with `setState`.
    */
-  getState(): string
+  getState(): bigint
 
   /**
    * Reset the RNG with a previously obtained state.
    */
-  setState(state: string): void
+  setState(state: bigint): void
 
   /**
    * Produce the next pseudo-random big integer in the range [0, bound)
@@ -57,27 +59,28 @@ const U32: bigint = 0x100000000n
 const U64: bigint = 0x10000000000000000n
 
 /**
- * Create a new instance of Rng, initialized from the current time and
- * other system state. If you want to initialize the random number generator
- * with a seed, create a new instance first, and then call `setState`.
+ * Create a new instance of Rng, given the supplied initial state.
+ * If no initial state is given, the generator is initialized from the current
+ * time and other system state.
  */
-export const newRng = (): Rng => {
+export const newRng = (initialState?: bigint): Rng => {
   // Produce a random integer with the system RNG.
   // Since the system generator is using `number`,
   // the number is in the range of [0, 2^53).
   let state: bigint =
-    BigInt(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER))
+    initialState ?? BigInt(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER))
   return {
-    getState: (): string => {
-      return '0x' + state.toString(16)
+    getState: (): bigint => {
+      return state
     },
 
-    setState: (s: string): void => {
+    setState: (s: bigint): void => {
       state = BigInt(s) % U64
     },
 
     next: (bound: bigint): bigint => {
-      let input: bigint = bound > 0n ? bound : 1n
+      assert(bound > 0n)
+      let input: bigint = bound
       let output: bigint = 0n
       let base: bigint = 1n
       while (input >= U32) {
@@ -106,7 +109,10 @@ export const newRng = (): Rng => {
 }
 
 /**
- * One of the keys used in this implementation. This is the key number 4.
+ * One of the keys used in this implementation. The key is mixed in the
+ * computation of the next pseudo-random number. It somehow affects the
+ * "randomness" of the produced values. For details, see the paper [1].
+ * This is the key number 4.
  *
  * See: https://squaresrng.wixsite.com/rand
  */
