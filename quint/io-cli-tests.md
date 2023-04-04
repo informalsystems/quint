@@ -302,7 +302,6 @@ exit $exit_code
     Init() => true
 
     Use --seed=0xb --match=failingTest to repeat.
-
 ```
 
 ### Run finds an invariant violation
@@ -545,7 +544,8 @@ quint -q -r \
 <!-- !test exit 1 -->
 <!-- !test in verbose test -->
 ```
-output=$(quint test --seed=0x1cce84523050d3 --verbosity=3 ../examples/solidity/Coin/coin.qnt)
+output=$(quint test --seed=0x1cce84523050d3 --match=mintTwiceThenSendTest \
+  --verbosity=3 ../examples/solidity/Coin/coin.qnt)
 exit_code=$?
 echo "$output" | sed -e 's/([0-9]*ms)/(duration)/g' -e 's#^.*coin.qnt#      HOME/coin.qnt#g'
 exit $exit_code
@@ -587,5 +587,4 @@ exit $exit_code
        └─ isUInt(145963574418946342547142173995097689803696706599151842181438832424509713441143) => false
 
     Use --seed=0x1cce84523050d3 --match=mintTwiceThenSendTest to repeat.
-
 ```

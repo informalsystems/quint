@@ -360,7 +360,7 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
             }
           }
           // output the seed
-          out(chalk.gray(`    Use --seed=${testResult.seed.toString(16)} --match=${testResult.name} to repeat.`))
+          out(chalk.gray(`    Use --seed=0x${testResult.seed.toString(16)} --match=${testResult.name} to repeat.`))
         })
         out('')
       }
@@ -428,7 +428,7 @@ export function runSimulator(prev: TypecheckedStage):
         } else {
           console.log(chalk.red(`[${result.status}]`)
             + ' Found an issue ' + chalk.gray(`(${elapsedMs}ms).`))
-          console.log(chalk.gray(`Use --seed=${result.seed.toString(16)} to reproduce.`))
+          console.log(chalk.gray(`Use --seed=0x${result.seed.toString(16)} to reproduce.`))
 
           if (verbosity.hasHints(options.verbosity)) {
             console.log(chalk.gray('Use --verbosity=3 to show executions.'))
