@@ -240,12 +240,13 @@ true
 
 The command `test` finds failing tests and prints error messages.
 
+<!-- !test exit 1 -->
 <!-- !test in test runs -->
 ```
-quint test --main counters --seed=1 \
-  ../examples/language-features/counters.qnt 2>&1 | \
-  sed 's/([0-9]*ms)/(duration)/g' | \
-  sed 's#^.*counters.qnt#      HOME/counters.qnt#g'
+output=$(quint test --main counters --seed 1 ../examples/language-features/counters.qnt)
+exit_code=$?
+echo "$output" | sed -e 's/([0-9]*ms)/(duration)/g' -e 's#^.*counters.qnt#      HOME/counters.qnt#g'
+exit $exit_code
 ```
 
 <!-- !test out test runs -->
@@ -273,12 +274,13 @@ quint test --main counters --seed=1 \
 `test` should handle the special case of when an execution has not been
 recorded yet.
 
+<!-- !test exit 1 -->
 <!-- !test in test empty trace -->
 ```
-quint test --seed 1 --verbosity=3 \
-  ../examples/language-features/counters.qnt 2>&1 | \
-  sed 's/([0-9]*ms)/(duration)/g' | \
-  sed 's#^.*counters.qnt#      HOME/counters.qnt#g'
+output=$(quint test --seed 1 --verbosity=3 ../examples/language-features/counters.qnt)
+exit_code=$?
+echo "$output" | sed -e 's/([0-9]*ms)/(duration)/g' -e 's#^.*counters.qnt#      HOME/counters.qnt#g'
+exit $exit_code
 ```
 
 <!-- !test out test empty trace -->
@@ -540,14 +542,13 @@ quint -q -r \
 
 ### test --verbosity=3 outputs a trace
 
+<!-- !test exit 1 -->
 <!-- !test in verbose test -->
 ```
-quint test --seed=0x1cce84523050d3 \
-  --match=mintTwiceThenSendTest \
-  --verbosity=3 \
-  ../examples/solidity/Coin/coin.qnt | \
-  sed 's/([0-9]*ms)/(duration)/g' | \
-  sed 's#^.*coin.qnt#      HOME/coin.qnt#g'
+output=$(quint test --seed=0x1cce84523050d3 --verbosity=3 ../examples/solidity/Coin/coin.qnt)
+exit_code=$?
+echo "$output" | sed -e 's/([0-9]*ms)/(duration)/g' -e 's#^.*coin.qnt#      HOME/coin.qnt#g'
+exit $exit_code
 ```
 
 <!-- !test out verbose test -->

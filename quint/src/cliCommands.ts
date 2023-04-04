@@ -288,7 +288,7 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
 
     const rng = mkRng(prev.args.seed)
     const options: TestOptions = {
-      testMatch: (n: string) => { return isMatchingTest(prev.args.match, n) },
+      testMatch: matchFun,
       rng,
       verbosity: verbosityLevel,
     }
@@ -372,7 +372,12 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
     } // else: we have handled the case of module not found already
 
     const errors = namedErrors.map(([_, e]) => e)
-    return right({ ...testing, passed, failed, ignored, errors })
+    const stage = { ...testing, passed, failed, ignored, errors }
+    if (errors.length == 0 && failed.length == 0) {
+      return right(stage)
+    } else {
+      return left({msg: "Tests failed", stage})
+    }
   }
 }
 
