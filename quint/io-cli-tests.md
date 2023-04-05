@@ -165,7 +165,7 @@ Trying to unify bool and int
 error: typechecking failed
 ```
 
-## Use of the `--required` flag
+## Use of `repl`, `test`, and `run`
 
 ### Repl loads a file with -r
 
@@ -587,4 +587,36 @@ exit $exit_code
        └─ isUInt(145963574418946342547142173995097689803696706599151842181438832424509713441143) => false
 
     Use --seed=0x1cce84523050d3 --match=mintTwiceThenSendTest to repeat.
+```
+
+### test fails on invalid seed
+
+<!-- !test exit 1 -->
+<!-- !test in test invalid seed -->
+```
+output=$(quint test --seed=NotANumber ../examples/solidity/Coin/coin.qnt)
+exit_code=$?
+echo "$output" | sed -e 's/([0-9]*ms)/(duration)/g' -e 's#^.*coin.qnt#      HOME/coin.qnt#g'
+exit $exit_code
+```
+
+<!-- !test err test invalid seed -->
+```
+error: --seed must be a big integer, found: NotANumber
+```
+
+### run fails on invalid seed
+
+<!-- !test exit 1 -->
+<!-- !test in run invalid seed -->
+```
+output=$(quint run --seed=NotANumber ../examples/solidity/Coin/coin.qnt)
+exit_code=$?
+echo "$output" | sed -e 's/([0-9]*ms)/(duration)/g' -e 's#^.*coin.qnt#      HOME/coin.qnt#g'
+exit $exit_code
+```
+
+<!-- !test err run invalid seed -->
+```
+error: --seed must be a big integer, found: NotANumber
 ```

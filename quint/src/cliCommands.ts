@@ -273,6 +273,12 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
       stage: { ...prev, errors: [] },
     })
   } else {
+    const rngOrError = mkRng(prev.args.seed)
+    if (rngOrError.isLeft()) {
+      return cliErr(rngOrError.value, { ...testing, errors: [] })
+    }
+    const rng = rngOrError.unwrap()
+
     let passed: string[] = []
     let failed: string[] = []
     let ignored: string[] = []
@@ -285,8 +291,6 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
 
     const matchFun =
       (n: string): boolean => isMatchingTest(prev.args.match, n)
-
-    const rng = mkRng(prev.args.seed)
     const options: TestOptions = {
       testMatch: matchFun,
       rng,
@@ -388,11 +392,16 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
  */
 export function runSimulator(prev: TypecheckedStage):
   CLIProcedure<SimulatorStage> {
+  const simulator = { ...prev, stage: 'running' as stage }
   const mainArg = prev.args.main
   const mainName = mainArg ? mainArg : basename(prev.args.input, '.qnt')
   const verbosityLevel =
     (!prev.args.out && !prev.args.outItf) ? prev.args.verbosity : 0
-  const rng = mkRng(prev.args.seed)
+  const rngOrError = mkRng(prev.args.seed)
+  if (rngOrError.isLeft()) {
+    return cliErr(rngOrError.value, { ...simulator, errors: [] })
+  }
+  const rng = rngOrError.unwrap()
   const options: SimulatorOptions = {
     init: prev.args.init,
     step: prev.args.step,
@@ -403,7 +412,7 @@ export function runSimulator(prev: TypecheckedStage):
     verbosity: verbosityLevel,
   }
   const startMs = Date.now()
-  const simulator = { ...prev, stage: 'running' as stage }
+  
   const result =
     compileAndRun(newIdGenerator(), prev.sourceCode, mainName, options)
   
@@ -541,20 +550,19 @@ function replacer(_key: String, value: any): any {
  * Produce a random-number generator: Either a predictable one using a seed,
  * or a reasonably unpredictable one.
  */
-function mkRng(seedText?: string): Rng {
+function mkRng(seedText?: string): Either<string, Rng> {
   let seed
   if (seedText !== undefined) {
       // since yargs does not has a type for big integers,
       // we do it with a fallback
-      try {
+    try {
       seed = BigInt(seedText)
     } catch (SyntaxError) {
-      console.error(`--seed must be a big integer, found: ${seedText}`)
-      seed = undefined
+      return left(`--seed must be a big integer, found: ${seedText}`)
     }
   }
 
-  return seed ? newRng(seed) : newRng()
+  return right(seed ? newRng(seed) : newRng())
 }
 
 /**
