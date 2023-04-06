@@ -80,6 +80,12 @@ Some of them accompany a TLA+ version for comparison and learning purposes.
 To simplify reading, use [syntax highlighting](./editor-plugins) for your
 editor (currently, VSCode, Emacs and Vim are supported).
 
+## Community and help
+
+- Join the chat in the [Quint zulip stream][] :telephone:
+- Join the [Quint discussions][] :bulb:
+- [Contribute](./CONTRIBUTING.md) to the development of Quint :construction_worker:
+
 ### Tools :space_invader:
 
 [Quick previews](./doc/previews.md) of the tools.
@@ -99,11 +105,11 @@ editor (currently, VSCode, Emacs and Vim are supported).
    errors as you type. Install the plugin from [Visual Studio Code
    Marketplace][].
 
-## Community
+ - VSCode plugin for [ITF traces][] by @hvanz:
 
-- Join the chat in the [Quint zulip stream][] :telephone:
-- Join the [Quint discussions][] :bulb:
-- [Contribute](./CONTRIBUTING.md) to the development of Quint :construction_worker:
+   This a plugin that visualizes traces that are produced by Quint and
+   [Apalache][]. Install the [ITF Trace Viewer][] from Visual Studio Code
+   Marketplace.
 
 ## Development
 
@@ -132,39 +138,39 @@ completely implementing every pass.
 - :green_circle: Won't get in your way, but there's still work to be done
 - :x: Not implemented yet
 
-| Language feature                  |       Parser       |  Name resolution   |      Effects       |    Type checker    |     Simulator      | To-Apalache |     Tutorials      |
-| :-------------------------------- | :----------------: | :----------------: | :----------------: | :----------------: | :----------------: | :---------: | :----------------: |
-| [Booleans][]                      | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |     :x:     | :white_check_mark: |
-| [Integers][]                      | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |     :x:     | :white_check_mark: |
-| [if-then-else][]                  | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |     :x:     | :white_check_mark: |
-| [Operator definitions][]          | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |     :x:     | :white_check_mark: |
-| [Modes][]                         | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |     :x:     | :white_check_mark: |
-| [Sets][]                          | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |     :x:     | :white_check_mark: |
-| [nondet][]                        | :white_check_mark: | :white_check_mark: |   :green_circle:   | :white_check_mark: | :white_check_mark: |     :x:     | :white_check_mark: |
-| [Maps][]                          | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |     :x:     |        :x:         |
-| [Lists][]                         | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |     :x:     |        :x:         |
-| [Records][]                       | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |     :x:     |        :x:         |
-| [Discriminated unions][]          | :white_check_mark: | :white_check_mark: | :white_check_mark: |    :x: [244][]     |    :x: [233][]     |     :x:     |        :x:         |
-| [Tuples][]                        | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |     :x:     | :white_check_mark: |
-| [Imports][]                       | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |     :x:     | :white_check_mark: |
-| [Module definitions][]            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |     :x:     | :white_check_mark: |
-| [Module instances][]              | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |     :x:     |        :x:         |
-| [Multiple files][]                |     :x: [8][]      | :white_check_mark: | :white_check_mark: | :white_check_mark: |        :x:         |     :x:     |        :x:         |
-| [Constant declarations][]         | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |    :x: [236][]     |     :x:     |        :x:         |
-| [Variable definitions][]          | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |     :x:     | :white_check_mark: |
-| [Assumptions][]                   | :white_check_mark: | :white_check_mark: | :white_check_mark: |   :green_circle:   |    :x: [235][]     |     :x:     |        :x:         |
-| [Lambdas][]                       | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |     :x:     | :white_check_mark: |
-| [Multiline disjunctions][]        | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |     :x:     | :white_check_mark: |
-| [Multiline conjunctions][]        | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |     :x:     | :white_check_mark: |
-| [Delayed assignment][]            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |     :x:     | :white_check_mark: |
-| Invariant checking                |         -          |         -          |         -          |         -          | :white_check_mark: |     :x:     | :white_check_mark: |
-| [Higher-order definitions][]      | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |    :x: [221][]     |     :x:     |        :x:         |
-| [Runs][]                          | :white_check_mark: | :white_check_mark: |   :green_circle:   | :white_check_mark: | :white_check_mark: |     :x:     | :white_check_mark: |
-| [Temporal operators][]            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |     *non-goal*     |     :x:     |        :x:         |
-| [Fairness][]                      | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |     *non-goal*     |     :x:     |        :x:         |
-| [Unbounded quantifiers][]         | :white_check_mark: | :white_check_mark: |        :x:         |        :x:         |     *non-goal*     |     :x:     |        :x:         |
-| [String literals][], see #118     | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |     :x:     | :white_check_mark: |
-| ~~uninterpreted types~~, see #118 | :white_check_mark: | :white_check_mark: |        :x:         |        :x:         |        :x:         |     :x:     |        :x:         |
+| Language feature                  | Parser             | Name resolution    | Effects            | Type checker       | Simulator          | To-Apalache        | Tutorials          |
+|:----------------------------------|:------------------:|:------------------:|:------------------:|:------------------:|:------------------:|:------------------:|:------------------:|
+| [Booleans][]                      | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark: |
+| [Integers][]                      | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark: |
+| [if-then-else][]                  | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark: |
+| [Operator definitions][]          | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark: |
+| [Modes][]                         | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark: |
+| [Sets][]                          | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark: |
+| [nondet][]                        | :white_check_mark: | :white_check_mark: | :green_circle:     | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark: |
+| [Maps][]                          | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :x:                |
+| [Lists][]                         | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                |
+| [Records][]                       | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :x:                |
+| [Discriminated unions][]          | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: [244][]        | :x: [233][]        | :x:                | :x:                |
+| [Tuples][]                        | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark: |
+| [Imports][]                       | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark: |
+| [Module definitions][]            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark: |
+| [Module instances][]              | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :x:                |
+| [Multiple files][]                | :x: [8][]          | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :x:                | :x:                |
+| [Constant declarations][]         | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: [236][]        | :x:                | :x:                |
+| [Variable definitions][]          | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark: |
+| [Assumptions][]                   | :white_check_mark: | :white_check_mark: | :white_check_mark: | :green_circle:     | :x: [235][]        | :x:                | :x:                |
+| [Lambdas][]                       | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark: |
+| [Multiline disjunctions][]        | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark: |
+| [Multiline conjunctions][]        | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark: |
+| [Delayed assignment][]            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark: |
+| Invariant checking                | -                  | -                  | -                  | -                  | :white_check_mark: | :x:                | :white_check_mark: |
+| [Higher-order definitions][]      | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: [221][]        | :x:                | :x:                |
+| [Runs][]                          | :white_check_mark: | :white_check_mark: | :green_circle:     | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark: |
+| [Temporal operators][]            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | *non-goal*         | :x:                | :x:                |
+| [Fairness][]                      | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | *non-goal*         | :x:                | :x:                |
+| [Unbounded quantifiers][]         | :white_check_mark: | :white_check_mark: | :x:                | :x:                | *non-goal*         | :x:                | :x:                |
+| [String literals][], see #118     | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark: |
+| ~~uninterpreted types~~, see #118 | :white_check_mark: | :white_check_mark: | :x:                | :x:                | :x:                | :x:                | :x:                |
 
 
 [Design Principles]: ./doc/design-principles.md
@@ -210,3 +216,5 @@ completely implementing every pass.
 [Tutorials]: ./tutorials/README.md
 [Quint zulip stream]: https://informal-systems.zulipchat.com/#narrow/stream/378959-quint
 [Quint discussions]: https://github.com/informalsystems/quint/discussions
+[ITF traces]: https://apalache.informal.systems/docs/adr/015adr-trace.html
+[ITF Trace Viewer]: https://marketplace.visualstudio.com/items?itemName=informal.itf-trace-viewer
