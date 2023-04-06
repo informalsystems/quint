@@ -323,6 +323,9 @@ module erc20Tests {
                 assert(newState.allowance == erc20State.allowance),
                 assert(newState.owner == erc20State.owner),
                 assert(newState.totalSupply == erc20State.totalSupply),
+                assert(newState.isTotalSupplyCorrect()),
+                assert(newState.isNoOverflows()),
+                assert(newState.isZeroAddressEmpty()),
                 erc20State' = erc20State
             }
         )
@@ -336,9 +339,7 @@ module mempool {
     // We are using this module to test the contract,
     // so we fix the set of addresses right away.
     pure val ADDR = Set("alice", "bob", "eve", "")
-    // We also restrict the amounts to restrict the search scope.
-    // When #566 is fixed, we would be able to use 256-bit integers.
-    pure val AMOUNTS = 0.to(100)
+    pure val AMOUNTS = 0.to(MAX_UINT)
     // import all definitions from erc20 for the fixed addresses
     import erc20(AllAddresses = ADDR).*
 
