@@ -307,11 +307,11 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
       if (verbosity.hasResults(verbosityLevel)) {
         results.forEach(res => {
           if (res.status === 'passed') {
-            out(`    ${chalk.green('ok ')} ${res.name} passed ${res.nsamples} test(s)`)
+            out(`    ${chalk.green('ok')} ${res.name} passed ${res.nsamples} test(s)`)
           }
           if (res.status === 'failed') {
             const errNo = chalk.red(namedErrors.length + 1)
-            out(`    ${errNo} ${res.name} failed after ${res.nsamples} test(s)`)
+            out(`    ${errNo}) ${res.name} failed after ${res.nsamples} test(s)`)
 
             res.errors.forEach(e => namedErrors.push([res.name, e, res]))
           }

@@ -15,7 +15,7 @@ import { QuintModule, QuintOpDef } from '../quintIr'
 import { TypeScheme } from '../types/base'
 
 import { CompilationContext, compile } from './compile'
-import { newIdGenerator } from './../idGenerator'
+import { zerog } from './../idGenerator'
 import { LookupTable } from '../lookupTable'
 import { Computable, kindName } from './runtime'
 import { ExecutionFrame, newTraceRecorder } from './trace'
@@ -118,7 +118,7 @@ export function compileAndTest(
             }
           }
 
-          const ex = result.value.toQuintEx(newIdGenerator())
+          const ex = result.value.toQuintEx(zerog)
           if (ex.kind !== 'bool') {
             // if the test returned a malformed result, return immediately
             return { name, status: 'ignored', errors: [], seed: seed, frames: [], nsamples: nsamples }
@@ -139,15 +139,22 @@ export function compileAndTest(
               nsamples: nsamples,
             }
           } else {
-            if (options.rng.getState() == seed) {
-              // This test did not use non-determinism. Running it one time is sufficient.
-              return { name, status: 'passed', errors: [], seed: seed, frames: [], nsamples: nsamples }
+            if (options.rng.getState() === seed) {
+              // This successful test did not use non-determinism.
+              // Running it one time is sufficient.
+              return {
+                 name, status: 'passed', errors: [],
+                 seed: seed, frames: [], nsamples: nsamples
+              }
             }
           }
         }
 
         // the test was run maxSamples times, and no errors were found
-        return { name, status: 'passed', errors: [], seed: seed, frames: [], nsamples: nsamples - 1 }
+        return {
+          name, status: 'passed', errors: [],
+          seed: seed, frames: [], nsamples: nsamples - 1
+        }
       })
   }))
 }
