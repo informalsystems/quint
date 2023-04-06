@@ -34,18 +34,30 @@ module erc20 {
         owner: Address,
     }
 
-    // The result of executing a ERC20 (error, nextState).
-    // If error != "", error stores the error message.
+    // The result of executing an ERC20 method.
+    // If error != "", the the following holds true:
+    //  - the field error stores the error message,
+    //  - the field state stores the input state,
+    //  - the field returnedTrue is irrelevant.
+    //
+    // If error == "", then the following holds true:
+    //  - the field returnedTrue is true, if the method returned true,
+    //  - the field state stores the modified state.
+    //
     // In the future, we should use ADTs:
     // https://github.com/informalsystems/quint/issues/539
-    type Erc20Result = (str, Erc20State)
-
-    pure def returnError(msg: str, state: Erc20State): Erc20Result = {
-        (msg, state)
+    type Erc20Result = {
+        returnedTrue: bool,
+        error: str,
+        state: Erc20State
     }
 
-    pure def returnState(state: Erc20State): Erc20Result = {
-        ("", state)
+    pure def returnError(msg: str, state: Erc20State): Erc20Result = {
+        { error: msg, state: state, returnedTrue: false }
+    }
+
+    pure def returnState(state: Erc20State, returnedTrue: bool): Erc20Result = {
+        { error: "", state: state, returnedTrue: returnedTrue }
     }
 
     // An auxilliary definition similar to Solidity's require
@@ -103,7 +115,7 @@ module erc20 {
                       .set(fromAddr, fromBalance - amount)
                       .setBy(toAddr, old => old + amount)
                 }
-            returnState(state.with("balanceOf", newBalances))
+            returnState(state.with("balanceOf", newBalances), true)
         }
     }
 
@@ -115,9 +127,9 @@ module erc20 {
      * If the error != "", the new state should be applied.
      */
     pure def transfer(state: Erc20State, sender: Address,
-            toAddr: Address, amount: Uint): (bool, Erc20Result) = {
+            toAddr: Address, amount: Uint): Erc20Result = {
         // `transfer` always returns true, but we should check Erc20Result.error
-        (true, _transfer(state, sender, toAddr, amount))
+        _transfer(state, sender, toAddr, amount)
     }
 
     /**
@@ -142,15 +154,15 @@ module erc20 {
      * If the error != "", the new state should be applied.
      */
     pure def approve(state: Erc20State, sender: Address,
-            spender: Address, amount: Uint): (bool, Erc20Result) = {
+            spender: Address, amount: Uint): Erc20Result = {
          val err = require(sender != "", "ERC20: transfer from the zero address")
             .andRequire(spender != "", "ERC20: transfer to the zero address")
         if (err != "") {
-            (true, returnError(err, state))
+            returnError(err, state)
         } else {
             // the case of sender == spender seems to be allowed
             val newAllowance = state.allowance.set((sender, spender), amount)
-            (true, returnState(state.with("allowance", newAllowance)))
+            returnState(state.with("allowance", newAllowance), true)
         }
     }
 
@@ -164,7 +176,7 @@ module erc20 {
      * If the error != "", the new state should be applied.
      */
     pure def transferFrom(state: Erc20State, sender: Address,
-            fromAddr: Address, toAddr: Address, amount: Uint): (bool, Erc20Result) = {
+            fromAddr: Address, toAddr: Address, amount: Uint): Erc20Result = {
         // _spendAllowance
         val currentAllowance = state.allowance(fromAddr, sender)
         val err =
@@ -182,10 +194,10 @@ module erc20 {
             }
 
         if (err != "") {
-            (true, returnError(err, state))
+            returnError(err, state)
         } else {
             // do the transfer
-            (true, _transfer(updatedState, fromAddr, toAddr, amount))
+            _transfer(updatedState, fromAddr, toAddr, amount)
         }
     }
 
@@ -236,10 +248,10 @@ module erc20Tests {
     }
 
     // a helper action that assigns to state, provided that there are no errors
-    action fromResult(result: (bool, Erc20Result)): bool = all {
-        result._1,
-        result._2._1 != "",
-        erc20State' = result._2._2,
+    action fromResult(result: Erc20Result): bool = all {
+        result.returnedTrue,
+        result.error == "",
+        erc20State' = result,
     }
 
     action step = {
@@ -260,7 +272,7 @@ module erc20Tests {
         }
     }
 
-    // test the following invariants via:
+    // check the following invariants via:
     // quint run --verbosity=3 --main=erc20Tests --invariant=noOverflowsInv erc20.qnt
     val totalSupplyInv = isTotalSupplyCorrect(erc20State)
 
@@ -291,13 +303,13 @@ module erc20Tests {
         nondet toAddr = oneOf(ADDR)
         initArbitrary.then(
             val result = erc20State.transfer(sender, toAddr, amount)
-            val newState = result._2._2
+            val newState = result.state
             val ob = erc20State.balanceOf
             val nb = newState.balanceOf
             all {
                 assert(or {
-                    not(result._1),
-                    result._2._1 != "",
+                    not(result.returnedTrue),
+                    result.error != "",
                     if (sender != toAddr) and {
                         nb.get(sender) == ob.get(sender) - amount,
                         nb.get(toAddr) == ob.get(toAddr) + amount,
@@ -315,6 +327,8 @@ module erc20Tests {
             }
         )
     }
+
+    // TODO: add functional tests for approve and transferFrom
 }
 
 // executing ERC20 transactions together with the mempool
@@ -388,10 +402,10 @@ module mempool {
     }
 
     // an auxilliary action that assigns variables from a method execution result
-    action fromResult(tx: Transaction, r: (bool, Erc20Result)): bool = all {
-        val status = if (r._1 and r._2._1 != "") r._2._1 else "success"
+    action fromResult(tx: Transaction, r: Erc20Result): bool = all {
+        val status = if (r.returnedTrue and r.error != "") r.error else "success"
         lastTx' = tx.with("status", status),
-        erc20State' = r._2._2,
+        erc20State' = r.state,
     }
 
     // commit a transaction from the memory pool
