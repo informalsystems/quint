@@ -501,7 +501,7 @@ export function runSimulator(prev: TypecheckedStage):
  *
  * @param prev the procedure stage produced by `typecheck`
  */
-export function verify(prev: TypecheckedStage):
+export function verifySpec(prev: TypecheckedStage):
   CLIProcedure<VerifierStage> {
   const verifier = { ...prev, stage: 'verifying' as stage }
   const _mainArg = prev.args.main
