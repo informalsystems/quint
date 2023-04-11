@@ -290,8 +290,8 @@ Options:
 
 - If there are no critical errors (e.g., in parsing, typechecking, etc.), this
 command sends the Quint specification to the [Apalache][] model checker, which
-is trying to find an invariant violation. If it finds one, it prints the trace
-on the standard output.  If it does not find a violating trace, it prints the
+will try to find an invariant violation. If it finds one, it prints the trace
+on the standard output. If it does not find a violating trace, it prints the
 longest sample trace that the simulator has found during the execution. When the
 parameter `--out` is supplied, the trace is written as a JSON representation of
 Quint IR in the output file. When the parameter `--out-itf` is supplied, the
