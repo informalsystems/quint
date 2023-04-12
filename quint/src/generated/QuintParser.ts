@@ -108,7 +108,7 @@ export class QuintParser extends Parser {
 	public static readonly RULE_moduleName = 9;
 	public static readonly RULE_name = 10;
 	public static readonly RULE_qualifiedName = 11;
-	public static readonly RULE_sourceName = 12;
+	public static readonly RULE_fromSource = 12;
 	public static readonly RULE_type = 13;
 	public static readonly RULE_typeUnionRecOne = 14;
 	public static readonly RULE_row = 15;
@@ -126,7 +126,7 @@ export class QuintParser extends Parser {
 	// tslint:disable:no-trailing-whitespace
 	public static readonly ruleNames: string[] = [
 		"modules", "module", "docLines", "unit", "operDef", "qualifier", "importMod", 
-		"exportMod", "instanceMod", "moduleName", "name", "qualifiedName", "sourceName", 
+		"exportMod", "instanceMod", "moduleName", "name", "qualifiedName", "fromSource", 
 		"type", "typeUnionRecOne", "row", "expr", "unitOrExpr", "lambda", "identOrHole", 
 		"parameter", "identOrStar", "argList", "normalCallName", "nameAfterDot", 
 		"operator", "literal",
@@ -697,7 +697,7 @@ export class QuintParser extends Parser {
 					this.state = 167;
 					this.match(QuintParser.T__18);
 					this.state = 168;
-					this.sourceName();
+					this.fromSource();
 					}
 				}
 
@@ -731,7 +731,7 @@ export class QuintParser extends Parser {
 					this.state = 177;
 					this.match(QuintParser.T__18);
 					this.state = 178;
-					this.sourceName();
+					this.fromSource();
 					}
 				}
 
@@ -1005,9 +1005,9 @@ export class QuintParser extends Parser {
 		return _localctx;
 	}
 	// @RuleVersion(0)
-	public sourceName(): SourceNameContext {
-		let _localctx: SourceNameContext = new SourceNameContext(this._ctx, this.state);
-		this.enterRule(_localctx, 24, QuintParser.RULE_sourceName);
+	public fromSource(): FromSourceContext {
+		let _localctx: FromSourceContext = new FromSourceContext(this._ctx, this.state);
+		this.enterRule(_localctx, 24, QuintParser.RULE_fromSource);
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
@@ -3697,8 +3697,8 @@ export class ImportModContext extends ParserRuleContext {
 	public identOrStar(): IdentOrStarContext | undefined {
 		return this.tryGetRuleContext(0, IdentOrStarContext);
 	}
-	public sourceName(): SourceNameContext | undefined {
-		return this.tryGetRuleContext(0, SourceNameContext);
+	public fromSource(): FromSourceContext | undefined {
+		return this.tryGetRuleContext(0, FromSourceContext);
 	}
 	constructor(parent: ParserRuleContext | undefined, invokingState: number) {
 		super(parent, invokingState);
@@ -3924,29 +3924,29 @@ export class QualifiedNameContext extends ParserRuleContext {
 }
 
 
-export class SourceNameContext extends ParserRuleContext {
+export class FromSourceContext extends ParserRuleContext {
 	public STRING(): TerminalNode { return this.getToken(QuintParser.STRING, 0); }
 	constructor(parent: ParserRuleContext | undefined, invokingState: number) {
 		super(parent, invokingState);
 	}
 	// @Override
-	public get ruleIndex(): number { return QuintParser.RULE_sourceName; }
+	public get ruleIndex(): number { return QuintParser.RULE_fromSource; }
 	// @Override
 	public enterRule(listener: QuintListener): void {
-		if (listener.enterSourceName) {
-			listener.enterSourceName(this);
+		if (listener.enterFromSource) {
+			listener.enterFromSource(this);
 		}
 	}
 	// @Override
 	public exitRule(listener: QuintListener): void {
-		if (listener.exitSourceName) {
-			listener.exitSourceName(this);
+		if (listener.exitFromSource) {
+			listener.exitFromSource(this);
 		}
 	}
 	// @Override
 	public accept<Result>(visitor: QuintVisitor<Result>): Result {
-		if (visitor.visitSourceName) {
-			return visitor.visitSourceName(this);
+		if (visitor.visitFromSource) {
+			return visitor.visitFromSource(this);
 		} else {
 			return visitor.visitChildren(this);
 		}

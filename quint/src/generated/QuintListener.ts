@@ -65,7 +65,7 @@ import { InstanceModContext } from "./QuintParser";
 import { ModuleNameContext } from "./QuintParser";
 import { NameContext } from "./QuintParser";
 import { QualifiedNameContext } from "./QuintParser";
-import { SourceNameContext } from "./QuintParser";
+import { FromSourceContext } from "./QuintParser";
 import { TypeContext } from "./QuintParser";
 import { TypeUnionRecOneContext } from "./QuintParser";
 import { RowContext } from "./QuintParser";
@@ -870,15 +870,15 @@ export interface QuintListener extends ParseTreeListener {
 	exitQualifiedName?: (ctx: QualifiedNameContext) => void;
 
 	/**
-	 * Enter a parse tree produced by `QuintParser.sourceName`.
+	 * Enter a parse tree produced by `QuintParser.fromSource`.
 	 * @param ctx the parse tree
 	 */
-	enterSourceName?: (ctx: SourceNameContext) => void;
+	enterFromSource?: (ctx: FromSourceContext) => void;
 	/**
-	 * Exit a parse tree produced by `QuintParser.sourceName`.
+	 * Exit a parse tree produced by `QuintParser.fromSource`.
 	 * @param ctx the parse tree
 	 */
-	exitSourceName?: (ctx: SourceNameContext) => void;
+	exitFromSource?: (ctx: FromSourceContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `QuintParser.type`.

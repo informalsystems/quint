@@ -55,8 +55,8 @@ qualifier : 'val'
           | 'temporal'
           ;
 
-importMod : 'import' name '.' identOrStar ('from' sourceName)?
-          | 'import' name ('as' name)? ('from' sourceName)?
+importMod : 'import' name '.' identOrStar ('from' fromSource)?
+          | 'import' name ('as' name)? ('from' fromSource)?
           ;
 
 exportMod : 'export' name '.' identOrStar
@@ -74,7 +74,7 @@ instanceMod :   // creating an instance and importing all names introduced in th
 moduleName : IDENTIFIER;
 name: IDENTIFIER;
 qualifiedName : IDENTIFIER;
-sourceName: STRING;
+fromSource: STRING;
 
 // Types in Type System 1.2 of Apalache, which supports discriminated unions
 type :          <assoc=right> type '->' type                    # typeFun
