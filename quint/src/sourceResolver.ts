@@ -17,26 +17,51 @@ import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
 
 /**
+ * An abstraction of a full path that is used to distinguish the same module,
+ * when it is resolved via different paths. Note that this path may be
+ * system-dependent and resolver dependent.
+ */
+export interface SourceLookupPath {
+  /**
+   * An internal representation of a path, which may be system-dependent.
+   * The important property is that this path is normalized, that is,
+   * when the same module is referred via different paths, we should still
+   * arrive at the same internal path representation.
+   */
+  normalizedPath: string
+}
+
+/**
  * A general interface for resolving sources.
  */
 export interface SourceResolver {
   /**
+   * Generate a source lookup path from a (system-dependent) basepath and
+   * the part that is used in the 'from' clause of imports.
+
+   * @param stempath a resolver-dependent and system dependent stem path
+   * @param importPath a path that is used in 'import ... from ...'
+   * @returns normalized source lookup path
+   */
+  mkLookupPath: (stempath: string, importPath: string) => SourceLookupPath
+
+  /**
    * Load text from the source pointed by the path. The path must be relative to the
    * basepath.
    * 
-   * @param basepath a name that used as a stem, when the path is relative, e.g., `./`.
-   * @param path a name that is resolvable by a source resolver, e.g., "./foo/bar.qnt"
+   * @param lookupPath a source lookup path created via `mkLookupPath`.
    * @returns either `left(errorMessage)` if the source cannot be loaded, or `right(text)`.
    */
-  load: (basepath: string, path: string) => Either<string, string>
+  load: (lookupPath: SourceLookupPath) => Either<string, string>
 
   /**
    * Extract the resolver-specific stem from a path, e.g., the directory name
    * if path is a path in a filesystem.
-   * @param path a path
+   *
+   * @param lookupPath a source lookup path created via `mkLookupPath`.
    * @returns the stem of a path, e.g., the parent directory
    */
-  stempath: (path: string) => string
+  stempath: (lookupPath: SourceLookupPath) => string
 }
 
 /**
@@ -47,17 +72,20 @@ export interface SourceResolver {
  */
 export const fileSourceResolver = (): SourceResolver => {
   return {
-    load: (basepath: string, path: string): Either<string, string> => {
-      const fullPath = join(basepath, path)
+    mkLookupPath: (basepath: string, importPath: string) => {
+      return { normalizedPath: join(basepath, importPath) }
+    },
+
+    load: (lookupPath: SourceLookupPath): Either<string, string> => {
       try {
-        return right(readFileSync(fullPath, 'utf8'))
+        return right(readFileSync(lookupPath.normalizedPath, 'utf8'))
       } catch (err: any) {
         return left(err.message)
       }
     },
 
-    stempath: (path: string): string => {
-      return dirname(path)
+    stempath: (lookupPath: SourceLookupPath): string => {
+      return dirname(lookupPath.normalizedPath)
     }
   }
 }
@@ -70,17 +98,22 @@ export const fileSourceResolver = (): SourceResolver => {
 */
 export const stringSourceResolver = (sources: Map<string, string>): SourceResolver => {
   return {
-    load: (basepath: string, path: string): Either<string, string> => {
+    mkLookupPath: (stempath: string, importPath: string) => {
+      return { normalizedPath: join(stempath, importPath) }
+    },
+
+    load: (lookupPath: SourceLookupPath): Either<string, string> => {
       // We are using nodejs path.join here.
       // If we have to decouple this resolver from nodejs in the future,
       // we would have to write our own version of join.
-      const fullpath = join(basepath, path)
-      const contents = sources.get(fullpath)
-      return contents ? right(contents) : left(`Source not found: '${fullpath}'`)
+      const contents = sources.get(lookupPath.normalizedPath)
+      return contents
+        ? right(contents)
+        : left(`Source not found: '${lookupPath.normalizedPath}'`)
     },
 
-    stempath: (path: string): string => {
-      return dirname(path)
+    stempath: (lookupPath: SourceLookupPath): string => {
+      return dirname(lookupPath.normalizedPath)
     }
   }
 }
