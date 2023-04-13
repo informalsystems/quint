@@ -1,5 +1,5 @@
 /* ----------------------------------------------------------------------------------
- * Copyright (c) Informal Systems 2021. All rights reserved.
+ * Copyright (c) Informal Systems 2021-2023. All rights reserved.
  * Licensed under the Apache 2.0.
  * See License.txt in the project root for license information.
  * --------------------------------------------------------------------------------- */
@@ -12,7 +12,7 @@ import { QuintListener } from './generated/QuintListener'
 import { ParseTreeWalker } from 'antlr4ts/tree/ParseTreeWalker'
 
 import { IrErrorMessage, QuintModule } from './quintIr'
-import { IdGenerator } from './idGenerator'
+import { IdGenerator, newIdGenerator } from './idGenerator'
 import { ToIrListener } from './ToIrListener'
 import { collectDefinitions } from './definitionsCollector'
 import { resolveNames } from './nameResolver'
@@ -23,6 +23,7 @@ import { Definition, LookupTable } from './lookupTable'
 import { Either, left, mergeInMany, right } from '@sweet-monads/either'
 import { mkErrorMessage } from './cliCommands'
 import { DefinitionsByModule, DefinitionsByName } from './definitionsByName'
+import { SourceLookupPath, SourceResolver } from './sourceResolver'
 
 export interface Loc {
   source: string;
@@ -129,6 +130,100 @@ export function parsePhase1(
 }
 
 /**
+ * Phase 1b of the Quint parser. Go over each definition of the form
+ * `import ... from '<path>'`, do the following:
+ * 
+ *  - parse the modules that are refferred by each path,
+ *  - add the parsed modules.
+ * 
+ * Cyclic dependencies among different files are reported as errors.
+ */
+export function parsePhase1b(
+  idGen: IdGenerator,
+  sourceResolver: SourceResolver,
+  mainPath: SourceLookupPath,
+  mainPhase1Result: ParserPhase1
+): ParseResult<ParserPhase1> {
+  // we accumulate the source map over all files here
+  let sourceMap = new Map(mainPhase1Result.sourceMap)
+  // The list of modules that have not been been processed yet.
+  // Each element of the list carries the module to be processed and the trail
+  // of sources that led to this module.
+  let worklist: [QuintModule, SourceLookupPath[]][] =
+    mainPhase1Result.modules.map(m => [ m, [mainPath] ])
+  // Collect modules produced by every source.
+  // Assign a rank to every module. The higher the rank,
+  // the earlier the module should appear in the list of modules.
+  const sourceToModules = new Map<string, QuintModule[]>()
+  sourceToModules.set(mainPath.normalizedPath, mainPhase1Result.modules)
+  const moduleRank = new Map<string, number>()
+  let maxModuleRank = 0
+  mainPhase1Result.modules.reverse().forEach(m => moduleRank.set(m.name, maxModuleRank++))
+  while (worklist.length > 0) {
+    const [importer, pathTrail] = worklist.splice(0, 1)[0]
+    for (const def of importer.defs) {
+      if (def.kind === 'import' && def.fromSource) {
+        const importerPath = pathTrail[pathTrail.length - 1]
+        const stemPath = sourceResolver.stempath(importerPath)
+        const importeePath = sourceResolver.lookupPath(stemPath, def.fromSource)
+        // check for import cycles
+        if (pathTrail.find(p => p.normalizedPath === importeePath.normalizedPath)) {
+          // found a cyclic dependency
+          const cycle =
+            (pathTrail.concat([importeePath])).map(p => p.normalizedPath).join(' imports ')
+          const err = fromIrErrorMessage(sourceMap)({
+            explanation: `Cyclic imports: ${cycle}`,
+            refs: [def.id],
+          })
+          return left([err])
+        }
+        if (sourceToModules.has(importeePath.normalizedPath)) {
+          // The source has been parsed already. Just push the module rank,
+          // for the modules to appear earlier.
+          sourceToModules.get(importeePath.normalizedPath)?.forEach(m =>
+            moduleRank.set(m.name, maxModuleRank++)
+          )
+          continue
+        }
+        // try to load the source code
+        const errorOrText = sourceResolver.load(importeePath)
+        if (errorOrText.isLeft()) {
+          // failed to load the imported source
+          const err = fromIrErrorMessage(sourceMap)({
+            explanation: `import ... from '${def.fromSource}': ${errorOrText.value}`,
+            refs: [def.id],
+          })
+          return left([err])
+        }
+        // try to parse the source code
+        const parseResult =
+          parsePhase1(idGen, errorOrText.value, importeePath.toSourceName())
+        if (parseResult.isLeft()) {
+          // failed to parse the code of the loaded file
+          return parseResult
+        }
+        // all good: add the new modules to the worklist, and update the source map
+        const newModules = parseResult.value.modules.reverse()
+        newModules.forEach(m => {
+          worklist.push([m, pathTrail.concat([importeePath])])
+        })
+        sourceToModules.set(importeePath.normalizedPath, newModules)
+        newModules.forEach(m => moduleRank.set(m.name, maxModuleRank++))
+        sourceMap = new Map([...sourceMap, ...parseResult.value.sourceMap])
+      }
+    }
+  }
+  
+  // Get all the modules and sort them according to the rank (the higher, the earlier)
+  let allModules: QuintModule[] = []
+  for (const mods of sourceToModules.values()) {
+    allModules = allModules.concat(mods)
+  }
+  allModules.sort((m1, m2) => moduleRank.get(m2.name)! - moduleRank.get(m1.name)!)
+  return right({ modules: allModules, sourceMap: sourceMap })
+}
+
+/**
  * Phase 2 of the Quint parser. Read the IR and check that all names are defined.
  * Note that the IR may be ill-typed.
  */
@@ -137,7 +232,8 @@ export function parsePhase2(phase1Data: ParserPhase1): ParseResult<ParserPhase2>
 
   const definitionsByModule: DefinitionsByModule = new Map()
 
-  const definitions = phase1Data.modules.reduce((result: Either<ErrorMessage[], LookupTable>, module) => {
+  const definitions = phase1Data.modules.reduce((result: Either<ErrorMessage[],
+  LookupTable>, module) => {
     const scopeTree = treeFromModule(module)
     const definitionsBeforeImport = collectDefinitions(module)
     definitionsByModule.set(module.name, definitionsBeforeImport)

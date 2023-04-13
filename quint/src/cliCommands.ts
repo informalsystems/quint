@@ -9,12 +9,12 @@
 
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import JSONbig from 'json-bigint'
-import { basename, resolve } from 'path'
+import { dirname, basename, resolve } from 'path'
 import { cwd } from 'process'
 import chalk from 'chalk'
 
 import {
-  ErrorMessage, Loc, compactSourceMap, parsePhase1, parsePhase2
+  ErrorMessage, Loc, compactSourceMap, parsePhase1, parsePhase1b, parsePhase2
 } from './quintParserFrontend'
 
 import { Either, left, right } from '@sweet-monads/either'
@@ -35,6 +35,7 @@ import { toItf } from './itf'
 import { printTrace, printExecutionFrameRec } from './graphics'
 import { verbosity } from './verbosity'
 import { Rng, newRng } from './rng'
+import { fileSourceResolver } from './sourceResolver'
 
 export type stage =
   'loading' | 'parsing' | 'typechecking' |
@@ -182,7 +183,13 @@ export function load(args: any): CLIProcedure<LoadedStage> {
 export function parse(loaded: LoadedStage): CLIProcedure<ParsedStage> {
   const { args, sourceCode, path } = loaded
   const parsing = { ...loaded, stage: 'parsing' as stage }
-  return parsePhase1(newIdGenerator(), sourceCode, path)
+  const idgen = newIdGenerator()
+  return parsePhase1(idgen, sourceCode, path)
+    .chain(phase1Data => {
+      const resolver = fileSourceResolver()
+      const mainPath = resolver.lookupPath(dirname(path), basename(path))
+      return parsePhase1b(idgen, resolver, mainPath, phase1Data)
+    })
     .mapLeft(newErrs => {
       const errors = parsing.errors ? parsing.errors.concat(newErrs) : newErrs
       return { msg: "parsing failed", stage: { ...parsing, errors } }

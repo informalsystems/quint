@@ -3,11 +3,12 @@ import { assert } from 'chai'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import JSONbig from 'json-bigint'
-import { compactSourceMap, parsePhase1, parsePhase2 } from '../src/quintParserFrontend'
+import { compactSourceMap, parsePhase1, parsePhase1b, parsePhase2 } from '../src/quintParserFrontend'
 import { lf } from 'eol'
 import { right } from '@sweet-monads/either'
 import { newIdGenerator } from '../src/idGenerator'
 import { collectIds } from './util'
+import { fileSourceResolverForTests } from '../src/sourceResolver'
 
 // read a Quint file from the test data directory
 function readQuint(name: string): string {
@@ -25,9 +26,17 @@ function readJson(name: string): any {
 // read the Quint file and the expected JSON, parse and compare the results
 function parseAndCompare(artifact: string): void {
   // read the input from the data directory and parse it
+  const gen = newIdGenerator()
+  const basepath = resolve(__dirname, '../testFixture')
+  const resolver = fileSourceResolverForTests((path: string) => {
+    // replace the absolute path with a generic mocked path,
+    // so the same fixtures work accross different setups
+    return path.replace(basepath, 'mocked_path/testFixture')
+  })
+  const mainPath = resolver.lookupPath(basepath, `${artifact}.qnt`)
   const phase1Result =
-    parsePhase1(newIdGenerator(), readQuint(artifact),
-                `mocked_path/testFixture/${artifact}.qnt`)
+    parsePhase1(gen, readQuint(artifact), mainPath.toSourceName())
+    .chain(res => parsePhase1b(gen, resolver, mainPath, res))
   // read the expected result as JSON
   const expected = readJson(artifact)
   let outputToCompare
@@ -143,6 +152,14 @@ describe('parse errors', () => {
 
   it('error on conflicting names', () => {
     parseAndCompare('_1014conflictingNames')
+  })
+
+  it('parses single import from ', () => {
+    parseAndCompare('_1021importee1')
+  })
+
+  it('parses import from transtively', () => {
+    parseAndCompare('_1020importFrom')
   })
 
   // The test below needs a fix, see:

@@ -29,6 +29,12 @@ export interface SourceLookupPath {
    * arrive at the same internal path representation.
    */
   normalizedPath: string
+
+  /**
+   * Produce the source name that will be shown in errors and stored in source maps.
+   * @returns a string representation of the path that is written in source maps
+   */
+  toSourceName: () => string
 }
 
 /**
@@ -43,7 +49,7 @@ export interface SourceResolver {
    * @param importPath a path that is used in 'import ... from ...'
    * @returns normalized source lookup path
    */
-  mkLookupPath: (stempath: string, importPath: string) => SourceLookupPath
+  lookupPath: (stempath: string, importPath: string) => SourceLookupPath
 
   /**
    * Load text from the source pointed by the path. The path must be relative to the
@@ -66,14 +72,18 @@ export interface SourceResolver {
 
 /**
  * Read the source code in UTF-8 from the filesystem via NodeJS API.
- * @param basePath the base path to use as the relative path lookup.
  * @returns A filesystem resolver. For each path, it returns
  *          either `left(errorMessage)`, or `right(fileContents)`.
  */
 export const fileSourceResolver = (): SourceResolver => {
   return {
-    mkLookupPath: (basepath: string, importPath: string) => {
-      return { normalizedPath: join(basepath, importPath) }
+    lookupPath: (basepath: string, importPath: string) => {
+      return {
+        normalizedPath: join(basepath, importPath),
+        toSourceName: () => {
+          return join(basepath, importPath)
+        },
+      }
     },
 
     load: (lookupPath: SourceLookupPath): Either<string, string> => {
@@ -91,6 +101,36 @@ export const fileSourceResolver = (): SourceResolver => {
 }
 
 /**
+ * A special version of `fileSourceResolver` that replaces source names
+ * with a user-defined string. This is needed for testing the parser,
+ * which otherwise would produce absolute file names.
+ * 
+ * Perhaps, we could have a better solution in the future.
+ */
+export const fileSourceResolverForTests =
+    (replacer: (path: string) => string): SourceResolver => {
+  const fsr = fileSourceResolver()
+  return {
+    lookupPath: (basepath: string, importPath: string) => {
+      const lp = fsr.lookupPath(basepath, importPath)
+      // override the behavior of lp.toSourceName
+      lp.toSourceName = () => {
+        return replacer(join(basepath, importPath))
+      }
+      return lp
+    },
+
+    load: (lookupPath: SourceLookupPath): Either<string, string> => {
+      return fsr.load(lookupPath)
+    },
+
+    stempath: (lookupPath: SourceLookupPath): string => {
+      return fsr.stempath(lookupPath)
+    }
+  }
+}
+ 
+/**
  * Read the source code from a map of strings. This resolver is especially
  * useful for tests.
  * @param sources a map of paths mapped to text
@@ -98,8 +138,13 @@ export const fileSourceResolver = (): SourceResolver => {
 */
 export const stringSourceResolver = (sources: Map<string, string>): SourceResolver => {
   return {
-    mkLookupPath: (stempath: string, importPath: string) => {
-      return { normalizedPath: join(stempath, importPath) }
+    lookupPath: (stempath: string, importPath: string) => {
+      return {
+        normalizedPath: join(stempath, importPath),
+        toSourceName: () => {
+          return join(stempath, importPath)
+        },
+      }
     },
 
     load: (lookupPath: SourceLookupPath): Either<string, string> => {
