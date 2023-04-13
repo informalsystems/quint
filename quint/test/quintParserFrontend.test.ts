@@ -162,6 +162,10 @@ describe('parse errors', () => {
     parseAndCompare('_1020importFrom')
   })
 
+  it('errors on incorrect import', () => {
+    parseAndCompare('_1023importFromUnresolved')
+  })
+
   // The test below needs a fix, see:
   //
   // https://github.com/informalsystems/quint/issues/378

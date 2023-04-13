@@ -190,7 +190,8 @@ export function parsePhase1b(
         if (errorOrText.isLeft()) {
           // failed to load the imported source
           const err = fromIrErrorMessage(sourceMap)({
-            explanation: `import ... from '${def.fromSource}': ${errorOrText.value}`,
+            // do not use the original message as it propagates absolute file names
+            explanation: `import ... from '${def.fromSource}': could not load`,
             refs: [def.id],
           })
           return left([err])
