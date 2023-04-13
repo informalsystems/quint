@@ -1,7 +1,7 @@
 import { describe, it } from 'mocha'
 import { assert } from 'chai'
 import { readFileSync } from 'fs'
-import { join, resolve } from 'path'
+import { resolve } from 'path'
 import JSONbig from 'json-bigint'
 import { compactSourceMap, parsePhase1, parsePhase1b, parsePhase2 } from '../src/quintParserFrontend'
 import { lf } from 'eol'

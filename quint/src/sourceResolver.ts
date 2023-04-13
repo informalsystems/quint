@@ -16,6 +16,7 @@ import { Either, left, right } from '@sweet-monads/either'
 import { dirname } from 'path'
 import { readFileSync } from 'fs'
 import { posix } from 'path'
+import { lf } from 'eol'
 
 /**
  * An abstraction of a full path that is used to distinguish the same module,
@@ -89,7 +90,7 @@ export const fileSourceResolver = (): SourceResolver => {
 
     load: (lookupPath: SourceLookupPath): Either<string, string> => {
       try {
-        return right(readFileSync(lookupPath.normalizedPath, 'utf8'))
+        return right(lf(readFileSync(lookupPath.normalizedPath, 'utf8')))
       } catch (err: any) {
         return left(err.message)
       }
