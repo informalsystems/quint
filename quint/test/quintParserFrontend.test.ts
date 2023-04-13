@@ -170,6 +170,10 @@ describe('parse errors', () => {
     parseAndCompare('_1024importFromSyntaxError')
   })
 
+  it('errors on cyclic imports', () => {
+    parseAndCompare('_1026importCycleA')
+  })
+
   // The test below needs a fix, see:
   //
   // https://github.com/informalsystems/quint/issues/378

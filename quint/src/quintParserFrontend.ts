@@ -170,7 +170,7 @@ export function parsePhase1b(
         if (pathTrail.find(p => p.normalizedPath === importeePath.normalizedPath)) {
           // found a cyclic dependency
           const cycle =
-            (pathTrail.concat([importeePath])).map(p => p.normalizedPath).join(' imports ')
+            (pathTrail.concat([importeePath])).map(p => `'${p.toSourceName()}'`).join(' imports ')
           const err = fromIrErrorMessage(sourceMap)({
             explanation: `Cyclic imports: ${cycle}`,
             refs: [def.id],
