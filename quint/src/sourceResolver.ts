@@ -13,8 +13,9 @@
  * @module
  */
 import { Either, left, right } from '@sweet-monads/either'
-import { dirname, join } from 'path'
+import { dirname } from 'path'
 import { readFileSync } from 'fs'
+import { posix } from 'path'
 
 /**
  * An abstraction of a full path that is used to distinguish the same module,
@@ -79,9 +80,9 @@ export const fileSourceResolver = (): SourceResolver => {
   return {
     lookupPath: (basepath: string, importPath: string) => {
       return {
-        normalizedPath: join(basepath, importPath),
+        normalizedPath: posix.join(basepath, importPath),
         toSourceName: () => {
-          return join(basepath, importPath)
+          return posix.join(basepath, importPath)
         },
       }
     },
@@ -115,7 +116,7 @@ export const fileSourceResolverForTests =
       const lp = fsr.lookupPath(basepath, importPath)
       // override the behavior of lp.toSourceName
       lp.toSourceName = () => {
-        return replacer(join(basepath, importPath))
+        return replacer(posix.join(basepath, importPath))
       }
       return lp
     },
@@ -140,9 +141,9 @@ export const stringSourceResolver = (sources: Map<string, string>): SourceResolv
   return {
     lookupPath: (stempath: string, importPath: string) => {
       return {
-        normalizedPath: join(stempath, importPath),
+        normalizedPath: posix.join(stempath, importPath),
         toSourceName: () => {
-          return join(stempath, importPath)
+          return posix.join(stempath, importPath)
         },
       }
     },

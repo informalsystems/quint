@@ -31,7 +31,7 @@ function parseAndCompare(artifact: string): void {
   const resolver = fileSourceResolverForTests((path: string) => {
     // replace the absolute path with a generic mocked path,
     // so the same fixtures work accross different setups
-    return path.replace(basepath, join('mocked_path', 'testFixture'))
+    return path.replace(basepath, 'mocked_path/testFixture')
   })
   const mainPath = resolver.lookupPath(basepath, `${artifact}.qnt`)
   const phase1Result =
