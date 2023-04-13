@@ -303,8 +303,8 @@ displayed with the [ITF Trace Viewer][], or just with [jq][].
     - Symbolic execution (`symexec`). This technique selects `--max-samples`
     runs in the specification and executes them symbolically via the [z3][]
     prover. The length of every run is limited with `--max-steps` steps. This
-    techique is usually finding bugs faster than `bmc`, but it does check only
-    *some runs* up to `--max-steps` steps.
+    techique is can find bugs faster than `bmc`, but it only checks *some 
+    runs* up to `--max-steps` steps.
     
     - Bounded model checking (`bmc`). This technique checks *all runs* up to
     `--max-steps` steps via [z3][]. It is usually slower than `symexec` at bug
