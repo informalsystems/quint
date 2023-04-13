@@ -1,7 +1,7 @@
 import { describe, it } from 'mocha'
 import { assert } from 'chai'
 import { readFileSync } from 'fs'
-import { resolve } from 'path'
+import { join, resolve } from 'path'
 import JSONbig from 'json-bigint'
 import { compactSourceMap, parsePhase1, parsePhase1b, parsePhase2 } from '../src/quintParserFrontend'
 import { lf } from 'eol'
@@ -31,7 +31,7 @@ function parseAndCompare(artifact: string): void {
   const resolver = fileSourceResolverForTests((path: string) => {
     // replace the absolute path with a generic mocked path,
     // so the same fixtures work accross different setups
-    return path.replace(basepath, 'mocked_path/testFixture')
+    return path.replace(basepath, join('mocked_path', 'testFixture'))
   })
   const mainPath = resolver.lookupPath(basepath, `${artifact}.qnt`)
   const phase1Result =
