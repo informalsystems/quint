@@ -238,7 +238,8 @@ const verifyCmd = {
         type: "string",
       })
       .option("apalache-config", {
-        desc: "Filename of the additional Apalache flags in the JSON format",
+        desc:
+          "Filename of the additional Apalache configuration (in the HOCON format, a superset of JSON)",
         type: "string",
       }),
   // Timeouts are postponed for:

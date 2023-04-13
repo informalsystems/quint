@@ -284,8 +284,8 @@ Options:
                                                 [string] [default: ["true"]]
   --seed             random seed to use for symbolic execution (when using
                      --how=symexec)                                 [string]
-  --apalache-config  Filename of the additional Apalache flags in the JSON
-                     format                                         [string]
+  --apalache-config  Filename of the additional Apalache configuration (in the
+                     HOCON format, a superset of JSON)                [string]
 ```
 
 - If there are no critical errors (e.g., in parsing, typechecking, etc.), this
