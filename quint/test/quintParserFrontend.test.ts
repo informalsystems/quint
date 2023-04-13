@@ -166,6 +166,10 @@ describe('parse errors', () => {
     parseAndCompare('_1023importFromUnresolved')
   })
 
+  it('errors on an import that contains syntax errors', () => {
+    parseAndCompare('_1024importFromSyntaxError')
+  })
+
   // The test below needs a fix, see:
   //
   // https://github.com/informalsystems/quint/issues/378
