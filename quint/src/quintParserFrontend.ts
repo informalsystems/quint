@@ -165,7 +165,7 @@ export function parsePhase1b(
       if (def.kind === 'import' && def.fromSource) {
         const importerPath = pathTrail[pathTrail.length - 1]
         const stemPath = sourceResolver.stempath(importerPath)
-        const importeePath = sourceResolver.lookupPath(stemPath, def.fromSource)
+        const importeePath = sourceResolver.lookupPath(stemPath, def.fromSource + '.qnt')
         // check for import cycles
         if (pathTrail.find(p => p.normalizedPath === importeePath.normalizedPath)) {
           // found a cyclic dependency

@@ -1,3 +1,3 @@
 module importer {
-  import boson.* from "./non-existant-file.qnt"
+  import boson.* from "./non-existant-file"
 }
