@@ -30,7 +30,8 @@ import { QuintAnalyzer } from './quintAnalyzer'
 import { QuintError, quintErrorToString } from './quintError'
 import { TestOptions, TestResult, compileAndTest } from './runtime/testing'
 import { newIdGenerator } from './idGenerator'
-import { SimulatorOptions, compileAndRun } from './simulation'
+import { SimulatorOptions } from './simulation'
+import { compileForkAndRun } from './simulationInParent'
 import { toItf } from './itf'
 import { printTrace, printExecutionFrameRec } from './graphics'
 import { verbosity } from './verbosity'
@@ -152,7 +153,7 @@ export type CLIProcedure<Stage> = Either<ErrResult, Stage>
 /** Load a file into a string
  *
  * @param args the CLI arguments parsed by yargs */
-export function load(args: any): CLIProcedure<LoadedStage> {
+export async function load(args: any): Promise<CLIProcedure<LoadedStage>> {
   const stage: ProcedureStage = { stage: 'loading', args }
   if (existsSync(args.input)) {
     try {
@@ -179,7 +180,7 @@ export function load(args: any): CLIProcedure<LoadedStage> {
  *
  * @param loaded the procedure stage produced by `load`
  */
-export function parse(loaded: LoadedStage): CLIProcedure<ParsedStage> {
+export async function parse(loaded: LoadedStage): Promise<CLIProcedure<ParsedStage>> {
   const { args, sourceCode, path } = loaded
   const parsing = { ...loaded, stage: 'parsing' as stage }
   return parsePhase1(newIdGenerator(), sourceCode, path)
@@ -215,7 +216,7 @@ export function mkErrorMessage(sourceMap: Map<bigint, Loc>): (_: [bigint, QuintE
  *
  * @param parsed the procedure stage produced by `parse`
  */
-export function typecheck(parsed: ParsedStage): CLIProcedure<TypecheckedStage> {
+export async function typecheck(parsed: ParsedStage): Promise<CLIProcedure<TypecheckedStage>> {
   const { table, modules, sourceMap } = parsed
   const typechecking = { ...parsed, stage: 'typechecking' as stage }
 
@@ -259,7 +260,7 @@ export function runRepl(_argv: any) {
  *
  * @param typedStage the procedure stage produced by `typecheck`
  */
-export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
+export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<TestedStage>> {
   const verbosityLevel = !prev.args.out ? prev.args.verbosity : 0
   const out = console.log
 
@@ -391,8 +392,8 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
  *
  * @param prev the procedure stage produced by `typecheck`
  */
-export function runSimulator(prev: TypecheckedStage):
-  CLIProcedure<SimulatorStage> {
+export async function runSimulator(prev: TypecheckedStage):
+  Promise<CLIProcedure<SimulatorStage>> {
   const simulator = { ...prev, stage: 'running' as stage }
   const mainArg = prev.args.main
   const mainName = mainArg ? mainArg : basename(prev.args.input, '.qnt')
@@ -402,20 +403,19 @@ export function runSimulator(prev: TypecheckedStage):
   if (rngOrError.isLeft()) {
     return cliErr(rngOrError.value, { ...simulator, errors: [] })
   }
-  const rng = rngOrError.unwrap()
   const options: SimulatorOptions = {
     init: prev.args.init,
     step: prev.args.step,
     invariant: prev.args.invariant,
     maxSamples: prev.args.maxSamples,
     maxSteps: prev.args.maxSteps,
-    rng,
+    rngState: rngOrError.unwrap().getState(),
     verbosity: verbosityLevel,
   }
   const startMs = Date.now()
   
   const result =
-    compileAndRun(newIdGenerator(), prev.sourceCode, mainName, options)
+    await compileForkAndRun(newIdGenerator(), prev.sourceCode, mainName, options)
   
   if (result.status === 'error') {
       const errors =
@@ -503,7 +503,7 @@ export function runSimulator(prev: TypecheckedStage):
  *
  * @param loaded the procedure stage produced by `load`
  */
-export function docs(loaded: LoadedStage): CLIProcedure<DocumentationStage> {
+export async function docs(loaded: LoadedStage): Promise<CLIProcedure<DocumentationStage>> {
   const { sourceCode, path } = loaded
   const parsing = { ...loaded, stage: 'documentation' as stage }
   return parsePhase1(newIdGenerator(), sourceCode, path)
@@ -527,8 +527,9 @@ export function docs(loaded: LoadedStage): CLIProcedure<DocumentationStage> {
 /** Write the OutputStage of the procedureStage as JSON, if --out is set
  * Otherwise, report any stage errors to STDOUT
  */
-export function outputResult(result: CLIProcedure<ProcedureStage>) {
-  result
+export async function outputResult(result: Promise<CLIProcedure<ProcedureStage>>): Promise<void> {
+  const receivedResult = await result
+  receivedResult
     .map(stage => {
       const outputData = pickOutputStage(stage)
       if (stage.args.out) {

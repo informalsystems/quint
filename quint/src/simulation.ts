@@ -17,9 +17,10 @@ import { ErrorMessage } from './quintParserFrontend'
 import { QuintEx } from './quintIr'
 import { Computable } from './runtime/runtime'
 import {
-  ExecutionFrame, newTraceRecorder} from './runtime/trace'
+  ExecutionFrame, newTraceRecorder
+} from './runtime/trace'
 import { IdGenerator } from './idGenerator'
-import { Rng } from './rng'
+import { Rng, newRng } from './rng'
 
 /**
  * Various settings that have to be passed to the simulator to run.
@@ -30,7 +31,7 @@ export interface SimulatorOptions {
   invariant: string,
   maxSamples: number,
   maxSteps: number,
-  rng: Rng,
+  rngState: bigint,
   verbosity: number,
 }
 
@@ -52,17 +53,19 @@ export interface SimulatorResult {
 function errSimulationResult(status: SimulatorResultStatus,
                              errors: ErrorMessage[]): SimulatorResult {
   return {
-    status: 'failure',
+    status,
     vars: [],
     states: [],
     frames: [],
-    errors: errors,
+    errors,
     seed: 0n,
   }
 }
 
 /**
- * Execute a run.
+ * Execute a run. The simulator runs in the same process as the
+ * caller. Hence, it may take significant time before the simulator
+ * returns.
  *
  * @param idGen a unique generator of identifiers
  * @param code the source code of the modules
@@ -99,9 +102,10 @@ module __run__ {
 }
 `
 
-  const recorder = newTraceRecorder(options.verbosity, options.rng)
+  const rng = newRng(options.rngState)
+  const recorder = newTraceRecorder(options.verbosity, rng)
   const ctx = compileFromCode(idGen,
-    wrappedCode, '__run__', recorder, options.rng.next)
+    wrappedCode, '__run__', recorder, rng.next)
 
   if (ctx.compileErrors.length > 0
       || ctx.syntaxErrors.length > 0
@@ -141,4 +145,3 @@ module __run__ {
     }
   }
 }
-

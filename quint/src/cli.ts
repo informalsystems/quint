@@ -38,7 +38,11 @@ const parseCmd = {
         desc: 'add the lookup table to the output file (see --out)',
         type: 'boolean',
       }),
-  handler: (args: any) => outputResult(load(args).chain(parse)),
+  handler: async (args: any) =>
+    outputResult(
+      load(args)
+        .then((l) => l.asyncChain(parse))
+    ),
 }
 
 // construct typecheck commands with yargs
@@ -51,7 +55,11 @@ const typecheckCmd = {
         desc: 'output file',
         type: 'string',
       }),
-  handler: (args: any) => outputResult(load(args).chain(parse).chain(typecheck)),
+  handler: async (args: any) => outputResult(
+    load(args)
+      .then((l) => l.asyncChain(parse))
+      .then((p) => p.asyncChain(typecheck))
+  ),
 }
 
 // construct repl commands with yargs
@@ -118,8 +126,12 @@ const testCmd = {
         desc: 'a string or regex that selects names to use as tests',
         type: 'string',
       }),
-  handler: (args: any) =>
-    outputResult(load(args).chain(parse).chain(typecheck).chain(runTests)),
+  handler: async (args: any) => outputResult(
+    load(args)
+      .then((l) => l.asyncChain(parse))
+      .then((p) => p.asyncChain(typecheck))
+      .then((t) => t.asyncChain(runTests))
+  ),
 }
 
 // construct run commands with yargs
@@ -181,8 +193,13 @@ const runCmd = {
 //        desc: 'timeout in seconds',
 //        type: 'number',
 //      })
-  handler: (args: any) =>
-    outputResult(load(args).chain(parse).chain(typecheck).chain(runSimulator)),
+  handler: async (args: any) =>
+    outputResult(
+      load(args)
+        .then((l) => l.asyncChain(parse))
+        .then((p) => p.asyncChain(typecheck))
+        .then((t) => t.asyncChain(runSimulator))
+    ),
 }
 
 // construct documenting commands with yargs
@@ -195,7 +212,9 @@ const docsCmd = {
         desc: 'output file',
         type: 'string',
       }),
-  handler: (args: any) => outputResult(load(args).chain(docs)),
+  handler: async (args: any) => outputResult(
+    load(args).then((l) => l.asyncChain(docs))
+  ),
 }
 // parse the command-line arguments and execute the handlers
 yargs(process.argv.slice(2))
@@ -208,4 +227,4 @@ yargs(process.argv.slice(2))
   .demandCommand(1)
   .version(version)
   .strict()
-  .parse()
+  .parseAsync()

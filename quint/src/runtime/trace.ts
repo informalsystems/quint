@@ -128,6 +128,24 @@ export interface ExecutionListener {
 }
 
 /**
+ * An interface to a recorder that is able to select the best trace.
+ */
+export interface BestTraceRecorder {
+    /**
+     * Get the best collected trace.
+     * @returns the execution frame whose `subframes` represent the execution
+     * trace, whereas `trace` contains the states represented as records.
+     */
+    getBestTrace: () => ExecutionFrame,
+
+    /**
+     * Get the random seed to reproduce the experiment.
+     * @returns the seed
+     */
+    getBestTraceSeed: () => bigint,
+}
+
+/**
  * An implementation of ExecutionListener that does nothing.
  */
 export const noExecutionListener: ExecutionListener = {
@@ -142,7 +160,8 @@ export const noExecutionListener: ExecutionListener = {
 }
 
 // a trace recording listener
-export const newTraceRecorder = (verbosityLevel: number, rng: Rng) => {
+export const newTraceRecorder = (verbosityLevel: number, rng: Rng):
+    ExecutionListener & BestTraceRecorder => {
   // the bottom frame encodes the whole trace
   const bottomFrame = (): ExecutionFrame => {
     return {

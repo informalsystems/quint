@@ -19,13 +19,15 @@ const loaded  = {
 }
 
 describe('the parse CLI routine', () =>
-  it('succeeds with "parsed" status', () => {
-    parse(loaded).map(s => assert.equal(s.stage, 'parsing'))
+  it('succeeds with "parsed" status', async () => {
+    parse(loaded).then(l => l.map(s => assert.equal(s.stage, 'parsing')))
   })
 )
 
-describe('the typecheck CLI routine', () =>
+describe('the typecheck CLI routine', async () =>
   it('succeeds with "typechecked" status', () => {
-    parse(loaded).chain(typecheck).map(s => assert.equal(s.stage, 'typechecking'))
+    parse(loaded)
+      .then((l) => l.asyncChain(typecheck))
+      .then(t => t.map(s => assert.equal(s.stage, 'typechecking')))
   })
 )
