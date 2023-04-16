@@ -351,9 +351,10 @@ module mempool {
     // We are using this module to test the contract,
     // so we fix the set of addresses right away.
     pure val ADDR = Set("alice", "bob", "eve", "0")
-    pure val AMOUNTS = 0.to(MAX_UINT)
     // import all definitions from erc20 for the fixed addresses
     import erc20(AllAddresses = ADDR).*
+
+    pure val AMOUNTS = 0.to(MAX_UINT)
 
     // What kind of transaction could be submitted to the mempool.
     // Currently, we are using a record to represent all kinds of transactions.
