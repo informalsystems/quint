@@ -16,7 +16,6 @@ import { Maybe, just, none } from '@sweet-monads/maybe'
 import { left, right } from '@sweet-monads/either'
 import chalk from 'chalk'
 
-import { version } from './version'
 import { QuintEx } from './quintIr'
 import {
   CompilationContext, compileFromCode, contextNameLookup, lastTraceName
@@ -31,6 +30,7 @@ import { IdGenerator, newIdGenerator } from './idGenerator'
 import { chalkQuintEx, printExecutionFrameRec } from './graphics'
 import { verbosity } from './verbosity'
 import { newRng } from './rng'
+import { version } from './version'
 
 // tunable settings
 export const settings = {
@@ -56,6 +56,8 @@ interface ReplState {
   shadowVars: Map<string, EvalResult>,
   // filename and module name that were loaded with .load filename module
   lastLoadedFileAndModule: [string?, string?],
+  // an optional seed to use when making non-deterministic choices
+  seed?: bigint,
   // verbosity level
   verbosityLevel: number
 }
@@ -116,6 +118,7 @@ export function quintRepl(input: Readable,
   // we enter the multiline mode
   let nOpenBraces = 0
   let nOpenParen = 0
+  let nOpenComments = 0
 
   // Ctrl-C handler
   rl.on('SIGINT', () => {
@@ -123,6 +126,7 @@ export function quintRepl(input: Readable,
     multilineText = ''
     nOpenBraces = 0
     nOpenParen = 0
+    nOpenComments = 0
     rl.setPrompt(prompt(settings.prompt))
     out(chalk.yellow(' <cancelled>'))
     // clear the line and show the prompt
@@ -132,30 +136,32 @@ export function quintRepl(input: Readable,
 
   // next line handler
   function nextLine(line: string) {
-    const [nob, nop] = countBraces(line)
+    const [nob, nop, noc] = countBraces(line)
     nOpenBraces += nob
     nOpenParen += nop
+    nOpenComments += noc
 
     if (multilineText === '') {
       // if the line starts with a non-empty prompt,
       // we assume it is multiline code that was copied from a REPL prompt
       recyclingOwnOutput =
         settings.prompt !== '' && line.trim().indexOf(settings.prompt) === 0
-      if (nOpenBraces > 0 || nOpenParen > 0 || recyclingOwnOutput) {
+      if (nOpenBraces > 0 || nOpenParen > 0 || nOpenComments > 0 || recyclingOwnOutput) {
         // Enter a multiline mode.
         // If the text is copy-pasted from the REPL output,
         // trim the REPL decorations.
         multilineText = trimReplDecorations(line)
         rl.setPrompt(prompt(settings.continuePrompt))
       } else {
-        line.trim() === '' || tryEval(out, state, line)
+        line.trim() === '' || tryEval(out, state, line + '\n')
       }
     } else {
       const trimmedLine = line.trim()
       const continueOwnOutput =
         settings.continuePrompt !== ''
           && trimmedLine.indexOf(settings.continuePrompt) === 0
-      if ((trimmedLine.length === 0 && nOpenBraces <= 0 && nOpenParen <= 0)
+      if ((trimmedLine.length === 0
+            && nOpenBraces <= 0 && nOpenParen <= 0 && nOpenComments <= 0)
             || (recyclingOwnOutput && !continueOwnOutput)) {
         // End the multiline mode.
         // If recycle own output, then the current line is, most likely,
@@ -220,6 +226,7 @@ export function quintRepl(input: Readable,
             out('     \t^ a productivity hack')
             out(`${r('.save')} <filename>\tSave the accumulated definitions to a file`)
             out(`${r('.verbosity')}=[0-5]\tSet the output level (0 = quiet, 5 = very detailed).`)
+            out(`${r('.seed')}[=<number>]\tSet or get the random seed.`)
             out('\nType an expression and press Enter to evaluate it.')
             out('When the REPL switches to multiline mode "...", finish it with an empty line.')
             out('\nPress Ctrl+C to abort current expression, Ctrl+D to exit the REPL')
@@ -277,6 +284,24 @@ export function quintRepl(input: Readable,
                 out(g(`.verbosity=${state.verbosityLevel}`))
               }
               rl.setPrompt(prompt(settings.prompt))
+            }
+          }
+          break
+
+          case 'seed': {
+            // accept: .seed n, .seed=n, .seed = n
+            const m = line.match(/^\.seed\s*=?\s*((0x[0-9a-f]+|[0-9]*))$/)
+            if (m === null) {
+              out(r('.seed requires an integer, or no argument'))
+            } else {
+              if (m[1].trim() === '') {
+                out(g(`.seed=${state.seed}`))
+              } else {
+                state.seed = BigInt(m[1])
+                if (verbosity.hasReplPrompt(state.verbosityLevel)) {
+                  out(g(`.seed=${state.seed}`))
+                }
+              }
             }
           }
           break
@@ -471,8 +496,12 @@ ${textToAdd}
     out('') // be nice to external programs
     return false
   }
+  if (probeResult.kind === 'none') {
+    // a comment or whitespaces
+    return true
+  }
   // create a random number generator
-  const rng = newRng()
+  const rng = newRng(state.seed)
   // evaluate the input, depending on its type
   if (probeResult.kind === 'expr') {
     // embed expression text into a value definition inside a module
@@ -543,6 +572,8 @@ ${textToAdd}
         out('') // be nice to external programs
       })
 
+    state.seed = rng.getState()
+
     return result.isRight()
   }
   if (probeResult.kind === 'toplevel') {
@@ -589,11 +620,14 @@ function trimReplDecorations(line: string) {
   }
 }
 
-// count the difference between the number of '{' and '}'
-// as well as the difference between the number of '(' and ')' in a string
-function countBraces(str: string): [number, number] {
+// count the difference between the number of:
+//  - '{' and '}'
+//  - '(' and ')'
+//  - '/*' and '*/'
+function countBraces(str: string): [number, number, number] {
   let nOpenBraces = 0
   let nOpenParen = 0
+  let nOpenComments = 0
   for (let i = 0; i < str.length; i++) {
     switch (str[i]) {
       case '{':
@@ -611,10 +645,24 @@ function countBraces(str: string): [number, number] {
       case ')':
         nOpenParen--
         break
+      
+      case '/':
+        if (i + 1 < str.length && str[i + 1] === '*') {
+          nOpenComments++
+          i++
+        }
+        break
+
+      case '*':
+        if (i + 1 < str.length && str[i + 1] === '/') {
+          nOpenComments--
+          i++
+        }
+        break
 
       default:
     }
   }
 
-  return [nOpenBraces, nOpenParen]
+  return [nOpenBraces, nOpenParen, nOpenComments]
 }

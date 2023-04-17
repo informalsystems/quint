@@ -252,6 +252,25 @@ describe('repl ok', () => {
     await assertRepl(input, output)
   })
 
+  it('set and get the seed', async() => {
+    const input = dedent(
+      `.seed=4
+      |.seed
+      |.seed=0x1abc
+      |`
+    )
+    const output = dedent(
+      `>>> .seed=4
+      |.seed=4
+      |>>> .seed
+      |.seed=4
+      |>>> .seed=0x1abc
+      |.seed=6844
+      |>>> `
+    )
+    await assertRepl(input, output)
+  })
+
   it('handle exceptions', async() => {
     const input = dedent(
       `Set(Int)
@@ -536,6 +555,11 @@ describe('repl ok', () => {
       |
       |>>> Set(2 + 3)
       |Set(5)
+      |   // a multiline comment
+      | /// a doc comment
+      | /* a multiline
+      |    comment
+      |  */
       |`
     )
     const output = dedent(
@@ -552,7 +576,12 @@ describe('repl ok', () => {
       |>>> >>> Set(2 + 3)
       |... Set(5)
       |Set(5)
-      |>>> `
+      |>>>    // a multiline comment
+      |>>>  /// a doc comment
+      |>>>  /* a multiline
+      |...     comment
+      |...   */
+      |... `
     )
     await assertRepl(input, output)
   })

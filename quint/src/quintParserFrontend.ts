@@ -73,6 +73,7 @@ export interface ParserPhase2 extends ParserPhase1 {
 export type ParseProbeResult =
   | { kind: 'toplevel' }
   | { kind: 'expr' }
+  | { kind: 'none' }
   | { kind: 'error', messages: ErrorMessage[] }
 
 /**
@@ -376,8 +377,10 @@ class ProbeListener implements QuintListener {
   exitUnitOrExpr(ctx: p.UnitOrExprContext) {
     if (ctx.unit()) {
       this.result = { kind: 'toplevel' }
-    } else {
+    } else if (ctx.expr()) {
       this.result = { kind: 'expr' }
+    } else {
+      this.result = { kind: 'none' }
     }
   }
 }

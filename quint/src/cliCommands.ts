@@ -500,7 +500,7 @@ export function runSimulator(prev: TypecheckedStage):
             ...simulator,
             status: result.status,
             trace: result.states,
-            errors: [],
+            errors: result.errors,
           })
     }
 }
