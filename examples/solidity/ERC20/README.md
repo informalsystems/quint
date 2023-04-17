@@ -16,7 +16,7 @@ token][]. It contains three modules:
      see `transferTest`.
 
  - `mempool` defines a state machine that runs a single ERC20 token via
-   mempool. , that is, when the methods are called by external
+   mempool, that is, when the methods are called by external
    users. We use this state machine to demonstrate how to detect the well-known
    issue with the order of `transferFrom` and `approve`, see the [issue #20][].
 
