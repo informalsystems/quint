@@ -11,7 +11,7 @@ token][]. It contains three modules:
 
    - ERC20 preserves its initial total supply, see `totalSupplyInv`,
    - ERC20 does not transfer to the address `0x0`, see `zeroAddressInv`,
-   - ERC20 does not overflow the account balances, see noOverflowInv`.
+   - ERC20 does not overflow the account balances, see `noOverflowInv`.
    - Method `transfer` satisfies the intuitive post-condition,
      see `transferTest`.
 
