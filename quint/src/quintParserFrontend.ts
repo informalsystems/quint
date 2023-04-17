@@ -134,7 +134,7 @@ export function parsePhase1(
  * Phase 1b of the Quint parser. Go over each definition of the form
  * `import ... from '<path>'`, do the following:
  * 
- *  - parse the modules that are refferred by each path,
+ *  - parse the modules that are referenced by each path,
  *  - add the parsed modules.
  * 
  * Cyclic dependencies among different files are reported as errors.
@@ -150,7 +150,7 @@ export function parsePhase1b(
   // The list of modules that have not been been processed yet.
   // Each element of the list carries the module to be processed and the trail
   // of sources that led to this module.
-  let worklist: [QuintModule, SourceLookupPath[]][] =
+  const worklist: [QuintModule, SourceLookupPath[]][] =
     mainPhase1Result.modules.map(m => [ m, [mainPath] ])
   // Collect modules produced by every source.
   // Assign a rank to every module. The higher the rank,
