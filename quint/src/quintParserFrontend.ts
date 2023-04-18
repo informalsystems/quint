@@ -64,6 +64,9 @@ export interface ParserPhase1 {
 }
 
 export interface ParserPhase2 extends ParserPhase1 {
+}
+
+export interface ParserPhase3 extends ParserPhase2 {
   table: LookupTable
 }
 
@@ -102,7 +105,7 @@ export function
  * Note that the IR may be ill-typed and some names may be unresolved.
  * The main goal of this pass is to translate a sequence of characters into IR.
  */
-export function parsePhase1(
+export function parsePhase1fromText(
   idGen: IdGenerator,
   text: string,
   sourceLocation: string
@@ -131,7 +134,7 @@ export function parsePhase1(
 }
 
 /**
- * Phase 1b of the Quint parser. Go over each definition of the form
+ * Phase 2 of the Quint parser. Go over each definition of the form
  * `import ... from '<path>'`, do the following:
  * 
  *  - parse the modules that are referenced by each path,
@@ -139,12 +142,12 @@ export function parsePhase1(
  * 
  * Cyclic dependencies among different files are reported as errors.
  */
-export function parsePhase1b(
+export function parsePhase2sourceResolution(
   idGen: IdGenerator,
   sourceResolver: SourceResolver,
   mainPath: SourceLookupPath,
   mainPhase1Result: ParserPhase1
-): ParseResult<ParserPhase1> {
+): ParseResult<ParserPhase2> {
   // we accumulate the source map over all files here
   let sourceMap = new Map(mainPhase1Result.sourceMap)
   // The list of modules that have not been been processed yet.
@@ -199,7 +202,7 @@ export function parsePhase1b(
         }
         // try to parse the source code
         const parseResult =
-          parsePhase1(idGen, errorOrText.value, importeePath.toSourceName())
+          parsePhase1fromText(idGen, errorOrText.value, importeePath.toSourceName())
         if (parseResult.isLeft()) {
           // failed to parse the code of the loaded file
           return parseResult
@@ -226,10 +229,11 @@ export function parsePhase1b(
 }
 
 /**
- * Phase 2 of the Quint parser. Read the IR and check that all names are defined.
+ * Phase 3 of the Quint parser. Assuming that all external sources have been resolved,
+ * resolve imports and names. Read the IR and check that all names are defined.
  * Note that the IR may be ill-typed.
  */
-export function parsePhase2(phase1Data: ParserPhase1): ParseResult<ParserPhase2> {
+export function parsePhase3importAndNameResolution(phase1Data: ParserPhase2): ParseResult<ParserPhase3> {
   const sourceMap: Map<bigint, Loc> = phase1Data.sourceMap
 
   const definitionsByModule: DefinitionsByModule = new Map()

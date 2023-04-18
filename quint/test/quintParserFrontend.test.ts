@@ -3,7 +3,7 @@ import { assert } from 'chai'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import JSONbig from 'json-bigint'
-import { compactSourceMap, parsePhase1, parsePhase1b, parsePhase2 } from '../src/quintParserFrontend'
+import { compactSourceMap, parsePhase1fromText, parsePhase2sourceResolution, parsePhase3importAndNameResolution } from '../src/quintParserFrontend'
 import { lf } from 'eol'
 import { right } from '@sweet-monads/either'
 import { newIdGenerator } from '../src/idGenerator'
@@ -35,8 +35,8 @@ function parseAndCompare(artifact: string): void {
   })
   const mainPath = resolver.lookupPath(basepath, `${artifact}.qnt`)
   const phase1Result =
-    parsePhase1(gen, readQuint(artifact), mainPath.toSourceName())
-    .chain(res => parsePhase1b(gen, resolver, mainPath, res))
+    parsePhase1fromText(gen, readQuint(artifact), mainPath.toSourceName())
+    .chain(res => parsePhase2sourceResolution(gen, resolver, mainPath, res))
   // read the expected result as JSON
   const expected = readJson(artifact)
   let outputToCompare
@@ -62,7 +62,7 @@ function parseAndCompare(artifact: string): void {
     assert.deepEqual(sourceMapResult,
       expectedSourceMap, 'expected source maps to be equal')
 
-    const phase2Result = parsePhase2(phase1Result.value)
+    const phase2Result = parsePhase3importAndNameResolution(phase1Result.value)
 
     if (phase2Result.isLeft()) {
       // An error occurred at phase 2, check if it is the expected result
@@ -89,7 +89,7 @@ function parseAndCompare(artifact: string): void {
 describe('parsing', () => {
   it('parses empty module', () => {
     const result =
-      parsePhase1(newIdGenerator(),
+      parsePhase1fromText(newIdGenerator(),
                   readQuint('_0001emptyModule'),
                   'mocked_path/testFixture/_0001emptyModule.qnt')
     const module = { id: 1n, name: 'empty', defs: [] }
@@ -98,7 +98,7 @@ describe('parsing', () => {
 
   it('parses SuperSpec', () => {
     const result =
-      parsePhase1(newIdGenerator(),
+      parsePhase1fromText(newIdGenerator(),
                   readQuint('SuperSpec'),
                   'mocked_path/testFixture/SuperSpec.qnt')
     assert(result.isRight())

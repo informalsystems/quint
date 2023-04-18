@@ -14,7 +14,7 @@ import { cwd } from 'process'
 import chalk from 'chalk'
 
 import {
-  ErrorMessage, Loc, compactSourceMap, parsePhase1, parsePhase1b, parsePhase2
+  ErrorMessage, Loc, compactSourceMap, parsePhase1fromText, parsePhase2sourceResolution, parsePhase3importAndNameResolution
 } from './quintParserFrontend'
 
 import { Either, left, right } from '@sweet-monads/either'
@@ -184,11 +184,11 @@ export function parse(loaded: LoadedStage): CLIProcedure<ParsedStage> {
   const { args, sourceCode, path } = loaded
   const parsing = { ...loaded, stage: 'parsing' as stage }
   const idgen = newIdGenerator()
-  return parsePhase1(idgen, sourceCode, path)
+  return parsePhase1fromText(idgen, sourceCode, path)
     .chain(phase1Data => {
       const resolver = fileSourceResolver()
       const mainPath = resolver.lookupPath(dirname(path), basename(path))
-      return parsePhase1b(idgen, resolver, mainPath, phase1Data)
+      return parsePhase2sourceResolution(idgen, resolver, mainPath, phase1Data)
     })
     .mapLeft(newErrs => {
       const errors = parsing.errors ? parsing.errors.concat(newErrs) : newErrs
@@ -199,7 +199,7 @@ export function parse(loaded: LoadedStage): CLIProcedure<ParsedStage> {
         // Write source map to the specified file
         writeToJson(args.sourceMap, compactSourceMap(phase1Data.sourceMap))
       }
-      return parsePhase2(phase1Data)
+      return parsePhase3importAndNameResolution(phase1Data)
         .mapLeft(newErrs => {
           const errors = parsing.errors ? parsing.errors.concat(newErrs) : newErrs
           return { msg: "parsing failed", stage: { ...parsing, errors } }
@@ -421,8 +421,10 @@ export function runSimulator(prev: TypecheckedStage):
   }
   const startMs = Date.now()
   
+  const mainPath =
+    fileSourceResolver().lookupPath(dirname(prev.args.input), basename(prev.args.input))
   const result =
-    compileAndRun(newIdGenerator(), prev.sourceCode, mainName, options)
+    compileAndRun(newIdGenerator(), prev.sourceCode, mainName, mainPath, options)
   
   if (result.status === 'error') {
       const errors =
@@ -513,7 +515,7 @@ export function runSimulator(prev: TypecheckedStage):
 export function docs(loaded: LoadedStage): CLIProcedure<DocumentationStage> {
   const { sourceCode, path } = loaded
   const parsing = { ...loaded, stage: 'documentation' as stage }
-  return parsePhase1(newIdGenerator(), sourceCode, path)
+  return parsePhase1fromText(newIdGenerator(), sourceCode, path)
     .mapLeft(newErrs => {
       const errors = parsing.errors ? parsing.errors.concat(newErrs) : newErrs
       return { msg: "parsing failed", stage: { ...parsing, errors } }

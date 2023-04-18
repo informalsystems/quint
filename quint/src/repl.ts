@@ -31,6 +31,8 @@ import { chalkQuintEx, printExecutionFrameRec } from './graphics'
 import { verbosity } from './verbosity'
 import { newRng } from './rng'
 import { version } from './version'
+import { fileSourceResolver } from './sourceResolver'
+import { dirname } from 'path'
 
 // tunable settings
 export const settings = {
@@ -508,9 +510,10 @@ ${textToAdd}
     const moduleText = prepareParserInput(`  action q::input =\n${newInput}`)
     // compile the expression or definition and evaluate it
     const recorder = newTraceRecorder(state.verbosityLevel, rng)
+    const mainPath = fileSourceResolver().lookupPath(__dirname, 'repl')
     const context =
       compileFromCode(state.idGen,
-        moduleText, '__repl__', recorder, rng.next)
+        moduleText, '__repl__', mainPath, recorder, rng.next)
     if (context.syntaxErrors.length > 0 ||
         context.compileErrors.length > 0 || context.analysisErrors.length > 0) {
       printErrors(moduleText, context)
@@ -580,9 +583,10 @@ ${textToAdd}
     // embed expression text into a module at the top level
     const moduleText = prepareParserInput(newInput)
     // compile the module and add it to history if everything worked
+    const mainPath = fileSourceResolver().lookupPath(__dirname, 'repl')
     const context =
       compileFromCode(state.idGen,
-        moduleText, '__repl__', noExecutionListener, rng.next)
+        moduleText, '__repl__', mainPath, noExecutionListener, rng.next)
     if (context.values.size === 0 ||
         context.compileErrors.length > 0 || context.syntaxErrors.length > 0) {
       printErrors(moduleText, context)
