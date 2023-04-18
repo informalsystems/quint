@@ -11,6 +11,7 @@
 import * as readline from 'readline'
 import { Readable, Writable } from 'stream'
 import { readFileSync, writeFileSync } from 'fs'
+import { cwd } from 'process'
 import lineColumn from 'line-column'
 import { Maybe, just, none } from '@sweet-monads/maybe'
 import { left, right } from '@sweet-monads/either'
@@ -510,7 +511,7 @@ ${textToAdd}
     const moduleText = prepareParserInput(`  action q::input =\n${newInput}`)
     // compile the expression or definition and evaluate it
     const recorder = newTraceRecorder(state.verbosityLevel, rng)
-    const mainPath = fileSourceResolver().lookupPath(__dirname, 'repl')
+    const mainPath = fileSourceResolver().lookupPath(cwd(), './repl')
     const context =
       compileFromCode(state.idGen,
         moduleText, '__repl__', mainPath, recorder, rng.next)
