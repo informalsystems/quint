@@ -153,6 +153,8 @@ export function parsePhase2sourceResolution(
   // The list of modules that have not been been processed yet.
   // Each element of the list carries the module to be processed and the trail
   // of sources that led to this module.
+  // The construction is similar to the worklist algorithm:
+  // https://en.wikipedia.org/wiki/Reaching_definition#Worklist_algorithm
   const worklist: [QuintModule, SourceLookupPath[]][] =
     mainPhase1Result.modules.map(m => [ m, [mainPath] ])
   // Collect modules produced by every source.
