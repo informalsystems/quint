@@ -1,3 +1,4 @@
+// -*- mode: Bluespec; -*-
 /**
  * This module collects definitions that are used in many specifications,
  * but they are not general enough to be the basic spells.
