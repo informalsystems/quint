@@ -156,10 +156,10 @@ export function parsePhase2sourceResolution(
   const worklist: [QuintModule, SourceLookupPath[]][] =
     mainPhase1Result.modules.map(m => [ m, [mainPath] ])
   // Collect modules produced by every source.
+ const sourceToModules = new Map<string, QuintModule[]>()
   // Assign a rank to every module. The higher the rank,
   // the earlier the module should appear in the list of modules.
-  const sourceToModules = new Map<string, QuintModule[]>()
-  sourceToModules.set(mainPath.normalizedPath, mainPhase1Result.modules)
+   sourceToModules.set(mainPath.normalizedPath, mainPhase1Result.modules)
   const moduleRank = new Map<string, number>()
   let maxModuleRank = 0
   mainPhase1Result.modules.reverse().forEach(m => moduleRank.set(m.name, maxModuleRank++))
