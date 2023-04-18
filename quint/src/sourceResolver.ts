@@ -34,6 +34,8 @@ export interface SourceLookupPath {
 
   /**
    * Produce the source name that will be shown in errors and stored in source maps.
+   * This name must be platform-independent, and it must be the same across
+   * different platforms (e.g., Linux and Windows)
    * @returns a string representation of the path that is written in source maps
    */
   toSourceName: () => string
@@ -74,16 +76,19 @@ export interface SourceResolver {
 
 /**
  * Read the source code in UTF-8 from the filesystem via NodeJS API.
+ * @param replacer an optional path replacement function,
+ *        which is used to produce a source name
  * @returns A filesystem resolver. For each path, it returns
  *          either `left(errorMessage)`, or `right(fileContents)`.
  */
-export const fileSourceResolver = (): SourceResolver => {
+export const fileSourceResolver =
+    (replacer: (path: string) => string = (path) => path): SourceResolver => {
   return {
     lookupPath: (basepath: string, importPath: string) => {
       return {
         normalizedPath: posix.join(basepath, importPath),
         toSourceName: () => {
-          return posix.join(basepath, importPath)
+          return replacer(posix.join(basepath, importPath))
         },
       }
     },
@@ -102,36 +107,6 @@ export const fileSourceResolver = (): SourceResolver => {
   }
 }
 
-/**
- * A special version of `fileSourceResolver` that replaces source names
- * with a user-defined string. This is needed for testing the parser,
- * which otherwise would produce absolute file names.
- * 
- * Perhaps, we could have a better solution in the future.
- */
-export const fileSourceResolverForTests =
-    (replacer: (path: string) => string): SourceResolver => {
-  const fsr = fileSourceResolver()
-  return {
-    lookupPath: (basepath: string, importPath: string) => {
-      const lp = fsr.lookupPath(basepath, importPath)
-      // override the behavior of lp.toSourceName
-      lp.toSourceName = () => {
-        return replacer(posix.join(basepath, importPath))
-      }
-      return lp
-    },
-
-    load: (lookupPath: SourceLookupPath): Either<string, string> => {
-      return fsr.load(lookupPath)
-    },
-
-    stempath: (lookupPath: SourceLookupPath): string => {
-      return fsr.stempath(lookupPath)
-    }
-  }
-}
- 
 /**
  * Read the source code from a map of strings. This resolver is especially
  * useful for tests.

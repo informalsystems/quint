@@ -8,7 +8,7 @@ import { lf } from 'eol'
 import { right } from '@sweet-monads/either'
 import { newIdGenerator } from '../src/idGenerator'
 import { collectIds } from './util'
-import { fileSourceResolverForTests } from '../src/sourceResolver'
+import { fileSourceResolver } from '../src/sourceResolver'
 
 // read a Quint file from the test data directory
 function readQuint(name: string): string {
@@ -28,7 +28,7 @@ function parseAndCompare(artifact: string): void {
   // read the input from the data directory and parse it
   const gen = newIdGenerator()
   const basepath = resolve(__dirname, '../testFixture')
-  const resolver = fileSourceResolverForTests((path: string) => {
+  const resolver = fileSourceResolver((path: string) => {
     // replace the absolute path with a generic mocked path,
     // so the same fixtures work accross different setups
     return path.replace(basepath, 'mocked_path/testFixture')
