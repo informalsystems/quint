@@ -184,20 +184,9 @@ const runCmd = {
 // construct verify commands with yargs
 const verifyCmd = {
   command: "verify <input>",
-  desc: "Verify a Quint specification via Apalache",
+  desc: "[not implemented] Verify a Quint specification via Apalache",
   builder: (yargs: any) =>
     yargs
-      .option("how", {
-        desc:
-          "how to do verification: bounded model checking (bmc) or symbolic execution (symexec)",
-        type: "string",
-      })
-      .choices("how", ["symexec", "bmc"])
-      .option("main", {
-        desc: "name of the main module (by default, computed from filename)",
-        type: "string",
-      })
-      .default("how", "symexec")
       .option("out", {
         desc: "output file (suppresses all console output)",
         type: "string",
@@ -207,34 +196,23 @@ const verifyCmd = {
           "output the trace in the Informal Trace Format to file (supresses all console output)",
         type: "string",
       })
-      .option("max-samples", {
-        desc: "the number of symbolic paths to try (when using --how=symexec)",
-        type: "number",
-      })
-      .default("max-samples", 10000)
       .option("max-steps", {
-        desc: "the maximum on the number of steps in every trace",
+        desc: "the maximum number of steps in every trace",
         type: "number",
+        default: 10,
       })
-      .default("max-steps", 10)
       .option("init", {
         desc: "name of the initializer action",
         type: "string",
+        default: "init",
       })
-      .default("init", "init")
       .option("step", {
         desc: "name of the step action",
         type: "string",
+        default: "step",
       })
-      .default("step", "step")
       .option("invariant", {
         desc: "invariant to check: a definition name or an expression",
-        type: "string",
-      })
-      .default("invariant", ["true"])
-      .option("seed", {
-        desc:
-          "random seed to use for symbolic execution (when using --how=symexec)",
         type: "string",
       })
       .option("apalache-config", {

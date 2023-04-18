@@ -260,57 +260,38 @@ Options:
 ```sh
 $ quint verify <input>
 
-Verify a Quint specification via Apalache
+[not implemented] Verify a Quint specification via Apalache
 
 Options:
-  --help             Show help                                     [boolean]
-  --version          Show version number                           [boolean]
-  --how              how to do verification: bounded model checking (bmc) or
-                     symbolic execution (symexec)
-                   [string] [choices: "symexec", "bmc"] [default: "symexec"]
-  --main             name of the main module (by default, computed from
-                     filename)                                      [string]
-  --out              output file (suppresses all console output)    [string]
+  --help             Show help                                         [boolean]
+  --version          Show version number                               [boolean]
+  --out              output file (suppresses all console output)        [string]
   --out-itf          output the trace in the Informal Trace Format to file
-                     (supresses all console output)                 [string]
-  --max-samples      the number of symbolic paths to try (when using
-                     --how=symexec)                [number] [default: 10000]
-  --max-steps        the maximum on the number of steps in every trace
-                                                      [number] [default: 10]
-  --init             name of the initializer action
-                                                  [string] [default: "init"]
-  --step             name of the step action      [string] [default: "step"]
+                     (supresses all console output)                     [string]
+  --max-steps        the maximum number of steps in every trace
+                                                          [number] [default: 10]
+  --init             name of the initializer action   [string] [default: "init"]
+  --step             name of the step action          [string] [default: "step"]
   --invariant        invariant to check: a definition name or an expression
-                                                [string] [default: ["true"]]
-  --seed             random seed to use for symbolic execution (when using
-                     --how=symexec)                                 [string]
+                                                                        [string]
   --apalache-config  Filename of the additional Apalache configuration (in the
-                     HOCON format, a superset of JSON)                [string]
+                     HOCON format, a superset of JSON)                  [string]
 ```
+    
+Apalache uses bounded model checking. This technique checks *all runs* up to
+`--max-steps` steps via [z3][]. Apalache is highly configurable. See [Apalache
+configuration](https://apalache.informal.systems/docs/apalache/config.html?highlight=configuration#apalache-configuration)
+for guidance. 
 
 - If there are no critical errors (e.g., in parsing, typechecking, etc.), this
 command sends the Quint specification to the [Apalache][] model checker, which
-will try to find an invariant violation. If it finds one, it prints the trace
-on the standard output. If it does not find a violating trace, it prints the
+will try to find an invariant violation. If it finds one, it prints the trace on
+the standard output. If it does not find a violating trace, it prints the
 longest sample trace that the simulator has found during the execution. When the
 parameter `--out` is supplied, the trace is written as a JSON representation of
 Quint IR in the output file. When the parameter `--out-itf` is supplied, the
-trace is written in the [Informal Trace Format][]. This output can be conviently
-displayed with the [ITF Trace Viewer][], or just with [jq][].
-
-  Apalache implements two slightly different techniques for invariant verification:
-    
-    - Symbolic execution (`symexec`). This technique selects `--max-samples`
-    runs in the specification and executes them symbolically via the [z3][]
-    prover. The length of every run is limited with `--max-steps` steps. This
-    techique is can find bugs faster than `bmc`, but it only checks *some 
-    runs* up to `--max-steps` steps.
-    
-    - Bounded model checking (`bmc`). This technique checks *all runs* up to
-    `--max-steps` steps via [z3][]. It is usually slower than `symexec` at bug
-    finding. However, when it terminates and does not find an invariant
-    violation, it comes with a guarantee: The invariant cannot be violated by
-    any run up to `--max-steps` steps.
+trace is written in the [Informal Trace Format][]. This output can be
+conveniently displayed with the [ITF Trace Viewer][], or just with [jq][].
 
 - If the specification cannot be run (e.g., due to a parsing error), the file
 contains an error message in JSON:
