@@ -4,11 +4,9 @@
  * One day they will become the standard library of Quint.
  */
 module basicSpells {
-  /**
-   * An annotation for writing preconditions.
-   * @param __cond condition to check
-   * @returns true if and only if __cond evaluates to true
-   */
+  /// An annotation for writing preconditions.
+  /// @param __cond condition to check
+  /// @returns true if and only if __cond evaluates to true
   pure def require(__cond: bool): bool = __cond
 
   run requireTest = all {
@@ -16,14 +14,12 @@ module basicSpells {
     assert(not(require(false))),
   }
 
-  /**
-   * A convenience operator that returns a string error code,
-   * if the condition does not hold true.
-   *
-   * @param __cond condition to check
-   * @param __error a non-empty error message
-   * @returns "", when __cond holds true; otherwise __error
-   */
+  /// A convenience operator that returns a string error code,
+  ///  if the condition does not hold true.
+  ///
+  /// @param __cond condition to check
+  /// @param __error a non-empty error message
+  /// @returns "", when __cond holds true; otherwise __error
   pure def requires(__cond: bool, __error: str): str = {
     if (__cond) "" else __error
   }
@@ -34,13 +30,11 @@ module basicSpells {
   }
 
 
-  /**
-   * Compute the maximum of two integers.
-   *
-   * @param __i first integer
-   * @param __j second integer
-   * @returns the maximum of __i and __j
-   */
+  /// Compute the maximum of two integers.
+  ///
+  /// @param __i first integer
+  /// @param __j second integer
+  /// @returns the maximum of __i and __j
   pure def max(__i: int, __j: int): int = {
     if (__i > __j) __i else __j
   }
@@ -53,13 +47,11 @@ module basicSpells {
     assert(max(-5, -3) == -3),
   }
 
-  /**
-   * Remove a set element.
-   *
-   * @param __set a set to remove an element from
-   * @param __elem an element to remove
-   * @returns a new set that contains all elements of __set but __elem
-   */
+  /// Remove a set element.
+  ///
+  /// @param __set a set to remove an element from
+  /// @param __elem an element to remove
+  /// @returns a new set that contains all elements of __set but __elem
   pure def setRemove(__set: Set[a], __elem: a): Set[a] = {
     __set.exclude(Set(__elem))
   }
@@ -69,14 +61,12 @@ module basicSpells {
     assert(Set() == Set().setRemove(3)),
   }
 
-  /**
-   * Remove a map entry.
-   *
-   * @param __map a map to remove an entry from
-   * @param __key the key of an entry to remove
-   * @returns a new map that contains all entries of __map
-   *          that do not have the key __key
-   */
+  /// Remove a map entry.
+  ///
+  /// @param __map a map to remove an entry from
+  /// @param __key the key of an entry to remove
+  /// @returns a new map that contains all entries of __map
+  ///          that do not have the key __key
    pure def mapRemove(__map: a -> b, __key: a): a -> b = {
     __map.keys().setRemove(__key).mapBy(__k => __map.get(__k))
   }

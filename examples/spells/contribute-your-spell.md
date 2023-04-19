@@ -7,14 +7,12 @@ To do so, open a pull request that adds a spell in the file
 [rareSpells.qnt](./rareSpells.qnt) by following the template:
 
 ```bluespec
-/**
- * An explanation of what the spell is doing.
- *
- * @param __param1 a description of the first parameter
- * @param __param2 a description of the second parameter
- * ...
- * @returns a description of the returned value
- */
+ /// An explanation of what the spell is doing.
+ ///
+ /// @param __param1 a description of the first parameter
+ /// @param __param2 a description of the second parameter
+ /// ...
+ /// @returns a description of the returned value
 pure def <name>(<parameters with types>): <return type> = {
   <body>
 }

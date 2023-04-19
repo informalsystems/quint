@@ -9,12 +9,11 @@
  * so the others would see how to use it.
  */
 module rareSpells {
-  /**
-   * Compute the sum of the values over all entries in a map.
-   *
-   * @param myMap a map from keys to integers
-   * @returns the sum; when the map is empty, the sum is 0.
-   */
+  ///
+  /// Compute the sum of the values over all entries in a map.
+  ///
+  /// @param myMap a map from keys to integers
+  /// @returns the sum; when the map is empty, the sum is 0.
   pure def mapValuesSum(myMap: a -> int): int = {
     myMap.keys().fold(0, ((sum, i) => sum + myMap.get(i)))
   }
