@@ -898,55 +898,94 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   private applyUserDefined(app: ir.QuintApp) {
-    const callable =
-      this.contextLookup(app.id, ['callable', 'arg']) as Callable
-    if (callable === undefined || callable.registers === undefined) {
-      this.addCompileError(app.id, `Called unknown operator ${app.opcode}`)
+    // look up for the operator to see, whether it's just an operator, or a parameter
+    const lookupEntry = this.lookupTable.get(app.id)
+    if (lookupEntry === undefined) {
+        this.addCompileError(app.id, `Called unknown operator ${app.opcode}`)
+        this.compStack.push(fail)
+        return
+    }
+
+    // retrieve the operator type to see, whether tuples should be unpacked
+    const operScheme = this.types.get(lookupEntry.reference)
+    if (operScheme === undefined || operScheme.type.kind !== 'oper') {
+      this.addCompileError(app.id, `Expected ${app.opcode} to be an operator`)
+      this.compStack.push(fail)
+      return
+    }
+
+    // this function gives us access to the compiled operator later
+    let callableRef: () => Maybe<Callable>
+
+    if (lookupEntry === undefined || lookupEntry.kind !== 'param') {
+      // The common case: the operator has been defined elsewhere.
+      // We simply look up for the operator and return it via callableRef.
+      const callable = this.contextLookup(app.id, ['callable']) as Callable
+      if (callable === undefined || callable.registers === undefined) {
+        this.addCompileError(app.id, `Called unknown operator ${app.opcode}`)
+        this.compStack.push(fail)
+        return
+      }
+      callableRef = () => just(callable)
+    } else {
+      // The operator is a parameter of another operator.
+      // We do not have access to the operator yet.
+      let register = this.contextLookup(app.id, ['arg']) as Register
+      if (register === undefined) {
+        this.addCompileError(app.id, `Parameter ${app.opcode} is not found`)
+        this.compStack.push(fail)
+        return
+      }
+      // every time we need a Callable, we will retrieve it from the register
+      callableRef = () => {
+        return register.registerValue.map(v => v as Callable)
+     }
+    }
+    // nparams === nargs, unless a tuple is passed to an n-ary operator.
+    const nparams = operScheme.type.args.length
+    const nargs = app.args.length
+
+    const nactual = this.compStack.length
+    if (nactual < nargs) {
+      this.addCompileError(app.id,
+        `Expected ${nargs} arguments for ${app.opcode}, found: ${nactual}`)
       this.compStack.push(fail)
     } else {
-      const nparams = callable.registers.length
-      // nparams === nargs, unless a tuple is passed to an n-ary operator.
-      // The type checker should have checked the types before.
-      const nargs = (app.args.length === 1 && nparams > 1) ? 1 : nparams
-
-      const nactual = this.compStack.length
-      if (nactual < nargs) {
-        this.addCompileError(app.id,
-          `Expected ${nargs} arguments for ${app.opcode}, found: ${nactual}`)
-        this.compStack.push(fail)
-      } else {
-        // pop nargs elements of the compStack
-        const args = this.compStack.splice(-nargs, nargs)
-        // Produce the new computable value.
-        // This code is similar to applyFun, but it calls the listener before
-        const comp = {
-          eval: (): Maybe<RuntimeValue> => {
-            this.execListener.onUserOperatorCall(app)
-            // compute the values of the arguments at this point
-            const merged = merge(args.map(a => a.eval()))
-            if (merged.isNone()) {
-              this.execListener.onUserOperatorReturn(app, [], none())
-              return none()
+      // pop nargs elements of the compStack
+      const args = this.compStack.splice(-nargs, nargs)
+      // Produce the new computable value.
+      // This code is similar to applyFun, but it calls the listener before
+      const comp = {
+        eval: (): Maybe<RuntimeValue> => {
+          this.execListener.onUserOperatorCall(app)
+          // compute the values of the arguments at this point
+          // TODO: if one of the parameters is an operator (e.g., a lambda),
+          // its evaluation would return none(), which would break HO operators
+          const merged = merge(args.map(a => a.eval()))
+          const callable = callableRef()
+          if (merged.isNone() || callable.isNone()) {
+            this.execListener.onUserOperatorReturn(app, [], none())
+            return none()
+          }
+          return merged.map(values => {
+            // if they are all defined, check whether unpacking is needed
+            let actualArgs: RuntimeValue[] = values as RuntimeValue[]
+            if (nparams > nargs && nargs === 1) {
+              // unpack the tuple
+              actualArgs = [...actualArgs[0]]
             }
-            return merged.map(values => {
-              // if they are all defined, check whether unpacking is needed
-              let actualArgs: RuntimeValue[] = values as RuntimeValue[]
-              if (nparams > nargs && nargs === 1) {
-                // unpack the tuple
-                actualArgs = [...actualArgs[0]]
-              }
-              for (let i = 0; i < nparams; i++) {
-                callable.registers[i].registerValue = just(actualArgs[i])
-              }
-              const result = callable.eval() as Maybe<RuntimeValue>
-              this.execListener.onUserOperatorReturn(app, actualArgs, result)
-              return result
-            })
-            .join()
-          },
-        }
-        this.compStack.push(comp)
+
+            for (let i = 0; i < nparams; i++) {
+              callable.value.registers[i].registerValue = just(actualArgs[i])
+            }
+            const result = callable.value.eval() as Maybe<RuntimeValue>
+            this.execListener.onUserOperatorReturn(app, actualArgs, result)
+            return result
+          })
+          .join()
+        },
       }
+      this.compStack.push(comp)
     }
   }
 
