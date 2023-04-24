@@ -61,13 +61,47 @@ module basicSpells {
     assert(Set() == Set().setRemove(3)),
   }
 
+  /// Test whether a key is present in a map
+  ///
+  /// - @param __map a map to query
+  /// - @param __key the key to look for
+  /// - @returns true if and only __map has an entry associated with __key
+  pure def has(__map: a -> b, __key: a): bool = {
+    __map.keys().contains(__key)
+  }
+
+  run hasTest = all {
+    assert(Map(2 -> 3, 4 -> 5).has(2)),
+    assert(not(Map(2 -> 3, 4 -> 5).has(6))),
+  }
+
+  /// Get the map value associated with a key, or the default,
+  /// if the key is not present.
+  ///
+  /// - @param __map the map to query
+  /// - @param __key the key to search for
+  /// - @returns the value associated with the key, if __key is
+  ///   present in the map, and __default otherwise
+  pure def getOrElse(__map: a -> b, __key: a, __default: b): b = {
+    if (__map.keys().contains(__key)) {
+      __map.get(__key)
+    } else {
+      __default
+    }
+  }
+
+  run getOrElseTest = all {
+    assert(Map(2 -> 3, 4 -> 5).getOrElse(2, 0) == 3),
+    assert(Map(2 -> 3, 4 -> 5).getOrElse(7, 11) == 11),
+  }
+
   /// Remove a map entry.
   ///
   /// - @param __map a map to remove an entry from
   /// - @param __key the key of an entry to remove
   /// - @returns a new map that contains all entries of __map
   ///          that do not have the key __key
-   pure def mapRemove(__map: a -> b, __key: a): a -> b = {
+  pure def mapRemove(__map: a -> b, __key: a): a -> b = {
     __map.keys().setRemove(__key).mapBy(__k => __map.get(__k))
   }
 
