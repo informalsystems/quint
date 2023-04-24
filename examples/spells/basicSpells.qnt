@@ -83,7 +83,7 @@ module basicSpells {
   /// - @returns the value associated with the key, if __key is
   ///   present in the map, and __default otherwise
   pure def getOrElse(__map: a -> b, __key: a, __default: b): b = {
-    if (__map.keys().contains(__key)) {
+    if (__map.has(__key)) {
       __map.get(__key)
     } else {
       __default
