@@ -736,9 +736,8 @@ export class CompilerVisitor implements IRVisitor {
           const normalKey = key.normalForm()
           const asMap = map.toMap()
           if (asMap.has(normalKey)) {
-            (fun as Callable).registers[0].registerValue =
-              just(asMap.get(normalKey))
-            return fun.eval().map((newValue) => {
+            return fun.eval([just(asMap.get(normalKey))])
+                .map((newValue) => {
               const newMap = asMap.set(normalKey, newValue as RuntimeValue)
               return rv.fromMap(newMap)
             })
@@ -959,8 +958,6 @@ export class CompilerVisitor implements IRVisitor {
         eval: (): Maybe<RuntimeValue> => {
           this.execListener.onUserOperatorCall(app)
           // compute the values of the arguments at this point
-          // TODO: if one of the parameters is an operator (e.g., a lambda),
-          // its evaluation would return none(), which would break HO operators
           const merged = merge(args.map(a => a.eval()))
           const callable = callableRef()
           if (merged.isNone() || callable.isNone()) {
@@ -975,10 +972,8 @@ export class CompilerVisitor implements IRVisitor {
               actualArgs = [...actualArgs[0]]
             }
 
-            for (let i = 0; i < nparams; i++) {
-              callable.value.registers[i].registerValue = just(actualArgs[i])
-            }
-            const result = callable.value.eval() as Maybe<RuntimeValue>
+            const result =
+              callable.value.eval(actualArgs.map(just)) as Maybe<RuntimeValue>
             this.execListener.onUserOperatorReturn(app, actualArgs, result)
             return result
           })
@@ -1089,22 +1084,20 @@ export class CompilerVisitor implements IRVisitor {
     // apply the lambda to a single element of the set
     const evaluateElem = function(elem: RuntimeValue):
       Maybe<[RuntimeValue, RuntimeValue]> {
+      let actualArgs: RuntimeValue[]
       if (nargs === 1) {
         // store the set element in the register
-        callable.registers[0].registerValue = just(elem)
+        actualArgs = [ elem ]
       } else {
         // unpack a tuple and store its elements in the registers
-        const tupleElems = [...elem]
-        if (tupleElems.length !== nargs) {
+        actualArgs = [...elem]
+        if (actualArgs.length !== nargs) {
           return none()
         }
-        for (let i = 0; i < nargs; i++) {
-          callable.registers[i].registerValue = just(tupleElems[i])
-        }
-      }
+     }
       // evaluate the predicate using the register
       // (cast the result to RuntimeValue, as we use runtime values)
-      const result = callable.eval().map(e => e as RuntimeValue)
+      const result = callable.eval(actualArgs.map(just)).map(e => e as RuntimeValue)
       return result.map(result => [result, elem])
     }
     this.applyFun(sourceId,
@@ -1130,15 +1123,16 @@ export class CompilerVisitor implements IRVisitor {
     const initialComp = this.compStack.pop() ?? fail
     // the register number depends on the traversal order
     const accumIndex = (order == 'fwd') ? 0 : 1
+    // keep the iteration values in args
+    const args: Maybe<EvalResult>[] = [ none(), none() ]
     // apply the lambda to a single element of the set
     const evaluateElem = function(elem: RuntimeValue): Maybe<EvalResult> {
       // The accumulator should have been set in the previous iteration.
       // Set the other register to the element.
-
-      callable.registers[1 - accumIndex].registerValue = just(elem)
-      const result = callable.eval()
+      args[1 - accumIndex] = just(elem)
+      const result = callable.eval(args)
       // save the result for the next iteration
-      callable.registers[accumIndex].registerValue = result
+      args[accumIndex] = result
       return result
     }
     // iterate over the iterable (a set or a list)
@@ -1147,7 +1141,7 @@ export class CompilerVisitor implements IRVisitor {
       (iterable: Iterable<RuntimeValue>): Maybe<any> => {
         return initialComp.eval().map(initialValue => {
           // save the initial value
-          callable.registers[accumIndex].registerValue = just(initialValue)
+          args[accumIndex] = just(initialValue)
           // fold the iterable
           return flatForEach(order, iterable, just(initialValue), evaluateElem)
         }).join()

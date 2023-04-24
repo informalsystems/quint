@@ -20,6 +20,8 @@ import { QuintEx } from '../quintIr'
 
 import { IdGenerator } from '../idGenerator'
 
+import { rv } from './impl/runtimeValue'
+
 /**
  * Evaluation result.
  * The implementation details are hidden behind this interface.
@@ -48,8 +50,10 @@ export interface Computable {
    * The simplest form of evaluation. Just compute the value.
    * This method may return none, if a computation error happens during
    * evaluation.
+   * 
+   * @param args optional arguments to the computable
    */
-  eval: () => Maybe<EvalResult>
+  eval: (args?: Maybe<any>[]) => Maybe<EvalResult>
 }
 
 /**
@@ -119,18 +123,22 @@ export interface Callable extends Computable {
  * Create an object that implements Callable.
  */
 export function mkCallable(registers: Register[], body: Computable): Callable {
-  return {
+  const callable: Callable = {
     registers,
-    eval: (args?: any[]) => {
-      if (args && args.length >= registers.length) {
-        registers.forEach((r, i) => r.registerValue = just(args[i]))
-        return body.eval()
-      } else {
-        // TODO: create a lambda value
-        return none()
-      }
-    },
+    eval: (_args?: Maybe<any>[]): Maybe<EvalResult> => none()
   }
+  callable.eval = (args?: Maybe<any>[]) => {
+    if (registers.length === 0) {
+      return body.eval()
+    }
+    if (args && args.length >= registers.length) {
+      registers.forEach((r, i) => r.registerValue = args[i])
+      return body.eval()
+    } else {
+      return just(rv.mkLambda(registers.length, callable))
+    }
+  }
+  return callable
 }
 
 /**

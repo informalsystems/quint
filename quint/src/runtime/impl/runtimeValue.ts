@@ -68,9 +68,8 @@ import { Maybe, just, merge, none } from '@sweet-monads/maybe'
 import { IdGenerator } from '../../idGenerator'
 import { expressionToString } from '../../IRprinting'
 
-import { EvalResult, Callable } from '../runtime'
+import { EvalResult, Callable, Register } from '../runtime'
 import { QuintEx } from '../../quintIr'
-import { QuintLambdaParameter } from '@informalsystems/quint'
 
 /** The default entry point of this module */
 export default rv
@@ -239,15 +238,13 @@ export const rv = {
   /**
    * Make a runtime value that represents a lambda.
    *
-   * @param lambdaId the id of the lambda expression
-   * @param params the parameters of lambda
+   * @param nparams the number of lambda parameters
    * @param callable a callable that evaluates the lambda
    * @returns a runtime value of lambda
    */
-  mkLambda: (lambdaId: bigint,
-             params: QuintLambdaParameter[],
+  mkLambda: (nparams: number,
              callable: Callable) => {
-    return new RuntimeValueLambda(lambdaId, params, callable)
+    return new RuntimeValueLambda(nparams, callable)
   }
 }
 
@@ -1418,29 +1415,32 @@ class RuntimeValueInfSet extends RuntimeValueBase implements RuntimeValue {
  * 
  * RuntimeValueLambda cannot be compared with other values.
  */
-class RuntimeValueLambda extends RuntimeValueBase implements RuntimeValue {
-  lambdaId
-  params: QuintLambdaParameter[]
+class RuntimeValueLambda extends RuntimeValueBase implements RuntimeValue, Callable {
+  nparams: number
   callable: Callable
+  registers: Register[]
 
-  constructor(lambdaId: bigint,
-              params: QuintLambdaParameter[],
-              callable: Callable) {
+  constructor(nparams: number, callable: Callable) {
     super(false)
-    this.lambdaId = lambdaId
-    this.params = params
+    this.nparams = nparams
     this.callable = callable
+    this.registers = callable.registers
+  }
+
+  eval(args?: any[]) {
+    return this.callable.eval(args)
   }
 
   toQuintEx(gen: IdGenerator): QuintEx {
     return {
-      id: this.lambdaId,
+      id: gen.nextId(),
       kind: 'lambda',
-      params: params,
+      params: Array.from(Array(this.nparams).keys())
+        .map(i => { return { id: gen.nextId(), name: `_a${i}` } }),
       qualifier: 'def',
       expr: {
         kind: 'str',
-        value: `lambda${this.lambdaId}`,
+        value: `lambda_${this.nparams}_params`,
         id: gen.nextId(),
       },
     }
