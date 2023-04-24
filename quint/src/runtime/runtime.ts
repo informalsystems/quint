@@ -12,7 +12,7 @@
  * See License.txt in the project root for license information.
  */
 
-import { Maybe, none } from '@sweet-monads/maybe'
+import { Maybe, just, none } from '@sweet-monads/maybe'
 
 import { ValueObject } from 'immutable'
 
@@ -121,8 +121,14 @@ export interface Callable extends Computable {
 export function mkCallable(registers: Register[], body: Computable): Callable {
   return {
     registers,
-    eval: () => {
-      return body.eval()
+    eval: (args?: any[]) => {
+      if (args && args.length >= registers.length) {
+        registers.forEach((r, i) => r.registerValue = just(args[i]))
+        return body.eval()
+      } else {
+        // TODO: create a lambda value
+        return none()
+      }
     },
   }
 }

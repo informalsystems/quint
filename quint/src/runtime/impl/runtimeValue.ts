@@ -68,8 +68,9 @@ import { Maybe, just, merge, none } from '@sweet-monads/maybe'
 import { IdGenerator } from '../../idGenerator'
 import { expressionToString } from '../../IRprinting'
 
-import { EvalResult } from '../runtime'
+import { EvalResult, Callable } from '../runtime'
 import { QuintEx } from '../../quintIr'
+import { QuintLambdaParameter } from '@informalsystems/quint'
 
 /** The default entry point of this module */
 export default rv
@@ -234,6 +235,20 @@ export const rv = {
   mkPowerset: (baseSet: RuntimeValue): RuntimeValue => {
     return new RuntimeValuePowerset(baseSet)
   },
+
+  /**
+   * Make a runtime value that represents a lambda.
+   *
+   * @param lambdaId the id of the lambda expression
+   * @param params the parameters of lambda
+   * @param callable a callable that evaluates the lambda
+   * @returns a runtime value of lambda
+   */
+  mkLambda: (lambdaId: bigint,
+             params: QuintLambdaParameter[],
+             callable: Callable) => {
+    return new RuntimeValueLambda(lambdaId, params, callable)
+  }
 }
 
 /**
@@ -1392,6 +1407,42 @@ class RuntimeValueInfSet extends RuntimeValueBase implements RuntimeValue {
       id: gen.nextId(),
       kind: 'name',
       name: this.kind,
+    }
+  }
+}
+
+/**
+ * A lambda operator as a runtime value. Technically, it should not be a value
+ * in Quint/TLA+. However, we have to carry lambdas when evaluating higher-order
+ * operators.
+ * 
+ * RuntimeValueLambda cannot be compared with other values.
+ */
+class RuntimeValueLambda extends RuntimeValueBase implements RuntimeValue {
+  lambdaId
+  params: QuintLambdaParameter[]
+  callable: Callable
+
+  constructor(lambdaId: bigint,
+              params: QuintLambdaParameter[],
+              callable: Callable) {
+    super(false)
+    this.lambdaId = lambdaId
+    this.params = params
+    this.callable = callable
+  }
+
+  toQuintEx(gen: IdGenerator): QuintEx {
+    return {
+      id: this.lambdaId,
+      kind: 'lambda',
+      params: params,
+      qualifier: 'def',
+      expr: {
+        kind: 'str',
+        value: `lambda${this.lambdaId}`,
+        id: gen.nextId(),
+      },
     }
   }
 }

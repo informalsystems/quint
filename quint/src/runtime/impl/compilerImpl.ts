@@ -936,7 +936,7 @@ export class CompilerVisitor implements IRVisitor {
         this.compStack.push(fail)
         return
       }
-      // every time we need a Callable, we will retrieve it from the register
+      // every time we need a Callable, we retrieve it from the register
       callableRef = () => {
         return register.registerValue.map(v => v as Callable)
      }
@@ -992,7 +992,8 @@ export class CompilerVisitor implements IRVisitor {
   enterLambda(lam: ir.QuintLambda) {
     // introduce a register for every parameter
     lam.params.forEach(p => {
-      const register = mkRegister('arg', p.name, none(), () => `Parameter ${p} is not set`)
+      const register = mkRegister('arg',
+        p.name, none(), () => `Parameter ${p} is not set`)
       this.context.set(kindName('arg', p.id), register)
 
       if (specialNames.includes(p.name)) {
