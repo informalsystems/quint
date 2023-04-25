@@ -1095,10 +1095,9 @@ export class CompilerVisitor implements IRVisitor {
           return none()
         }
      }
-      // evaluate the predicate using the register
-      // (cast the result to RuntimeValue, as we use runtime values)
-      const result = callable.eval(actualArgs.map(just)).map(e => e as RuntimeValue)
-      return result.map(result => [result, elem])
+      // evaluate the predicate against the actual arguments.
+      const result = callable.eval(actualArgs.map(just))
+      return result.map(result => [result as RuntimeValue, elem])
     }
     this.applyFun(sourceId,
       1,

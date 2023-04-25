@@ -1432,6 +1432,9 @@ class RuntimeValueLambda extends RuntimeValueBase implements RuntimeValue, Calla
   }
 
   toQuintEx(gen: IdGenerator): QuintEx {
+    // We produce a mock Quint expression.
+    // It is not going to be used,
+    // as the lambdas are passed only inside the simulator.
     return {
       id: gen.nextId(),
       kind: 'lambda',
