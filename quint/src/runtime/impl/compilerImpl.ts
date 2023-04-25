@@ -897,20 +897,25 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   private applyUserDefined(app: ir.QuintApp) {
+    const onError = (sourceId: bigint, msg: string): void => {
+        this.addCompileError(sourceId, msg)
+        this.compStack.push(fail)
+    }
+
     // look up for the operator to see, whether it's just an operator, or a parameter
     const lookupEntry = this.lookupTable.get(app.id)
     if (lookupEntry === undefined) {
-        this.addCompileError(app.id, `Called unknown operator ${app.opcode}`)
-        this.compStack.push(fail)
-        return
+      return onError(app.id, `Called unknown operator ${app.opcode}`)
     }
 
     // retrieve the operator type to see, whether tuples should be unpacked
     const operScheme = this.types.get(lookupEntry.reference)
-    if (operScheme === undefined || operScheme.type.kind !== 'oper') {
-      this.addCompileError(app.id, `Expected ${app.opcode} to be an operator`)
-      this.compStack.push(fail)
-      return
+    if (operScheme === undefined) {
+      return onError(app.id, `No type for ${app.opcode}`)
+    }
+
+    if (operScheme.type.kind !== 'oper') {
+      return onError(app.id, `Expected ${app.opcode} to be an operator`)
     }
 
     // this function gives us access to the compiled operator later
@@ -921,9 +926,7 @@ export class CompilerVisitor implements IRVisitor {
       // We simply look up for the operator and return it via callableRef.
       const callable = this.contextLookup(app.id, ['callable']) as Callable
       if (callable === undefined || callable.nparams === undefined) {
-        this.addCompileError(app.id, `Called unknown operator ${app.opcode}`)
-        this.compStack.push(fail)
-        return
+        return onError(app.id, `Called unknown operator ${app.opcode}`)
       }
       callableRef = () => just(callable)
     } else {
@@ -931,9 +934,7 @@ export class CompilerVisitor implements IRVisitor {
       // We do not have access to the operator yet.
       let register = this.contextLookup(app.id, ['arg']) as Register
       if (register === undefined) {
-        this.addCompileError(app.id, `Parameter ${app.opcode} is not found`)
-        this.compStack.push(fail)
-        return
+        return onError(app.id, `Parameter ${app.opcode} is not found`)
       }
       // every time we need a Callable, we retrieve it from the register
       callableRef = () => {
@@ -946,9 +947,8 @@ export class CompilerVisitor implements IRVisitor {
 
     const nactual = this.compStack.length
     if (nactual < nargs) {
-      this.addCompileError(app.id,
+      return onError(app.id,
         `Expected ${nargs} arguments for ${app.opcode}, found: ${nactual}`)
-      this.compStack.push(fail)
     } else {
       // pop nargs elements of the compStack
       const args = this.compStack.splice(-nargs, nargs)
