@@ -920,7 +920,7 @@ export class CompilerVisitor implements IRVisitor {
       // The common case: the operator has been defined elsewhere.
       // We simply look up for the operator and return it via callableRef.
       const callable = this.contextLookup(app.id, ['callable']) as Callable
-      if (callable === undefined || callable.registers === undefined) {
+      if (callable === undefined || callable.nparams === undefined) {
         this.addCompileError(app.id, `Called unknown operator ${app.opcode}`)
         this.compStack.push(fail)
         return
@@ -1080,18 +1080,17 @@ export class CompilerVisitor implements IRVisitor {
     }
     // lambda translated to Callable
     const callable = this.compStack.pop() as Callable
-    const nargs = callable.registers.length
     // apply the lambda to a single element of the set
     const evaluateElem = function(elem: RuntimeValue):
       Maybe<[RuntimeValue, RuntimeValue]> {
       let actualArgs: RuntimeValue[]
-      if (nargs === 1) {
+      if (callable.nparams === 1) {
         // store the set element in the register
         actualArgs = [ elem ]
       } else {
         // unpack a tuple and store its elements in the registers
         actualArgs = [...elem]
-        if (actualArgs.length !== nargs) {
+        if (actualArgs.length !== callable.nparams) {
           return none()
         }
      }
@@ -1117,7 +1116,7 @@ export class CompilerVisitor implements IRVisitor {
     // extract two arguments from the call stack and keep the set
     const callable = this.compStack.pop() as Callable
     // this method supports only 2-argument callables
-    assert(callable.registers.length === 2)
+    assert(callable.nparams === 2)
     // compile the computation of the initial value
     const initialComp = this.compStack.pop() ?? fail
     // the register number depends on the traversal order

@@ -1418,13 +1418,11 @@ class RuntimeValueInfSet extends RuntimeValueBase implements RuntimeValue {
 class RuntimeValueLambda extends RuntimeValueBase implements RuntimeValue, Callable {
   nparams: number
   callable: Callable
-  registers: Register[]
 
   constructor(nparams: number, callable: Callable) {
     super(false)
     this.nparams = nparams
     this.callable = callable
-    this.registers = callable.registers
   }
 
   eval(args?: any[]) {

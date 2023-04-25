@@ -111,12 +111,14 @@ export function mkRegister(kind: ComputableKind,
 }
 
 /**
- * A callable value like an operator definition.  Its body us computable, but
- * one has to first set the registers that store the values of the callable's
- * parameters.
+ * A callable value like an operator definition. Its body is computable.
+ * One has to pass the values of the parameters to eval.
  */
 export interface Callable extends Computable {
-  registers: Register[]
+  /**
+   * The number of parameters expected by the callable value.
+   */
+  nparams: number
 }
 
 /**
@@ -124,17 +126,22 @@ export interface Callable extends Computable {
  */
 export function mkCallable(registers: Register[], body: Computable): Callable {
   const callable: Callable = {
-    registers,
+    nparams: registers.length,
     eval: (_args?: Maybe<any>[]): Maybe<EvalResult> => none()
   }
   callable.eval = (args?: Maybe<any>[]) => {
     if (registers.length === 0) {
+      // simply evaluate the body, no parameters are needed
       return body.eval()
     }
     if (args && args.length >= registers.length) {
+      // All parameters are passed via `args`. Store them in the registers.
       registers.forEach((r, i) => r.registerValue = args[i])
+      // Evaluate the body under for the registers set to `args`.
       return body.eval()
     } else {
+      // The lambda is evaluated without giving the arguments.
+      // All we can do is to return this lambda as a runtime value.
       return just(rv.mkLambda(registers.length, callable))
     }
   }
