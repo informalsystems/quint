@@ -67,19 +67,25 @@ function assertVarExists(kind: ComputableKind, name: string, input: string) {
 
 // Scan the context for a callable. If found, evaluate it and return the value of the given var.
 // Assumes the input has a single callable
-function evalVarAfterCall(varName: string, input: string): Either<string, string> {
+function evalVarAfterCall(varName: string,
+    callee: string, input: string): Either<string, string> {
   // use a combination of Maybe and Either.
   // Recall that left(...) is used for errors,
   // whereas right(...) is used for non-errors in sweet monads.
   const callback = (ctx: CompilationContext): Either<string, string> => {
-    const key = [...ctx.values.keys()].find(k => k.startsWith('callable') && !builtinContext().has(k))
-    if (!key) {
-      return left('No callable found')
+    let key = undefined
+    if (ctx.main) {
+      const def = ctx.main.defs.find(def => def.kind === 'def' && def.name === callee)
+      if (def) {
+        key = kindName('callable', def.id)
+      }
     }
-
+    if (!key) {
+      return left(`${callee} not found`)
+    }
     const run = ctx.values.get(key)
     if (!run) {
-      return left(`${key} not found`)
+      return left(`${callee} not found via ${key}`)
     }
 
     return run.eval().map(res => {
@@ -96,19 +102,20 @@ function evalVarAfterCall(varName: string, input: string): Either<string, string
       } else {
         const s = expressionToString(res.toQuintEx(idGen))
         const m =
-          `Callable ${key} was expected to evaluate to true, found: ${s}`
+          `Callable ${callee} was expected to evaluate to true, found: ${s}`
         return left<string, string>(m)
       }
     })
-      .or(just(left(`Value of ${key} is undefined`)))
-      .unwrap()
-  }
+    .or(just(left(`Value of ${callee} is undefined`)))
+    .unwrap()
+}
 
   return evalInContext(input, callback)
 }
 
-function assertVarAfterCall(varName: string, expected: string, input: string) {
-  evalVarAfterCall(varName, input)
+function assertVarAfterCall(varName: string,
+    expected: string, callee: string, input: string) {
+  evalVarAfterCall(varName, callee, input)
     .mapLeft(m => assert.fail(m))
     .mapRight(output =>
       assert(expected === output,
@@ -983,7 +990,7 @@ describe('compiling specs to runtime values', () => {
         |run run1 = (n' = 1).then(n' = n + 2).then(n' = n * 4)
         `)
 
-      assertVarAfterCall('n', '12', input)
+      assertVarAfterCall('n', '12', 'run1', input)
     })
 
     it('repeated', () => {
@@ -992,7 +999,16 @@ describe('compiling specs to runtime values', () => {
         |run run1 = (n' = 1).then((n' = n + 1).repeated(3))
         `)
 
-      assertVarAfterCall('n', '4', input)
+      assertVarAfterCall('n', '4', 'run1', input)
+    })
+
+    it('reps', () => {
+      const input = dedent(
+        `var n: int
+        |run run1 = (n' = 1).then(3.reps(i => n' = n + 1))
+        `)
+
+      assertVarAfterCall('n', '4', 'run1', input)
     })
 
     it('fail', () => {
@@ -1001,7 +1017,7 @@ describe('compiling specs to runtime values', () => {
         |run run1 = (n' = 1).fail()
         `)
 
-      evalVarAfterCall('n', input)
+      evalVarAfterCall('n', 'run1', input)
         .mapRight(m => assert.fail(`Expected the run to fail, found: ${m}`))
     })
 
@@ -1011,7 +1027,7 @@ describe('compiling specs to runtime values', () => {
         |run run1 = (n' = 3).then(and { assert(n < 3), n' = n })
         `)
 
-      evalVarAfterCall('n', input)
+      evalVarAfterCall('n', 'run1', input)
         .mapRight(m => assert.fail(`Expected an error, found: ${m}`))
     })
 
