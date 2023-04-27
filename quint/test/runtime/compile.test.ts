@@ -1028,10 +1028,15 @@ describe('compiling specs to runtime values', () => {
     it('reps', () => {
       const input = dedent(
         `var n: int
-        |run run1 = (n' = 1).then(3.reps(_ => n' = n + 1))
+        |var hist: List[int]
+        |run run1 = (all { n' = 1, hist' = [] })
+        |           .then(3.reps(_ => all { n' = n + 1, hist' = hist.append(n) }))
+        |run run2 = (all { n' = 1, hist' = [] })
+        |           .then(3.reps(i => all { n' = i, hist' = hist.append(i) }))
         `)
 
-      assertVarAfterCall('n', '4', 'run1', input)
+      assertVarAfterCall('hist', 'List(1, 2, 3)', 'run1', input)
+      assertVarAfterCall('hist', 'List(0, 1, 2)', 'run2', input)
     })
 
     it('fail', () => {
