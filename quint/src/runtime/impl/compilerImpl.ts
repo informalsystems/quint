@@ -859,6 +859,10 @@ export class CompilerVisitor implements IRVisitor {
         this.translateRepeated(app)
         break
 
+      case 'reps':
+        this.translateReps(app)
+        break
+
       case 'q::test':
         // the special operator that runs random simulation
         this.test(app.id)
@@ -1286,13 +1290,13 @@ export class CompilerVisitor implements IRVisitor {
         const n = Number((num as RuntimeValue).toInt())
         const indices = [...Array(n).keys()]
         const actions = indices.map(i => {
-          // TODO: finish after merging
-          //return {
-          //  eval(): 
-          //}
-          return none()
+          return {
+            eval: () => {
+              return action.eval([just(rv.mkInt(BigInt(i)))])
+            }
+          }
         })
-        return this.chainAllOrThen(new Array(n).fill(action), 'then')
+        return this.chainAllOrThen(actions, 'then')
       }).join()
     }
 
