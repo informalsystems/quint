@@ -75,12 +75,14 @@ function evalVarAfterCall(varName: string,
   // whereas right(...) is used for non-errors in sweet monads.
   const callback = (ctx: CompilationContext): Either<string, string> => {
     let key = undefined
-    if (ctx.main) {
-      const def = ctx.main.defs.find(def => def.kind === 'def' && def.name === callee)
-      if (def) {
-        key = kindName('callable', def.id)
-      }
+    if (!ctx.main) {
+      return left('main module not found')
     }
+    const def = ctx.main.defs.find(def => def.kind === 'def' && def.name === callee)
+    if (!def) {
+      return left(`${callee} definition not found`)
+    }
+    key = kindName('callable', def.id)
     if (!key) {
       return left(`${callee} not found`)
     }
