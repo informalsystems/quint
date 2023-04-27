@@ -28,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The ITF export adds output similar to Apalache (#780)
 
 ### Deprecated
+
+- `repeated` is deprecated in favor of `reps` (#855)
+
 ### Removed
 
 - `notin` is no longer a builtin operator (#814)
