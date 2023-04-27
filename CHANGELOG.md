@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - support for higher-order operators in REPL/simulator (#845)
 - introduce `reps` as an alternative to `repeated` (#855)
 - More data is now output in most commands when `--out` is provided (#852)
+- Mock command `verify` for running Apalache in the future (#787)
 
 ### Changed
 
