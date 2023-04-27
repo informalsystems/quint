@@ -816,7 +816,7 @@ module builtin {
   /// ```
   action repeated(a, n): (bool, int) => bool
 
-  /// `n.reps(i => A(i))` or `n.reps(A)` repeats `n` times an action `A`.
+  /// `n.reps(i => A(i))` or `n.reps(A)` the action `A`, `n` times.
   /// The iteration number, starting with 0, is passed as an argument of `A`.
   /// As actions are usually not parameterized by the iteration number,
   /// the most common form looks like: `n.reps(i => A)`.

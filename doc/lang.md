@@ -1787,8 +1787,8 @@ that start with `Init` and evaluate `Next` four times in a row.
 
 #### Reps
 
-The expressions `n.reps(i => A(i))` or `n.reps(A)` repeats `n` times an action `A`.
-The iteration number, starting with 0, is passed as an argument of `A`.
+The expressions `n.reps(i => A(i))` or `n.reps(A)` repeats an action `A`, `n` times.
+The iteration number, `i`, starts with 0 and is passed as an argument of `A`.
 As actions are usually not parameterized by the iteration number,
 the most common form looks like: `n.reps(_ => A)`.
 

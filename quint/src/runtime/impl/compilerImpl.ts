@@ -1255,7 +1255,7 @@ export class CompilerVisitor implements IRVisitor {
 
   // translate A.repeated(i)
   //
-  // Soon to be removed: https://github.com/informalsystems/quint/issues/848
+  // TODO: Soon to be removed: https://github.com/informalsystems/quint/issues/848
   private translateRepeated(app: ir.QuintApp): void {
     if (this.compStack.length < 2) {
       this.addCompileError(app.id,

@@ -67,6 +67,7 @@ function assertVarExists(kind: ComputableKind, name: string, input: string) {
 
 // Scan the context for a callable. If found, evaluate it and return the value of the given var.
 // Assumes the input has a single callable
+// `callee` is used for error reporting.
 function evalVarAfterCall(varName: string,
     callee: string, input: string): Either<string, string> {
   // use a combination of Maybe and Either.
