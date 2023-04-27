@@ -1028,7 +1028,7 @@ describe('compiling specs to runtime values', () => {
     it('reps', () => {
       const input = dedent(
         `var n: int
-        |run run1 = (n' = 1).then(3.reps(i => n' = n + 1))
+        |run run1 = (n' = 1).then(3.reps(_ => n' = n + 1))
         `)
 
       assertVarAfterCall('n', '4', 'run1', input)

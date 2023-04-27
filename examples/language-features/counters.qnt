@@ -63,7 +63,7 @@ module counters {
 
   // execute Init and then Next ten times, while asserting n < 5
   run run4 = {
-    Init.then(10.reps(i => all {
+    Init.then(10.reps(_ => all {
       assert(n < 5),
       Next,
     }))
@@ -71,7 +71,7 @@ module counters {
 
   // this test should not fail
   run passingTest = {
-    Init.then(10.reps(i => all {
+    Init.then(10.reps(_ => all {
         assert(n > 0),
         Next,
     }))
@@ -79,7 +79,7 @@ module counters {
 
   // this test should fail
   run failingTest = {
-    Init.then(10.reps(i => all {
+    Init.then(10.reps(_ => all {
         assert(n == 0),
         Next,
     }))

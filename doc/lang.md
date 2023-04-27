@@ -1790,7 +1790,7 @@ that start with `Init` and evaluate `Next` four times in a row.
 The expressions `n.reps(i => A(i))` or `n.reps(A)` repeats `n` times an action `A`.
 The iteration number, starting with 0, is passed as an argument of `A`.
 As actions are usually not parameterized by the iteration number,
-the most common form looks like: `n.reps(i => A)`.
+the most common form looks like: `n.reps(_ => A)`.
 
 The semantics of this operator is as follows:
 
@@ -1803,7 +1803,7 @@ The semantics of this operator is as follows:
   
 ```bluespec
 var x: int
-run test = (x' = 0).then(3.reps(i => x' = x + 1)).then(assert(x == 3))
+run test = (x' = 0).then(3.reps(_ => x' = x + 1)).then(assert(x == 3))
 ```
 
 *Mode:* Run.
