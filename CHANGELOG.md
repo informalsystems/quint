@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - cache top-level `pure val` (#837)
 - support for higher-order operators in REPL/simulator (#845)
 - introduce `reps` as an alternative to `repeated` (#855)
+- More data is now output in most commands when `--out` is provided (#852)
 
 ### Changed
 
@@ -30,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - `notin` is no longer a builtin operator (#814)
+- `--with-lookup` command (#850)
 
 ### Fixed
 
