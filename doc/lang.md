@@ -1781,7 +1781,35 @@ that start with `Init` and evaluate `Next` four times in a row.
 
 *Mode:* Run.
 
+#### Reps
+
+The expressions `n.reps(i => A(i))` or `n.reps(A)` repeats `n` times an action `A`.
+The iteration number, starting with 0, is passed as an argument of `A`.
+As actions are usually not parameterized by the iteration number,
+the most common form looks like: `n.reps(i => A)`.
+
+The semantics of this operator is as follows:
+
+ - When `n <= 0`, this operator does not change the state.
+ - When `n = 1`, `n.reps(A)` is equivalent to `A(0)`.
+ - When `n > 1`, `n.reps(A)`, is equivalent to
+   `A(0).then((n - 1).reps(i => A(1 + i)))`.
+
+##### Example
+  
+```bluespec
+var x: int
+run test = (x' = 0).then(3.reps(i => x' = x + 1)).then(assert(x == 3))
+```
+
+*Mode:* Run.
+
 #### Repeated
+
+**Deprecated:** This operator has [usability
+*issues](https://github.com/informalsystems/quint/issues/788).
+Migrate to `reps`, as `repeated` is going [to be
+removed](https://github.com/informalsystems/quint/issues/848).
 
 The operator `repeated` has the following syntax:
 
