@@ -109,4 +109,20 @@ module basicSpells {
     assert(Map(3 -> 4, 7 -> 8) == Map(3 -> 4, 5 -> 6, 7 -> 8).mapRemove(5)),
     assert(Map() == Map().mapRemove(3)),
   }
+
+  pure def listSorted(__list: List[a], __lt: (a, a) => bool): List[a] = {
+    pure def __countSmaller(__j: int): int = {
+      pure val __jth = __list[__j]
+      __list.indices().filter(__i =>
+        __lt(__list[__i], __jth) or (__list[__i] == __jth and __i < __j)
+      )
+      .size()
+    }
+
+    pure val __permutation =
+      __list.indices().mapBy(__i => __countSmaller(__i))
+    range(0, __list.length()).foldl([], (__l, __i) =>
+      __l.append(__list[__permutation.get(__i)])
+    )
+  }
 }

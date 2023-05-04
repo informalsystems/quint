@@ -902,7 +902,8 @@ export class CompilerVisitor implements IRVisitor {
     }
 
     if (operScheme.type.kind !== 'oper') {
-      return onError(app.id, `Expected ${app.opcode} to be an operator`)
+      return onError(app.id,
+        `Expected ${app.opcode} to be an operator, found: ${operScheme.type.kind}`)
     }
 
     // this function gives us access to the compiled operator later
