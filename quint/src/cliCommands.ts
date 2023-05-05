@@ -12,6 +12,7 @@ import JSONbig from 'json-bigint'
 import { dirname, basename, resolve } from 'path'
 import { cwd } from 'process'
 import chalk from 'chalk'
+import { nest, render } from 'prettier-printer'
 
 import {
   ErrorMessage, Loc, compactSourceMap, parsePhase1fromText, parsePhase2sourceResolution, parsePhase3importAndNameResolution
@@ -256,6 +257,7 @@ export function runRepl(_argv: any) {
 export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
   const verbosityLevel = !prev.args.out ? prev.args.verbosity : 0
   const out = console.log
+  const columns = !prev.args.out ? process.stdout.columns : 80
 
   const testing = { ...prev, stage: 'testing' as stage }
   const mainArg = prev.args.main
@@ -352,7 +354,7 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
             out('')
             testResult.frames.forEach((f, index) => {
               out(`    [Frame ${index}]`)
-              printExecutionFrameRec(l => out('    ' + l), f, [])
+              render(columns, nest(2, printExecutionFrameRec(f, [])))
               out('')
             })
 
@@ -394,6 +396,7 @@ export function runSimulator(prev: TypecheckedStage):
   const mainName = mainArg ? mainArg : basename(prev.args.input, '.qnt')
   const verbosityLevel =
     (!prev.args.out && !prev.args.outItf) ? prev.args.verbosity : 0
+  const columns = !prev.args.out ? process.stdout.columns : 80
   const rngOrError = mkRng(prev.args.seed)
   if (rngOrError.isLeft()) {
     return cliErr(rngOrError.value, { ...simulator, errors: [] })
@@ -424,7 +427,7 @@ export function runSimulator(prev: TypecheckedStage):
         const elapsedMs = Date.now() - startMs
         if (verbosity.hasStateOutput(options.verbosity)) {
           console.log(chalk.gray('An example execution:\n'))
-          printTrace(console.log, result.states, result.frames)
+          render(columns, printTrace(result.states, result.frames))
         }
         if (result.status === 'ok') {
           console.log(chalk.green('[ok]')

@@ -11,13 +11,26 @@
 import chalk from 'chalk'
 import { strict as assert } from 'assert'
 import { range } from 'lodash'
+import {
+  IDoc, braces, brackets, enclose, group, intersperse,
+  line, lineBreak, nest, parens, punctuate, softBreak, softLine
+} from 'prettier-printer'
 
 import { QuintEx } from './quintIr'
 import { ExecutionFrame } from './runtime/trace'
 import { zerog } from './idGenerator'
 
 // convert a Quint expression to a colored string, tuned for REPL
-export function chalkQuintEx(ex: QuintEx): string {
+export function chalkQuintEx(ex: QuintEx): IDoc {
+  // a helper function to produce specific indentation
+  const join = (docPair: [IDoc, IDoc], args: IDoc[]): IDoc => {
+    const as = group([
+      nest(2, [lineBreak, punctuate([',', line], args)]),
+      lineBreak
+    ])
+    return enclose(docPair, as)
+  }
+
   switch (ex.kind) {
     case 'bool':
       return chalk.yellow(`${ex.value}`)
@@ -30,33 +43,27 @@ export function chalkQuintEx(ex: QuintEx): string {
 
     case 'app':
       switch (ex.opcode) {
-        case 'Set': {
-          const as = ex.args.map(chalkQuintEx).join(', ')
-          return chalk.green('Set') + `(${as})`
-        }
+        case 'Set':
+          return group([chalk.green('Set'), join(parens, ex.args.map(chalkQuintEx))])
 
         case 'Map': {
           const ps = ex.args.map(tup => {
             if (tup.kind === 'app' &&
                    tup.opcode === 'Tup' && tup.args.length === 2) {
               const [k, v] = tup.args
-              return `${chalkQuintEx(k)} -> ${chalkQuintEx(v)}`
+              return group([chalkQuintEx(k), ' ->', nest(2, [line, chalkQuintEx(v)])])
             } else {
               return '<expected-pair>'
             }
           })
-          const as = ps.join(', ')
-          return chalk.green('Map') + `(${as})`
+          return group([chalk.green('Map'), join(parens, ps)])
         }
 
-        case 'Tup': {
-          const as = ex.args.map(chalkQuintEx).join(', ')
-          return `(${as})`
-        }
+        case 'Tup':
+          return join(parens, ex.args.map(chalkQuintEx))
 
         case 'List': {
-          const as = ex.args.map(chalkQuintEx).join(', ')
-          return `[${as}]`
+          return join(brackets, ex.args.map(chalkQuintEx))
         }
 
         case 'Rec': {
@@ -65,10 +72,10 @@ export function chalkQuintEx(ex: QuintEx): string {
             const key = ex.args[2 * i]
             if (key && key.kind === 'str') {
               const value = chalkQuintEx(ex.args[2 * i + 1])
-              kvs.push(`${chalk.green(key.value)}: ${value}`)
+              kvs.push(group([chalk.green(key.value), ':', line, value]))
             }
           }
-          return `{ ${kvs.join(', ')} }`
+          return join([ ['{', softLine], [softLine, '}'] ], kvs)
         }
 
         default:
@@ -77,8 +84,8 @@ export function chalkQuintEx(ex: QuintEx): string {
       }
 
     case 'lambda': {
-      const params = ex.params.map(p => p.name).join(', ')
-      return `{ (${params}) => ... }`
+      const params = enclose(parens, punctuate([',', line], ex.params.map(p => p.name)))
+      return enclose(braces, group([params, '=>', '...']))
     }
 
     default:
@@ -87,12 +94,10 @@ export function chalkQuintEx(ex: QuintEx): string {
 }
 
 export function
-printExecutionFrameRec(out: (line: string) => void,
-    frame: ExecutionFrame,
-    isLast: boolean[]) {
+printExecutionFrameRec(frame: ExecutionFrame, isLast: boolean[]): IDoc {
   // convert the arguments and the result to strings
   const args =
-    frame.args.map(a => chalkQuintEx(a.toQuintEx(zerog))).join(', ')
+    punctuate(',', frame.args.map(a => chalkQuintEx(a.toQuintEx(zerog))))
   const r =
     frame.result.isNone()
       ? 'none'
@@ -107,42 +112,50 @@ printExecutionFrameRec(out: (line: string) => void,
       // depending on whether this frame is the last one
       : (il ? '└─ ' : '├─ ')
   ).join('')
-  out(`${treeArt}${frame.app.opcode}(${args}) => ${r}`)
+  let doc =
+    group([treeArt, frame.app.opcode, group([enclose(parens, args), '=>', r]), line])
   const n = frame.subframes.length
   // visualize the children
-  frame.subframes.forEach((f, i) =>
-    printExecutionFrameRec(out, f, isLast.concat([i === n - 1]))
+  const children = frame.subframes.map((f, i) =>
+    printExecutionFrameRec(f, isLast.concat([i === n - 1]))
   )
+  return intersperse(line, [doc].concat(children))
 }
 
 /**
  * Print a trace with chalk.
  */
-export function printTrace(out: (line: string) => void,
-                           states: QuintEx[],
-                           frames: ExecutionFrame[]) {
+export function printTrace(states: QuintEx[],
+                           frames: ExecutionFrame[]): IDoc {
   const colon = chalk.gray(':')
-  states.forEach((state, index) => {
+  const stateDocs = states.map((state, index) => {
     assert(state.kind === 'app'
            && state.opcode === 'Rec' && state.args.length % 2 === 0)
 
+    let docs: IDoc[] = []
     if (index < frames.length) {
       // be lenient to broken input
-      out(`[Frame ${index}]`)
-      printExecutionFrameRec(l => out(' ' + l), frames[index], [])
-      out('')
+      docs.push([
+        enclose(brackets, ['Frame', index.toString()]),
+        nest(1, [line, printExecutionFrameRec(frames[index], [])]),
+        line
+      ])
     }
 
-    out(`[State ${index}]`)
-    range(0, Math.trunc(state.args.length / 2))
-      .forEach(i => {
+    docs.push(enclose(brackets, ['State', index.toString()]))
+    const pairs = range(0, Math.trunc(state.args.length / 2))
+      .map(i => {
         const key = state.args[2 * i]
         assert(key.kind === 'str')
         const valueText = chalkQuintEx(state.args[2 * i + 1])
-        out(` ${key.value}${colon} ${valueText}`)
+        return [group([key.value, colon, softBreak, valueText]), line]
       })
+    docs.push([punctuate(line, pairs), line])
+    docs.push(['------', line])
 
-    out(''.padStart(80, '─') + '\n')
+    return docs.flat(1)
   })
+
+  return intersperse(line, stateDocs)
 }
 
