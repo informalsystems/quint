@@ -12,7 +12,7 @@ import JSONbig from 'json-bigint'
 import { dirname, basename, resolve } from 'path'
 import { cwd } from 'process'
 import chalk from 'chalk'
-import { nest, render } from 'prettier-printer'
+import { nest, format } from './prettierimp'
 
 import {
   ErrorMessage, Loc, compactSourceMap, parsePhase1fromText, parsePhase2sourceResolution, parsePhase3importAndNameResolution
@@ -354,7 +354,7 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
             out('')
             testResult.frames.forEach((f, index) => {
               out(`    [Frame ${index}]`)
-              render(columns, nest(2, printExecutionFrameRec(f, [])))
+              format(columns, nest('  ', printExecutionFrameRec(f, [])))
               out('')
             })
 
@@ -427,7 +427,7 @@ export function runSimulator(prev: TypecheckedStage):
         const elapsedMs = Date.now() - startMs
         if (verbosity.hasStateOutput(options.verbosity)) {
           console.log(chalk.gray('An example execution:\n'))
-          render(columns, printTrace(result.states, result.frames))
+          format(columns, printTrace(result.states, result.frames))
         }
         if (result.status === 'ok') {
           console.log(chalk.green('[ok]')

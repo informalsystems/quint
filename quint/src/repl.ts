@@ -16,7 +16,7 @@ import lineColumn from 'line-column'
 import { Maybe, just, none } from '@sweet-monads/maybe'
 import { left, right } from '@sweet-monads/either'
 import chalk from 'chalk'
-import { render } from 'prettier-printer'
+import { format } from './prettierimp'
 
 import { QuintEx } from './quintIr'
 import {
@@ -535,7 +535,7 @@ ${textToAdd}
           .eval()
           .map(value => {
             const ex = value.toQuintEx(state.idGen)
-            out(render(columns, chalkQuintEx(ex)))
+            out(format(columns, chalkQuintEx(ex)))
 
             if (verbosity.hasUserOpTracking(state.verbosityLevel)) {
               const trace = recorder.getBestTrace()
@@ -543,7 +543,7 @@ ${textToAdd}
                 out('')
                 trace.subframes.forEach((f, i) => {
                   out(` [Frame ${i}]`)
-                  out(render(columns, printExecutionFrameRec(f, [])))
+                  out(format(columns, printExecutionFrameRec(f, [])))
                   out('')
                 })
               }

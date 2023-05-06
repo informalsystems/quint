@@ -1,7 +1,7 @@
 import { describe, it } from 'mocha'
 import { expect } from 'chai'
 import chalk from 'chalk'
-import { Doc, format, group, line, nest, richtext, text } from '../src/prettierimp'
+import { Doc, braces, brackets, format, group, line, nest, parens, richtext, text } from '../src/prettierimp'
 
 // define the standard line break to avoid repetition
 const br = line('\n', ' ')
@@ -191,5 +191,17 @@ ${b('stmt;')}
 stmt;]
 ${y('end]')}`
     expect(result3).to.equal(expected3)
+  })
+
+  it('parentheses, braces, brackets', () => {
+    const doc = [
+      parens(braces(brackets([line(), text('abc'), line()]))),
+    ]
+
+    const result60 = format(60, doc)
+    expect(result60).to.equal('({[ abc ]})')
+
+    const result3 = format(3, doc)
+    expect(result3).to.equal('({[\nabc\n]})')
   })
 })

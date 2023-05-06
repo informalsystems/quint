@@ -27,6 +27,21 @@
 import { Stack } from 'immutable'
 
 /**
+ * Layout a document. This is the end function that produces produces a string
+ * for the best document layout.
+ * 
+ * @param width the maximum width
+ * @param doc the document to format
+ * @returns a resulting string
+ */
+export const format = (width: number, doc: Doc): string => {
+  const fits: FitsElem = {
+    indentText: [], indentLen: 0, mode: 'flat', doc: group(doc)
+  }
+  return formatInternal(width, 0, fits).join('')
+}
+
+/**
  * A string-like object that returns its width in columns and its string
  * representation. Note that `length` and `toString().length` do not have to be
  * equal. For instance, this happens when the string representation contains
@@ -59,6 +74,15 @@ export type Doc =
   | Doc[]
 
 /**
+ * A type guard to distinguish an array document from other documents.
+ * @param d the document to test
+ * @returns the type predicate that evaluates to true on Doc[]
+ */
+function isDocArray(d: Doc): d is Doc[] {
+  return Array.isArray(d)
+}  
+
+/**
  * Create a document that carries an indivisible piece of text
  * @param text a string-like text
  * @returns a new document that contains the text
@@ -86,14 +110,30 @@ export const richtext = (decorator: (s: string) => string, s: string): Doc => {
 }
 
 /**
- * Create a line-break document.
+ * A convenience operator that wraps all strings with `text(...)` while keeping
+ * all documents untouched.
+ * 
+ * @param ds an array of documents and strings
+ * @returns an array of documents, in which all strings are wrapped with `text(...)`
+ */
+export const textify = (ds: (Doc | string)[]): Doc[] => {
+  return ds.map(d => (typeof d === 'string') ? text(d) : d)
+}
+
+/**
+ * Create an optional line feed.
  * @param lf the text to use as a line feed
  * @param space the text to use a space
  * @returns a new document that represents a line break
  */
-export const line = (lf: StringLike, space: StringLike): Doc => {
+export const line = (lf: StringLike = '\n', space: StringLike = ' '): Doc => {
   return { kind: 'line', linefeed: lf, space }
 }
+
+/**
+ * A line break that is either a line feed, or an empty string.
+ */
+export const linebreak: Doc = { kind: 'line', linefeed: '\n', space: '' }
 
 /**
  * Create a document that introduces `indent` spaces after every line break.
@@ -117,18 +157,47 @@ export const group = (child: Doc): Doc => {
 }
 
 /**
- * Layout a document
- * 
- * @param width the maximum width
- * @param doc the document to format
- * @returns a resulting string
+ * Join documents with a separator.
+ * @param separator the separator to use
+ * @param docs documents to join
+ * @returns a new document that contains the elements joined with the separator
  */
-export const format = (width: number, doc: Doc): string => {
-  const fits: FitsElem = {
-    indentText: [], indentLen: 0, mode: 'flat', doc: group(doc)
+export const docJoin = (separator: Doc, docs: Doc[]): Doc => {
+  const j = (l: Doc[], d: Doc): Doc[] => {
+    return (l.length === 0) ? [d] : l.concat([separator, d])
   }
-  return formatInternal(width, 0, fits).join('')
+
+  return docs.reduce(j, [])
 }
+
+/**
+ * Enclose a document in braces `{ ... }`
+ * @param doc the document to enclose
+ * @returns the document `{doc}`
+ */
+export const braces = (doc: Doc): Doc => {
+  return [ text('{'), doc, text('}') ]
+}
+
+/**
+ * Enclose a document in parentheses `( ... )`
+ * @param doc the document to enclose
+ * @returns the document `(doc)`
+ */
+export const parens = (doc: Doc): Doc => {
+  return [ text('('), doc, text(')') ]
+}
+
+/**
+ * Enclose a document in brackets `[ ... ]`
+ * @param doc the document to enclose
+ * @returns the document `[doc]`
+ */
+export const brackets = (doc: Doc): Doc => {
+  return [ text('['), doc, text(']') ]
+}
+
+//-------------------- the implementation -------------------------------
 
 // an iteration element that is used in `fits` below
 type FitsElem = {
@@ -153,7 +222,7 @@ const fits = (width: number, inputStack: Stack<FitsElem>): boolean => {
   while (!stack.isEmpty() && columnBudget >= 0) {
     const elem = stack.first()!
     stack = stack.shift()
-    if (Array.isArray(elem.doc)) {
+    if (isDocArray(elem.doc)) {
       // push the children on the stack with the same indentation and mode
       stack = stack.unshiftAll(elem.doc.map(d => {
         return { ...elem, doc: d }
@@ -223,7 +292,7 @@ const formatInternal =
   while (!stack.isEmpty()) {
     const elem = stack.first()!
     stack = stack.shift()
-    if (Array.isArray(elem.doc)) {
+    if (isDocArray(elem.doc)) {
       stack = stack.unshiftAll(elem.doc.map(d => {
         return { ...elem, doc: d }
       }))
