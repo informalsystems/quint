@@ -55,9 +55,9 @@ export interface StringLike {
 export type Doc =
   | { kind: 'text', text: StringLike }
   | { kind: 'line', linefeed: StringLike, space: StringLike }
-  | { kind: 'array', children: Doc[] }
   | { kind: 'nest', indent: StringLike, child: Doc }
   | { kind: 'group', child: Doc }
+  | Doc[]
 
 /**
  * Create a document that carries an indivisible piece of text
@@ -79,15 +79,6 @@ export const line = (lf: StringLike, space: StringLike): Doc => {
 }
 
 /**
- * Create a document that combines other documents
- * @param docs documents to combine
- * @returns a new document that combines the other documents (left-to-right)
- */
-export const list = (docs: Doc[]): Doc => {
-  return { kind: 'array', children: docs }
-}
-
-/**
  * Create a document that introduces `indent` spaces after every line break.
  * @param indent the text to use for indentation, e.g., a few spaces
  * @param doc the document to decorate with indentation
@@ -104,8 +95,8 @@ export const nest = (indent: StringLike, doc: Doc): Doc => {
  * @param doc the document to group
  * @returns a new document that groups doc
  */
-export const group = (doc: Doc): Doc => {
-  return { kind: 'group', child: doc }
+export const group = (child: Doc): Doc => {
+  return { kind: 'group', child }
 }
 
 /**
@@ -142,54 +133,52 @@ type FitsElem = {
 const fits = (width: number, inputStack: Stack<FitsElem>): boolean => {
   let columnBudget = width
   let stack = inputStack
-  console.log(`fits`)
   while (!stack.isEmpty() && columnBudget >= 0) {
     const elem = stack.first()!
     stack = stack.shift()
-    console.log(`fits: ${elem.doc.kind}`)
-    switch (elem.doc.kind) {
-      case 'text':
-        // consume the columns required by the text
-        columnBudget -= elem.doc.text.length
-        break
+    if (Array.isArray(elem.doc)) {
+      // push the children on the stack with the same indentation and mode
+      stack = stack.unshiftAll(elem.doc.map(d => {
+        return { ...elem, doc: d }
+      }))
+    } else {
+      switch (elem.doc.kind) {
+        case 'text':
+          // consume the columns required by the text
+          columnBudget -= elem.doc.text.length
+          break
 
-      case 'line':
-        if (elem.mode === 'flat') {
-          // consume the columns required by the space
-          columnBudget -= elem.doc.space.length
-        } else {
-          // Although the paper says that this case is imposssible,
-          // it is triggered by their own test. Following the authors,
-          // we return true immediately.
-          return true
-        }
-        break
+        case 'line':
+          if (elem.mode === 'flat') {
+            // consume the columns required by the space
+            columnBudget -= elem.doc.space.length
+          } else {
+            // Although the paper says that this case is imposssible,
+            // it is triggered by their own test. Following the authors,
+            // we return true immediately.
+            return true
+          }
+          break
 
-      case 'array':
-        // push the children on the stack with the same indentation and mode
-        stack = stack.unshiftAll(elem.doc.children.map(d => {
-          return { ...elem, doc: d }
-        }))
-        break
+        case 'nest':
+          // increase the indentation level and check again (in the next iteration)
+          stack = stack.unshift({
+            ...elem,
+            indentText: elem.indentText.concat([ elem.doc.indent.toString() ]),
+            indentLen: elem.indentLen + elem.doc.indent.length,
+            doc: elem.doc.child
+          })
+          break
 
-      case 'nest':
-        // increase the indentation level and check again (in the next iteration)
-        stack = stack.unshift({
-          ...elem,
-          indentText: elem.indentText.concat([ elem.doc.indent.toString() ]),
-          indentLen: elem.indentLen + elem.doc.indent.length,
-          doc: elem.doc.child
-        })
-        break
-
-      case 'group':
-        // assume that the group fits and check further
-        stack = stack.unshift({
-          ...elem,
-          mode: 'flat',
-          doc: elem.doc.child,
-        })
-        break
+        case 'group':
+          // assume that the group fits and check further
+          stack = stack.unshift({
+            ...elem,
+            mode: 'flat',
+            doc: elem.doc.child,
+          })
+          break
+      }
     }
   }
 
@@ -214,54 +203,51 @@ const formatInternal =
   let consumedOnLine = start
   let output: string[] = []
   let stack: Stack<FitsElem> = Stack([elem])
-  console.log('formatInternal')
   while (!stack.isEmpty()) {
     const elem = stack.first()!
     stack = stack.shift()
-    console.log(`formatInternal: ${elem.doc.kind}`)
-    switch (elem.doc.kind) {
-      case 'text':
-        output.push(elem.doc.text.toString())
-        consumedOnLine += elem.doc.text.length
-        break
+    if (Array.isArray(elem.doc)) {
+      stack = stack.unshiftAll(elem.doc.map(d => {
+        return { ...elem, doc: d }
+      }))
+    } else {
+      switch (elem.doc.kind) {
+        case 'text':
+          output.push(elem.doc.text.toString())
+          consumedOnLine += elem.doc.text.length
+          break
 
-      case 'nest':
-        stack = stack.unshift({
-          ...elem,
-          indentText: elem.indentText.concat([elem.doc.indent.toString()]),
-          indentLen: elem.indentLen + elem.doc.indent.length,
-          doc: elem.doc.child,
-        })
-        break
+        case 'nest':
+          stack = stack.unshift({
+            ...elem,
+            indentText: elem.indentText.concat([elem.doc.indent.toString()]),
+            indentLen: elem.indentLen + elem.doc.indent.length,
+            doc: elem.doc.child,
+          })
+          break
 
-      case 'line':
-        if (elem.mode === 'flat') {
-          output.push(elem.doc.space.toString())
-          consumedOnLine += elem.doc.space.length
-        } else {
-          output.push(elem.doc.linefeed.toString())
-          output.push(elem.indentText.join(''))
-          consumedOnLine = elem.indentLen
-        }
-        break
+        case 'line':
+          if (elem.mode === 'flat') {
+            output.push(elem.doc.space.toString())
+            consumedOnLine += elem.doc.space.length
+          } else {
+            output.push(elem.doc.linefeed.toString())
+            output.push(elem.indentText.join(''))
+            consumedOnLine = elem.indentLen
+          }
+          break
 
-      case 'array': {
-        stack = stack.unshiftAll(elem.doc.children.map(d => {
-          return { ...elem, doc: d }
-        }))
-        break
+        case 'group':
+          const first: FitsElem = { ...elem, mode: 'flat', doc: elem.doc.child }
+          if (fits(columnBudget - consumedOnLine, stack.unshift(first))) {
+            // the whole group can be printed without a break
+            stack = stack.unshift(first)
+          } else {
+            // the group needs a break on every line, but subgroups may flow
+            stack = stack.unshift({ ...first, mode: 'break' })
+          }
+          break
       }
-
-      case 'group':
-        const first: FitsElem = { ...elem, mode: 'flat', doc: elem.doc.child }
-        if (fits(columnBudget - consumedOnLine, stack.unshift(first))) {
-          // the whole group can be printed without a break
-          stack = stack.unshift(first)
-        } else {
-          // the group needs a break on every line, but subgroups may flow
-          stack = stack.unshift({ ...first, mode: 'break' })
-        }
-        break
     }
   }
 

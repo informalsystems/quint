@@ -1,19 +1,19 @@
 import { describe, it } from 'mocha'
 import { expect } from 'chai'
-import { format, group, line, list, nest, text } from '../src/prettierimp'
+import { format, group, line, nest, text } from '../src/prettierimp'
 
 describe('prettierimp', () => {
   it('page 2 tests', () => {
-    const doc = list([
+    const doc = [
       text('[begin'), line('\n', ' '),
-      group(list([
+      group([
         text('[stmt;'), line('\n', ' '),
         text('stmt;'), line('\n', ' '),
         text('stmt;]'),
-      ])),
+      ]),
       line('\n', ' '),
       text('end]'),
-    ])
+    ]
 
     const result1 = format(60, doc)
     expect(result1).to.equal('[begin [stmt; stmt; stmt;] end]')
@@ -36,23 +36,23 @@ end]`
   })
 
   it('page 3 tests', () => {
-    const doc = list([
+    const doc = [
       text('[begin'),
       nest('   ',
-        list([
+        [
           line('\n', ' '),
-          group(list([
+          group([
             text('[stmt;'),
             line('\n', ' '),
             text('stmt;'),
             line('\n', ' '),
             text('stmt;]'),
-          ])),
-        ])
+          ]),
+        ]
       ),
       line('\n', ' '),
       text('end]'),
-    ])
+    ]
 
     const result1 = format(50, doc)
     expect(result1).to.equal('[begin [stmt; stmt; stmt;] end]')
