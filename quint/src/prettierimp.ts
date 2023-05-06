@@ -4,17 +4,17 @@
  *
  * Our implementation has two important features:
  *  
- *  - It supports color output. This is why we could not use prettier-printer
- *    from npm.
+ *  - It is compatible with ANSI color codes. This is why we could not use
+ *    prettier-printer from npm.
  *  - It is written in TypeScript.
  *
  * This implementation is following the non-lazy algorithm for OCaml by:
  * 
  * Christian Lindig. Strictly Pretty. March 6, 2000.
  * 
- * https://citeseerx.ist.psu.edu/doc_view/pid/c73ca9cc74351fe7f8f3dddc69d2e82326af82c0
+ * https://lindig.github.io/papers/strictly-pretty-2000.pdf
  * 
- * We further adopt the algorithm to the imperative setting, by using
+ * We further adopt the algorithm to TypeScript, by using
  * an immutable stack to simulate recursion.
  *
  * Igor Konnov, 2023
@@ -31,7 +31,7 @@ import { Stack } from 'immutable'
  * A string-like object that returns its width in columns and its string
  * representation. Note that `length` and `toString().length` do not have to be
  * equal. For instance, this happens when the string representation contains
- * ASCII characters that encode text colors.
+ * ANSI characters that encode text colors.
  * 
  * Note that strings, e.g., `"abc"`, implement the `StringLike` interface.
  */

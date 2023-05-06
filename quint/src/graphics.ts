@@ -33,10 +33,10 @@ export function chalkQuintEx(ex: QuintEx): IDoc {
 
   switch (ex.kind) {
     case 'bool':
-      return chalk.yellow(`${ex.value}`)
+      return chalk.yellow(ex.value)
 
     case 'int':
-      return chalk.yellow(`${ex.value}`)
+      return chalk.yellow(ex.value)
 
     case 'str':
       return chalk.green(`"${ex.value}"`)
@@ -137,7 +137,7 @@ export function printTrace(states: QuintEx[],
       // be lenient to broken input
       docs.push([
         enclose(brackets, ['Frame', index.toString()]),
-        nest(1, [line, printExecutionFrameRec(frames[index], [])]),
+        nest(2, [line, printExecutionFrameRec(frames[index], [])]),
         line
       ])
     }
