@@ -1,9 +1,17 @@
 import { describe, it } from 'mocha'
 import { expect } from 'chai'
+import chalk from 'chalk'
 import { Doc, format, group, line, nest, text } from '../src/prettierimp'
 
 // define the standard line break to avoid repetition
 const br = line('\n', ' ')
+
+const colorText = (color: (s: string) => string, s: string): Doc => {
+  return text({
+    length: s.length,
+    toString: () => color(s)
+  })
+}
 
 describe('prettierimp', () => {
   it('page 2 tests', () => {
@@ -153,4 +161,41 @@ else
     b`
      expect(result6).to.equal(expected6)
    })
+
+  it('page 2 tests with colors', () => {
+    // check that the color codes do not affect the string length
+    // when computing the layout
+    const y = chalk.yellow
+    const doc = [
+      colorText(y, '[begin'), br,
+      group([
+        text('[stmt;'), br,
+        text('stmt;'), br,
+        text('stmt;]'),
+      ]),
+      br,
+      colorText(y, 'end]'),
+    ]
+
+    const result1 = format(60, doc)
+    const expected1 = `${y('[begin')} [stmt; stmt; stmt;] ${y('end]')}`
+    expect(result1).to.equal(expected1)
+
+    const result2 = format(30, doc)
+    const expected2 =
+`${y('[begin')}
+[stmt; stmt; stmt;]
+${y('end]')}`
+    expect(result2).to.equal(expected2)
+
+    const result3 = format(10, doc)
+    const expected3 =
+`${y('[begin')}
+[stmt;
+stmt;
+stmt;]
+${y('end]')}`
+    expect(result3).to.equal(expected3)
+  })
+
 })
