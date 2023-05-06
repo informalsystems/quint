@@ -24,7 +24,6 @@
  * See License.txt in the project root for license information.
  */
 
-import { strict as assert } from 'assert'
 import { Stack } from 'immutable'
 
 /**
@@ -66,6 +65,24 @@ export type Doc =
  */
 export const text = (text: StringLike): Doc => {
   return { kind: 'text', text: text }
+}
+
+/**
+ * Create a document that carries decorated text, e.g., adding color or emphasis.
+ * It is your responsibility to make sure that the number of columns occupied by
+ * `decorator(s)` equals to the number of columns occupied by `s`.
+ * For example, adding ANSI color does not affect the space, but it changes
+ * string length.
+ * 
+ * @param decorator a function that decorates plain text
+ * @param s the string to decorate
+ * @returns a string-like object
+ */
+export const richtext = (decorator: (s: string) => string, s: string): Doc => {
+  return text({
+    length: s.length,
+    toString: () => decorator(s)
+  })
 }
 
 /**
