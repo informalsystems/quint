@@ -10,10 +10,9 @@
 
 import chalk from 'chalk'
 import { strict as assert } from 'assert'
-import { range } from 'lodash'
 import {
   Doc, braces, brackets, docJoin, group, line, linebreak,
-  nest, parens, richtext, text, textify
+  nest, parens, richtext, space, text, textify
 } from './prettierimp'
 
 import { QuintEx } from './quintIr'
@@ -23,12 +22,12 @@ import { zerog } from './idGenerator'
 // convert a Quint expression to a colored string, tuned for REPL
 export function chalkQuintEx(ex: QuintEx): Doc {
   // a helper function to produce specific indentation
-  const nary = (left: Doc, args: Doc[], right: Doc): Doc => {
+  const nary = (left: Doc, args: Doc[], right: Doc, padding: Doc = linebreak): Doc => {
     const as = group([
-      nest('  ', [linebreak, docJoin([text(','), line()], args)]),
-      linebreak
+      nest('  ', [ padding, docJoin([ text(','), line() ], args) ]),
+      padding
     ])
-    return [left, as, right]
+    return group([left, as, right])
   }
 
   switch (ex.kind) {
@@ -55,7 +54,9 @@ export function chalkQuintEx(ex: QuintEx): Doc {
                    tup.opcode === 'Tup' && tup.args.length === 2) {
               const [k, v] = tup.args
               return group([
-                chalkQuintEx(k), line(), text('->'), group(nest('  ', [line(), chalkQuintEx(v)]))
+                chalkQuintEx(k),
+                text(' ->'),
+                nest('  ', [line(), chalkQuintEx(v)])
               ])
             } else {
               return text('<expected-pair>')
@@ -78,11 +79,13 @@ export function chalkQuintEx(ex: QuintEx): Doc {
             if (key && key.kind === 'str') {
               const value = chalkQuintEx(ex.args[2 * i + 1])
               kvs.push(group([
-                richtext(chalk.green, key.value), text(':'), line(), value
+                richtext(chalk.green, key.value),
+                richtext(chalk.gray, ':'),
+                nest('  ', [line(), value]),
               ]))
             }
           }
-          return nary([text('{'), line()], kvs, [line(), text('}')] )
+          return nary(text('{'), kvs, text('}'), line())
         }
 
         default:
@@ -141,7 +144,6 @@ printExecutionFrameRec(frame: ExecutionFrame, isLast: boolean[]): Doc {
  */
 export function printTrace(states: QuintEx[],
                            frames: ExecutionFrame[]): Doc {
-  const colon = richtext(chalk.gray, ':')
   const stateDocs = states.map((state, index) => {
     assert(state.kind === 'app'
            && state.opcode === 'Rec' && state.args.length % 2 === 0)
@@ -150,26 +152,26 @@ export function printTrace(states: QuintEx[],
     if (index < frames.length) {
       // be lenient to broken input
       docs.push([
-        brackets(textify([ 'Frame', line(), index.toString()])),
+          brackets([
+            richtext(chalk.bold, 'Frame'), space, text(index.toString())
+          ]),
+        linebreak
+      ])
+      docs.push([
         group(nest('  ', [line(), printExecutionFrameRec(frames[index], [])])),
         line(),
       ])
     }
 
-    docs.push([text('State'), text(index.toString())])
-    const pairs = range(0, Math.trunc(state.args.length / 2))
-      .map(i => {
-        const key = state.args[2 * i]
-        assert(key.kind === 'str')
-        const valueText = chalkQuintEx(state.args[2 * i + 1])
-        return [group([text(key.value), colon, linebreak, valueText]), line()]
-      })
-    docs.push([docJoin(line(), pairs), line()])
-    docs.push([text('------'), line()])
+    docs.push(group([
+      brackets([ richtext(chalk.bold, 'State'), space, text(index.toString()) ]), linebreak
+    ]))
+    docs.push(group(chalkQuintEx(state)))
+    docs.push(linebreak)
 
     return docs.flat(1)
   })
 
-  return docJoin(line(), stateDocs)
+  return docJoin(linebreak, stateDocs)
 }
 

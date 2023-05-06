@@ -131,9 +131,14 @@ export const line = (lf: StringLike = '\n', space: StringLike = ' '): Doc => {
 }
 
 /**
- * A line break that is either a line feed, or an empty string.
+ * A potential line break that is either a line feed, or an empty string.
  */
 export const linebreak: Doc = { kind: 'line', linefeed: '\n', space: '' }
+
+/**
+ * Simply a non-breaking space, that is, `' '`.
+ */
+export const space: Doc = text(' ')
 
 /**
  * Create a document that introduces `indent` spaces after every line break.

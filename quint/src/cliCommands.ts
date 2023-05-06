@@ -354,7 +354,7 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
             out('')
             testResult.frames.forEach((f, index) => {
               out(`    [Frame ${index}]`)
-              format(columns, nest('  ', printExecutionFrameRec(f, [])))
+              out(format(columns, nest('  ', printExecutionFrameRec(f, []))))
               out('')
             })
 
@@ -427,7 +427,7 @@ export function runSimulator(prev: TypecheckedStage):
         const elapsedMs = Date.now() - startMs
         if (verbosity.hasStateOutput(options.verbosity)) {
           console.log(chalk.gray('An example execution:\n'))
-          format(columns, printTrace(result.states, result.frames))
+          console.log(format(columns, printTrace(result.states, result.frames)))
         }
         if (result.status === 'ok') {
           console.log(chalk.green('[ok]')
