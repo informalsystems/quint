@@ -63,7 +63,7 @@ export function chalkQuintEx(ex: QuintEx): Doc {
               const [k, v] = tup.args
               return group([
                 chalkQuintEx(k),
-                text(' ->'),
+                richtext(chalk.gray, ' ->'),
                 nest('  ', [line(), chalkQuintEx(v)])
               ])
             } else {
@@ -87,7 +87,7 @@ export function chalkQuintEx(ex: QuintEx): Doc {
             if (key && key.kind === 'str') {
               const value = chalkQuintEx(ex.args[2 * i + 1])
               kvs.push(group([
-                richtext(chalk.green, key.value),
+                text(key.value),
                 richtext(chalk.gray, ':'),
                 nest('  ', [line(), value]),
               ]))
@@ -178,13 +178,13 @@ export function printTrace(window: Window, states: QuintEx[],
 
     if (index < frames.length) {
       // be lenient to broken input
-      window.out(`[${b('Frame')} ${index}]\n`)
+      window.out(`[${b('Frame ' + index)}]\n`)
       printExecutionFrameRec(window, frames[index], [])
       window.out('\n')
     }
 
     const stateDoc: Doc = [
-      group([brackets([ richtext(b, 'State'), text(` ${index}`)]), linebreak]),
+      group([brackets(richtext(b, `State ${index}`)), line()]),
       chalkQuintEx(state)
     ]
     window.out(format(window.width, 0, stateDoc))

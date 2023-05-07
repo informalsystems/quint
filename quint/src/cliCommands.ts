@@ -353,7 +353,7 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
           if (verbosity.hasActionTracking(verbosityLevel)) {
             out('')
             testResult.frames.forEach((f, index) => {
-              out(`    [Frame ${index}]`)
+              out(`    [${chalk.bold('Frame ' + index)}]`)
               printExecutionFrameRec({ width: columns, out }, f, [])
               out('')
             })
