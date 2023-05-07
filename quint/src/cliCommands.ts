@@ -427,7 +427,10 @@ export function runSimulator(prev: TypecheckedStage):
         const elapsedMs = Date.now() - startMs
         if (verbosity.hasStateOutput(options.verbosity)) {
           console.log(chalk.gray('An example execution:\n'))
-          printTrace({ width: columns, out: console.log }, result.states, result.frames)
+          const window = {
+            width: columns, out: (s: string) => process.stdout.write(s)
+          }
+          printTrace(window, result.states, result.frames)
         }
         if (result.status === 'ok') {
           console.log(chalk.green('[ok]')

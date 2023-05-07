@@ -11,7 +11,7 @@
 import chalk from 'chalk'
 import { strict as assert } from 'assert'
 import {
-  Doc, braces, docJoin, format, group, line, linebreak,
+  Doc, braces, brackets, docJoin, format, group, line, linebreak,
   nest, parens, richtext, text, textify
 } from './prettierimp'
 
@@ -183,7 +183,11 @@ export function printTrace(window: Window, states: QuintEx[],
       window.out('\n')
     }
 
-    window.out(`[${b('State')} ${index}]\n`)
-    window.out(format(window.width, 0, chalkQuintEx(state)))
+    const stateDoc: Doc = [
+      group([brackets([ richtext(b, 'State'), text(` ${index}`)]), linebreak]),
+      chalkQuintEx(state)
+    ]
+    window.out(format(window.width, 0, stateDoc))
+    window.out('\n\n')
   })
 }
