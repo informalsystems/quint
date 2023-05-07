@@ -31,14 +31,15 @@ import { Stack } from 'immutable'
  * for the best document layout.
  * 
  * @param width the maximum width
+ * @param firstColumn the column to use as the starting position
  * @param doc the document to format
  * @returns a resulting string
  */
-export const format = (width: number, doc: Doc): string => {
+export const format = (width: number, firstColumn: number, doc: Doc): string => {
   const fits: FitsElem = {
     indentText: [], indentLen: 0, mode: 'flat', doc: group(doc)
   }
-  return formatInternal(width, 0, fits).join('')
+  return formatInternal(width, firstColumn, fits).join('')
 }
 
 /**

@@ -11,13 +11,21 @@
 import chalk from 'chalk'
 import { strict as assert } from 'assert'
 import {
-  Doc, braces, brackets, docJoin, group, line, linebreak,
-  nest, parens, richtext, space, text, textify
+  Doc, braces, docJoin, format, group, line, linebreak,
+  nest, parens, richtext, text, textify
 } from './prettierimp'
 
 import { QuintEx } from './quintIr'
 import { ExecutionFrame } from './runtime/trace'
 import { zerog } from './idGenerator'
+
+/**
+ * An abstraction of a Console of bounded text width.
+ */
+export interface Window {
+  width: number,
+  out: (s: string) => void
+}
 
 // convert a Quint expression to a colored string, tuned for REPL
 export function chalkQuintEx(ex: QuintEx): Doc {
@@ -105,8 +113,19 @@ export function chalkQuintEx(ex: QuintEx): Doc {
   }
 }
 
+/**
+ * Print an execution frame and its children recursively.
+ * Since this function is printing a tree, we need precise text alignment.
+ * Hence, we only use Doc to format the expressions, but not the entire tree.
+ * 
+ * @param window the window to print in
+ * @param frame the frame to print
+ * @param isLast the array that encods whether some of the frame's parents
+ *               are the last ones among their siblings (think of a tree)
+ */
 export function
-printExecutionFrameRec(frame: ExecutionFrame, isLast: boolean[]): Doc {
+printExecutionFrameRec(window: Window,
+    frame: ExecutionFrame, isLast: boolean[]): void {
   // convert the arguments and the result to strings
   const args = docJoin(
     [ text(','), line() ],
@@ -126,52 +145,43 @@ printExecutionFrameRec(frame: ExecutionFrame, isLast: boolean[]): Doc {
       // depending on whether this frame is the last one
       : il ? '└─ ' : '├─ '
   ).join('')
-  let doc = group([
-    text(treeArt), text(frame.app.opcode),
-    group([ parens(args), nest('  ', [line(), text('=>'), line(), r]) ]),
-    line(),
-  ])
+  window.out(treeArt)
+
+  // format the call with its arguments and place it right after the tree art
+  const callDoc = group(
+    nest(''.padStart(treeArt.length, ' '), [
+        text(frame.app.opcode),
+        group([ parens(args), nest('  ', [line(), text('=>'), line(), r]) ]),
+    ]))
+
+  window.out(format(window.width, treeArt.length, callDoc))
+  window.out('\n')
   const n = frame.subframes.length
   // visualize the children
-  const children = frame.subframes.map((f, i) =>
-    printExecutionFrameRec(f, isLast.concat([i === n - 1]))
+  frame.subframes.forEach((f, i) =>
+    printExecutionFrameRec(window, f, isLast.concat([i === n - 1]))
   )
-  return docJoin(line(), [doc].concat(children))
 }
 
 /**
  * Print a trace with chalk.
  */
-export function printTrace(states: QuintEx[],
-                           frames: ExecutionFrame[]): Doc {
-  const stateDocs = states.map((state, index) => {
+export function printTrace(window: Window, states: QuintEx[],
+                           frames: ExecutionFrame[]): void {
+  const b = chalk.bold
+
+  states.forEach((state, index) => {
     assert(state.kind === 'app'
            && state.opcode === 'Rec' && state.args.length % 2 === 0)
 
-    let docs: Doc[] = []
     if (index < frames.length) {
       // be lenient to broken input
-      docs.push([
-          brackets([
-            richtext(chalk.bold, 'Frame'), space, text(index.toString())
-          ]),
-        linebreak
-      ])
-      docs.push([
-        group(nest('  ', [line(), printExecutionFrameRec(frames[index], [])])),
-        line(),
-      ])
+      window.out(`[${b('Frame')} ${index}]\n`)
+      printExecutionFrameRec(window, frames[index], [])
+      window.out('\n')
     }
 
-    docs.push(group([
-      brackets([ richtext(chalk.bold, 'State'), space, text(index.toString()) ]), linebreak
-    ]))
-    docs.push(group(chalkQuintEx(state)))
-    docs.push(linebreak)
-
-    return docs.flat(1)
+    window.out(`[${b('State')} ${index}]\n`)
+    window.out(format(window.width, 0, chalkQuintEx(state)))
   })
-
-  return docJoin(linebreak, stateDocs)
 }
-

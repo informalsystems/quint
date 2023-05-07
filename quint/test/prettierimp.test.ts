@@ -19,17 +19,17 @@ describe('prettierimp', () => {
       text('end]'),
     ]
 
-    const result1 = format(60, doc)
+    const result1 = format(60, 0, doc)
     expect(result1).to.equal('[begin [stmt; stmt; stmt;] end]')
 
-    const result2 = format(30, doc)
+    const result2 = format(30, 0, doc)
     const expected2 =
 `[begin
 [stmt; stmt; stmt;]
 end]`
     expect(result2).to.equal(expected2)
 
-    const result3 = format(10, doc)
+    const result3 = format(10, 0, doc)
     const expected3 =
 `[begin
 [stmt;
@@ -58,17 +58,17 @@ end]`
       text('end]'),
     ]
 
-    const result1 = format(50, doc)
+    const result1 = format(50, 0, doc)
     expect(result1).to.equal('[begin [stmt; stmt; stmt;] end]')
 
-    const result2 = format(30, doc)
+    const result2 = format(30, 0, doc)
     const expected2 =
 `[begin
    [stmt; stmt; stmt;]
 end]`
      expect(result2).to.equal(expected2)
 
-    const result3 = format(10, doc)
+    const result3 = format(10, 0, doc)
     const expected3 =
 `[begin
    [stmt;
@@ -101,17 +101,17 @@ end]`
 
     const doc = ifthen(cond, expr1, expr2)
 
-    const result32 = format(32, doc)
+    const result32 = format(32, 0, doc)
     expect(result32).to.equal('if a == b then a << 2 else a + b')
 
-    const result15 = format(15, doc)
+    const result15 = format(15, 0, doc)
     const expected15 =
 `if a == b
 then a << 2
 else a + b`
      expect(result15).to.equal(expected15)
 
-    const result10 = format(10, doc)
+    const result10 = format(10, 0, doc)
     const expected10 =
 `if a == b
 then
@@ -119,7 +119,7 @@ then
 else a + b`
      expect(result10).to.equal(expected10)
 
-    const result8 = format(8, doc)
+    const result8 = format(8, 0, doc)
     const expected8 =
 `if
   a == b
@@ -129,7 +129,7 @@ else
   a + b`
      expect(result8).to.equal(expected8)
 
-    const result7 = format(7, doc)
+    const result7 = format(7, 0, doc)
     const expected7 =
 `if
   a ==
@@ -141,7 +141,7 @@ else
   a + b`
      expect(result7).to.equal(expected7)
 
-    const result6 = format(6, doc)
+    const result6 = format(6, 0, doc)
     const expected6 =
 `if
   a ==
@@ -171,19 +171,19 @@ else
       richtext(y, 'end]'),
     ]
 
-    const result1 = format(60, doc)
+    const result1 = format(60, 0, doc)
     const expected1 =
       `${y('[begin')} [stmt; ${b('stmt;')} stmt;] ${y('end]')}`
     expect(result1).to.equal(expected1)
 
-    const result2 = format(30, doc)
+    const result2 = format(30, 0, doc)
     const expected2 =
 `${y('[begin')}
 [stmt; ${b('stmt;')} stmt;]
 ${y('end]')}`
     expect(result2).to.equal(expected2)
 
-    const result3 = format(10, doc)
+    const result3 = format(10, 0, doc)
     const expected3 =
 `${y('[begin')}
 [stmt;
@@ -198,10 +198,10 @@ ${y('end]')}`
       parens(braces(brackets([line(), text('abc'), line()]))),
     ]
 
-    const result60 = format(60, doc)
+    const result60 = format(60, 0, doc)
     expect(result60).to.equal('({[ abc ]})')
 
-    const result3 = format(3, doc)
+    const result3 = format(3, 0, doc)
     expect(result3).to.equal('({[\nabc\n]})')
   })
 })
