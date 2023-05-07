@@ -29,7 +29,7 @@ import {
 import { noExecutionListener, newTraceRecorder } from './runtime/trace'
 import { ErrorMessage, probeParse } from './quintParserFrontend'
 import { IdGenerator, newIdGenerator } from './idGenerator'
-import { chalkQuintEx, printExecutionFrameRec } from './graphics'
+import { prettyQuintEx, printExecutionFrameRec } from './graphics'
 import { verbosity } from './verbosity'
 import { newRng } from './rng'
 import { version } from './version'
@@ -536,7 +536,7 @@ ${textToAdd}
           .eval()
           .map(value => {
             const ex = value.toQuintEx(state.idGen)
-            out(format(columns, 0, chalkQuintEx(ex)))
+            out(format(columns, 0, prettyQuintEx(ex)))
             out('\n')
 
             if (verbosity.hasUserOpTracking(state.verbosityLevel)) {

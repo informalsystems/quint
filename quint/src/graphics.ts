@@ -27,8 +27,8 @@ export interface Window {
   out: (s: string) => void
 }
 
-// convert a Quint expression to a colored string, tuned for REPL
-export function chalkQuintEx(ex: QuintEx): Doc {
+// convert a Quint expression to a colored pretty-printed doc, tuned for REPL
+export function prettyQuintEx(ex: QuintEx): Doc {
   // a helper function to produce specific indentation
   const nary = (left: Doc, args: Doc[], right: Doc, padding: Doc = linebreak): Doc => {
     const as = group([
@@ -53,7 +53,7 @@ export function chalkQuintEx(ex: QuintEx): Doc {
         case 'Set':
           return group([
             richtext(chalk.green, 'Set'),
-            nary(text('('), ex.args.map(chalkQuintEx), text(')'))
+            nary(text('('), ex.args.map(prettyQuintEx), text(')'))
           ])
 
         case 'Map': {
@@ -62,9 +62,9 @@ export function chalkQuintEx(ex: QuintEx): Doc {
                    tup.opcode === 'Tup' && tup.args.length === 2) {
               const [k, v] = tup.args
               return group([
-                chalkQuintEx(k),
+                prettyQuintEx(k),
                 richtext(chalk.gray, ' ->'),
-                nest('  ', [line(), chalkQuintEx(v)])
+                nest('  ', [line(), prettyQuintEx(v)])
               ])
             } else {
               return text('<expected-pair>')
@@ -74,10 +74,10 @@ export function chalkQuintEx(ex: QuintEx): Doc {
         }
 
         case 'Tup':
-          return nary(text('('), ex.args.map(chalkQuintEx), text(')'))
+          return nary(text('('), ex.args.map(prettyQuintEx), text(')'))
 
         case 'List': {
-          return nary(text('['), ex.args.map(chalkQuintEx), text(']'))
+          return nary(text('['), ex.args.map(prettyQuintEx), text(']'))
         }
 
         case 'Rec': {
@@ -85,7 +85,7 @@ export function chalkQuintEx(ex: QuintEx): Doc {
           for (let i = 0; i < ex.args.length / 2; i++) {
             const key = ex.args[2 * i]
             if (key && key.kind === 'str') {
-              const value = chalkQuintEx(ex.args[2 * i + 1])
+              const value = prettyQuintEx(ex.args[2 * i + 1])
               kvs.push(group([
                 text(key.value),
                 richtext(chalk.gray, ':'),
@@ -129,12 +129,12 @@ printExecutionFrameRec(window: Window,
   // convert the arguments and the result to strings
   const args = docJoin(
     [ text(','), line() ],
-    frame.args.map(a => chalkQuintEx(a.toQuintEx(zerog)))
+    frame.args.map(a => prettyQuintEx(a.toQuintEx(zerog)))
   )
   const r =
     frame.result.isNone()
       ? text('none')
-      : chalkQuintEx(frame.result.value.toQuintEx(zerog))
+      : prettyQuintEx(frame.result.value.toQuintEx(zerog))
   const depth = isLast.length
   // generate the tree ASCII graphics for this frame
   let treeArt = isLast.map((il, i) =>
@@ -185,7 +185,7 @@ export function printTrace(window: Window, states: QuintEx[],
 
     const stateDoc: Doc = [
       group([brackets(richtext(b, `State ${index}`)), line()]),
-      chalkQuintEx(state)
+      prettyQuintEx(state)
     ]
     window.out(format(window.width, 0, stateDoc))
     window.out('\n\n')
