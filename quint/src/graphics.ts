@@ -148,10 +148,12 @@ printExecutionFrameRec(window: Window,
   window.out(treeArt)
 
   // format the call with its arguments and place it right after the tree art
+  const argsDoc =
+    group(textify(['(', nest('  ', [linebreak, group(args)]), linebreak, ')']))
   const callDoc = group(
     nest(''.padStart(treeArt.length, ' '), [
-        text(frame.app.opcode),
-        group([ parens(args), nest('  ', [line(), text('=>'), line(), r]) ]),
+      text(frame.app.opcode),
+      group([ argsDoc, nest('  ', group([text(' =>'), line(), r])) ]),
     ]))
 
   window.out(format(window.width, treeArt.length, callDoc))
