@@ -363,9 +363,9 @@ module ics20Test {
     val newSourceChainOutPackets = sourceChainState.outPackets.exclude(Set(packet))
     val newSourceChainInAcknowledgements = sourceChainState.inTimeouts.union(Set(packet))
     // Update source chain state with new packet/acknowledgement sets
-    val newSourceChainState   = sourceChainState
-                                      .with("outPackets", newSourceChainOutPackets)
-                                      .with("inTimeouts", newSourceChainInAcknowledgements)
+    val newSourceChainState = sourceChainState
+                                    .with("outPackets", newSourceChainOutPackets)
+                                    .with("inTimeouts", newSourceChainInAcknowledgements)
 
     // (4) Quint state transition:
     chainStates' = chainStates.set(sourceChain, newSourceChainState)
