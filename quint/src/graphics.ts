@@ -160,8 +160,11 @@ printExecutionFrameRec(window: Window,
   // format the call with its arguments and place it right after the tree art
   const argsDoc =
     group(textify(['(', nest('  ', [linebreak, group(args)]), linebreak, ')']))
+  // draw proper branches in the indentation
+  const indentTreeArt = isLast.map(il => il ? '   ' : '│  ').join('')
+  // pretty print the arguments and the result
   const callDoc = group(
-    nest(''.padStart(treeArt.length, ' '), [
+    nest(indentTreeArt, [
       text(frame.app.opcode),
       group([ argsDoc, nest('  ', group([text(' =>'), line(), r])) ]),
     ]))
