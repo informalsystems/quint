@@ -349,16 +349,12 @@ module ics20Test {
     }
 
   /// Receive a packet sent from `sourceChain` to `destChain` and consider it timed out.
-  action timeoutPacket(sourceChain: str, destChain: str): bool = all {
-    // (1) Pre-condition:
-    // ICS 4: "a channel is a pipeline [...] between specific modules on **separate** blockchains"
-    sourceChain != destChain,
-
-    // (2) Non-deterministically pick a packet from `sourceChain` to receive on `destChain`:
+  action timeoutPacket(sourceChain: str): bool = all {
+    // (1) Non-deterministically pick a packet from `sourceChain` to receive on `destChain`:
     val sourceChainState = chainStates.get(sourceChain)
     nondet packet = sourceChainState.outPackets.oneOf()
 
-    // (3) Compute updated source chain state:
+    // (2) Compute updated source chain state:
     // Update packet sets, moving `packet` from `outPackets` to `inTimeouts`
     val newSourceChainOutPackets = sourceChainState.outPackets.exclude(Set(packet))
     val newSourceChainInAcknowledgements = sourceChainState.inTimeouts.union(Set(packet))
@@ -367,7 +363,7 @@ module ics20Test {
                                     .with("outPackets", newSourceChainOutPackets)
                                     .with("inTimeouts", newSourceChainInAcknowledgements)
 
-    // (4) Quint state transition:
+    // (3) Quint state transition:
     chainStates' = chainStates.set(sourceChain, newSourceChainState)
   }
 
@@ -613,7 +609,7 @@ module ics20Test {
     assert(chainStates.get("A").bank.getBalances(ESCROW_ACCOUNT).getBalance(ATOM) == 50),
 
     // 2. Timeout packet.
-    timeoutPacket("A", "B")
+    timeoutPacket("A")
   }).then(all {
     assert(chainStates.get("A").bank.getBalances("alice").getBalance(ATOM) == 50),
     assert(chainStates.get("A").bank.getBalances(ESCROW_ACCOUNT).getBalance(ATOM) == 50),
