@@ -12,7 +12,6 @@ import JSONbig from 'json-bigint'
 import { dirname, basename, resolve } from 'path'
 import { cwd } from 'process'
 import chalk from 'chalk'
-import { nest, format } from './prettierimp'
 
 import {
   ErrorMessage, Loc, compactSourceMap, parsePhase1fromText, parsePhase2sourceResolution, parsePhase3importAndNameResolution
@@ -257,7 +256,7 @@ export function runRepl(_argv: any) {
 export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
   const verbosityLevel = !prev.args.out ? prev.args.verbosity : 0
   const out = console.log
-  const columns = !prev.args.out ? process.stdout.columns : 80
+  const columns = !prev.args.out ? textColumns() : 80
 
   const testing = { ...prev, stage: 'testing' as stage }
   const mainArg = prev.args.main
@@ -353,8 +352,12 @@ export function runTests(prev: TypecheckedStage): CLIProcedure<TestedStage> {
           if (verbosity.hasActionTracking(verbosityLevel)) {
             out('')
             testResult.frames.forEach((f, index) => {
-              out(`    [${chalk.bold('Frame ' + index)}]`)
-              printExecutionFrameRec({ width: columns, out }, f, [])
+              out(`[${chalk.bold('Frame ' + index)}]`)
+              const window = {
+                width: columns,
+                out: (s: string) => process.stdout.write(s)
+              }
+              printExecutionFrameRec(window, f, [])
               out('')
             })
 

@@ -29,10 +29,12 @@ export interface Window {
 
 /**
  * Find out the number of columns for text formatting.
- * Since this number may change while running, it is function.
+ * Since this number may change while running, it is a function.
+ * Also, when the output is redirected, the number of columns is undefined.
  */
 export const textColumns = () => {
-  return process.stdout.columns > 0 ? process.stdout.columns : 80
+  const cols = process.stdout.columns
+  return (cols !== undefined && cols > 0) ? cols : 80
 }
 
 // convert a Quint expression to a colored pretty-printed doc, tuned for REPL
