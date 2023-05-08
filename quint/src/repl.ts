@@ -528,7 +528,7 @@ ${textToAdd}
     loadVars(state, context)
     loadShadowVars(state, context)
     const computable = contextNameLookup(context, 'q::input', 'callable')
-    const columns = process.stdout.columns
+    const columns = process.stdout.columns > 0 ? process.stdout.columns : 80
     const result =
       computable
       .mapRight(comp => {
