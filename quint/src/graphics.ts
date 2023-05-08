@@ -27,6 +27,14 @@ export interface Window {
   out: (s: string) => void
 }
 
+/**
+ * Find out the number of columns for text formatting.
+ * Since this number may change while running, it is function.
+ */
+export const textColumns = () => {
+  return process.stdout.columns > 0 ? process.stdout.columns : 80
+}
+
 // convert a Quint expression to a colored pretty-printed doc, tuned for REPL
 export function prettyQuintEx(ex: QuintEx): Doc {
   // a helper function to produce specific indentation

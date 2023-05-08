@@ -29,12 +29,11 @@ import {
 import { noExecutionListener, newTraceRecorder } from './runtime/trace'
 import { ErrorMessage, probeParse } from './quintParserFrontend'
 import { IdGenerator, newIdGenerator } from './idGenerator'
-import { prettyQuintEx, printExecutionFrameRec } from './graphics'
+import { prettyQuintEx, printExecutionFrameRec, textColumns } from './graphics'
 import { verbosity } from './verbosity'
 import { newRng } from './rng'
 import { version } from './version'
 import { fileSourceResolver } from './sourceResolver'
-import { dirname } from 'path'
 
 // tunable settings
 export const settings = {
@@ -528,7 +527,7 @@ ${textToAdd}
     loadVars(state, context)
     loadShadowVars(state, context)
     const computable = contextNameLookup(context, 'q::input', 'callable')
-    const columns = process.stdout.columns > 0 ? process.stdout.columns : 80
+    const columns = textColumns()
     const result =
       computable
       .mapRight(comp => {
