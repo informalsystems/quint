@@ -13,6 +13,10 @@ import {
 } from '@informalsystems/quint'
 import { locToRange } from './reporting'
 
+export function getDocumentSymbols(modules: QuintModule[], sourceMap: Map<bigint, Loc>): DocumentSymbol[] {
+  return getModules(modules, sourceMap)
+}
+
 /**
  * Get VSCode `SymbolKind` of a Quint def
  */
@@ -71,8 +75,4 @@ function getModules(modules: QuintModule[], sourceMap: Map<bigint, Loc>): Docume
     })
     return symbols
   }, [] as DocumentSymbol[])
-}
-
-export function getDocumentSymbols(modules: QuintModule[], sourceMap: Map<bigint, Loc>): DocumentSymbol[] {
-  return getModules(modules, sourceMap)
 }
