@@ -22,17 +22,17 @@ import { zerog } from './idGenerator'
 /**
  * An abstraction of a Console of bounded text width.
  */
-export interface Window {
+export interface Console {
   width: number,
   out: (s: string) => void
 }
 
 /**
- * Find out the number of columns for text formatting.
+ * Find out the terminal width for text formatting.
  * Since this number may change while running, it is a function.
  * Also, when the output is redirected, the number of columns is undefined.
  */
-export const textColumns = () => {
+export const terminalWidth = () => {
   const cols = process.stdout.columns
   return (cols !== undefined && cols > 0) ? cols : 80
 }
@@ -126,15 +126,16 @@ export function prettyQuintEx(ex: QuintEx): Doc {
 /**
  * Print an execution frame and its children recursively.
  * Since this function is printing a tree, we need precise text alignment.
- * Hence, we only use Doc to format the expressions, but not the entire tree.
+ * Using a tree here with an optional line break would produce incorrect output.
  * 
- * @param window the window to print in
+ * @param console the console to print in
  * @param frame the frame to print
- * @param isLast the array that encods whether some of the frame's parents
- *               are the last ones among their siblings (think of a tree)
+ * @param isLast the array of booleans, one per ancestor, that indicates whether
+ *       an ancestor does not have siblings to the right, the last index
+ *       corresponds to the direct parent.
  */
 export function
-printExecutionFrameRec(window: Window,
+printExecutionFrameRec(console: Console,
     frame: ExecutionFrame, isLast: boolean[]): void {
   // convert the arguments and the result to strings
   const args = docJoin(
@@ -155,7 +156,7 @@ printExecutionFrameRec(window: Window,
       // depending on whether this frame is the last one
       : il ? '└─ ' : '├─ '
   ).join('')
-  window.out(treeArt)
+  console.out(treeArt)
 
   // format the call with its arguments and place it right after the tree art
   const argsDoc =
@@ -169,19 +170,19 @@ printExecutionFrameRec(window: Window,
       group([ argsDoc, nest('  ', group([text(' =>'), line(), r])) ]),
     ]))
 
-  window.out(format(window.width, treeArt.length, callDoc))
-  window.out('\n')
+  console.out(format(console.width, treeArt.length, callDoc))
+  console.out('\n')
   const n = frame.subframes.length
   // visualize the children
   frame.subframes.forEach((f, i) =>
-    printExecutionFrameRec(window, f, isLast.concat([i === n - 1]))
+    printExecutionFrameRec(console, f, isLast.concat([i === n - 1]))
   )
 }
 
 /**
  * Print a trace with chalk.
  */
-export function printTrace(window: Window, states: QuintEx[],
+export function printTrace(console: Console, states: QuintEx[],
                            frames: ExecutionFrame[]): void {
   const b = chalk.bold
 
@@ -191,16 +192,16 @@ export function printTrace(window: Window, states: QuintEx[],
 
     if (index < frames.length) {
       // be lenient to broken input
-      window.out(`[${b('Frame ' + index)}]\n`)
-      printExecutionFrameRec(window, frames[index], [])
-      window.out('\n')
+      console.out(`[${b('Frame ' + index)}]\n`)
+      printExecutionFrameRec(console, frames[index], [])
+      console.out('\n')
     }
 
     const stateDoc: Doc = [
       group([brackets(richtext(b, `State ${index}`)), line()]),
       prettyQuintEx(state)
     ]
-    window.out(format(window.width, 0, stateDoc))
-    window.out('\n\n')
+    console.out(format(console.width, 0, stateDoc))
+    console.out('\n\n')
   })
 }

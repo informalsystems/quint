@@ -29,7 +29,7 @@ import {
 import { noExecutionListener, newTraceRecorder } from './runtime/trace'
 import { ErrorMessage, probeParse } from './quintParserFrontend'
 import { IdGenerator, newIdGenerator } from './idGenerator'
-import { prettyQuintEx, printExecutionFrameRec, textColumns } from './graphics'
+import { prettyQuintEx, printExecutionFrameRec, terminalWidth } from './graphics'
 import { verbosity } from './verbosity'
 import { newRng } from './rng'
 import { version } from './version'
@@ -527,7 +527,7 @@ ${textToAdd}
     loadVars(state, context)
     loadShadowVars(state, context)
     const computable = contextNameLookup(context, 'q::input', 'callable')
-    const columns = textColumns()
+    const columns = terminalWidth()
     const result =
       computable
       .mapRight(comp => {

@@ -30,16 +30,16 @@ import { Stack } from 'immutable'
  * Layout a document. This is the end function that produces produces a string
  * for the best document layout.
  * 
- * @param width the maximum width
+ * @param maxWidth the maximum width
  * @param firstColumn the column to use as the starting position
  * @param doc the document to format
  * @returns a resulting string
  */
-export const format = (width: number, firstColumn: number, doc: Doc): string => {
+export const format = (maxWidth: number, firstColumn: number, doc: Doc): string => {
   const fits: FitsElem = {
     indentText: [], indentLen: 0, mode: 'flat', doc: group(doc)
   }
-  return formatInternal(width, firstColumn, fits).join('')
+  return formatInternal(maxWidth, firstColumn, fits).join('')
 }
 
 /**
@@ -52,11 +52,13 @@ export const format = (width: number, firstColumn: number, doc: Doc): string => 
  */
 export interface StringLike {
   /**
-   * The number of text columns consumed by the object.
+   * The number of characters printed on the screen.
    */
   length: number,
+
   /**
-   * Get the string representation of the object.
+   * Get the string representation of the text to print, which may be longer
+   * than `length`.
    * 
    * @returns the string representation
    */
@@ -285,13 +287,13 @@ const fits = (width: number, inputStack: Stack<FitsElem>): boolean => {
  * produces an array of strings in memory, whereas the documents could
  * be consumed by an output function directly.
  * 
- * @param width the intended width in columns
+ * @param maxWidth the intended width in columns
  * @param start the number of columns already consumed on the current line
  * @param elems the elements to format
  */
 const formatInternal =
-    (width: number, start: number, elem: FitsElem): string[] => {
-  let columnBudget = width
+    (maxWidth: number, start: number, elem: FitsElem): string[] => {
+  let columnBudget = maxWidth
   let consumedOnLine = start
   let output: string[] = []
   let stack: Stack<FitsElem> = Stack([elem])
