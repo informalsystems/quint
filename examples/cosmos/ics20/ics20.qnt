@@ -348,62 +348,81 @@ module ics20Test {
       }
     }
 
-  /// Receive a packet sent from `sourceChain` to `destChain` and consider it timed out.
-  action timeoutPacket(sourceChain: str): bool = all {
-    // (1) Non-deterministically pick a packet from `sourceChain` to receive on `destChain`:
+  /// Time out a packet sent from `sourceChain` to `destChain`.
+  action timeoutPacket(sourceChain: str, destChain: str): bool =
     val sourceChainState = chainStates.get(sourceChain)
-    nondet packet = sourceChainState.outPackets.oneOf()
+    all {
+      // (1) Pre-condition:
+      // there is a channel between `sourceChain` and `destChain`
+      hasChannelBetween(sourceChain, destChain),
+      // there is an unreceived packet traveling from `sourceChain` to `destChain`
+      sourceChainState.outPackets.exists(packet => packet.isTravelingBetween(sourceChain, destChain)),
 
-    // (2) Compute updated source chain state:
-    // Update packet sets, moving `packet` from `outPackets` to `inTimeouts`
-    val newSourceChainOutPackets = sourceChainState.outPackets.exclude(Set(packet))
-    val newSourceChainInAcknowledgements = sourceChainState.inTimeouts.union(Set(packet))
-    // Update source chain state with new packet/acknowledgement sets
-    val newSourceChainState = sourceChainState
-                                    .with("outPackets", newSourceChainOutPackets)
-                                    .with("inTimeouts", newSourceChainInAcknowledgements)
+      // (2) Non-deterministically pick a packet from `sourceChain` to `destChain` to time out:
+      nondet packet = sourceChainState.outPackets
+                                  .filter(p => p.isTravelingBetween(sourceChain, destChain))
+                                  .oneOf()
 
-    // (3) Quint state transition:
-    chainStates' = chainStates.set(sourceChain, newSourceChainState)
-  }
+      // (3) Compute updated source chain state:
+      // Update packet sets, moving `packet` from `outPackets` to `inTimeouts`
+      val newSourceChainOutPackets = sourceChainState.outPackets.exclude(Set(packet))
+      val newSourceChainInAcknowledgements = sourceChainState.inTimeouts.union(Set(packet))
+      // Update source chain state with new packet/acknowledgement sets
+      val newSourceChainState = sourceChainState
+                                      .with("outPackets", newSourceChainOutPackets)
+                                      .with("inTimeouts", newSourceChainInAcknowledgements)
+
+      // (4) Quint state transition:
+      chainStates' = chainStates.set(sourceChain, newSourceChainState)
+    }
 
   /// Receive an acknowledgement on `chain`:
   /// - Pick an arbitrary, previously unreceived acknowledgement on `chain`.
   /// - Call the `onAcknowledgePacket` callback on it.
   /// - Update the chain state to record the acknowledgement as received.
-  action receiveAck(chain: str): bool = all {
-    // (1) Compute updated chain state:
-    // non-deterministically pick an acknowledgement
+  action receiveAck(chain: str): bool =
     val chainState = chainStates.get(chain)
-    nondet acknowledgement = chainState.inAcknowledgements.oneOf()
-    // call the `onAcknowledgePacket` callback and
-    val ackedChainState = onAcknowledgePacket(chainState, acknowledgement.packet, acknowledgement)
-    // remove `acknowledgement` from incoming acknowledgements
-    val newInAcknowledgements = chainState.inAcknowledgements.exclude(Set(acknowledgement))
-    val newChainState = ackedChainState.with("inAcknowledgements", newInAcknowledgements)
+    all {
+      // (1) Pre-condition:
+      // there is an incoming acknowledgement
+      chainState.inAcknowledgements.setNonEmpty(),
 
-    // (2) Quint state transition:
-    chainStates' = chainStates.set(chain, newChainState)
-  }
+      // (2) Compute updated chain state:
+      // non-deterministically pic an acknowledgement
+      nondet acknowledgement = chainState.inAcknowledgements.oneOf()
+      // call the `onAcknowledgePacket` callback
+      val ackedChainState = onAcknowledgePacket(chainState, acknowledgement.packet, acknowledgement)
+      // remove `acknowledgement` from incoming acknowledgements
+      val newInAcknowledgements = chainState.inAcknowledgements.exclude(Set(acknowledgement))
+      val newChainState = ackedChainState.with("inAcknowledgements", newInAcknowledgements)
+
+      // (3) Quint state transition:
+      chainStates' = chainStates.set(chain, newChainState)
+    }
 
   /// Receive a timeout on `chain`:
   /// - Pick an arbitrary, previously unreceived timeout on `chain`.
   /// - Call the `onTimeoutPacket` callback on it.
   /// - Update the chain state to record the timeout as received.
-  action receiveTimeout(chain: str): bool = all {
-    // (1) Compute updated chain state:
-    // non-deterministically pick an acknowledgement
+  action receiveTimeout(chain: str): bool =
     val chainState = chainStates.get(chain)
-    nondet timedoutPacket = chainState.inTimeouts.oneOf()
-    // call the `onTimeout` callback and
-    val timedoutChainState = onTimeoutPacket(chainState, timedoutPacket)
-    // remove `timedoutPacket` from incoming timeouts
-    val newInTimeouts = chainState.inTimeouts.exclude(Set(timedoutPacket))
-    val newChainState = timedoutChainState.with("inTimeouts", newInTimeouts)
+    all {
+      // (1) Pre-condition:
+      // there is a timed out packet
+      chainState.inTimeouts.setNonEmpty(),
 
-    // (2) Quint state transition:
-    chainStates' = chainStates.set(chain, newChainState)
-  }
+      // (2) Compute updated chain state:
+      // non-deterministically pick a timed out packet
+      nondet timedoutPacket = chainState.inTimeouts.oneOf()
+      // call the `onTimeout` callback
+      val timedoutChainState = onTimeoutPacket(chainState, timedoutPacket)
+      // remove `timedoutPacket` from incoming timeouts
+      val newInTimeouts = chainState.inTimeouts.exclude(Set(timedoutPacket))
+      val newChainState = timedoutChainState.with("inTimeouts", newInTimeouts)
+
+      // (3) Quint state transition:
+      chainStates' = chainStates.set(chain, newChainState)
+    }
 
   /// Send `amount`-many `denom` tokens from `sender` on `sourceChain` to
   /// `receiver` on `destChain`.
@@ -609,7 +628,7 @@ module ics20Test {
     assert(chainStates.get("A").bank.getBalances(ESCROW_ACCOUNT).getBalance(ATOM) == 50),
 
     // 2. Timeout packet.
-    timeoutPacket("A")
+    timeoutPacket("A", "B")
   }).then(all {
     assert(chainStates.get("A").bank.getBalances("alice").getBalance(ATOM) == 50),
     assert(chainStates.get("A").bank.getBalances(ESCROW_ACCOUNT).getBalance(ATOM) == 50),
