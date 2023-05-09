@@ -604,13 +604,15 @@ export class ToIrListener implements QuintListener {
       const nameEx: QuintEx = {
         id, kind: 'str', value: ctx.IDENTIFIER()?.text!
       }
+      // the 'Tup' id is not needed, as the tuple is unwrapped
       this.exprStack.push({
-        id: 0n, kind: 'app', opcode: 'tup', args: [ nameEx, expr ]
+        id: 0n, kind: 'app', opcode: 'Tup', args: [ nameEx, expr ]
       })
     } else {
       // ...expr
+      // the 'Tup' id is not needed, as the tuple is unwrapped
       this.exprStack.push({
-        id: 0n, kind: 'app', opcode: 'tup', args: [ expr ]
+        id: 0n, kind: 'app', opcode: 'Tup', args: [ expr ]
       })
     }
   }
