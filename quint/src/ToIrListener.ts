@@ -3,8 +3,14 @@ import { IdGenerator } from './idGenerator'
 import { ParserRuleContext } from 'antlr4ts/ParserRuleContext'
 import { QuintListener } from './generated/QuintListener'
 import {
-  OpQualifier, QuintApp, QuintDef, QuintEx, QuintLambdaParameter,
-  QuintModule, QuintName, QuintOpDef
+  OpQualifier,
+  QuintApp,
+  QuintDef,
+  QuintEx,
+  QuintLambdaParameter,
+  QuintModule,
+  QuintName,
+  QuintOpDef,
 } from './quintIr'
 import { QuintType, Row } from './quintTypes'
 import { strict as assert } from 'assert'
@@ -596,23 +602,31 @@ export class ToIrListener implements QuintListener {
 
   // field: expr, or ...record
   exitRecElem(ctx: p.RecElemContext) {
-    const expr =  this.exprStack.pop()!
+    const expr = this.exprStack.pop()!
     if (ctx.IDENTIFIER()) {
       // field: expr
       const id = this.idGen.nextId()
       this.sourceMap.set(id, this.loc(ctx))
       const nameEx: QuintEx = {
-        id, kind: 'str', value: ctx.IDENTIFIER()?.text!
+        id,
+        kind: 'str',
+        value: ctx.IDENTIFIER()?.text!,
       }
       // the 'Tup' id is not needed, as the tuple is unwrapped
       this.exprStack.push({
-        id: 0n, kind: 'app', opcode: 'Tup', args: [ nameEx, expr ]
+        id: 0n,
+        kind: 'app',
+        opcode: 'Tup',
+        args: [nameEx, expr],
       })
     } else {
       // ...expr
       // the 'Tup' id is not needed, as the tuple is unwrapped
       this.exprStack.push({
-        id: 0n, kind: 'app', opcode: 'Tup', args: [ expr ]
+        id: 0n,
+        kind: 'app',
+        opcode: 'Tup',
+        args: [expr],
       })
     }
   }
@@ -621,11 +635,7 @@ export class ToIrListener implements QuintListener {
   exitRecord(ctx: p.RecordContext) {
     const elems = popMany(this.exprStack, ctx.recElem().length)
     const spreads = elems.filter(e => e.kind === 'app' && e.args.length === 1)
-    const pairs =
-      elems.map(e =>
-        (e.kind === 'app' && e.args.length === 2) ? e.args : []
-      )
-      .filter(es => es.length > 0)
+    const pairs = elems.map(e => (e.kind === 'app' && e.args.length === 2 ? e.args : [])).filter(es => es.length > 0)
 
     if (spreads.length === 0) {
       // { field1: value1, field2: value2 }
@@ -641,8 +651,10 @@ export class ToIrListener implements QuintListener {
       for (const p of pairs) {
         const id = this.idGen.nextId()
         record = {
-          id, kind: 'app',
-          opcode: 'with', args: [ record, ...p ]
+          id,
+          kind: 'app',
+          opcode: 'with',
+          args: [record, ...p],
         }
         this.sourceMap.set(id, this.loc(ctx))
       }
