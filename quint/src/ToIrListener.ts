@@ -603,6 +603,10 @@ export class ToIrListener implements QuintListener {
   // field: expr, or ...record
   exitRecElem(ctx: p.RecElemContext) {
     const expr = this.exprStack.pop()!
+    // Wrap a pair 'field: expr' or a singleton 'record' into a tuple,
+    // so we would be able to extract them in `exitRecord`.
+    // The tuple here is a temporary container and nothing else.
+    // Hence, we do not even need a unique id for it.
     if (ctx.IDENTIFIER()) {
       // field: expr
       const id = this.idGen.nextId()
@@ -612,7 +616,6 @@ export class ToIrListener implements QuintListener {
         kind: 'str',
         value: ctx.IDENTIFIER()?.text!,
       }
-      // the 'Tup' id is not needed, as the tuple is unwrapped
       this.exprStack.push({
         id: 0n,
         kind: 'app',
@@ -621,7 +624,6 @@ export class ToIrListener implements QuintListener {
       })
     } else {
       // ...expr
-      // the 'Tup' id is not needed, as the tuple is unwrapped
       this.exprStack.push({
         id: 0n,
         kind: 'app',
