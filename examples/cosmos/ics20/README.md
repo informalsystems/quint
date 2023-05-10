@@ -83,7 +83,7 @@ Following the ICS 20 protocol, 1 ATOM has been moved out of Alice's account, and
 
 Also note that the outgoing IBC packet has been added to the chain state.
 
-Using the `sendPacket` action, the packet was only sent, but not yet relayed/received. We can convince ourselves by checking the bank state on chain `"B"`:
+By executing the `sendPacket` action, the packet was only sent, but not yet relayed/received. We can convince ourselves by checking that the bank state on chain `"B"` has not yet changed:
 
 ```json
 >>> chainStates.get("B").bank
