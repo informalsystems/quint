@@ -602,16 +602,25 @@ TODO: output states after fix: https://github.com/informalsystems/quint/issues/2
 
 <!-- !test in test itf -->
 ```
-quint test --out-itf=coin_ \
-  ../examples/solidity/Coin/coin.qnt
+output=$(quint test --out-itf=coin_ \
+  ../examples/solidity/Coin/coin.qnt)
+exit_code=$?
+echo "$output" | sed -e 's/([0-9]*ms)/(duration)/g' -e 's#^.*coin.qnt#      HOME/coin.qnt#g'
 cat coin_sendWithoutMintTest.itf.json | jq '.vars'
 rm coin_sendWithoutMintTest.itf.json
 cat coin_mintSendTest.itf.json | jq '.vars'
 rm coin_mintSendTest.itf.json
+exit $exit_code
 ```
 
 <!-- !test out test itf -->
 ```
+
+  coin
+    ok sendWithoutMintTest passed 10000 test(s)
+    ok mintSendTest passed 10000 test(s)
+
+  2 passing (duration)
 [
   "minter",
   "balances"
