@@ -596,6 +596,32 @@ rm out-itf-example.itf.json
 ]
 ```
 
+### Test outputs ITF
+
+TODO: output states after fix: https://github.com/informalsystems/quint/issues/288
+
+<!-- !test in test itf -->
+```
+quint test --out-itf=coin_ \
+  ../examples/solidity/Coin/coin.qnt
+cat coin_sendWithoutMintTest.itf.json | jq '.vars'
+rm coin_sendWithoutMintTest.itf.json
+cat coin_mintSendTest.itf.json | jq '.vars'
+rm coin_mintSendTest.itf.json
+```
+
+<!-- !test out test itf -->
+```
+[
+  "minter",
+  "balances"
+]
+[
+  "minter",
+  "balances"
+]
+```
+
 ### OK REPL tutorial
 
 The REPL tutorial is reproducible in REPL.

@@ -104,6 +104,10 @@ const testCmd = {
         desc: 'name of the main module (by default, computed from filename)',
         type: 'string',
       })
+      .option('out-itf', {
+        desc: 'specify the name prefix of test traces in the Informal Trace Format',
+        type: 'string',
+      })
       .option('max-samples', {
         desc: 'the maximum number of successful runs to try for every randomized test',
         type: 'number',

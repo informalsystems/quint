@@ -11,7 +11,7 @@
 import { Either, left, merge, right } from '@sweet-monads/either'
 
 import { ErrorMessage, Loc, fromIrErrorMessage } from '../quintParserFrontend'
-import { QuintModule, QuintOpDef } from '../quintIr'
+import { QuintModule, QuintOpDef, QuintEx } from '../quintIr'
 import { TypeScheme } from '../types/base'
 
 import { CompilationContext, compile } from './compile'
@@ -29,6 +29,7 @@ export interface TestOptions {
   maxSamples: number
   rng: Rng
   verbosity: number
+  onTrace(name: string, status: string, vars: string[], states: QuintEx[]): void
 }
 
 /**
@@ -84,6 +85,13 @@ export function compileAndTest(
   const recorder = newTraceRecorder(options.verbosity, options.rng)
   const ctx = compile(modules, sourceMap, lookupTable, types, main.name, recorder, options.rng.next)
 
+  const saveTrace = (name: string, status: string) => {
+    // save the best traces are reported by the recorder
+    const states =
+      recorder.getBestTrace().args.map(e => e.toQuintEx(zerog))
+    options.onTrace(name, status, ctx.vars, states)
+  }
+
   if (!ctx.main) {
     return left([{ explanation: 'Cannot find main module', locs: [] }])
   }
@@ -138,6 +146,7 @@ export function compileAndTest(
               explanation: `${name} returns false`,
               refs: [def.id],
             })
+            saveTrace(name, 'failed')
             return {
               name,
               status: 'failed',
@@ -150,6 +159,7 @@ export function compileAndTest(
             if (options.rng.getState() === seed) {
               // This successful test did not use non-determinism.
               // Running it one time is sufficient.
+              saveTrace(name, 'passed')
               return {
                 name,
                 status: 'passed',
@@ -163,6 +173,7 @@ export function compileAndTest(
         }
 
         // the test was run maxSamples times, and no errors were found
+        saveTrace(name, 'passed')
         return {
           name,
           status: 'passed',
