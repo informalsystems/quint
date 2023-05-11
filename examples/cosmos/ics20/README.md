@@ -67,7 +67,7 @@ Following the ICS 20 protocol, 1 ATOM has been moved out of Alice's account, and
     "alice" -> Map({ baseDenom: "atom", path: [] } -> 99),
     "escrow_account" -> Map({ baseDenom: "atom", path: [] } -> 1)
   ),
-  [...]
+  // ...
   outPackets:
     Set(
       {
@@ -160,7 +160,7 @@ make the following assumptions:
 
 ### `bank.qnt`
 
-In general, the bank module is underspecified. We provide an abstract,
+In general, the bank module is not specified in detail. We provide an abstract,
 common-sense specification and make the following assumptions:
 
 - Balances and operations over balances use mathematical (unbounded) integers.
