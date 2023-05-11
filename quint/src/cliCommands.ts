@@ -315,11 +315,9 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
       maxSamples: testing.args.maxSamples,
       rng,
       verbosity: verbosityLevel,
-      onTrace: (index: number, name: string,
-          status: string, vars: string[], states: QuintEx[]) => {
+      onTrace: (index: number, name: string, status: string, vars: string[], states: QuintEx[]) => {
         if (outputTemplate && outputTemplate.endsWith('.itf.json')) {
-          const filename =
-            outputTemplate.replaceAll('{}', name).replaceAll('{#}', index)
+          const filename = outputTemplate.replaceAll('{}', name).replaceAll('{#}', index)
           const trace = toItf(vars, states)
           if (trace.isRight()) {
             const jsonObj = addItfHeader(prev.args.input, status, trace.value)
