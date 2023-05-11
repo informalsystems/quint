@@ -245,6 +245,68 @@ export const rv = {
 }
 
 /**
+ * Get a ground expression, that is, an expression
+ * that contains only literals and constructors, and
+ * convert it to a runtime value.
+ * 
+ * @param ex the expression to convert
+ * @returns the runtime value that encodes the expression
+ */
+export function fromQuintEx(ex: QuintEx): RuntimeValue {
+  switch (ex.kind) {
+    case 'bool':
+      return rv.mkBool(ex.value)
+
+    case 'int':
+      return rv.mkInt(ex.value)
+
+    case 'str':
+      return rv.mkStr(ex.value)
+
+    case 'app':
+      switch (ex.opcode) {
+        case 'Set':
+          return rv.mkSet(ex.args.map(fromQuintEx))
+
+        case 'Map': {
+          const pairs: [RuntimeValue, RuntimeValue][] = []
+          for (let i = 0; i < ex.args.length / 2; i++) {
+            const key: RuntimeValue = fromQuintEx(ex.args[2 * i])
+            const value: RuntimeValue = fromQuintEx(ex.args[2 * i + 1])
+            pairs.push([ key, value ])
+          }
+          return rv.mkMap(pairs)
+        }
+
+        case 'Tup':
+          return rv.mkTuple(ex.args.map(fromQuintEx))
+
+        case 'List':
+          return rv.mkTuple(ex.args.map(fromQuintEx))
+
+        case 'Rec': {
+          const pairs: [string, RuntimeValue][] = []
+          for (let i = 0; i < ex.args.length / 2; i++) {
+            const keyEx = ex.args[2 * i]
+            const key: string = (keyEx.kind === 'str') ? keyEx.value : ''
+            const value: RuntimeValue = fromQuintEx(ex.args[2 * i + 1])
+            pairs.push([ key, value ])
+          }
+          return rv.mkRecord(pairs)
+        }
+
+        default:
+          // no other case should be possible, produce the set of all integers
+          return rv.mkInfSet('Int')
+      }
+
+    default:
+      // no other case should be possible, produce the set of all integers
+      return rv.mkInfSet('Int')
+  }
+}
+
+/**
  * A runtime value produced and consumed by the simulator. The structure of
  * the runtime values is not exposed to the users.
  *

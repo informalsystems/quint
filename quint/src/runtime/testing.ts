@@ -9,17 +9,19 @@
  */
 
 import { Either, left, merge, right } from '@sweet-monads/either'
+import { Maybe, just } from '@sweet-monads/maybe'
 
 import { ErrorMessage, Loc, fromIrErrorMessage } from '../quintParserFrontend'
 import { QuintEx, QuintModule, QuintOpDef } from '../quintIr'
 import { TypeScheme } from '../types/base'
 
-import { CompilationContext, compile } from './compile'
+import { CompilationContext, compile, lastTraceName } from './compile'
 import { zerog } from './../idGenerator'
 import { LookupTable } from '../lookupTable'
-import { Computable, kindName } from './runtime'
+import { Computable, EvalResult, fail, kindName } from './runtime'
 import { ExecutionFrame, newTraceRecorder } from './trace'
 import { Rng } from '../rng'
+import { RuntimeValue, fromQuintEx, rv } from './impl/runtimeValue'
 
 /**
  * Various settings to be passed to the testing framework.
@@ -121,7 +123,18 @@ export function compileAndTest(
           // run the test
           recorder.onRunCall()
           const result = comp.eval()
-          recorder.onRunReturn(result, [] /* <= ignore the states */)
+          const trace =
+            (ctx.values.get(kindName('shadow', lastTraceName)) ?? fail).eval()
+
+          if (trace.isJust()) {
+            const traceEx = (trace.value as RuntimeValue).toQuintEx(zerog)
+            console.log(traceEx)
+            const es =
+              traceEx.kind === 'app' ? traceEx.args.map(fromQuintEx) : []
+            recorder.onRunReturn(result, es)
+          } else {
+            recorder.onRunReturn(result, [])
+          }
 
           if (result.isNone()) {
             // if the test failed, return immediately
