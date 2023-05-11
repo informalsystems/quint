@@ -118,7 +118,7 @@ Set({ errorMessage: "", success: true })
 true
 ```
 
-To take the protocol through a complete transfer, in a single step, use the `sendTransfer` action:
+To take the protocol through a complete transfer, in a single step, use the `sendTransfer` run:
 
 ```bluespec
 >>> sendTransfer("A", "B", ATOM, 50, "alice", "charlie")
