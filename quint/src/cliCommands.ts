@@ -320,9 +320,9 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
             writeToJson(`${prev.args.outItf}${name}.itf.json`, jsonObj)
           } else {
             console.error(`ITF conversion failed on ${name}: ${trace.value}`)
-         }
+          }
         }
-      }
+      },
     }
     const testOut = compileAndTest(testing.modules, main, testing.sourceMap, testing.table, testing.types, options)
     if (testOut.isLeft()) {

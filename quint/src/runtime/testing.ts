@@ -87,8 +87,7 @@ export function compileAndTest(
 
   const saveTrace = (name: string, status: string) => {
     // save the best traces are reported by the recorder
-    const states =
-      recorder.getBestTrace().args.map(e => e.toQuintEx(zerog))
+    const states = recorder.getBestTrace().args.map(e => e.toQuintEx(zerog))
     options.onTrace(name, status, ctx.vars, states)
   }
 
