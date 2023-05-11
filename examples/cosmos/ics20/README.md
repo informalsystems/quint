@@ -158,7 +158,7 @@ $ quint test --main=ics20Test examples/cosmos/ics20/ics20.qnt
 Where the [natural language spec][ICS 20] is imprecise or underspecified, we
 make the following assumptions:
 
-### Bank
+### `bank.qnt`
 
 In general, the bank module is underspecified. We provide an abstract,
 common-sense specification and make the following assumptions:
@@ -183,7 +183,7 @@ if source {
 }
 ```
 
-### ICS 20
+### `ics20.qnt`
 
 - Amounts are typed `UINT256`, but for simplicity we model this type as `int`. Thus, the spec does not contain any overflow-related behavior.
 
