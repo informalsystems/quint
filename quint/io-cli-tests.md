@@ -602,14 +602,14 @@ TODO: output states after fix: https://github.com/informalsystems/quint/issues/2
 
 <!-- !test in test itf -->
 ```
-output=$(quint test --out-itf=coin_ \
+output=$(quint test --output='coin_{#}_{}.itf.json' \
   ../examples/solidity/Coin/coin.qnt)
 exit_code=$?
 echo "$output" | sed -e 's/([0-9]*ms)/(duration)/g' -e 's#^.*coin.qnt#      HOME/coin.qnt#g'
-cat coin_sendWithoutMintTest.itf.json | jq '.vars'
-rm coin_sendWithoutMintTest.itf.json
-cat coin_mintSendTest.itf.json | jq '.vars'
-rm coin_mintSendTest.itf.json
+cat coin_0_sendWithoutMintTest.itf.json | jq '.vars'
+rm coin_0_sendWithoutMintTest.itf.json
+cat coin_1_mintSendTest.itf.json | jq '.vars'
+rm coin_1_mintSendTest.itf.json
 exit $exit_code
 ```
 

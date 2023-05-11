@@ -29,7 +29,8 @@ export interface TestOptions {
   maxSamples: number
   rng: Rng
   verbosity: number
-  onTrace(name: string, status: string, vars: string[], states: QuintEx[]): void
+  onTrace(index: number, name: string,
+          status: string, vars: string[], states: QuintEx[]): void
 }
 
 /**
@@ -85,10 +86,12 @@ export function compileAndTest(
   const recorder = newTraceRecorder(options.verbosity, options.rng)
   const ctx = compile(modules, sourceMap, lookupTable, types, main.name, recorder, options.rng.next)
 
-  const saveTrace = (name: string, status: string) => {
-    // save the best traces are reported by the recorder
+  const saveTrace = (index: number, name: string, status: string) => {
+    // Save the best traces are reported by the recorder:
+    // If a test is failing, it is the first failing trace.
+    // Otherwise, it is the shortest trace explored by the test.
     const states = recorder.getBestTrace().args.map(e => e.toQuintEx(zerog))
-    options.onTrace(name, status, ctx.vars, states)
+    options.onTrace(index, name, status, ctx.vars, states)
   }
 
   if (!ctx.main) {
@@ -105,7 +108,7 @@ export function compileAndTest(
   const testDefs = ctx.main.defs.filter(d => d.kind === 'def' && options.testMatch(d.name)) as QuintOpDef[]
 
   return merge(
-    testDefs.map(def => {
+    testDefs.map((def, index) => {
       return getComputableForDef(ctx, def).map(comp => {
         const name = def.name
         // save the initial seed
@@ -145,7 +148,7 @@ export function compileAndTest(
               explanation: `${name} returns false`,
               refs: [def.id],
             })
-            saveTrace(name, 'failed')
+            saveTrace(index, name, 'failed')
             return {
               name,
               status: 'failed',
@@ -158,7 +161,7 @@ export function compileAndTest(
             if (options.rng.getState() === seed) {
               // This successful test did not use non-determinism.
               // Running it one time is sufficient.
-              saveTrace(name, 'passed')
+              saveTrace(index, name, 'passed')
               return {
                 name,
                 status: 'passed',
@@ -172,7 +175,7 @@ export function compileAndTest(
         }
 
         // the test was run maxSamples times, and no errors were found
-        saveTrace(name, 'passed')
+        saveTrace(index, name, 'passed')
         return {
           name,
           status: 'passed',

@@ -284,6 +284,9 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
   const mainArg = prev.args.main
   const mainName = mainArg ? mainArg : basename(prev.args.input, '.qnt')
   const main = prev.modules.find(m => m.name === mainName)
+
+  const outputTemplate = testing.args.output
+
   if (!main) {
     return left({
       msg: `Module ${mainName} not found`,
@@ -312,12 +315,15 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
       maxSamples: testing.args.maxSamples,
       rng,
       verbosity: verbosityLevel,
-      onTrace: (name: string, status: string, vars: string[], states: QuintEx[]) => {
-        if (testing.args.outItf) {
+      onTrace: (index: number, name: string,
+          status: string, vars: string[], states: QuintEx[]) => {
+        if (outputTemplate && outputTemplate.endsWith('.itf.json')) {
+          const filename =
+            outputTemplate.replaceAll('{}', name).replaceAll('{#}', index)
           const trace = toItf(vars, states)
           if (trace.isRight()) {
             const jsonObj = addItfHeader(prev.args.input, status, trace.value)
-            writeToJson(`${prev.args.outItf}${name}.itf.json`, jsonObj)
+            writeToJson(filename, jsonObj)
           } else {
             console.error(`ITF conversion failed on ${name}: ${trace.value}`)
           }
