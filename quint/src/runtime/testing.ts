@@ -11,7 +11,7 @@
 import { Either, left, merge, right } from '@sweet-monads/either'
 
 import { ErrorMessage, Loc, fromIrErrorMessage } from '../quintParserFrontend'
-import { QuintModule, QuintOpDef, QuintEx } from '../quintIr'
+import { QuintModule, QuintEx, QuintOpDef } from '../quintIr'
 import { TypeScheme } from '../types/base'
 
 import { CompilationContext, compile } from './compile'
