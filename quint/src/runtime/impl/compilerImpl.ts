@@ -1428,12 +1428,6 @@ export class CompilerVisitor implements IRVisitor {
             this.execListener.onRunReturn(outcome, this.trace().or(just(rv.mkList([]))).value)
           } // end of a single random run
 
-          // save the trace (there are a few shadow variables, hence, the loop)
-          this.shadowVars.forEach(r => {
-            if (r.name === lastTraceName) {
-              r.registerValue = this.trace().map(rv.mkList)
-            }
-          })
           // finally, return true, if no error was found
           return !failure ? just(rv.mkBool(!errorFound)) : none()
         })
