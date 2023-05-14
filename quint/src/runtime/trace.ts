@@ -265,11 +265,13 @@ export const newTraceRecorder = (verbosityLevel: number, rng: Rng) => {
 
       if (failureOrViolation) {
         if (bestTrace.args.length === 0 || bestTrace.args.length >= bottom.args.length) {
+          // on error, prefer the shorter non-empty trace
           bestTrace = bottom
           bestTraceSeed = runSeed
         }
       } else {
         if (bestTrace.args.length <= bottom.args.length) {
+          // on success, prefer the longer trace
           bestTrace = bottom
           bestTraceSeed = runSeed
         }

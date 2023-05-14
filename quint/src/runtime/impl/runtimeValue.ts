@@ -62,6 +62,7 @@
 
 import { List, Map, OrderedMap, Set, ValueObject, hash, is as immutableIs } from 'immutable'
 import { Maybe, just, merge, none } from '@sweet-monads/maybe'
+import { strict as assert } from 'assert'
 
 import { IdGenerator } from '../../idGenerator'
 import { expressionToString } from '../../IRprinting'
@@ -269,12 +270,14 @@ export function fromQuintEx(ex: QuintEx): RuntimeValue {
           return rv.mkSet(ex.args.map(fromQuintEx))
 
         case 'Map': {
-          const pairs: [RuntimeValue, RuntimeValue][] = []
-          for (let i = 0; i < ex.args.length / 2; i++) {
-            const key: RuntimeValue = fromQuintEx(ex.args[2 * i])
-            const value: RuntimeValue = fromQuintEx(ex.args[2 * i + 1])
-            pairs.push([ key, value ])
-          }
+          const pairs: [RuntimeValue, RuntimeValue][] =
+            ex.args.map(arg => {
+              assert(arg.kind === 'app', `Expected Tup(...), found: ${arg.kind}`)
+              assert(arg.opcode === 'Tup', `Expected Tup(...), found: ${arg.opcode}`)
+              assert(arg.args.length === 2,
+                `Expected a 2-element Tup(...), found: ${arg.args.length} elements`)
+              return [ fromQuintEx(arg.args[0]), fromQuintEx(arg.args[1]) ]
+            })
           return rv.mkMap(pairs)
         }
 
