@@ -606,9 +606,9 @@ output=$(quint test --output='coin_{#}_{}.itf.json' \
   ../examples/solidity/Coin/coin.qnt)
 exit_code=$?
 echo "$output" | sed -e 's/([0-9]*ms)/(duration)/g' -e 's#^.*coin.qnt#      HOME/coin.qnt#g'
-cat coin_0_sendWithoutMintTest.itf.json | jq '.vars'
+cat coin_0_sendWithoutMintTest.itf.json | jq '.states'
 rm coin_0_sendWithoutMintTest.itf.json
-cat coin_1_mintSendTest.itf.json | jq '.vars'
+cat coin_1_mintSendTest.itf.json | jq '.states[0]."balances"."#map"'
 rm coin_1_mintSendTest.itf.json
 exit $exit_code
 ```
@@ -621,13 +621,28 @@ exit $exit_code
     ok mintSendTest passed 10000 test(s)
 
   2 passing (duration)
+[]
 [
-  "minter",
-  "balances"
-]
-[
-  "minter",
-  "balances"
+  [
+    "alice",
+    0
+  ],
+  [
+    "bob",
+    0
+  ],
+  [
+    "charlie",
+    0
+  ],
+  [
+    "eve",
+    0
+  ],
+  [
+    "null",
+    0
+  ]
 ]
 ```
 
