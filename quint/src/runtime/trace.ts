@@ -276,7 +276,7 @@ export const newTraceRecorder = (verbosityLevel: number, rng: Rng) => {
           bestTraceSeed = runSeed
           bestTrace.result = outcome
           bestTrace.args = trace
-         }
+        }
       }
     },
   }

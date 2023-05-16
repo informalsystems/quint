@@ -99,8 +99,8 @@ export class CompilerVisitor implements IRVisitor {
     this.types = types
     this.rand = rand
     this.execListener = listener
-    const lastTrace = mkRegister('shadow', lastTraceName, just(rv.mkList([])),
-      () => this.addRuntimeError(0n, 'q::lastTrace is not set')
+    const lastTrace = mkRegister('shadow', lastTraceName, just(rv.mkList([])), () =>
+      this.addRuntimeError(0n, 'q::lastTrace is not set')
     )
     this.shadowVars.push(lastTrace)
     this.context.set(kindName(lastTrace.kind, lastTrace.name), lastTrace)
@@ -1359,7 +1359,7 @@ export class CompilerVisitor implements IRVisitor {
           const isTrue = (res: Maybe<EvalResult>) => {
             return !res.isNone() && (res.value as RuntimeValue).toBool() === true
           }
-         // a failure flag for the case a runtime error is found
+          // a failure flag for the case a runtime error is found
           let failure = false
           // the value to be returned in the end of evaluation
           let errorFound = false
@@ -1416,8 +1416,7 @@ export class CompilerVisitor implements IRVisitor {
                     // drop the run. Otherwise, we would have a lot of false
                     // positives, which look like deadlocks but they are not.
                     this.execListener.onUserOperatorReturn(nextApp, [], nextResult)
-                    this.execListener.onRunReturn(just(rv.mkBool(true)),
-                      this.trace().or(just(rv.mkList([]))).value)
+                    this.execListener.onRunReturn(just(rv.mkBool(true)), this.trace().or(just(rv.mkList([]))).value)
                     break
                   }
                 }
@@ -1440,7 +1439,7 @@ export class CompilerVisitor implements IRVisitor {
 
   private trace() {
     let trace = this.shadowVars.find(r => r.name === lastTraceName)
-    return (trace) ? trace.registerValue.map(t => t.toList()) : none()
+    return trace ? trace.registerValue.map(t => t.toList()) : none()
   }
 
   private resetTrace(value: Maybe<RuntimeValue> = just(rv.mkList([]))) {
@@ -1453,13 +1452,11 @@ export class CompilerVisitor implements IRVisitor {
   private extendTrace() {
     let trace = this.shadowVars.find(r => r.name === lastTraceName)
     if (trace) {
-      const extended = this.trace().map(t =>
-        rv.mkList(t.push(this.varsToRecord()))
-      )
+      const extended = this.trace().map(t => rv.mkList(t.push(this.varsToRecord())))
       trace.registerValue = extended
     }
   }
-    
+
   // convert the current variable values to a record
   private varsToRecord() {
     const map: [string, RuntimeValue][] = this.vars

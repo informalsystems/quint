@@ -249,7 +249,7 @@ export const rv = {
  * Get a ground expression, that is, an expression
  * that contains only literals and constructors, and
  * convert it to a runtime value.
- * 
+ *
  * @param ex the expression to convert
  * @returns the runtime value that encodes the expression
  */
@@ -270,14 +270,12 @@ export function fromQuintEx(ex: QuintEx): RuntimeValue {
           return rv.mkSet(ex.args.map(fromQuintEx))
 
         case 'Map': {
-          const pairs: [RuntimeValue, RuntimeValue][] =
-            ex.args.map(arg => {
-              assert(arg.kind === 'app', `Expected Tup(...), found: ${arg.kind}`)
-              assert(arg.opcode === 'Tup', `Expected Tup(...), found: ${arg.opcode}`)
-              assert(arg.args.length === 2,
-                `Expected a 2-element Tup(...), found: ${arg.args.length} elements`)
-              return [ fromQuintEx(arg.args[0]), fromQuintEx(arg.args[1]) ]
-            })
+          const pairs: [RuntimeValue, RuntimeValue][] = ex.args.map(arg => {
+            assert(arg.kind === 'app', `Expected Tup(...), found: ${arg.kind}`)
+            assert(arg.opcode === 'Tup', `Expected Tup(...), found: ${arg.opcode}`)
+            assert(arg.args.length === 2, `Expected a 2-element Tup(...), found: ${arg.args.length} elements`)
+            return [fromQuintEx(arg.args[0]), fromQuintEx(arg.args[1])]
+          })
           return rv.mkMap(pairs)
         }
 
@@ -291,9 +289,9 @@ export function fromQuintEx(ex: QuintEx): RuntimeValue {
           const pairs: [string, RuntimeValue][] = []
           for (let i = 0; i < ex.args.length / 2; i++) {
             const keyEx = ex.args[2 * i]
-            const key: string = (keyEx.kind === 'str') ? keyEx.value : ''
+            const key: string = keyEx.kind === 'str' ? keyEx.value : ''
             const value: RuntimeValue = fromQuintEx(ex.args[2 * i + 1])
-            pairs.push([ key, value ])
+            pairs.push([key, value])
           }
           return rv.mkRecord(pairs)
         }

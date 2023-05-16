@@ -123,8 +123,7 @@ export function compileAndTest(
           seed = options.rng.getState()
           // reset the trace
           recorder.onRunCall()
-          const traceReg =
-            ctx.values.get(kindName('shadow', lastTraceName)) as Register
+          const traceReg = ctx.values.get(kindName('shadow', lastTraceName)) as Register
           traceReg.registerValue = just(rv.mkList([]))
           // run the test
           const result = comp.eval()
@@ -159,8 +158,12 @@ export function compileAndTest(
           if (ex.kind !== 'bool') {
             // if the test returned a malformed result, return immediately
             return {
-              name, status: 'ignored', errors: [], seed: seed,
-              frames: recorder.getBestTrace().subframes, nsamples: nsamples
+              name,
+              status: 'ignored',
+              errors: [],
+              seed: seed,
+              frames: recorder.getBestTrace().subframes,
+              nsamples: nsamples,
             }
           }
 
