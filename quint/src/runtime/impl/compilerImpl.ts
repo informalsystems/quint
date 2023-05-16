@@ -1416,16 +1416,18 @@ export class CompilerVisitor implements IRVisitor {
                     // drop the run. Otherwise, we would have a lot of false
                     // positives, which look like deadlocks but they are not.
                     this.execListener.onUserOperatorReturn(nextApp, [], nextResult)
+                    this.execListener.onRunReturn(just(rv.mkBool(true)),
+                      this.trace().or(just(rv.mkList([]))).value)
                     break
                   }
                 }
               }
             }
+            const outcome = !failure ? just(rv.mkBool(!errorFound)) : none()
+            this.execListener.onRunReturn(outcome, this.trace().or(just(rv.mkList([]))).value)
             // recover the state variables
             this.recoverVars(vars)
             this.recoverNextVars(nextVars)
-            const outcome = !failure ? just(rv.mkBool(!errorFound)) : none()
-            this.execListener.onRunReturn(outcome, this.trace().or(just(rv.mkList([]))).value)
           } // end of a single random run
 
           // finally, return true, if no error was found

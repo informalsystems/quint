@@ -316,7 +316,7 @@ The command `run` finds an invariant violation.
 
 <!-- !test in run finds violation -->
 ```
-output=$(quint run --init=Init --step=Next --seed=123 --max-steps=4 \
+output=$(quint run --init=Init --step=Next --seed=0x308623f2a48e7 --max-steps=4 \
   --invariant='n < 10' ../examples/language-features/counters.qnt 2>&1)
 exit_code=$?
 echo "$output" | sed -e 's/([0-9]*ms)/(duration)/g' -e 's#^.*counters.qnt#      HOME/counters.qnt#g'
@@ -339,7 +339,7 @@ An example execution:
 [State 4] { n: 12 }
 
 [violation] Found an issue (duration).
-Use --seed=0x84 to reproduce.
+Use --seed=0x308623f2a48e7 to reproduce.
 Use --verbosity=3 to show executions.
 error: Invariant violated
 ```
@@ -350,7 +350,7 @@ The command `run` finds an example.
 
 <!-- !test in run finds example -->
 ```
-quint run --init=Init --step=Next --seed=123 --max-steps=4 \
+quint run --init=Init --step=Next --seed=17 --max-steps=4 \
   --invariant='n < 100' ../examples/language-features/counters.qnt 2>&1 | \
   sed 's/([0-9]*ms)/(duration)/g' | \
   sed 's#^.*counters.qnt#      HOME/counters.qnt#g'
@@ -368,7 +368,7 @@ An example execution:
 
 [State 3] { n: 6 }
 
-[State 4] { n: 3 }
+[State 4] { n: 12 }
 
 [ok] No violation found (duration).
 You may increase --max-samples and --max-steps.
