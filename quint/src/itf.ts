@@ -126,6 +126,26 @@ export function toItf(vars: string[], states: QuintEx[]): Either<string, ItfTrac
   })
 }
 
-// export function ofItf(itf: any[]): Either<string, QuintEx[]> {
-//   const stateToExpr = (any: )
-// }
+export function ofItf(itf: ItfTrace[]): Either<string, QuintEx[]> {
+  var nextId = 0n
+  const getId = (): bigint => {
+    const id = nextId
+    nextId = nextId + 1n
+    return id
+  }
+
+  const ofIftValue = (value: ItfValue): Either<string, QuintEx> => {
+    const withId = { id: getId() }
+    if (typeof value === 'boolean') {
+      return right({ ...withId, kind: 'bool', value })
+    } else if (typeof value === 'string') {
+      return right({ ...withId, kind: 'str', value })
+    } else if (typeof value === 'number') {
+      return right({ ...withId, kind: 'int', value: BigInt(value) })
+    } else if (Array.isArray(value)) {
+      return right({ ...withId, kind: 'int', value: BigInt(value) })
+    }
+  }
+
+  return left('TODO')
+}
