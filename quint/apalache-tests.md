@@ -94,3 +94,16 @@ quint verify --invariant inv ../examples/verification/defaultOpNames.qnt
 quint verify --invariant inv,inv2 ../examples/verification/defaultOpNames.qnt
 ```
 
+## Violations
+
+### Variant violations are reported with traces
+
+<!-- !test in prints a trace on invariant violation -->
+```
+quint verify --invariant inv ./testFixture/apalache/violateOnFive.qnt
+```
+
+<!-- !test exit 1 -->
+<!-- !test err prints a trace on invariant violation -->
+```
+```
