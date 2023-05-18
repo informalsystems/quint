@@ -131,10 +131,7 @@ export function compileAndTest(
           const trace = traceReg.eval()
 
           if (trace.isJust()) {
-            const traceEx = (trace.value as RuntimeValue).toQuintEx(zerog)
-            assert(traceEx.kind === 'app', `Expected a trace, found: ${traceEx.kind}`)
-            const es = traceEx.args.map(fromQuintEx)
-            recorder.onRunReturn(result, es)
+            recorder.onRunReturn(result, [...(trace.value as RuntimeValue).toList()])
           } else {
             // Report a non-critical error
             console.error('Missing a trace')

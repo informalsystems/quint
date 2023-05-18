@@ -283,7 +283,7 @@ export function fromQuintEx(ex: QuintEx): RuntimeValue {
           return rv.mkTuple(ex.args.map(fromQuintEx))
 
         case 'List':
-          return rv.mkTuple(ex.args.map(fromQuintEx))
+          return rv.mkList(ex.args.map(fromQuintEx))
 
         case 'Rec': {
           const pairs: [string, RuntimeValue][] = []
