@@ -120,8 +120,8 @@ export function compileAndTest(
         for (; nsamples <= options.maxSamples; nsamples++) {
           // record the seed value
           seed = options.rng.getState()
-          // reset the trace
           recorder.onRunCall()
+          // reset the trace
           const traceReg = ctx.values.get(kindName('shadow', lastTraceName)) as Register
           traceReg.registerValue = just(rv.mkList([]))
           // run the test
