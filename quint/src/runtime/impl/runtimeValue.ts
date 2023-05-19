@@ -253,57 +253,63 @@ export const rv = {
  * @param ex the expression to convert
  * @returns the runtime value that encodes the expression
  */
-export function fromQuintEx(ex: QuintEx): RuntimeValue {
+export function fromQuintEx(ex: QuintEx): Maybe<RuntimeValue> {
   switch (ex.kind) {
     case 'bool':
-      return rv.mkBool(ex.value)
+      return just(rv.mkBool(ex.value))
 
     case 'int':
-      return rv.mkInt(ex.value)
+      return just(rv.mkInt(ex.value))
 
     case 'str':
-      return rv.mkStr(ex.value)
+      return just(rv.mkStr(ex.value))
 
     case 'app':
       switch (ex.opcode) {
         case 'Set':
-          return rv.mkSet(ex.args.map(fromQuintEx))
+          return merge(ex.args.map(fromQuintEx)).map(rv.mkSet)
 
         case 'Map': {
-          const pairs: [RuntimeValue, RuntimeValue][] = ex.args.map(arg => {
-            assert(arg.kind === 'app', `Expected Tup(...), found: ${arg.kind}`)
-            assert(arg.opcode === 'Tup', `Expected Tup(...), found: ${arg.opcode}`)
-            assert(arg.args.length === 2, `Expected a 2-element Tup(...), found: ${arg.args.length} elements`)
-            return [fromQuintEx(arg.args[0]), fromQuintEx(arg.args[1])]
-          })
-          return rv.mkMap(pairs)
-        }
+          const pairs: Maybe<[RuntimeValue, RuntimeValue][]> =
+            merge(ex.args.map(arg => {
+              assert(arg.kind === 'app', `Expected Tup(...), found: ${arg.kind}`)
+              assert(arg.opcode === 'Tup', `Expected Tup(...), found: ${arg.opcode}`)
+              assert(arg.args.length === 2,
+                `Expected a 2-element Tup(...), found: ${arg.args.length} elements`)
+              return merge([fromQuintEx(arg.args[0]), fromQuintEx(arg.args[1])])
+            }))
+          return pairs.map(rv.mkMap)
+      }
 
         case 'Tup':
-          return rv.mkTuple(ex.args.map(fromQuintEx))
+          return merge(ex.args.map(fromQuintEx)).map(rv.mkTuple)
 
         case 'List':
-          return rv.mkList(ex.args.map(fromQuintEx))
+          return merge(ex.args.map(fromQuintEx)).map(rv.mkList)
 
         case 'Rec': {
           const pairs: [string, RuntimeValue][] = []
           for (let i = 0; i < ex.args.length / 2; i++) {
             const keyEx = ex.args[2 * i]
             const key: string = keyEx.kind === 'str' ? keyEx.value : ''
-            const value: RuntimeValue = fromQuintEx(ex.args[2 * i + 1])
-            pairs.push([key, value])
+            const v: Maybe<RuntimeValue> = fromQuintEx(ex.args[2 * i + 1])
+            if (v.isJust()) {
+              pairs.push([key, v.value])
+            } else {
+              return none()
+            }
           }
-          return rv.mkRecord(pairs)
+          return just(rv.mkRecord(pairs))
         }
 
         default:
-          // no other case should be possible, produce the set of all integers
-          return rv.mkInfSet('Int')
+          // no other case should be possible
+          return none()
       }
 
     default:
       // no other case should be possible, produce the set of all integers
-      return rv.mkInfSet('Int')
+      return none()
   }
 }
 
