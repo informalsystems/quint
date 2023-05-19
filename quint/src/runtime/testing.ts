@@ -10,7 +10,6 @@
 
 import { Either, left, merge, right } from '@sweet-monads/either'
 import { just } from '@sweet-monads/maybe'
-import { strict as assert } from 'assert'
 
 import { ErrorMessage, Loc, fromIrErrorMessage } from '../quintParserFrontend'
 import { QuintEx, QuintModule, QuintOpDef } from '../quintIr'
@@ -22,7 +21,7 @@ import { LookupTable } from '../lookupTable'
 import { Computable, Register, kindName } from './runtime'
 import { ExecutionFrame, newTraceRecorder } from './trace'
 import { Rng } from '../rng'
-import { RuntimeValue, fromQuintEx, rv } from './impl/runtimeValue'
+import { RuntimeValue, rv } from './impl/runtimeValue'
 
 /**
  * Various settings to be passed to the testing framework.
