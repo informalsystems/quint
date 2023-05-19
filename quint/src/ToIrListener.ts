@@ -346,13 +346,16 @@ export class ToIrListener implements QuintListener {
   }
 
   // module Foo = Proto(x = a, y = b)
+  // module Foo = Proto(x = a, y = b) from "<path>"
   exitInstanceMod(ctx: p.InstanceModContext) {
     const protoName = ctx.moduleName().text
     const qualifiedName = ctx.qualifiedName()?.text
     const names = ctx.name()!
     const nexprs = ctx.expr().length
     const overrides: [QuintLambdaParameter, QuintEx][] = []
-    if (nexprs > 0) {
+    // slice <path> from the quoted string "<path>", if the path is present
+    const fromSource = ctx.fromSource() ? ctx.fromSource()!.text.slice(1, -1) : undefined
+     if (nexprs > 0) {
       const exprs = popMany(this.exprStack, nexprs)
       for (let i = 0; i < nexprs; i++) {
         const id = this.idGen.nextId()
@@ -373,6 +376,7 @@ export class ToIrListener implements QuintListener {
       protoName,
       overrides,
       identityOverride,
+      fromSource,
     }
     this.definitionStack.push(instance)
   }
