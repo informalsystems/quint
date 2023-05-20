@@ -270,16 +270,16 @@ export function fromQuintEx(ex: QuintEx): Maybe<RuntimeValue> {
           return merge(ex.args.map(fromQuintEx)).map(rv.mkSet)
 
         case 'Map': {
-          const pairs: Maybe<[RuntimeValue, RuntimeValue][]> =
-            merge(ex.args.map(arg => {
+          const pairs: Maybe<[RuntimeValue, RuntimeValue][]> = merge(
+            ex.args.map(arg => {
               assert(arg.kind === 'app', `Expected Tup(...), found: ${arg.kind}`)
               assert(arg.opcode === 'Tup', `Expected Tup(...), found: ${arg.opcode}`)
-              assert(arg.args.length === 2,
-                `Expected a 2-element Tup(...), found: ${arg.args.length} elements`)
+              assert(arg.args.length === 2, `Expected a 2-element Tup(...), found: ${arg.args.length} elements`)
               return merge([fromQuintEx(arg.args[0]), fromQuintEx(arg.args[1])])
-            }))
+            })
+          )
           return pairs.map(rv.mkMap)
-      }
+        }
 
         case 'Tup':
           return merge(ex.args.map(fromQuintEx)).map(rv.mkTuple)
