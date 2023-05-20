@@ -308,7 +308,7 @@ export function fromQuintEx(ex: QuintEx): Maybe<RuntimeValue> {
       }
 
     default:
-      // no other case should be possible, produce the set of all integers
+      // no other case should be possible
       return none()
   }
 }
