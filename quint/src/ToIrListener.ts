@@ -355,7 +355,7 @@ export class ToIrListener implements QuintListener {
     const overrides: [QuintLambdaParameter, QuintEx][] = []
     // slice <path> from the quoted string "<path>", if the path is present
     const fromSource = ctx.fromSource() ? ctx.fromSource()!.text.slice(1, -1) : undefined
-     if (nexprs > 0) {
+    if (nexprs > 0) {
       const exprs = popMany(this.exprStack, nexprs)
       for (let i = 0; i < nexprs; i++) {
         const id = this.idGen.nextId()
