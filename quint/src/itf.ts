@@ -11,6 +11,7 @@
 
 import { Either, left, merge, right } from '@sweet-monads/either'
 import { chunk } from 'lodash'
+import { QuintApp } from './quintIr'
 
 import { QuintEx } from './quintIr'
 
@@ -19,16 +20,43 @@ export type ItfValue =
   | string
   | number
   | ItfValue[] // Sequence
-  | { '#bigint': string }
-  | { '#tup': ItfValue[] }
-  | { '#set': ItfValue[] }
-  | { '#map': [ItfValue, ItfValue][] }
-  | { '#unserializable': string }
+  | ItfBigint
+  | ItfTup
+  | ItfSet
+  | ItfMap
+  | ItfUnserializable
   | { [index: string]: ItfValue } // Record
+
+type ItfBigint = { '#bigint': string }
+type ItfTup = { '#tup': ItfValue[] }
+type ItfSet = { '#set': ItfValue[] }
+type ItfMap = { '#map': [ItfValue, ItfValue][] }
+type ItfUnserializable = { '#unserializable': string }
+
+// Type predicates to do type narrowing
+function isBigint(v: ItfValue): v is ItfBigint {
+  return (v as ItfBigint)['#bigint'] !== undefined
+}
+
+function isTup(v: ItfValue): v is ItfTup {
+  return (v as ItfTup)['#tup'] !== undefined
+}
+
+function isSet(v: ItfValue): v is ItfSet {
+  return (v as ItfSet)['#set'] !== undefined
+}
+
+function isMap(v: ItfValue): v is ItfMap {
+  return (v as ItfMap)['#map'] !== undefined
+}
+
+function isUnserializable(v: ItfValue): v is ItfUnserializable {
+  return (v as ItfUnserializable)['#unserializable'] !== undefined
+}
 
 export type ItfState = {
   '#meta'?: any
-  // Mapping of State variables to their values in a state
+  // Mapping of state variables to their values in a state
   [index: string]: ItfValue
 }
 
@@ -134,7 +162,7 @@ export function ofItf(itf: ItfTrace[]): Either<string, QuintEx[]> {
     return id
   }
 
-  const ofIftValue = (value: ItfValue): Either<string, QuintEx> => {
+  const ofItfValue = (value: ItfValue): Either<string, QuintEx> => {
     const withId = { id: getId() }
     if (typeof value === 'boolean') {
       return right({ ...withId, kind: 'bool', value })
@@ -143,7 +171,34 @@ export function ofItf(itf: ItfTrace[]): Either<string, QuintEx[]> {
     } else if (typeof value === 'number') {
       return right({ ...withId, kind: 'int', value: BigInt(value) })
     } else if (Array.isArray(value)) {
-      return right({ ...withId, kind: 'int', value: BigInt(value) })
+      return merge(value.map(ofItfValue)).map(args => ({ ...withId, kind: 'app', opcode: 'List', args }))
+    } else if (isBigint(value)) {
+      return right({ ...withId, kind: 'int', value: BigInt(value['#bigint']) })
+    } else if (isTup(value)) {
+      return merge(value['#tup'].map(ofItfValue)).map(args => ({ ...withId, kind: 'app', opcode: 'Tup', args }))
+    } else if (isSet(value)) {
+      return merge(value['#set'].map(ofItfValue)).map(args => ({ ...withId, kind: 'app', opcode: 'Set', args }))
+    } else if (isMap(value)) {
+      return merge(
+        value['#map'].map(pair =>
+          ofItfValue(pair[0]).chain(k =>
+            ofItfValue(pair[1]).chain(v => right({ id: getId(), kind: 'app', opcode: 'Tup', args: [k, v] } as QuintApp))
+          )
+        )
+      ).map(args => ({
+        ...withId,
+        kind: 'app',
+        opcode: 'Map',
+        args,
+      }))
+    } else if (isUnserializable(value)) {
+      return right({ ...withId, kind: 'name', name: value['#unserializable'] })
+    } else if (typeof value === 'object') {
+      merge(Object.keys(value).map(f => ofItfValue(value[f]).map(v => [f, v])))
+        // TODO: need to construct this into a quint record correctly
+        .chain(pairs => pairs.flat())
+    } else {
+      throw new Error(`internal error: unhandled ITF value ${value}`)
     }
   }
 
