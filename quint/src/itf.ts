@@ -11,7 +11,7 @@
 
 import { Either, left, merge, right } from '@sweet-monads/either'
 import { chunk } from 'lodash'
-import { QuintApp } from './quintIr'
+import { QuintApp, QuintStr } from './quintIr'
 
 import { QuintEx } from './quintIr'
 
@@ -178,25 +178,43 @@ export function ofItf(itf: ItfTrace[]): Either<string, QuintEx[]> {
       return merge(value['#tup'].map(ofItfValue)).map(args => ({ ...withId, kind: 'app', opcode: 'Tup', args }))
     } else if (isSet(value)) {
       return merge(value['#set'].map(ofItfValue)).map(args => ({ ...withId, kind: 'app', opcode: 'Set', args }))
-    } else if (isMap(value)) {
-      return merge(
-        value['#map'].map(pair =>
-          ofItfValue(pair[0]).chain(k =>
-            ofItfValue(pair[1]).chain(v => right({ id: getId(), kind: 'app', opcode: 'Tup', args: [k, v] } as QuintApp))
-          )
-        )
-      ).map(args => ({
-        ...withId,
-        kind: 'app',
-        opcode: 'Map',
-        args,
-      }))
     } else if (isUnserializable(value)) {
       return right({ ...withId, kind: 'name', name: value['#unserializable'] })
+    } else if (isMap(value)) {
+      return (
+        merge(
+          value['#map'].map(([key, value]) =>
+            // Convert the key
+            ofItfValue(key)
+              // and if it goes well...
+              .chain(k =>
+                // Convert the value
+                ofItfValue(value)
+                  // and if that goes well...
+                  .map(
+                    v =>
+                      // Form a quint tuple of the converted key-value pair
+                      ({ id: getId(), kind: 'app', opcode: 'Tup', args: [k, v] } as QuintApp)
+                  )
+              )
+          )
+        )
+          // and if all that went well, make the quint Map.
+          .map(args => ({
+            ...withId,
+            kind: 'app',
+            opcode: 'Map',
+            args,
+          }))
+      )
     } else if (typeof value === 'object') {
-      merge(Object.keys(value).map(f => ofItfValue(value[f]).map(v => [f, v])))
-        // TODO: need to construct this into a quint record correctly
-        .chain(pairs => pairs.flat())
+      // Any other object must represent a record
+      return merge(
+        // Get all the object keys and values, and convert them into quint expressions
+        Object.keys(value).map(f =>
+          ofItfValue(value[f]).map(v => [{ id: getId(), kind: 'str', value: f }, v] as [QuintStr, QuintEx])
+        )
+      ).map(fields => ({ ...withId, kind: 'app', opcode: 'Rec', args: fields.flat() }))
     } else {
       throw new Error(`internal error: unhandled ITF value ${value}`)
     }
