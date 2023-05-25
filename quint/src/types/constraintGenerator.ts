@@ -66,6 +66,10 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
   // Track location descriptions for error tree traces
   private location: string = ''
 
+  setTable(table: LookupTable) {
+    this.table = table
+  }
+
   enterExpr(e: QuintEx) {
     this.location = `Generating constraints for ${expressionToString(e)}`
   }

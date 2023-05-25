@@ -13,7 +13,7 @@
  */
 
 import { LookupTable } from './lookupTable'
-import { OpQualifier, QuintModule } from './quintIr'
+import { OpQualifier, QuintDef, QuintModule } from './quintIr'
 import { TypeScheme } from './types/base'
 import { TypeInferrer } from './types/inferrer'
 import { EffectScheme } from './effects/base'
@@ -24,14 +24,14 @@ import { errorTreeToString } from './errorTree'
 import { MultipleUpdatesChecker } from './effects/MultipleUpdatesChecker'
 
 /* Products from static analysis */
-export type AnalyzisOutput = {
+export type AnalysisOutput = {
   types: Map<bigint, TypeScheme>
   effects: Map<bigint, EffectScheme>
   modes: Map<bigint, OpQualifier>
 }
 
 /* A tuple with a list of errors and the analysis output */
-export type AnalysisResult = [[bigint, QuintError][], AnalyzisOutput]
+export type AnalysisResult = [[bigint, QuintError][], AnalysisOutput]
 
 /**
  * Statically analyzes a Quint specification.
@@ -49,7 +49,7 @@ export class QuintAnalyzer {
   private multipleUpdatesChecker: MultipleUpdatesChecker
 
   private errors: [bigint, QuintError][] = []
-  private output: AnalyzisOutput = { types: new Map(), effects: new Map(), modes: new Map() }
+  private output: AnalysisOutput = { types: new Map(), effects: new Map(), modes: new Map() }
 
   constructor(lookupTable: LookupTable) {
     this.typeInferrer = new TypeInferrer(lookupTable)
@@ -58,11 +58,59 @@ export class QuintAnalyzer {
     this.modeChecker = new ModeChecker()
   }
 
+  setTable(lookupTable: LookupTable) {
+    this.typeInferrer.setTable(lookupTable)
+    this.effectInferrer.setTable(lookupTable)
+  }
+
+  setState(analysisOutput: AnalysisOutput) {
+    this.typeInferrer.types = analysisOutput.types
+    this.effectInferrer.effects = analysisOutput.effects
+    this.modeChecker.suggestions = analysisOutput.modes
+  }
+
+  // I'm actually not using this right now. I'm not sure we need it, as new
+  // expressions should get new ids.
+  deleteResult(id: bigint) {
+    this.typeInferrer.types.delete(id)
+    this.typeInferrer.errors.delete(id)
+    this.effectInferrer.effects.delete(id)
+    this.effectInferrer.errors.delete(id)
+    this.modeChecker.suggestions.delete(id)
+    this.modeChecker.errors.delete(id)
+  }
+
   analyze(module: QuintModule): void {
-    const [typeErrMap, types] = this.typeInferrer.inferTypes(module)
-    const [effectErrMap, effects] = this.effectInferrer.inferEffects(module)
+    const [typeErrMap, types] = this.typeInferrer.inferTypes(module.defs)
+    const [effectErrMap, effects] = this.effectInferrer.inferEffects(module.defs)
     const updatesErrMap = this.multipleUpdatesChecker.checkEffects([...effects.values()])
-    const [modeErrMap, modes] = this.modeChecker.checkModes(module, effects)
+    const [modeErrMap, modes] = this.modeChecker.checkModes(module.defs, effects)
+
+    const errorTrees = [...typeErrMap, ...effectErrMap]
+
+    // TODO: Type and effec checking should return QuintErrors instead of error trees
+    this.errors.push(
+      ...errorTrees.map(([id, err]): [bigint, QuintError] => {
+        return [id, { code: 'QNT000', message: errorTreeToString(err), data: { trace: err } }]
+      })
+    )
+
+    this.errors.push(...modeErrMap.entries(), ...updatesErrMap.entries())
+
+    // We assume that ids are unique across modules, and map merging can be done
+    // without collision checks
+    this.output = {
+      types: new Map([...this.output.types, ...types]),
+      effects: new Map([...this.output.effects, ...effects]),
+      modes: new Map([...this.output.modes, ...modes]),
+    }
+  }
+
+  analyzeDef(def: QuintDef): void {
+    const [typeErrMap, types] = this.typeInferrer.inferTypes([def])
+    const [effectErrMap, effects] = this.effectInferrer.inferEffects([def])
+    const updatesErrMap = this.multipleUpdatesChecker.checkEffects([...effects.values()])
+    const [modeErrMap, modes] = this.modeChecker.checkModes([def], effects)
 
     const errorTrees = [...typeErrMap, ...effectErrMap]
 

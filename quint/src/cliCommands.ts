@@ -329,7 +329,8 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
         }
       },
     }
-    const testOut = compileAndTest(testing.modules, main, testing.sourceMap, testing.table, testing.types, options)
+    const analysisOutput = { types: testing.types, effects: testing.effects, modes: testing.modes }
+    const testOut = compileAndTest(testing.modules, main, testing.sourceMap, testing.table, analysisOutput, options)
     if (testOut.isLeft()) {
       return cliErr('Tests failed', { ...testing, errors: testOut.value })
     } else if (testOut.isRight()) {

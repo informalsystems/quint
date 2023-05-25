@@ -16,16 +16,16 @@
 import { Either, left, mergeInMany, right } from '@sweet-monads/either'
 import { LookupTable } from '../lookupTable'
 import { expressionToString } from '../IRprinting'
-import { IRVisitor, walkModule } from '../IRVisitor'
+import { IRVisitor, walkDefinition } from '../IRVisitor'
 import {
   QuintApp,
   QuintBool,
   QuintConst,
+  QuintDef,
   QuintEx,
   QuintInt,
   QuintLambda,
   QuintLet,
-  QuintModule,
   QuintName,
   QuintOpDef,
   QuintStr,
@@ -55,19 +55,21 @@ export class EffectInferrer implements IRVisitor {
    * Infers an effect for every expression in a module based on
    * the definitions table for that module
    *
-   * @param module: the Quint module to infer effects for
+   * @param defs: the list of Quint definitions to infer effects for
    *
    * @returns a map from expression ids to their effects and a map from expression
    *          ids to the corresponding error for any problematic expressions.
    */
-  inferEffects(module: QuintModule): EffectInferenceResult {
-    walkModule(this, module)
+  inferEffects(defs: QuintDef[]): EffectInferenceResult {
+    defs.forEach(def => {
+      walkDefinition(this, def)
+    })
     return [this.errors, this.effects]
   }
 
   // Public values with results by expression ID
-  private effects: Map<bigint, EffectScheme> = new Map<bigint, EffectScheme>()
-  private errors: Map<bigint, ErrorTree> = new Map<bigint, ErrorTree>()
+  effects: Map<bigint, EffectScheme> = new Map<bigint, EffectScheme>()
+  errors: Map<bigint, ErrorTree> = new Map<bigint, ErrorTree>()
 
   private substitutions: Substitutions = []
 
@@ -77,6 +79,10 @@ export class EffectInferrer implements IRVisitor {
 
   // Track location descriptions for error tree traces
   private location: string = ''
+
+  setTable(table: LookupTable) {
+    this.lookupTable = table
+  }
 
   enterExpr(e: QuintEx) {
     this.location = `Inferring effect for ${expressionToString(e)}`

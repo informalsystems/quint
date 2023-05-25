@@ -13,7 +13,6 @@ import { just } from '@sweet-monads/maybe'
 
 import { ErrorMessage, Loc, fromIrErrorMessage } from '../quintParserFrontend'
 import { QuintEx, QuintModule, QuintOpDef } from '../quintIr'
-import { TypeScheme } from '../types/base'
 
 import { CompilationContext, compile, lastTraceName } from './compile'
 import { zerog } from './../idGenerator'
@@ -22,6 +21,7 @@ import { Computable, Register, kindName } from './runtime'
 import { ExecutionFrame, newTraceRecorder } from './trace'
 import { Rng } from '../rng'
 import { RuntimeValue, rv } from './impl/runtimeValue'
+import { AnalysisOutput } from '../quintAnalyzer'
 
 /**
  * Various settings to be passed to the testing framework.
@@ -81,11 +81,11 @@ export function compileAndTest(
   main: QuintModule,
   sourceMap: Map<bigint, Loc>,
   lookupTable: LookupTable,
-  types: Map<bigint, TypeScheme>,
+  analysisOutput: AnalysisOutput,
   options: TestOptions
 ): Either<ErrorMessage[], TestResult[]> {
   const recorder = newTraceRecorder(options.verbosity, options.rng)
-  const ctx = compile(modules, sourceMap, lookupTable, types, main.name, recorder, options.rng.next)
+  const ctx = compile(modules, sourceMap, lookupTable, analysisOutput, main.name, recorder, options.rng.next)
 
   const saveTrace = (index: number, name: string, status: string) => {
     // Save the best traces that are reported by the recorder:

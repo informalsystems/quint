@@ -23,8 +23,7 @@ import { QuintModule } from '../quintIr'
 import { CompilerVisitor } from './impl/compilerImpl'
 import { walkDefinition } from '../IRVisitor'
 import { LookupTable } from '../lookupTable'
-import { TypeScheme } from '../types/base'
-import { QuintAnalyzer } from '../quintAnalyzer'
+import { AnalysisOutput, QuintAnalyzer } from '../quintAnalyzer'
 import { mkErrorMessage } from '../cliCommands'
 import { IdGenerator, newIdGenerator } from '../idGenerator'
 import { flatten } from '../flattening'
@@ -58,7 +57,9 @@ export interface CompilationContext {
   // messages that get populated as the compiled code is executed
   getRuntimeErrors: () => ErrorMessage[]
   // source mapping
-  sourceMap: Map<bigint, Loc>
+  sourceMap: Map<bigint, Loc>,
+  flattenedModules?: QuintModule[],
+  analysisOutput?: AnalysisOutput,
 }
 
 function errorContext(errors: ErrorMessage[]): CompilationContext {
@@ -135,18 +136,19 @@ export function compile(
   modules: QuintModule[],
   sourceMap: Map<bigint, Loc>,
   lookupTable: LookupTable,
-  types: Map<bigint, TypeScheme>,
+  analysisOutput: AnalysisOutput,
   mainName: string,
   execListener: ExecutionListener,
-  rand: (bound: bigint) => bigint
+  rand: (bound: bigint) => bigint,
 ): CompilationContext {
   const modulesByName = new Map(modules.map(m => [m.name, m]))
   const lastId = modules.map(m => m.id).sort((a, b) => Number(a - b))[modules.length - 1]
   const idGenerator = newIdGenerator(lastId)
+  const { types } = analysisOutput
   let latestTable = lookupTable
 
   const flattenedModules = modules.map(m => {
-    const flattened = flatten(m, latestTable, modulesByName, idGenerator, sourceMap, types)
+    const flattened = flatten(m, latestTable, modulesByName, idGenerator, sourceMap, analysisOutput)
 
     modulesByName.set(m.name, flattened)
 
@@ -178,11 +180,11 @@ export function compile(
   const mainNotFoundError = main
     ? []
     : [
-        {
-          explanation: `Main module ${mainName} not found`,
-          refs: [],
-        },
-      ]
+      {
+        explanation: `Main module ${mainName} not found`,
+        refs: [],
+      },
+    ]
   return {
     main: main,
     lookupTable: latestTable,
@@ -196,6 +198,12 @@ export function compile(
       return visitor.getRuntimeErrors().splice(0).map(fromIrErrorMessage(sourceMap))
     },
     sourceMap: sourceMap,
+    // The flattened modules will be used in subsequent compilations.
+    flattenedModules: flattenedModules,
+    // The analysis output will be used in subsequent compilations.
+    // It might seem like the object was not changed by this function, but it was, since
+    // flattening updates the internal maps.
+    analysisOutput: analysisOutput,
   }
 }
 
@@ -217,7 +225,8 @@ export function compileFromCode(
   mainName: string,
   mainPath: SourceLookupPath,
   execListener: ExecutionListener,
-  rand: (bound: bigint) => bigint
+  rand: (bound: bigint) => bigint,
+  quintAnalyzer?: QuintAnalyzer,
 ): CompilationContext {
   // parse the module text
   return (
@@ -236,10 +245,14 @@ export function compileFromCode(
       .chain(
         parseData => {
           const { modules, table, sourceMap } = parseData
-          const analyzer = new QuintAnalyzer(table)
-          modules.forEach(module => analyzer.analyze(module))
+
+          // Provide the most recent lookup table to the analyzer
+          quintAnalyzer?.setTable(table)
+          const analyzer = quintAnalyzer ?? new QuintAnalyzer(table)
+          modules.forEach(m => analyzer.analyze(m))
           const [analysisErrors, analysisResult] = analyzer.getResult()
-          const ctx = compile(modules, sourceMap, table, analysisResult.types, mainName, execListener, rand)
+
+          const ctx = compile(modules, sourceMap, table, analysisResult, mainName, execListener, rand)
           const errorLocator = mkErrorMessage(sourceMap)
           return right({
             ...ctx,

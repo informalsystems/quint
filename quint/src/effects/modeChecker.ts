@@ -15,9 +15,9 @@
 
 import isEqual from 'lodash.isequal'
 import { qualifierToString } from '../IRprinting'
-import { IRVisitor, walkModule } from '../IRVisitor'
+import { IRVisitor, walkDefinition } from '../IRVisitor'
 import { QuintError } from '../quintError'
-import { OpQualifier, QuintInstance, QuintModule, QuintOpDef } from '../quintIr'
+import { OpQualifier, QuintDef, QuintInstance, QuintOpDef } from '../quintIr'
 import { ArrowEffect, ComponentKind, EffectScheme, Entity, entityNames, stateVariables } from './base'
 import { effectToString, entityToString } from './printing'
 
@@ -29,19 +29,19 @@ export class ModeChecker implements IRVisitor {
    * errors for incorrect annotations and suggestions for annotations that could
    * be more strict.
    *
-   * @param quintModule: the module to be checked
+   * @param defs: the list of definitions to be checked
    * @param effects: the map from expression ids to their inferred effects
    *
    * @returns The mode errors, if any is found. Otherwise, a map with potential suggestions.
    */
-  checkModes(quintModule: QuintModule, effects: Map<bigint, EffectScheme>): ModeCheckingResult {
-    this.effects = effects
-    walkModule(this, quintModule)
-    return [this.errors, this.suggestions]
+  checkModes(defs: QuintDef[], effects: Map<bigint, EffectScheme>): ModeCheckingResult {
+    this.effects = effects;
+    defs.forEach(def => walkDefinition(this, def));
+    return [this.errors, this.suggestions];
   }
 
-  private errors: Map<bigint, QuintError> = new Map<bigint, QuintError>()
-  private suggestions: Map<bigint, OpQualifier> = new Map<bigint, OpQualifier>()
+  errors: Map<bigint, QuintError> = new Map<bigint, QuintError>()
+  suggestions: Map<bigint, OpQualifier> = new Map<bigint, OpQualifier>()
 
   private effects: Map<bigint, EffectScheme> = new Map<bigint, EffectScheme>()
 

@@ -34,7 +34,7 @@ import { definitionToString } from './IRprinting'
 import { QuintType, Row } from './quintTypes'
 import { Loc } from './quintParserFrontend'
 import { compact, uniqBy } from 'lodash'
-import { TypeScheme } from './types/base'
+import { AnalysisOutput } from './quintAnalyzer'
 
 type FlatDef = (QuintOpDef | QuintConst | QuintVar | QuintAssume | QuintTypeDef) & WithOptionalDoc
 
@@ -43,7 +43,7 @@ interface FlatteningContext {
   table: LookupTable
   currentModuleNames: Set<string>
   sourceMap: Map<bigint, Loc>
-  types: Map<bigint, TypeScheme>
+  analysisOutput: AnalysisOutput
   importedModules: Map<string, QuintModule>
 }
 
@@ -64,7 +64,7 @@ export function flatten(
   importedModules: Map<string, QuintModule>,
   idGenerator: IdGenerator,
   sourceMap: Map<bigint, Loc>,
-  types: Map<bigint, TypeScheme>
+  analysisOutput: AnalysisOutput,
 ): QuintModule {
   const currentModuleNames = new Set([
     // builtin names
@@ -73,7 +73,7 @@ export function flatten(
     ...compact(module.defs.map(d => (isFlat(d) ? d.name : undefined))),
   ])
 
-  const context = { idGenerator, table, currentModuleNames, sourceMap, types, importedModules }
+  const context = { idGenerator, table, currentModuleNames, sourceMap, analysisOutput, importedModules }
 
   const newDefs = module.defs.flatMap(def => {
     if (isFlat(def)) {
@@ -354,7 +354,17 @@ function shouldAddNamespace(ctx: FlatteningContext, name: string): boolean {
 
 function getNewIdWithSameData(ctx: FlatteningContext, id: bigint): bigint {
   const newId = ctx.idGenerator.nextId()
+
+  if (ctx.analysisOutput.types.get(id)) {
+    ctx.analysisOutput.types.set(newId, ctx.analysisOutput.types.get(id)!)
+  }
+  if (ctx.analysisOutput.effects.get(id)) {
+    ctx.analysisOutput.effects.set(newId, ctx.analysisOutput.effects.get(id)!)
+  }
+  if (ctx.analysisOutput.modes.get(id)) {
+    ctx.analysisOutput.modes.set(newId, ctx.analysisOutput.modes.get(id)!)
+  }
+
   ctx.sourceMap.set(newId, ctx.sourceMap.get(id)!)
-  ctx.types.set(newId, ctx.types.get(id)!)
   return newId
 }
