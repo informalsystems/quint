@@ -132,9 +132,19 @@ export function toItf(vars: string[], states: QuintEx[]): Either<string, ItfTrac
           }
 
           case 'Map':
-            return merge(ex.args.map(exprToItf)).chain(pairs =>
-              merge(pairs.map(p => (isTup(p) ? right(p['#tup']) : left(`Invalid value in ITF map ${p}`)))).map(
-                entries => ({ '#map': entries })
+            return merge(
+              // Convert all the entries of the map
+              ex.args.map(exprToItf)
+            ).chain(pairs =>
+              merge(
+                // Quint represents map entries as tuples, but in ITF they are 2 element arrays,
+                // so we unpack all the ITF tuples into arrays
+                pairs.map(p => (isTup(p) ? right(p['#tup']) : left(`Invalid value in quint Map ${p}`)))
+              ).map(entries =>
+                // Finally, we can form the ITF representation of a map
+                ({
+                  '#map': entries,
+                })
               )
             )
 
