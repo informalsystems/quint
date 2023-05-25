@@ -15,6 +15,22 @@ import { QuintApp, QuintStr } from './quintIr'
 
 import { QuintEx } from './quintIr'
 
+/** The type of IFT traces.
+ * See https://github.com/informalsystems/apalache/blob/main/docs/src/adr/015adr-trace.md */
+export type ItfTrace = {
+  '#meta'?: any
+  params?: string[]
+  vars: string[]
+  states: ItfState[]
+  loop?: number
+}
+
+export type ItfState = {
+  '#meta'?: any
+  // Mapping of state variables to their values in a state
+  [index: string]: ItfValue
+}
+
 export type ItfValue =
   | boolean
   | string
@@ -25,15 +41,16 @@ export type ItfValue =
   | ItfSet
   | ItfMap
   | ItfUnserializable
-  | { [index: string]: ItfValue } // Record
+  | ItfRecord
 
 type ItfBigint = { '#bigint': string }
 type ItfTup = { '#tup': ItfValue[] }
 type ItfSet = { '#set': ItfValue[] }
 type ItfMap = { '#map': [ItfValue, ItfValue][] }
 type ItfUnserializable = { '#unserializable': string }
+type ItfRecord = { [index: string]: ItfValue }
 
-// Type predicates to do type narrowing
+// Type predicates to help with type narrowing
 function isBigint(v: ItfValue): v is ItfBigint {
   return (v as ItfBigint)['#bigint'] !== undefined
 }
@@ -54,22 +71,6 @@ function isUnserializable(v: ItfValue): v is ItfUnserializable {
   return (v as ItfUnserializable)['#unserializable'] !== undefined
 }
 
-export type ItfState = {
-  '#meta'?: any
-  // Mapping of state variables to their values in a state
-  [index: string]: ItfValue
-}
-
-/** The type of IFT traces.
- * See https://github.com/informalsystems/apalache/blob/main/docs/src/adr/015adr-trace.md */
-export type ItfTrace = {
-  '#meta'?: any
-  params?: string[]
-  vars: string[]
-  states: ItfState[]
-  loop?: number
-}
-
 const minJsInt: bigint = BigInt(Number.MIN_SAFE_INTEGER)
 const maxJsInt: bigint = BigInt(Number.MAX_SAFE_INTEGER)
 
@@ -83,7 +84,7 @@ const maxJsInt: bigint = BigInt(Number.MAX_SAFE_INTEGER)
  * @returns an object that represent the trace in the ITF format
  */
 export function toItf(vars: string[], states: QuintEx[]): Either<string, ItfTrace> {
-  const exprToItf = (ex: QuintEx): Either<string, any> => {
+  const exprToItf = (ex: QuintEx): Either<string, ItfValue> => {
     switch (ex.kind) {
       case 'int':
         if (ex.value >= minJsInt && ex.value <= maxJsInt) {
@@ -118,18 +119,24 @@ export function toItf(vars: string[], states: QuintEx[]): Either<string, ItfTrac
               return left('record: expected an even number of arguments, found:' + ex.args.length)
             }
             return merge(ex.args.map(exprToItf)).mapRight(kvs => {
-              let obj: any = {}
+              let obj: ItfRecord = {}
               chunk(kvs, 2).forEach(([k, v]) => {
-                obj[k] = v
+                if (typeof k === 'string') {
+                  obj[k] = v
+                } else {
+                  left(`Invalid record field: ${ex}`)
+                }
               })
               return obj
             })
           }
 
           case 'Map':
-            return merge(ex.args.map(exprToItf)).mapRight(pairs => {
-              return { '#map': pairs.map(p => p['#tup']) }
-            })
+            return merge(ex.args.map(exprToItf)).chain(pairs =>
+              merge(pairs.map(p => (isTup(p) ? right(p['#tup']) : left(`Invalid value in ITF map ${p}`)))).map(
+                entries => ({ '#map': entries })
+              )
+            )
 
           default:
             return left(`Unexpected operator type: ${ex.opcode}`)
@@ -142,9 +149,11 @@ export function toItf(vars: string[], states: QuintEx[]): Either<string, ItfTrac
 
   return merge(
     states.map((e, i) =>
-      exprToItf(e).mapRight(obj => {
-        return { '#meta': { index: i }, ...obj }
-      })
+      exprToItf(e).chain(obj =>
+        typeof obj === 'object'
+          ? right({ '#meta': { index: i }, ...obj } as ItfState)
+          : left(`Expected a valid ITF state, but found ${obj}`)
+      )
     )
   ).mapRight(s => {
     return {
