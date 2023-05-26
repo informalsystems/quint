@@ -173,8 +173,10 @@ export function toItf(vars: string[], states: QuintEx[]): Either<string, ItfTrac
   })
 }
 
-export function ofItf(itf: ItfTrace[]): Either<string, QuintEx[]> {
+export function ofItf(itf: ItfTrace): Either<string, QuintEx[]> {
+  // Benign state to synthesize ids for the Quint expressions
   var nextId = 0n
+  // Produce the next ID in sequence
   const getId = (): bigint => {
     const id = nextId
     nextId = nextId + 1n
@@ -229,15 +231,20 @@ export function ofItf(itf: ItfTrace[]): Either<string, QuintEx[]> {
     } else if (typeof value === 'object') {
       // Any other object must represent a record
       return merge(
-        // Get all the object keys and values, and convert them into quint expressions
-        Object.keys(value).map(f =>
-          ofItfValue(value[f]).map(v => [{ id: getId(), kind: 'str', value: f }, v] as [QuintStr, QuintEx])
-        )
-      ).map(fields => ({ ...withId, kind: 'app', opcode: 'Rec', args: fields.flat() }))
+        // For each key/value pair in the object, form the quint expressions representing
+        // the record field and value
+        Object.keys(value)
+          .filter(key => key !== '#meta') // Has to be removed from top-level ojects representing states
+          .map(f => ofItfValue(value[f]).map(v => [{ id: getId(), kind: 'str', value: f }, v] as [QuintStr, QuintEx]))
+      ).map(fields =>
+        // flatten the converted pairs of fields into a single array to form the record
+        ({ ...withId, kind: 'app', opcode: 'Rec', args: fields.flat() })
+      )
     } else {
+      // This should be impossible, but TypeScript can't tell we've handled all cases
       throw new Error(`internal error: unhandled ITF value ${value}`)
     }
   }
 
-  return left('TODO')
+  return merge(itf.states.map(ofItfValue))
 }
