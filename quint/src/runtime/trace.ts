@@ -268,7 +268,8 @@ export const newTraceRecorder = (verbosityLevel: number, rng: Rng) => {
       const notOk = fromResult(outcome)
       const prevNotOk = fromResult(bestTrace.result)
 
-      // override the best trace only if:
+      // Prefer short traces for error, and longer traces for non error.
+      // Therefore, override the best trace only if:
       //  - there is an error, the new trace is shorter, or the old trace is non-error;
       //  - there is no error, the new trace is longer, and there was no error before.
       const override = notOk
