@@ -148,3 +148,12 @@ jobs:
           cd ./vscode/quint-vscode
           npm install --global @vscode/vsce
           vsce package
+- isim: Önbellek
+  kullanımlar: action/cache@v1.2.1
+  ile:
+    # Önbelleği depolamak ve kaydetmek için bir dizin
+    yol:
+    # Önbelleği geri yüklemek ve kaydetmek için açık bir anahtar
+    anahtar:
+    # Anahtar için önbellek isabeti oluşmadıysa önbelleği geri yüklemek için kullanılacak sıralı bir anahtar listesi
+    geri yükleme anahtarları: # isteğe bağlı
