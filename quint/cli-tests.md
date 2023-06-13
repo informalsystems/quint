@@ -333,7 +333,7 @@ fi
 
 ### OK on run simplePonzi
 
-<!-- !test exit 1 -->
+<!-- !test exit 0 -->
 <!-- !test check simplePonzi - Run -->
     quint run --max-samples=10000 \
       --invariant=noNegativeInv --main=simplePonziTest \
