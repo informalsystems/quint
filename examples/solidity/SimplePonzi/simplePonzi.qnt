@@ -4,7 +4,7 @@
  * Do not use it in production! The purpose of this example is to show how to
  * specify and check interesting safety and liveness properties with Quint.
  *
- * [1]: https://github.com/djokicx/sol-simple-ponzi/blob/master/contracts/SimplePonzi.sol
+ * [1]: https://github.com/djokicx/sol-simple-ponzi/blob/12474f468f4823a39276cac5ef7185b349f5c907/contracts/SimplePonzi.sol
  *
  * Igor Konnov, Informal Systems, 2023
  */
@@ -35,9 +35,9 @@ module simplePonzi {
   }
 
   // The result of applying a method.
-  // If error != "", then the state are not modified,
+  // If error != "", then the states are not modified,
   // and error contains the error message.
-  // Otherwise, evm and contract contain the new states.
+  // Otherwise, evm and ponzi contain the new states.
   type Result = {
     error: str,
     evm: EvmState,
