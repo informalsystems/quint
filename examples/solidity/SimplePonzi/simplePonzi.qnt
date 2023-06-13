@@ -52,7 +52,7 @@ module simplePonzi {
       evm: evm,
       ponzi: ponzi,
      } else if (amount < 11 * ponzi.currentInvestment / 10) {
-      error: "New investment must be double of the last one",
+      error: "New investment must be 110% of the last one",
       evm: evm,
       ponzi: ponzi,
     } else
