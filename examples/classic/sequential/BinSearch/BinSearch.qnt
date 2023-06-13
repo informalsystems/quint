@@ -2,7 +2,7 @@
 /**
  * A tutorial version of binary search. The original TLA+ specification:
  *
- * https://github.com/informalsystems/apalache/blob/unstable/test/tla/bin-search/BinSearch10.tla
+ * https://github.com/informalsystems/apalache/blob/unstable/test/tla/bin-search/BinSearch.tla
  */
 module BinSearch {
     // the input sequence
