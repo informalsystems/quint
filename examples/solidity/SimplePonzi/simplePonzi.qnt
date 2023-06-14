@@ -154,9 +154,8 @@ module simplePonziTest {
   // $ quint run --invariant=progressInv --main=simplePonziTest simplePonzi.qnt
   val progressInv = {
     addr.exists(someone =>
-      0.to(evmState.balances.get(someone)).exists(amount =>
-        receive(evmState, ponziState, someone, amount).error == ""
-      )
+      val newAmount = (11 * ponziState.currentInvestment / 10) + 1
+      receive(evmState, ponziState, someone, newAmount).error == ""
     )
   }
 }

@@ -345,5 +345,5 @@ fi
 <!-- !test check simplePonzi - Run progressInv -->
     quint run \
       --invariant=progressInv --main=simplePonziTest \
-      --seed=0x82364d50561f1 \
+      --seed=0x1f035d45bceacb \
       ../examples/solidity/SimplePonzi/simplePonzi.qnt
