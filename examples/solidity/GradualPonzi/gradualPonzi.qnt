@@ -14,7 +14,7 @@ module gradualPonzi {
   // addresses are string literals
   type Addr = str
 
-  // the set of addresses is not fixed, see simplePonziTest below
+  // the set of addresses is not fixed, see gradualPonziTest below
   const ADDR: Set[Addr]
 
   // a state of the EVM that is observed/modified by the contract
@@ -58,7 +58,7 @@ module gradualPonzi {
       error: "Investment below minimum",
       evm: evm,
       ponzi: ponzi,
-    } else
+    } else {
       pure val investorCut = amount / length(ponzi.investors)
       // Solidity:
       // for(uint i = 0; i < investors.length; i++) {
@@ -68,7 +68,7 @@ module gradualPonzi {
         ponzi.investors.foldl(ponzi.rewards,
           (rewrds, a) => rewrds.setBy(a, oldAmount => oldAmount + investorCut)
         )
-    {
+      {
         evm: {
           balances: evm.balances.setBy(investor, old => old - amount)
         },
@@ -78,6 +78,7 @@ module gradualPonzi {
         },
         error: "",
       }
+    }
   }
 
   // an invester may withdraw their rewards
