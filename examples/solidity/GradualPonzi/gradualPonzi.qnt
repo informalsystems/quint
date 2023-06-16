@@ -25,6 +25,8 @@ module gradualPonzi {
 
   // a state of the contract
   type PonziState = {
+    // the address of the contract
+    contract: Addr,
     // the address of all previous investors, potentially, with duplicates
     investors: List[Addr],
     // rewards distributed so far
@@ -32,7 +34,8 @@ module gradualPonzi {
   }
 
   // create a new instance of the contract
-  pure def newPonzi(sender: Addr): PonziState = {
+  pure def newPonzi(sender: Addr, contract: Addr): PonziState = {
+    contract: contract,
     investors: [ sender ],
     rewards: ADDR.mapBy(a => 0),
   }
@@ -68,11 +71,14 @@ module gradualPonzi {
         ponzi.investors.foldl(ponzi.rewards,
           (rewrds, a) => rewrds.setBy(a, oldAmount => oldAmount + investorCut)
         )
+      pure val newBalances =
+        evm.balances
+          .setBy(investor, old => old - amount)
+          .setBy(ponzi.contract, old => old + amount)
       {
-        evm: {
-          balances: evm.balances.setBy(investor, old => old - amount)
-        },
+        evm: { balances: newBalances },
         ponzi: {
+          ...ponzi,
           investors: ponzi.investors.append(investor),
           rewards: newRewards,
         },
@@ -83,19 +89,24 @@ module gradualPonzi {
 
   // an invester may withdraw their rewards
   pure def withdraw(evm: EvmState, ponzi: PonziState, sender: Addr): Result = {
-    evm: {
-      // the Solidity contract uses: msg.sender.transfer(payout)
-      balances: evm.balances.setBy(sender, old => old + ponzi.rewards.get(sender))
-    },
-    ponzi: { ...ponzi, rewards: ponzi.rewards.set(sender, 0) },
-    error: "",
+    pure val reward = ponzi.rewards.get(sender)
+    pure val newBalances =
+      evm.balances
+        .setBy(sender, old => old + reward)
+        .setBy(ponzi.contract, old => old - reward)
+    // the Solidity contract uses: msg.sender.transfer(payout)
+    {
+      evm: { balances: newBalances },
+      ponzi: { ...ponzi, rewards: ponzi.rewards.set(sender, 0) },
+      error: "",
+    }
   }
 }
 
 // An instance of gradualPonzi intended for testing.
 // In this module, we wire our system and test a state machine.
 module gradualPonziTest {
-  pure val addr = Set("alice", "bob", "charlie", "eve")
+  pure val addr = Set("alice", "bob", "charlie", "eve", "contract")
 
   import gradualPonzi(ADDR = addr) as I
 
@@ -107,9 +118,13 @@ module gradualPonziTest {
   // initialize the state machine
   action init = all {
     // every account has 100 units of MINIMUM_INVESTMENT
-    evmState' = { balances: addr.mapBy(a => 100 * MINIMUM_INVESTMENT) },
+    evmState' = {
+      balances: addr.mapBy(a =>
+        if (a == "contract") 0 else 100 * MINIMUM_INVESTMENT
+      )
+    },
     // alice creates a single Ponzi contract
-    ponziState' = newPonzi("alice"),
+    ponziState' = newPonzi("alice", "contract"),
   }
 
   // When investor is sending amount tokens.
@@ -137,7 +152,7 @@ module gradualPonziTest {
   // Make a single step by the state machine.
   // We have two actions: onReceive and onWithdraw.
   action step = {
-    nondet investor = oneOf(addr)
+    nondet investor = oneOf(addr.exclude(Set("contract")))
     any {
       // choose the amount, picking some deltas for corner cases
       nondet amount = (-10).to(evmState.balances.get(investor) + 10).oneOf()
@@ -221,6 +236,16 @@ module gradualPonziTest {
     )
   }
 
-  // EXERCISE: add gas fees on every action.
-  // Think about progressInv. Does it still hold true?
+  /* EXERCISE: add gas fees on every action.
+     Think about progressInv. Does it still hold true? */
+
+
+  // There should be no left over tokens on the contract balance.
+  //
+  // This invariant is violated due to rounding errors:
+  // $ quint run --invariant=noLeftovers --main=gradualPonziTest gradualPonzi.qnt
+  val noLeftovers = {
+    val sumRewards = addr.fold(0, (s, a) => s + ponziState.rewards.get(a))
+    sumRewards == evmState.balances.get("contract")
+  }
 }
