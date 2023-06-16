@@ -1,3 +1,4 @@
+// -*- mode: Bluespec; -*-
 /**
  * This is an example of a river-crossing puzzle [1].
  * The specification itself is quite simple, so it can serve as a good
