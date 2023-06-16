@@ -106,11 +106,12 @@ module gradualPonzi {
 // An instance of gradualPonzi intended for testing.
 // In this module, we wire our system and test a state machine.
 module gradualPonziTest {
-  pure val addr = Set("alice", "bob", "charlie", "eve", "contract")
+  // user addresses
+  pure val userAddr = Set("alice", "bob", "charlie", "eve")
+  // all addresses, including the contracts
+  pure val addr = userAddr.union(Set("contract"))
 
-  import gradualPonzi(ADDR = addr) as I
-
-  export I.*
+  import gradualPonzi(ADDR = addr).*
 
   var evmState: EvmState
   var ponziState: PonziState
@@ -120,7 +121,7 @@ module gradualPonziTest {
     // every account has 100 units of MINIMUM_INVESTMENT
     evmState' = {
       balances: addr.mapBy(a =>
-        if (a == "contract") 0 else 100 * MINIMUM_INVESTMENT
+        if (not(a.in(userAddr))) 0 else 100 * MINIMUM_INVESTMENT
       )
     },
     // alice creates a single Ponzi contract
@@ -204,7 +205,7 @@ module gradualPonziTest {
 
   // Nobody goes broke in this scheme. Is not that what every Ponzi schemer believes?
   val noBrokeInv = {
-    addr.forall(a => evmState.balances.get(a) + ponziState.rewards.get(a) > 0)
+    userAddr.forall(a => evmState.balances.get(a) + ponziState.rewards.get(a) > 0)
   }
 
   // It's hard to find a counterexample to noBrokeInv with the simulator,
@@ -231,7 +232,7 @@ module gradualPonziTest {
   // Also try:
   // $ quint run --invariant=progressInv --main=gradualPonziTest --seed=0x8385bfe3a7497 gradualPonzi.qnt
   val progressInv = {
-    addr.exists(someone =>
+    userAddr.exists(someone =>
       receive(evmState, ponziState, someone, MINIMUM_INVESTMENT).error == ""
     )
   }

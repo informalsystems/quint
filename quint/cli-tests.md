@@ -368,10 +368,16 @@ fi
 
 <!-- !test exit 1 -->
 <!-- !test check gradualPonzi - Run progressInv -->
-    quint run \
-      --invariant=progressInv --main=gradualPonziTest \
-      --seed=0x8385bfe3a7497 \
-      ../examples/solidity/GradualPonzi/gradualPonzi.qnt
+    quint run --invariant=progressInv --main=gradualPonziTest \
+      --max-samples=100000  --max-steps=40 --seed=0x14cfeb23f5e066 \
+      gradualPonzi.qnt
+
+### FAIL on run gradualPonzi::noLeftoversInv
+
+<!-- !test exit 1 -->
+<!-- !test check gradualPonzi - Run noLeftoversInv -->
+    quint run --invariant=noLeftoversInv --main=gradualPonziTest \
+      --seed=0x1ea5141b0fe9e1 gradualPonzi.qnt
 
 ### OK on test gradualPonzi
 
