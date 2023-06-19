@@ -5,10 +5,10 @@ import { OpQualifier } from '../../src/quintIr'
 import { EffectInferrer } from '../../src/effects/inferrer'
 import { ModeChecker } from '../../src/effects/modeChecker'
 import { QuintError, quintErrorToString } from '../../src/quintError'
-import { resolveNames } from '../../src/nameResolver'
+import { resolveNames } from '../../src/names/nameResolver'
 import JSONbig from 'json-bigint'
-import { collectDefinitions } from '../../src/definitionsCollector'
-import { treeFromModule } from '../../src/scoping'
+import { collectDefinitions } from '../../src/names/definitionsCollector'
+import { treeFromModule } from '../../src/names/scoping'
 import { moduleToString } from '../../src/IRprinting'
 import { errorTreeToString } from '../../src/errorTree'
 
@@ -232,6 +232,15 @@ describe('checkModes', () => {
 
   it('keeps track of parameters in nested definitions', () => {
     const defs = ['pure def f(p) = { pure def m(q) = p + 1 { m(1) } }']
+
+    const [errors, suggestions] = checkMockedDefs(defs)
+
+    assert.isEmpty(errors, `Should find no errors, found: ${[...errors.values()].map(quintErrorToString)}`)
+    assert.deepEqual(suggestions.size, 0)
+  })
+
+  it('finds correct equalities between entity unions (#808)', () => {
+    const defs = ['pure def foo(s: Set[int]): bool = { tuples(s, s).forall((a,b) => (a + b).in(s)) }']
 
     const [errors, suggestions] = checkMockedDefs(defs)
 
