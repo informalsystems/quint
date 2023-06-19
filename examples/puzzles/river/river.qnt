@@ -13,6 +13,10 @@
  * cannot be left alone with the beans. Equivalent puzzles have also been stated
  * involving a fox, chicken, and bag of grain, or a wolf, goat, and cabbage, etc."
  *
+ * We are using the collection of items from the last sentence, namely,
+ * a wolf, goat, and cabbage. The wolf wants to eat the goat. The goat wants to
+ * eat the cabbage. The wolf does not eat the cabbage.
+ *
  * Igor Konnov, Informal Systems, 2023.
  */
 module river {
