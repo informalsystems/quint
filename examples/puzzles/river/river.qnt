@@ -18,7 +18,7 @@
 module river {
   // who is on the origin bank, a subset of "wolf", "goat", "cabbage", "farmer"
   var origin: Set[str]
-  // what is on the boat, in addition to the farmer
+  // who is on the boat
   var boat: Set[str]
   // who is on the destination bank
   var destination: Set[str]
@@ -51,7 +51,7 @@ module river {
     }
   }
 
-  // the farmer on the boat, disembarks the boat at the origin bank
+  // the farmer on the boat, disembarks the boat at the destination bank
   action disembarkDestination = all {
     boat.contains("farmer"),
     boat' = Set(),
@@ -59,7 +59,7 @@ module river {
     origin' = origin,
   }
 
-  // when the farmer is on the origin bank, they can bring at most one item
+  // when the farmer is on the destination bank, they can bring at most one item
   action embarkDestination = all {
     destination.contains("farmer"),
     nondet toEmbark =
@@ -103,7 +103,7 @@ module river {
     boat != Set(),
   }
 
-  // we cannot replicate the farmer, wold, goat, and cabbage
+  // we cannot replicate the farmer, wolf, goat, and cabbage
   val consistency = and {
     origin.intersect(destination) == Set(),
     origin.intersect(boat) == Set(),
