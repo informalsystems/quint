@@ -76,11 +76,12 @@ module ics23 {
   /// calculate a hash from an exists proof
   def existsCalculate(p):
       (ExistsProof_T) => CommitmentProof_T = {
-    // this is how the leaf hash is computed
+    // This is how the leaf hash is computed.
+    // Notice that the key is not hashed.
     val leafHash =
       hash(p.leaf.prefix
         .append(length(p.key))
-        .concat(hash(p.key))
+        .concat(p.key)
         .append(length(p.value))
         .concat(hash(p.value)))
 
