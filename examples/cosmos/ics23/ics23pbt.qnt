@@ -7,8 +7,8 @@
 /// To execute simple PBT-like tests for 1000 runs of length up to 10 steps
 /// in the simulator, type the following:
 ///
-/// $ quint run --invariant=TestVerify ics23pbt.qnt
-/// $ quint run --invariant=TestNonMem ics23pbt.qnt
+/// $ quint run --invariant=noVerifyInv ics23pbt.qnt
+/// $ quint run --invariant=noNonMemInv ics23pbt.qnt
 ///
 /// If the simulator finds an example that violates TestVerify or TestNonMem,
 /// it displays this counterexample.
@@ -89,7 +89,7 @@ module ics23pbt {
 
   /// by checking this invariant, we may produce an example of when
   /// verifyMembership succeeds
-  val TestVerify = {
+  val noVerifyInv = {
     val root = existsCalculate(nonMemProof.left)
     not(verifyMembership(root,
       nonMemProof.left, inputKey, nonMemProof.left.value))
@@ -97,7 +97,7 @@ module ics23pbt {
 
   /// by checking this invariant, we may produce an example of when
   /// verifyNonMembership succeeds
-  val TestNonMem = or {
+  val noNonMemInv = or {
     lessThan(inputKey, nonMemProof.left.key),
     lessThan(nonMemProof.right.key, inputKey),
     val root = existsCalculate(nonMemProof.left)

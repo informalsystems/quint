@@ -1,13 +1,8 @@
 /// A few unit tests to improve our understanding of the specification.
 ///
+/// To execute the unit tests, type the following:
 ///
-///
-/// To execute the unit tests in REPL, type the following:
-///
-/// $ quint repl -r ics23test.qnt::ics23test
-/// >>> allTests
-///
-/// REPL should display 'true'.
+/// $ quint test ics23test.qnt
 ///
 /// Igor Konnov, Informal Systems, 2022-2023 
 module ics23test {
