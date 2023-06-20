@@ -125,6 +125,8 @@ module ics23trees {
     // right mapping
     val right = rightKeys.mapBy(i => 2 * i + 1)
     all {
+      // ignore the case of empty trees
+      leafKeys != Set(),
       // assign values to the keys
       nondet vs = leafKeys.setOfMaps(Byte).oneOf()
       val leafs = vs.keys().mapBy(k => { key: [k], value: [vs.get(k)] })
