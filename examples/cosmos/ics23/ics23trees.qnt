@@ -9,8 +9,8 @@
 /// To execute advanced PBT-like tests for 1000 runs in the simulator,
 /// type the following:
 ///
-/// $ quint run --invariant=NonMemInv ics23trees.qnt
-/// $ quint run --invariant=MemInv ics23trees.qnt
+/// $ quint run --invariant=nonMemInv ics23trees.qnt
+/// $ quint run --invariant=memInv ics23trees.qnt
 ///
 /// We expect these tests to always pass. If you the simulator reports
 /// a counterexample, there must be an error somewhere.
@@ -103,10 +103,7 @@ module ics23trees {
     )
   }
 
-  /// It's very easy to produce binary trees by picking an arbitrary graph and
-  /// restricting it with the predicate isTree. However, this approach produces
-  /// very sparse sets of states, to be explored by random search. Hence, we
-  /// use a more algorithmic approach that represents trees with binary words.
+  /// We use an algorithmic approach that represents trees with binary words.
   action init = {
     // produce an arbitrary tree with leafs in e.g. [2, 8)
     nondet idx = 2.to(2^height - 1).powerset().oneOf()
@@ -194,7 +191,7 @@ module ics23trees {
   }
 
   /// make sure that the proofs are the same for all the leafs
-  val TreeProofInv =
+  val treeProofInv =
     and {
       leftKey.in(tree.leafs.keys()),
       rightKey.in(tree.leafs.keys())
@@ -207,7 +204,7 @@ module ics23trees {
   /// The invariant of membership verification:
   /// If the input key belongs to the leafs,
   /// we should be able to prove its membership.
-  val MemInv = or {
+  val memInv = or {
     not(inputKey.in(tree.leafs.keys())),
     val proof = leafToExistsProof(inputKey)
     val root = existsCalculate(proof)
@@ -215,13 +212,12 @@ module ics23trees {
   }
 
   /// check this property to produce an example of where MemInv is violated
-  val MemExample =
-    not(MemInv)
+  val memExample = not(memInv)
 
   // A few lemmas for NonMemInv:
-  // MemberShouldFalsify, NonMemberInTheMiddle, NonMemberLeft, NonMemberRight
+  // memberShouldFalsify, nonMemberInTheMiddle, nonMemberLeft, nonMemberRight
 
-  def MemberShouldFalsify(lproof, rproof) = and {
+  def memberShouldFalsify(lproof, rproof) = and {
     // if the input key belongs to the leafs,
     // we should not be able to disprove its membership
     inputKey.in(tree.leafs.keys()),
@@ -230,7 +226,7 @@ module ics23trees {
     not(verifyNonMembership(root, nproof, [inputKey]))
   }
 
-  def NonMemberInTheMiddle(lproof, rproof) = and {
+  def nonMemberInTheMiddle(lproof, rproof) = and {
     // we should be able to prove its non-membership,
     // unless the choice of the keys is bad
     not(inputKey.in(tree.leafs.keys())),
@@ -246,7 +242,7 @@ module ics23trees {
     noKeyInTheMiddle iff verifyNonMembership(root, nproof, [inputKey])
   }
 
-  def NonMemberLeft(lproof, rproof) = and {
+  def nonMemberLeft(lproof, rproof) = and {
     // the input key is to the left
     isNil(lproof.key),
     // non-membership is true when the right key is left-most
@@ -261,7 +257,7 @@ module ics23trees {
     }
   }
 
-  def NonMemberRight(lproof, rproof) = and {
+  def nonMemberRight(lproof, rproof) = and {
     // the input key is to the right
     isNil(rproof.key),
     // non-membership is true when the left key is the right-most
@@ -278,7 +274,7 @@ module ics23trees {
 
   // The invariant of non-membership verification.
   // Consider all possible positions of the input key and the left/right keys.
-  val NonMemInv =
+  val nonMemInv =
     def proofOrNil(key) = {
       if (tree.leafs.keys().contains(key))
         leafToExistsProof(key)
@@ -288,45 +284,15 @@ module ics23trees {
     val lproof = proofOrNil(leftKey)
     val rproof = proofOrNil(rightKey)
     or {
-      MemberShouldFalsify(lproof, rproof),
-      NonMemberInTheMiddle(lproof, rproof),
-      NonMemberLeft(lproof, rproof),
-      NonMemberRight(lproof, rproof),
+      memberShouldFalsify(lproof, rproof),
+      nonMemberInTheMiddle(lproof, rproof),
+      nonMemberLeft(lproof, rproof),
+      nonMemberRight(lproof, rproof),
       // trivial cases:
       inputKey < rightKey and not(isNil(lproof.key)),
       inputKey > leftKey and not(isNil(rproof.key)),
     }
 
   /// check this property to produce an example of where NonMemInv is violated
-  val NonMemExample =
-    not(NonMemInv)
-
-  /// Predicate isTree(t) is true iff t defines an ordered binary tree starting
-  /// with 1. It's probably hard to read. However, it is what one has to specify
-  /// to express that an arbitrary graph is an ordered tree.
-  def isTree(t: TREE_T): bool = and {
-    t.leafs.keys().intersect(t.left.keys()) == Set(),
-    t.leafs.keys().intersect(t.right.keys()) == Set(),
-    1.in(t.leafs.keys().union(t.left.keys().union(t.right.keys()))),
-    // we impose an order on the keys, to break cycles and DAGs
-    t.left.keys().forall(k => t.left.get(k) > k),
-    t.right.keys().forall(k => t.right.get(k) > k),
-    t.left.keys().intersect(t.right.keys())
-      .forall(k => t.left.get(k) < t.right.get(k)),
-    // the leafs are ordered w.r.t. their keys
-    val leafKeys = t.leafs.keys()
-    tuples(leafKeys, leafKeys).forall(kk =>
-      kk._1 < kk._2 implies lessThan(t.leafs.get(kk._1).key, t.leafs.get(kk._2).key)
-    ),
-    // all nodes have a parent
-    (t.leafs.keys().union(t.left.keys()).union(t.right.keys()))
-      .forall(k => or {
-      // the root
-      k == 1,
-      // there is a left parent
-      t.left.keys().exists(p => t.left.get(p) == k),
-      // there is a right parent
-      t.right.keys().exists(p => t.right.get(p) == k),
-    }),
-  }
+  val nonMemExample = not(nonMemInv)
 }
