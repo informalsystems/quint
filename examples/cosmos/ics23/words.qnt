@@ -12,7 +12,7 @@
 /// So the idea is basically to represent words as terms, where the atoms are
 /// sequences of integers, and terms are constructed as n-ary applications
 /// of the symbol "h", which means "hash". Since Quint enforces strict typing
-/// and it does not allow for inductive (recursive) algebraic data types,
+/// and it does not allow for inductive/recursive algebraic data types,
 /// we represent terms as maps that encode trees. For instance,
 /// the term h([ 1, 2 ] + h([ 3, 4 ])) + [ 5, 6 ] corresponds to the tree:
 ///
@@ -90,15 +90,18 @@ module words {
     pure val l = left.get([0])
     pure val r = right.get([0])
     if (size(keys(left)) == 1 and size(keys(right)) == 1 and l.t == "r" and r.t == "r") {
+      // both arguments are raw sequences, produce a single raw sequence
       Map([0] -> { t: "r", b: l.b.concat(r.b) })
     } else {
-      // the number of root's children in the left term
+      // Merge the arguments as trees representing terms.
+      // The number of root's children in the left term:
       pure val lwidth = size(keys(left).filter(p => length(p) == 1))
       // the paths of the right term shifted to the right by lwidth
       pure val rshifted =
         keys(right).map(p => [ lwidth + p[0] ].concat(p.slice(1, length(p))))
       // the paths of the concatenation
       pure val paths = keys(left).union(rshifted)
+      // the resulting term as a map
       paths.mapBy(p =>
         if (p[0] < lwidth) {
           left.get(p)
