@@ -31,9 +31,12 @@
 ///     [ 1 ] -> { t: "r", b: [ 5, 6 ] })
 ///
 /// Igor Konnov, Informal Systems, 2022-2023
-module words {
+module hashes {
+  /// A sequence of bytes is simply a list of integers
+  type BYTES_T = List[int]
+
   /// compare two lists of integers (e.g., bytes) lexicographically
-  pure def lessThan(w1: List[int], w2: List[int]): bool = {
+  pure def lessThan(w1: BYTES_T, w2: BYTES_T): bool = {
     pure val len1 = length(w1)
     pure val len2 = length(w2)
     or {
@@ -53,16 +56,25 @@ module words {
     // node type: either "h" (for hash), or "r" (for raw sequence)
     t: str,
     // the bytes when t = "r", and [] when t = "h"
-    b: List[int]
+    b: BYTES_T
   }
 
   /// A word is a map from a path to the term node.
   /// The first root's child is [ 0 ], the second root's child is [ 1 ],
   /// the first child of [ 0 ] is [ 0, 0], etc.
-  type TERM_T = List[int] -> TERM_NODE_T
+  type TERM_T = BYTES_T -> TERM_NODE_T
+
+  /// Compute term length in bytes,
+  /// assuming that a hash occupies 32 bytes (as SHA256 does)
+  pure def termLen(term: TERM_T): int = {
+    // the root's children
+    pure val top =
+      keys(term).filter(p => length(p) == 1).map(p => term.get(p))
+    top.fold(0, (s, t) => if (t.t == "h") s + 32 else s + length(t.b))
+  }
 
   // Construct the term that encodes a raw sequence of bytes
-  pure def raw(bytes: List[int]): TERM_T = {
+  pure def raw(bytes: BYTES_T): TERM_T = {
     Map([ 0 ] -> { t: "r", b: bytes })
   }
 
@@ -72,7 +84,7 @@ module words {
   }
 
   // Hash a term
-  pure def hash(term: TERM_T): TERM_T = {
+  pure def termHash(term: TERM_T): TERM_T = {
     // add "h" on top, which has the key [ 0 ], and attach term to it
     pure val paths = Set([ 0 ]).union(keys(term).map(p => [ 0 ].concat(p)))
     paths.mapBy(p =>
@@ -86,7 +98,7 @@ module words {
 
   /// Concatenate two terms. Special attention is paid to the case when the
   /// both terms are raw sequences, which requires them to be merged.
-  pure def plus(left: TERM_T, right: TERM_T): TERM_T = {
+  pure def termConcat(left: TERM_T, right: TERM_T): TERM_T = {
     pure val l = left.get([0])
     pure val r = right.get([0])
     if (size(keys(left)) == 1 and size(keys(right)) == 1 and l.t == "r" and r.t == "r") {
@@ -109,6 +121,17 @@ module words {
           right.get( [ p[0] - lwidth ].concat(p.slice(1, length(p))))
         }
       )
+    }
+  }
+
+  // Slice the sequence represented by a term.
+  // We only slice raw sequences.
+  pure def termSlice(term: TERM_T, start: int, end: int): TERM_T = {
+    pure val first = term.get([ 0 ])
+    if (size(keys(term)) == 1 and first.t == "r") {
+      raw(first.b.slice(start, end))
+    } else {
+      term
     }
   }
 }

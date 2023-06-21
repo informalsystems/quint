@@ -18,17 +18,17 @@
 //
 // https://github.com/confio/ics23/blob/master/go/proof.go
 module ics23 {
-  import words.* from "./words"
+  import hashes.* from "./hashes"
 
   // ICS23 proof checking for IavlSpec.
-  // In contrast to the ICS32 implementation, we specialize it to binary trees:
+  // In contrast to the ICS23 implementation, we specialize it to binary trees:
   // https://github.com/confio/ics23/tree/master/go
 
   // type aliases for readability
-  type KEY_T = WORD_T
-  type VALUE_T = WORD_T
-  type CommitmentRoot_T = WORD_T
-  type CommitmentProof_T = WORD_T
+  type KEY_T = TERM_T
+  type VALUE_T = TERM_T
+  type CommitmentRoot_T = TERM_T
+  type CommitmentProof_T = TERM_T
 
   // ICS23 IavlSpec has:
   // MinPrefixLength = 4
@@ -36,31 +36,29 @@ module ics23 {
   // ChildSize = 33
   //
   // To ease spec testing, we set:
-  val MinPrefixLen = 1
-  val MaxPrefixLen = 2
+  pure val MinPrefixLen = 1
+  pure val MaxPrefixLen = 2
   // It is crucial to make sure that ChildSize > MaxPrefixLen
-  val ChildSize = 3 // with length byte
+  pure val ChildSize = 33 // 32 bytes in SHA256 + 1 byte for length
   // Empty child is a predefined sequence that fills an absent child.
-  val EmptyChild = [ 0, 0, 0 ]
-
-  /// We need a hash that returns ChildSize elements,
-  /// with 32 being in the head.
-  /// For simulation, we are just summing up the word elements modulo 8.
-  /// For verification, we should use an injective function as a perfect hash.
-  def hash(word) = [ 32, 0, word.foldl(0, (i, j) => i + j) % 8 ]
+  // TODO: EmptyChild is set to nil in IavlSpec. We have 33 bytes.
+  pure val EmptyChild = raw([
+    32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  ])
 
   type LEAF_T = {
     // The implementation additionally stores hashing and length functions:
     // hash, prehashKey, prehashValue, len. Since we fix the spec to IAVL,
     // we do not have to carry them around.
-    prefix: WORD_T
+    prefix: TERM_T
   }
 
   type INNER_T = {
     // The implementation additionally stores the hashing function.
     // Since we fix the spec to IAVL, we do not have to carry it around.
-    prefix: WORD_T,
-    suffix: WORD_T
+    prefix: TERM_T,
+    suffix: TERM_T
   }
 
   /// a proof of existence of (key, value)
@@ -74,20 +72,21 @@ module ics23 {
   }
 
   /// calculate a hash from an exists proof
-  def existsCalculate(p):
-      (ExistsProof_T) => CommitmentProof_T = {
+  def existsCalculate(p: ExistsProof_T): CommitmentProof_T = {
     // This is how the leaf hash is computed.
     // Notice that the key is not hashed.
     val leafHash =
-      hash(p.leaf.prefix
-        .append(length(p.key))
-        .concat(p.key)
-        .append(length(p.value))
-        .concat(hash(p.value)))
+      termHash(p.leaf.prefix
+        // TODO: use encodeVarintProto
+        .termConcat(raw([termLen(p.key)]))
+        .termConcat(p.key)
+        .termConcat(raw([32]))
+        .termConcat(termHash(p.value)))
 
     // the inner node nodeHashes are concatenated and hashed upwards
     p.path.foldl(leafHash,
-      (child, inner) => hash(inner.prefix.concat(child).concat(inner.suffix)))
+      (child, inner) =>
+        termHash(inner.prefix.termConcat(child).termConcat(inner.suffix)))
   }
 
   /// verify that a proof matches a root
@@ -101,8 +100,8 @@ module ics23 {
   /// proof is an ExistenceProof for the given key and value AND
   /// calculating the root for the ExistenceProof matches
   /// the provided CommitmentRoot
-  def verifyMembership(root, proof, key, value):
-      (CommitmentRoot_T, ExistsProof_T, KEY_T, VALUE_T) => bool = {
+  def verifyMembership(root: CommitmentRoot_T,
+      proof: ExistsProof_T, key: KEY_T, value: VALUE_T): bool = {
     // TODO: specify Decompress
     // TODO: specify the case of CommitmentProof_Batch
     // TODO: CheckAgainstSpec ensures that the proof can be verified
@@ -111,20 +110,21 @@ module ics23 {
   }
 
   /// checks if an op has the expected padding
-  def hasPadding(inner, minPrefixLen, maxPrefixLen, suffixLen) = and {
-    length(inner.prefix) >= minPrefixLen,
-    length(inner.prefix) <= maxPrefixLen,
+  def hasPadding(inner: INNER_T,
+      minPrefixLen: int, maxPrefixLen: int, suffixLen: int): bool = and {
+    termLen(inner.prefix) >= minPrefixLen,
+    termLen(inner.prefix) <= maxPrefixLen,
     // When inner turns left, suffixLen == ChildSize,
     // that is, we store the hash of the right child in the suffix.
     // When inner turns right, suffixLen == 0,
     // that is, we store the hash of the left child in the prefix.
-    length(inner.suffix) == suffixLen
+    termLen(inner.suffix) == suffixLen
   }
 
   /// This will look at the proof and determine which order it is...
   /// So we can see if it is branch 0, 1, 2 etc... to determine neighbors
   /// https://github.com/confio/ics23/blob/a4daeb4c24ce1be827829c0841446abc690c4f11/go/proof.go#L400-L411
-  def orderFromPadding(inner) = {
+  def orderFromPadding(inner: INNER_T): (int, bool) = {
     // Specialize orderFromPadding to IavlSpec:
     // ChildOrder = { 0, 1 }
     // branch = 0: minp, maxp, suffix = MinPrefixLen, MaxPrefixLen, ChildSize
@@ -146,21 +146,21 @@ module ics23 {
   /// leftBranchesAreEmpty returns true if the padding bytes correspond to all
   /// empty siblings on the left side of a branch, ie. it's a valid placeholder
   /// on a leftmost path
-  def leftBranchesAreEmpty(inner) = and {
+  def leftBranchesAreEmpty(inner: INNER_T): bool = and {
     // the case of leftBranches == 0 returns false
     val order = orderFromPadding(inner)
     order._2 and order._1 != 0,
     // the remaining case is leftBranches == 1, see orderFromPadding
     // actualPrefix = len(inner.prefix) - 33
-    length(inner.prefix) >= ChildSize,
+    termLen(inner.prefix) >= ChildSize,
     // getPosition(0) returns 0
-    val fromIndex = length(inner.prefix) - ChildSize
-    inner.prefix.slice(fromIndex, fromIndex + ChildSize) == EmptyChild
+    val fromIndex = termLen(inner.prefix) - ChildSize
+    termSlice(inner.prefix, fromIndex, fromIndex + ChildSize) == EmptyChild
   }
 
   /// IsLeftMost returns true if this is the left-most path in the tree,
   /// excluding placeholder (empty child) nodes
-  def isLeftMost(path) = {
+  def isLeftMost(path: List[INNER_T]): bool = {
     // Calls getPadding(0) => idx = 0, prefix = 0.
     // We specialize the constants to IavlSpec.
     path.indices().forall(i =>
@@ -177,19 +177,19 @@ module ics23 {
   /// rightBranchesAreEmpty returns true if the padding bytes correspond
   /// to all empty siblings on the right side of a branch,
   /// i.e. it's a valid placeholder on a rightmost path
-  def rightBranchesAreEmpty(inner) = and {
+  def rightBranchesAreEmpty(inner: INNER_T): bool = and {
     // the case of rightBranches == 0 returns false
     val order = orderFromPadding(inner)
     order._2 and order._1 != 1,
     // the remaining case is rightBranches == 1, see orderFromPadding
-    length(inner.suffix) == ChildSize,
+    termLen(inner.suffix) == ChildSize,
     // getPosition(0) returns 0, hence, from == 0
     inner.suffix == EmptyChild
   }
 
   /// IsRightMost returns true if this is the left-most path in the tree,
   /// excluding placeholder (empty child) nodes
-  def isRightMost(path) = {
+  def isRightMost(path: List[INNER_T]): bool = {
     // Specialize to IavlSpec
     // Calls getPadding(1) => minPrefix, maxPrefix,
     //   suffix = ChildSize + MinPrefixLen, ChildSize + MaxPrefixLen, 0
@@ -206,7 +206,7 @@ module ics23 {
 
   /// isLeftStep assumes left and right have common parents
   /// checks if left is exactly one slot to the left of right
-  def isLeftStep(left, right) = {
+  def isLeftStep(left: INNER_T, right: INNER_T): bool = {
     // 'left' turns left, and 'right' turns right
     val lorder = orderFromPadding(left)
     val rorder = orderFromPadding(right)
@@ -225,7 +225,7 @@ module ics23 {
   /// Validate that LPath[len-1] is the left neighbor of RPath[len-1].
   /// For step in LPath[0..len-1], validate step is right-most node.
   /// For step in RPath[0..len-1], validate step is left-most node.
-  def isLeftNeighbor(lpath, rpath) = {
+  def isLeftNeighbor(lpath: List[INNER_T], rpath: List[INNER_T]): bool = {
     // count common tail (from end, near root)
     // cut the left and right paths
     lpath.indices().exists(li =>
@@ -264,8 +264,8 @@ module ics23 {
   /// both left and right sub-proofs are valid existence proofs (see above) or nil
   /// left and right proofs are neighbors (or left/right most if one is nil)
   /// provided key is between the keys of the two proofs
-  def verifyNonMembership(root, np, key):
-        (CommitmentRoot_T, NonExistsProof_T, KEY_T) => bool = and {
+  def verifyNonMembership(root: CommitmentRoot_T,
+      np: NonExistsProof_T, key: KEY_T): bool = and {
     // getNonExistProofForKey
     isNil(np.left.key) or lessThan(np.left.key, key),
     isNil(np.right.key) or lessThan(key, np.right.key),
