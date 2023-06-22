@@ -134,9 +134,9 @@ module ics23test {
     and {
       pure val np1 = { key: [1], left: nilProof, right: lproof }
       assert(verifyNonMembership(root, np1, [ 1 ])),
-      /*
       pure val np2 = { key: [2], left: lproof, right: rproof }
       assert(not(verifyNonMembership(root, np2, [ 2 ]))),
+      /*
       pure val np3 = { key: [3], left: lproof, right: rproof }
       assert(verifyNonMembership(root, np3, [ 3 ])),
       pure val np4 = { key: [2], left: lproof, right: rproof }
