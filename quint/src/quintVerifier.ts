@@ -143,6 +143,8 @@ function err<A>(explanation: string, errors: ErrorMessage[] = [], traces?: ItfTr
 
 function findApalacheDistribution(): VerifyResult<ApalacheDist> {
   if (!process.env.APALACHE_DIST) {
+    // TODO: fetch release if APALACHE_DIST is not configured
+    // See https://github.com/informalsystems/quint/issues/701
     return err('APALACHE_DIST enviroment variable is not set.')
   }
 
