@@ -25,25 +25,25 @@ module ics23 {
   // https://github.com/confio/ics23/tree/master/go
 
   // type aliases for readability
-  type KEY_T = TERM_T
-  type VALUE_T = TERM_T
-  type CommitmentRoot_T = TERM_T
-  type CommitmentProof_T = TERM_T
+  type Key_t = Bytes_t
+  type Value_t = Bytes_t
+  type CommitmentRoot_t = Term_t
+  type CommitmentProof_t = Term_t
 
   // ICS23 IavlSpec has:
-  // MinPrefixLength = 4
-  // MaxPrefixLength = 12
-  // ChildSize = 33
+  // MinPrefixLength = 1
+  // MaxPrefixLength = 1
+  // ChildSize = 32
   //
   // To ease spec testing, we set:
   pure val MinPrefixLen = 1
-  pure val MaxPrefixLen = 2
+  pure val MaxPrefixLen = 1
   // It is crucial to make sure that ChildSize > MaxPrefixLen
-  pure val ChildSize = 33 // 32 bytes in SHA256 + 1 byte for length
+  pure val ChildSize = 32 // 32 bytes in SHA256
   // Empty child is a predefined sequence that fills an absent child.
-  // TODO: EmptyChild is set to nil in IavlSpec. We have 33 bytes.
+  // TODO: EmptyChild is set to nil in TendermintSpec. We have 32 bytes.
   pure val EmptyChild = raw([
-    32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
   ])
 
@@ -51,37 +51,37 @@ module ics23 {
     // The implementation additionally stores hashing and length functions:
     // hash, prehashKey, prehashValue, len. Since we fix the spec to IAVL,
     // we do not have to carry them around.
-    prefix: TERM_T
+    prefix: Term_t
   }
 
   type INNER_T = {
     // The implementation additionally stores the hashing function.
     // Since we fix the spec to IAVL, we do not have to carry it around.
-    prefix: TERM_T,
-    suffix: TERM_T
+    prefix: Term_t,
+    suffix: Term_t
   }
 
   /// a proof of existence of (key, value)
-  type ExistsProof_T = {
-    key: KEY_T, value: VALUE_T, leaf: LEAF_T, path: List[INNER_T]
+  type ExistsProof_t = {
+    key: Key_t, value: Value_t, leaf: LEAF_T, path: List[INNER_T]
   }
 
   /// a proof of non-existence of a key
-  type NonExistsProof_T = {
-    key: KEY_T, left: ExistsProof_T, right: ExistsProof_T
+  type NonExistsProof_t = {
+    key: Key_t, left: ExistsProof_t, right: ExistsProof_t
   }
 
   /// calculate a hash from an exists proof
-  def existsCalculate(p: ExistsProof_T): CommitmentProof_T = {
+  def existsCalculate(p: ExistsProof_t): CommitmentProof_t = {
     // This is how the leaf hash is computed.
     // Notice that the key is not hashed.
     val leafHash =
       termHash(p.leaf.prefix
         // TODO: use encodeVarintProto
-        .termConcat(raw([termLen(p.key)]))
-        .termConcat(p.key)
+        .termConcat(raw([length(p.key)]))
+        .termConcat(raw(p.key))
         .termConcat(raw([32]))
-        .termConcat(termHash(p.value)))
+        .termConcat(termHash(raw(p.value))))
 
     // the inner node nodeHashes are concatenated and hashed upwards
     p.path.foldl(leafHash,
@@ -100,8 +100,8 @@ module ics23 {
   /// proof is an ExistenceProof for the given key and value AND
   /// calculating the root for the ExistenceProof matches
   /// the provided CommitmentRoot
-  def verifyMembership(root: CommitmentRoot_T,
-      proof: ExistsProof_T, key: KEY_T, value: VALUE_T): bool = {
+  def verifyMembership(root: CommitmentRoot_t,
+      proof: ExistsProof_t, key: Key_t, value: Value_t): bool = {
     // TODO: specify Decompress
     // TODO: specify the case of CommitmentProof_Batch
     // TODO: CheckAgainstSpec ensures that the proof can be verified
@@ -260,12 +260,12 @@ module ics23 {
   }
 
   /// VerifyNonMembership returns true iff
-  /// proof is (contains) a NonExistenceProof
-  /// both left and right sub-proofs are valid existence proofs (see above) or nil
-  /// left and right proofs are neighbors (or left/right most if one is nil)
+  /// proof is (contains) a NonExistenceProof,
+  /// both left and right sub-proofs are valid existence proofs (see above) or nil,
+  /// left and right proofs are neighbors (or left/right most if one is nil),
   /// provided key is between the keys of the two proofs
-  def verifyNonMembership(root: CommitmentRoot_T,
-      np: NonExistsProof_T, key: KEY_T): bool = and {
+  def verifyNonMembership(root: CommitmentRoot_t,
+      np: NonExistsProof_t, key: Key_t): bool = and {
     // getNonExistProofForKey
     isNil(np.left.key) or lessThan(np.left.key, key),
     isNil(np.right.key) or lessThan(key, np.right.key),

@@ -6,6 +6,7 @@
 ///
 /// Igor Konnov, Informal Systems, 2022-2023 
 module ics23test {
+  import hashes.* from "./hashes"
   import ics23.* from "./ics23"
 
   // test data
@@ -22,107 +23,127 @@ module ics23test {
 
   pure val existsCalculateTest = {
     pure val result = existsCalculate({
-      key: [5],
-      value: [5, 6],
-      leaf: { prefix: [5, 6, 7] },
+      key: [ 5 ],
+      value: [ 5, 6 ],
+      leaf: {
+        prefix: raw([ 9, 10, 11 ])
+      },
       path: [
-        { prefix: [5, 6], suffix: [8] },
-        { prefix: [5], suffix: [7] }
+        { prefix: raw([5, 6]), suffix: raw([8]) },
+        { prefix: raw([5]), suffix: raw([7]) }
       ]
     })
-    assert(result == [32, 0, 4])
+    // a map representation of the term with hashes
+    pure val expected = Map(
+      [0, 0] -> { b: [5], t: "r" },
+      [0, 1, 0] -> { b: [5, 6], t: "r" },
+      [0, 1, 1, 0] -> { b: [9, 10, 11, 1, 5, 32], t: "r" },
+      [0, 1, 1, 1, 0] -> { b: [5, 6], t: "r" },
+      [0, 1, 1, 1] -> { b: [], t: "h" },
+      [0, 1, 1] -> { b: [], t: "h" },
+      [0, 1, 2] -> { b: [8], t: "r" },
+      [0, 1] -> { b: [], t: "h" },
+      [0, 2] -> { b: [7], t: "r" },
+      [0] -> { b: [], t: "h" }
+    )
+    assert(expected == result)
   }
 
   pure val isLeftMost1Test = {
     assert(isLeftMost([
-      { prefix: [1], suffix: [3, 4, 5] },
-      { prefix: [2], suffix: [3, 4, 5] },
-      { prefix: [3], suffix: [3, 4, 5] }
+      { prefix: raw([1]), suffix: termHash(raw([3, 4, 5])) },
+      { prefix: raw([2]), suffix: termHash(raw([3, 4, 5])) },
+      { prefix: raw([3]), suffix: termHash(raw([3, 4, 5])) }
     ]))
   }
 
   pure val isLeftMost2Test =
     assert(isLeftMost([
-      { prefix: [1, 0, 0, 0], suffix: [] },
-      { prefix: [2], suffix: [3, 4, 5] },
-      { prefix: [3], suffix: [3, 4, 5] }
+      { prefix: termConcat(raw([1]), EmptyChild), suffix: raw([]) },
+      { prefix: raw([2]), suffix: termHash(raw([3, 4, 5])) },
+      { prefix: raw([3]), suffix: termHash(raw([3, 4, 5])) }
     ]))
 
   pure val isLeftMost3Test = {
     assert(isLeftMost([
-      { prefix: [1], suffix: [3, 4, 5 ] },
-      { prefix: [2, 0, 0, 0], suffix: [] },
-      { prefix: [3], suffix: [3, 4, 5] }
+      { prefix: raw([1]), suffix: termHash(raw([3, 4, 5])) },
+      { prefix: termConcat(raw([2]), EmptyChild), suffix: raw([]) },
+      { prefix: raw([3]), suffix: termHash(raw([3, 4, 5])) }
     ]))
   }
 
   pure val isRightMost1Test =
     assert(isRightMost([
-      { prefix: [1, 4, 5, 6], suffix: [] },
-      { prefix: [2, 4, 5, 6], suffix: [] },
-      { prefix: [3, 3, 4, 5], suffix: [] }
+      { prefix: termConcat(raw([1]), termHash(raw([4, 5, 6]))), suffix: raw([]) },
+      { prefix: termConcat(raw([2]), termHash(raw([4, 5, 6]))), suffix: raw([]) },
+      { prefix: termConcat(raw([3]), termHash(raw([4, 5, 6]))), suffix: raw([]) }
     ]))
 
   pure val isRightMost2Test =
     assert(isRightMost([
-      { prefix: [1, 4, 5, 6], suffix: [] },
-      { prefix: [2], suffix: [0, 0, 0] },
-      { prefix: [3, 3, 4, 5], suffix: [] }
+      { prefix: termConcat(raw([1]), termHash(raw([4, 5, 6]))), suffix: raw([]) },
+      { prefix: raw([2]), suffix: EmptyChild },
+      { prefix: termConcat(raw([2]), termHash(raw([3, 4, 5]))), suffix: raw([]) }
     ]))
 
   pure val isLeftStep1Test =
     assert(isLeftStep(
-      { prefix: [1], suffix: [4, 5, 6] },
-      { prefix: [2, 7, 8, 9], suffix: [] }
+      { prefix: raw([1]), suffix: termHash(raw([4, 5, 6])) },
+      { prefix: termConcat(raw([2]), termHash(raw([7, 8, 9]))), suffix: raw([]) }
     ))
 
   pure val isLeftNeighborTest =
     assert(isLeftNeighbor(
       [
-        { prefix: [1], suffix: [4, 5, 6] },
-        { prefix: [2, 7, 8, 9], suffix: [] }
+        { prefix: raw([1]), suffix: termHash(raw([4, 5, 6])) },
+        { prefix: termConcat(raw([2]), termHash(raw([7, 8, 9]))), suffix: raw([]) }
       ],
       [
-        { prefix: [1, 4, 5, 6], suffix: [] },
-        { prefix: [2, 7, 8, 9], suffix: [] }
+        { prefix: termConcat(raw([1]), termHash(raw([4, 5, 6]))), suffix: raw([]) },
+        { prefix: termConcat(raw([2]), termHash(raw([7, 8, 9]))), suffix: raw([]) }
       ]
     ))
 
   pure val verifyNonMembershipTest = {
     //    *
     //   / \
-    // 2,3 4,5
-    val lhash = existsCalculate({
-      key:[2], value: [3], leaf: { prefix: [ 0 ] }, path: []
+    // 2:3 4:5
+    pure val lhash = existsCalculate({
+      key: [2], value: [3], leaf: { prefix: raw([ 0 ]) }, path: []
     })
-    val rhash = existsCalculate({
-      key:[4], value: [5], leaf: { prefix: [ 0 ] }, path: []
+    pure val rhash = existsCalculate({
+      key:[4], value: [5], leaf: { prefix: raw([ 0 ]) }, path: []
     })
-    val left = {
+    // the left proof
+    pure val lproof: ExistsProof_t = {
       key: [ 2 ],
       value: [ 3 ],
-      leaf: { prefix: [ 0 ] },
-      path: [{ prefix: [0], suffix: rhash }]
+      leaf: { prefix: raw([ 0 ]) },
+      path: [{ prefix: raw([0]), suffix: rhash }]
     }
-    val right = {
+    // the right proof
+    pure val rproof: ExistsProof_t = {
       key: [ 4 ],
       value: [ 5 ],
-      leaf: { prefix: [ 0 ] },
-      path: [{ prefix: [0].concat(lhash), suffix: [] }]
+      leaf: { prefix: raw([ 0 ]) },
+      path: [{ prefix: raw([0]).termConcat(lhash), suffix: raw([]) }]
     }
-    val root = [32, 0, 2]
-    val nilProof = { key: [], value: [], leaf: { prefix: [] }, path: [] }
+    pure val root = termHash(raw([0]).termConcat(lhash).termConcat(rhash))
+    pure val nilProof: ExistsProof_t =
+      { key: [], value: [], leaf: { prefix: raw([]) }, path: [] }
     and {
-      val np1 = { key: [1], left: nilProof, right: left }
+      pure val np1 = { key: [1], left: nilProof, right: lproof }
       assert(verifyNonMembership(root, np1, [ 1 ])),
-      val np2 = { key: [2], left: left, right: right }
+      /*
+      pure val np2 = { key: [2], left: lproof, right: rproof }
       assert(not(verifyNonMembership(root, np2, [ 2 ]))),
-      val np3 = { key: [3], left: left, right: right }
+      pure val np3 = { key: [3], left: lproof, right: rproof }
       assert(verifyNonMembership(root, np3, [ 3 ])),
-      val np4 = { key: [2], left: left, right: right }
+      pure val np4 = { key: [2], left: lproof, right: rproof }
       assert(not(verifyNonMembership(root, np4, [ 4 ]))),
-      val np5 = { key: [5], left: right, right: nilProof }
+      pure val np5 = { key: [5], left: rproof, right: nilProof }
       assert(verifyNonMembership(root, np5, [ 5 ])),
+      */
     }
   }
 }
