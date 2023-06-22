@@ -161,12 +161,12 @@ function findApalacheDistribution(): VerifyResult<ApalacheDist> {
 
   if (!fs.existsSync(jar)) {
     return err(
-      `Apalache distribution is corrupted: cannot find ${jar}. Ensure the APALACHE_DIST environment variable is set.`
+      `Apalache distribution is corrupted: cannot find ${jar}. Ensure the APALACHE_DIST environment variable points to the right directory.`
     )
   }
   if (!fs.existsSync(exe)) {
     return err(
-      `Apalache distribution is corrupted: cannot find ${exe}. Ensure the APALACHE_DIST environment variable is set.`
+      `Apalache distribution is corrupted: cannot find ${exe}. Ensure the APALACHE_DIST environment variable points to the right directory.`
     )
   }
 
