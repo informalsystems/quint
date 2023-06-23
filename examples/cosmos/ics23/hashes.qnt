@@ -42,12 +42,12 @@ module hashes {
     pure val len1 = length(w1)
     pure val len2 = length(w2)
     or {
-      len1 < len2 and w1.indices().forall(i => w1[i] == w2[i]),
+      len1 < len2 and indices(w1).forall(i => w1[i] <= w2[i]),
       and {
-        len1 <= len2,
-        w1.indices().exists(i => and {
+        len1 == len2,
+        indices(w1).exists(i => and {
           w1[i] < w2[i],
-          w1.indices().forall(j => j < i implies w1[i] == w2[j])
+          indices(w1).forall(j => j < i implies w1[j] == w2[j])
         })
       }
     }
