@@ -30,7 +30,7 @@ module ics23 {
   type CommitmentRoot_t = Term_t
   type CommitmentProof_t = Term_t
 
-  // ICS23 IavlSpec has:
+  // ICS23 TendermintSpec has:
   // MinPrefixLength = 1
   // MaxPrefixLength = 1
   // ChildSize = 32
@@ -78,6 +78,7 @@ module ics23 {
     val leafHash =
       termHash(p.leaf.prefix
         // TODO: use encodeVarintProto
+        // https://github.com/cosmos/ics23/blob/d0edf8e9cd38f7fc1bfc4311b2814e5d2ea966e8/go/proof.go#L67
         .termConcat(raw([length(p.key)]))
         .termConcat(raw(p.key))
         .termConcat(raw([32]))

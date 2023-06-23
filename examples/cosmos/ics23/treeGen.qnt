@@ -55,11 +55,12 @@ module treeGen {
   /// To simplify random generation of the trees, we are using
   /// a binary encoding. For example, if a leaf has the index 4,
   /// that is, 100b, then it has the parents 3 = 10b and 1 = 1b.
+  /// See the exact definition below.
   def parents(i) = 1.to(height).map(h => i / (2^h)).exclude(Set(0))
 
   /// is a given key a node (inner or leaf) of a tree
-  def isNode(t: TREE_T, key: int) = or {
-    key == 1,
+  def isNode(t: TREE_T, key: int): bool = or {
+    key == 1, // the root
     t.leafs.keys().contains(key),
     t.left.keys().contains(key),
     t.right.keys().contains(key),

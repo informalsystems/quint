@@ -16,7 +16,9 @@
 /// we represent terms as maps that encode trees. For instance,
 /// the term h([ 1, 2 ] + h([ 3, 4 ])) + [ 5, 6 ] corresponds to the tree:
 ///
-///       "h"      [ 5, 6 ]
+///            *
+///          /   \
+///       "h"     [ 5, 6 ]
 ///     /     \
 /// [ 1, 2 ]   "h"
 ///          /
@@ -42,7 +44,7 @@ module hashes {
     or {
       len1 < len2 and w1.indices().forall(i => w1[i] == w2[i]),
       and {
-        len1 == len2,
+        len1 <= len2,
         w1.indices().exists(i => and {
           w1[i] < w2[i],
           w1.indices().forall(j => j < i implies w1[i] == w2[j])
@@ -84,6 +86,11 @@ module hashes {
     Map([ 0 ] -> { t: "r", b: bytes })
   }
 
+  /// Is the term representing a raw term?
+  pure def isRaw(term: Term_t): bool = {
+    size(keys(term)) == 1 and term.get([0]).t == "r"
+  }
+
   /// Hash a term
   pure def termHash(term: Term_t): Term_t = {
     // add "h" on top, which has the key [ 0 ], and attach term to it
@@ -102,13 +109,13 @@ module hashes {
   pure def termConcat(left: Term_t, right: Term_t): Term_t = {
     pure val l = left.get([0])
     pure val r = right.get([0])
-    pure val isLSeq = size(keys(left)) == 1 and l.t == "r"
-    pure val isRSeq = size(keys(right)) == 1 and r.t == "r"
-    if (isLSeq and l.b == []) {
+    pure val isLeftRaw = isRaw(l)
+    pure val isRightRaw = isRaw(r)
+    if (isLeftRaw and l.b == []) {
       right
-    } else if (isRSeq and r.b == []) {
+    } else if (isRightRaw and r.b == []) {
       left
-    } else if (isLSeq and isRSeq) {
+    } else if (isLeftRaw and isRightRaw) {
       // both arguments are raw sequences, produce a single raw sequence
       Map([0] -> { t: "r", b: l.b.concat(r.b) })
     } else {
@@ -135,7 +142,7 @@ module hashes {
   /// Non-raw sequences are returned unmodified.
   pure def termSlice(term: Term_t, start: int, end: int): Term_t = {
     pure val first = term.get([ 0 ])
-    if (size(keys(term)) == 1 and first.t == "r") {
+    if (isRaw(term)) {
       raw(first.b.slice(start, end))
     } else {
       term
