@@ -102,7 +102,13 @@ module hashes {
   pure def termConcat(left: Term_t, right: Term_t): Term_t = {
     pure val l = left.get([0])
     pure val r = right.get([0])
-    if (size(keys(left)) == 1 and size(keys(right)) == 1 and l.t == "r" and r.t == "r") {
+    pure val isLSeq = size(keys(left)) == 1 and l.t == "r"
+    pure val isRSeq = size(keys(right)) == 1 and r.t == "r"
+    if (isLSeq and l.b == []) {
+      right
+    } else if (isRSeq and r.b == []) {
+      left
+    } else if (isLSeq and isRSeq) {
       // both arguments are raw sequences, produce a single raw sequence
       Map([0] -> { t: "r", b: l.b.concat(r.b) })
     } else {
