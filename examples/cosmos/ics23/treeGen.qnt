@@ -16,8 +16,8 @@
 /// a counterexample, there must be an error somewhere.
 ///
 /// Igor Konnov, Informal Systems, 2022-2023
-module ics23trees {
-  import words.* from "./words"
+module treeGen {
+  import hashes.* from "./hashes"
   import ics23.* from "./ics23"
 
   /// We represent a binary tree as a collection of maps,
@@ -29,7 +29,7 @@ module ics23trees {
   /// programming languages.
   type TREE_T = {
     // every leaf has a key and value assigned
-    leafs: int -> { key: WORD_T, value: WORD_T },
+    leafs: int -> { key: Bytes_t, value: Bytes_t },
     // intermediate nodes have left and/or right children
     left: int -> int,
     right: int -> int
@@ -37,8 +37,8 @@ module ics23trees {
 
   /// the tree generated so far
   var tree: TREE_T
-  /// the node nodeHashes
-  var nodeHashes: int -> WORD_T
+  /// the node hashes
+  var nodeHashes: int -> Term_t
   /// the keys to use for non-membership proofs
   var leftKey: int
   var rightKey: int
@@ -69,18 +69,15 @@ module ics23trees {
   def computeHashes(t) = {
     // compute the hash of a single node, assuming that the children's
     // nodeHashes have been computed
-    def putNodeHash(hashMap, key): (int -> List[int], int) => (int -> List[int]) = {
+    def putNodeHash(hashMap: int -> Term_t, key: int): (int -> Term_t) = {
       val h =
         if (t.leafs.keys().contains(key)) {
-          // a leaf
+          // simply use existsCalculate on the leaf
           val leaf = t.leafs.get(key)
-          // Hash the leaf as in ics23.existsCalculate.
-          // In our trees, prefixes are always 0.
-          hash([0].append(length(leaf.key))
-          .concat(hash(leaf.key))
-          .append(length(leaf.value))
-          .concat(hash(leaf.value)))
-        } else {
+          existsCalculate({
+            key: leaf.key, value: leaf.value, leaf: { prefix: raw([0]) }, path: []
+          })
+       } else {
           // an inner node, assuming that the children nodeHashes were computed
           def hashOrEmpty(childMap) =
             if (childMap.keys().contains(key)) {
@@ -89,7 +86,9 @@ module ics23trees {
               EmptyChild
             }
           // hash the prefix ([0]) and the hash of the children
-          hash([0].concat(hashOrEmpty(t.left)).concat(hashOrEmpty(t.right)))
+          termHash(raw([0])
+            .termConcat(hashOrEmpty(t.left))
+            .termConcat(hashOrEmpty(t.right)))
         }
       // store the hash
       hashMap.put(key, h)
@@ -145,7 +144,7 @@ module ics23trees {
   }
 
   /// convert a tree leaf to an exists proof
-  def leafToExistsProof(key) =
+  def leafToExistsProof(key: int): ExistsProof_t =
     val value = tree.leafs.get(key).value
     // encode all intermediate nodes upwards
     val path = range(1, height + 1)
@@ -165,10 +164,10 @@ module ics23trees {
           // push the hashes in the prefix and the suffix
           if (key == 2 * parent) {
             val right = hashOrChild(tree.right)
-            p.append({ prefix: [0], suffix: right })
+            p.append({ prefix: raw([0]), suffix: right })
           } else {
             val left = hashOrChild(tree.left)
-            p.append({ prefix: [0].concat(left), suffix: [] })
+            p.append({ prefix: raw([0]).termConcat(left), suffix: raw([]) })
           }
         }
     )
@@ -176,7 +175,7 @@ module ics23trees {
     {
       key: [key],
       value: tree.leafs.get(key).value,
-      leaf: { prefix: [0] },
+      leaf: { prefix: raw([0]) },
       path: path,
     }
 
@@ -279,7 +278,7 @@ module ics23trees {
       if (tree.leafs.keys().contains(key))
         leafToExistsProof(key)
       else
-        { key: [], value: [], leaf: { prefix: [] }, path: [] }
+        { key: [], value: [], leaf: { prefix: raw([]) }, path: [] }
     }
     val lproof = proofOrNil(leftKey)
     val rproof = proofOrNil(rightKey)
