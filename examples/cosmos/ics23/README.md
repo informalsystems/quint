@@ -25,7 +25,7 @@ specifications first. This one is quite advanced.
 $ quint test ics23test.qnt
 ```
 
-**Randomized invariant checking.** Finally, you can check membership and
+**Randomized invariant checking.** Also, you can check membership and
 non-membership invariants with the random simulator:
 
 ```sh

@@ -22,7 +22,7 @@
 ///          /
 ///      [ 3, 4 ]
 ///
-/// The above tree is represented as a map in Quint:
+/// The above tree is represented as a map in Quint. Each key corresponds to a path in the tree; for example, the first root's child is [ 0 ], the second root's child is [ 1 ], the first child of [ 0 ] is [ 0, 0], etc.
 ///
 /// Map([ 0 ] -> { t: "h", b: [] },
 ///     [ 0, 0 ] -> { t: "r", b: [ 1, 2 ] },
@@ -51,8 +51,8 @@ module hashes {
     }
   }
 
-  /// Does the sequence of bytes have the nil value.
-  /// In our spec, it is equivalent to empty.
+  /// Returns true iff `w` is the nil value.
+  /// In our spec, nil is equivalent to the empty list.
   pure def isNil(w: Bytes_t): bool = {
     w == []
   }
@@ -73,18 +73,18 @@ module hashes {
   /// Compute term length in bytes,
   /// assuming that a hash occupies 32 bytes (as SHA256 does)
   pure def termLen(term: Term_t): int = {
-    // the root's children
+    // the roots' children
     pure val top =
       keys(term).filter(p => length(p) == 1).map(p => term.get(p))
     top.fold(0, (s, t) => if (t.t == "h") s + 32 else s + length(t.b))
   }
 
-  // Construct the term that encodes a raw sequence of bytes
+  /// Construct the term that encodes a raw sequence of bytes
   pure def raw(bytes: Bytes_t): Term_t = {
     Map([ 0 ] -> { t: "r", b: bytes })
   }
 
-  // Hash a term
+  /// Hash a term
   pure def termHash(term: Term_t): Term_t = {
     // add "h" on top, which has the key [ 0 ], and attach term to it
     pure val paths = Set([ 0 ]).union(keys(term).map(p => [ 0 ].concat(p)))
@@ -131,8 +131,8 @@ module hashes {
     }
   }
 
-  // Slice the sequence represented by a term.
-  // We only slice raw sequences.
+  /// Slice a raw sequence represented by a term.
+  /// Non-raw sequences are returned unmodified.
   pure def termSlice(term: Term_t, start: int, end: int): Term_t = {
     pure val first = term.get([ 0 ])
     if (size(keys(term)) == 1 and first.t == "r") {

@@ -12,7 +12,7 @@
 /// $ quint run --invariant=nonMemInv ics23trees.qnt
 /// $ quint run --invariant=memInv ics23trees.qnt
 ///
-/// We expect these tests to always pass. If you the simulator reports
+/// We expect these tests to always pass. If the simulator reports
 /// a counterexample, there must be an error somewhere.
 ///
 /// Igor Konnov, Informal Systems, 2022-2023
@@ -53,12 +53,12 @@ module treeGen {
 
   /// Compute all parents from the binary representation of the index.
   /// To simplify random generation of the trees, we are using
-  /// the binary encoding. For example, if a leaf has the index 4,
+  /// a binary encoding. For example, if a leaf has the index 4,
   /// that is, 100b, then it has the parents 3 = 10b and 1 = 1b.
   def parents(i) = 1.to(height).map(h => i / (2^h)).exclude(Set(0))
 
   /// is a given key a node (inner or leaf) of a tree
-  def isNode(t, key) = or {
+  def isNode(t: TREE_T, key: int) = or {
     key == 1,
     t.leafs.keys().contains(key),
     t.left.keys().contains(key),
@@ -179,7 +179,7 @@ module treeGen {
       path: path,
     }
 
-  /// The transition does nothing. The state was computed in Init.
+  /// The transition does nothing. The state was computed in `init`.
   action step = all {
     // nothing changes
     tree' = tree,
