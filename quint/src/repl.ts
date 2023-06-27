@@ -357,11 +357,11 @@ export function quintRepl(
                 out(r('.seed requires an integer, or no argument\n'))
               } else {
                 if (m[1].trim() === '') {
-                  out(g(`.seed=${state.rng.getState()}\n`))
+                  out(g(`.seed=${state.seed}\n`))
                 } else {
-                  state.rng.setState(BigInt(m[1]))
+                  state.seed = BigInt(m[1])
                   if (verbosity.hasReplPrompt(state.verbosity)) {
-                    out(g(`.seed=${state.rng.getState()}\n`))
+                    out(g(`.seed=${state.seed}\n`))
                   }
                 }
               }
