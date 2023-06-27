@@ -1030,9 +1030,8 @@ describe('incremental compilation', () => {
 
     return compile(
       state,
-      newEvaluationState(),
+      newEvaluationState(noExecutionListener),
       flattenedTable,
-      noExecutionListener,
       dummyRng.next,
       moduleToCompile.defs
     )
@@ -1044,7 +1043,7 @@ describe('incremental compilation', () => {
 
       const parsed = parseExpressionOrUnit('x + 2', 'test.qnt', compilationState.idGen, compilationState.sourceMap)
       const expr = parsed.kind === 'expr' ? parsed.expr : undefined
-      const context = compileExpr(compilationState, evaluationState, dummyRng, noExecutionListener, expr!)
+      const context = compileExpr(compilationState, evaluationState, dummyRng, expr!)
 
       assert.deepEqual(context.compilationState.analysisOutput.types.get(expr!.id)?.type, { kind: 'int', id: 3n })
 
@@ -1063,7 +1062,7 @@ describe('incremental compilation', () => {
         compilationState.sourceMap
       )
       const def = parsed.kind === 'toplevel' ? parsed.def : undefined
-      const context = compileDef(compilationState, evaluationState, dummyRng, noExecutionListener, def!)
+      const context = compileDef(compilationState, evaluationState, dummyRng, def!)
 
       assert.deepEqual(context.compilationState.analysisOutput.types.get(def!.id)?.type, { kind: 'int', id: 3n })
 

@@ -28,6 +28,7 @@ import { IdGenerator, newIdGenerator } from '../idGenerator'
 import { SourceLookupPath } from '../parsing/sourceResolver'
 import { addDefToFlatModule, flattenModules } from '../flattening'
 import { Rng } from '../rng'
+import { exec } from 'child_process'
 
 /**
  * The name of the shadow variable that stores the last found trace.
@@ -82,15 +83,18 @@ export function newCompilationState(): CompilationState {
   }
 }
 
-export function errorContextFromMessage(errors: ErrorMessage[]): CompilationContext {
-  return {
-    lookupTable: new Map(),
-    syntaxErrors: errors,
-    analysisErrors: [],
-    compileErrors: [],
-    getRuntimeErrors: () => [],
-    compilationState: newCompilationState(),
-    evaluationState: newEvaluationState(),
+export function errorContextFromMessage(listener: ExecutionListener):
+  (errors: ErrorMessage[]) => CompilationContext {
+  return (errs: ErrorMessage[]) => {
+      return {
+      lookupTable: new Map(),
+      syntaxErrors: errs,
+      analysisErrors: [],
+      compileErrors: [],
+      getRuntimeErrors: () => [],
+      compilationState: newCompilationState(),
+      evaluationState: newEvaluationState(listener),
+    }
   }
 }
 
@@ -127,13 +131,12 @@ export function compile(
   compilationState: CompilationState,
   evaluationState: EvaluationState,
   lookupTable: LookupTable,
-  execListener: ExecutionListener,
   rand: (bound: bigint) => bigint,
   defs: FlatDef[]
 ): CompilationContext {
   const { sourceMap, analysisOutput } = compilationState
 
-  const visitor = new CompilerVisitor(lookupTable, analysisOutput.types, rand, execListener, evaluationState)
+  const visitor = new CompilerVisitor(lookupTable, analysisOutput.types, rand, evaluationState)
 
   defs.forEach(def => walkDefinition(visitor, def))
 
@@ -153,20 +156,18 @@ export function compileExpr(
   state: CompilationState,
   evaluationState: EvaluationState,
   rng: Rng,
-  recorder: any,
   expr: QuintEx
 ): CompilationContext {
   // Create a definition to encapsulate the parsed expression.
   const def: QuintDef = { kind: 'def', qualifier: 'action', name: 'q::input', expr, id: state.idGen.nextId() }
 
-  return compileDef(state, evaluationState, rng, recorder, def)
+  return compileDef(state, evaluationState, rng, def)
 }
 
 export function compileDef(
   state: CompilationState,
   evaluationState: EvaluationState,
   rng: Rng,
-  recorder: any,
   def: QuintDef
 ): CompilationContext {
   // Define a new module list with the new definition in the last module,
@@ -182,7 +183,7 @@ export function compileDef(
   // We need to resolve names for this new definition. Incremental name
   // resolution is not our focus now, so just resolve everything again.
   return parsePhase3importAndNameResolution({ modules: modules, sourceMap: state.sourceMap })
-    .mapLeft(errorContextFromMessage)
+    .mapLeft(errorContextFromMessage(evaluationState.listener))
     .map(({ table }) => {
       const [analysisErrors, analysisOutput] = analyzeInc(state.analysisOutput, table, def)
 
@@ -201,7 +202,7 @@ export function compileDef(
       flatModules.push(flattenedModule)
 
       const newState = { ...state, analysisOutput: flattenedAnalysis, modules: flatModules }
-      const ctx = compile(newState, evaluationState, flattenedTable, recorder, rng.next, flattenedDefs)
+      const ctx = compile(newState, evaluationState, flattenedTable, rng.next, flattenedDefs)
 
       const errorLocator = mkErrorMessage(state.sourceMap)
       return {
@@ -235,7 +236,7 @@ export function compileFromCode(
   return (
     parse(idGen, '<module_input>', mainPath, code)
       // On errors, we'll produce the computational context up to this point
-      .mapLeft(errorContextFromMessage)
+      .mapLeft(errorContextFromMessage(execListener))
       .chain(
         parseData => {
           const { modules, table, sourceMap } = parseData
@@ -266,7 +267,8 @@ export function compileFromCode(
                 },
               ]
           const defsToCompile = main ? main.defs : []
-          const ctx = compile(compilationState, newEvaluationState(), flattenedTable, execListener, rand, defsToCompile)
+          const ctx = compile(compilationState,
+            newEvaluationState(execListener), flattenedTable, rand, defsToCompile)
 
           const errorLocator = mkErrorMessage(sourceMap)
           return right({

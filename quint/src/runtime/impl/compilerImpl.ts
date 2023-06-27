@@ -65,7 +65,9 @@ export interface EvaluationState {
   // The list of shadow variables.
   shadowVars: Register[]
   // The error tracker for the evaluation to store errors on callbacks.
-  errorTracker: CompilerErrorTracker
+  errorTracker: CompilerErrorTracker,
+  // The execution listener that the compiled code uses to report execution info.
+  listener: ExecutionListener,
 }
 
 /**
@@ -93,13 +95,14 @@ export class CompilerErrorTracker {
  *
  * @returns a new EvaluationState object with the lastTrace shadow variable register
  */
-export function newEvaluationState(): EvaluationState {
+export function newEvaluationState(listener: ExecutionListener): EvaluationState {
   const state: EvaluationState = {
     context: builtinContext(),
     vars: [],
     nextVars: [],
     shadowVars: [],
     errorTracker: new CompilerErrorTracker(),
+    listener: listener,
   }
 
   // Initialize compiler state
@@ -157,19 +160,18 @@ export class CompilerVisitor implements IRVisitor {
     lookupTable: LookupTable,
     types: Map<bigint, TypeScheme>,
     rand: (bound: bigint) => bigint,
-    listener: ExecutionListener,
     evaluationState: EvaluationState
   ) {
     this.lookupTable = lookupTable
     this.types = types
     this.rand = rand
-    this.execListener = listener
 
     this.context = evaluationState.context
     this.vars = evaluationState.vars
     this.nextVars = evaluationState.nextVars
     this.shadowVars = evaluationState.shadowVars
     this.errorTracker = evaluationState.errorTracker
+    this.execListener = evaluationState.listener
   }
 
   /**
@@ -182,6 +184,7 @@ export class CompilerVisitor implements IRVisitor {
       nextVars: this.nextVars,
       shadowVars: this.shadowVars,
       errorTracker: this.errorTracker,
+      listener: this.execListener,
     }
   }
 
