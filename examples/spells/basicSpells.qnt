@@ -110,6 +110,11 @@ module basicSpells {
     assert(Map() == Map().mapRemove(3)),
   }
 
+  /// Sort a list, given the ordering operator.
+  ///
+  /// - @param __list a list to sort
+  /// - @param __lt a definition of "less than"
+  /// - @returns the sorted version of __list
   pure def listSorted(__list: List[a], __lt: (a, a) => bool): List[a] = {
     pure def __countSmaller(__j: int): int = {
       pure val __jth = __list[__j]
@@ -121,8 +126,17 @@ module basicSpells {
 
     pure val __permutation =
       __list.indices().mapBy(__i => __countSmaller(__i))
+    // The code below is producing an incorrect result.
+    // Consider __list == [ 3, 5, 1]. The result is [ 5, 1, 3 ].
+    // We should invert __permutation first.
+    // For this, we would require choose_some, see #150.
     range(0, __list.length()).foldl([], (__l, __i) =>
       __l.append(__list[__permutation.get(__i)])
     )
+  }
+
+  run listSortedTest = all {
+    assert([ 5, 1, 3 ] == listSorted([ 1, 3, 5 ], (x, y) => x < y)),
+    assert([ 1, 5, 1, 3, 5 ] == listSorted([ 1, 1, 3, 5, 5 ], (x, y) => x < y)),
   }
 }
