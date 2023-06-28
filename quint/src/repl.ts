@@ -50,7 +50,9 @@ export const settings = {
 
 type writer = (_text: string) => void
 
-// the internal state of the REPL
+/**
+ * The internal state of the REPL.
+ */
 class ReplState {
   // the history of module definitions loaded from external sources
   moduleHist: string
@@ -62,25 +64,17 @@ class ReplState {
   lastLoadedFileAndModule: [string?, string?]
  // The state of pre-compilation phases
   compilationState: CompilationState
-  // The trace recorder
-  private _recorder: TraceRecorder
   // The state of the compiler visitor
   evaluationState: EvaluationState
-  // random number generator (immutable)
-  readonly rng: Rng
-  // verbosity level (mutable via set/get)
-  private _verbosityLevel: number
- 
+
   constructor(verbosityLevel: number, rng: Rng) {
     this.moduleHist = ''
     this.defsHist = ''
     this.exprHist = []
     this.lastLoadedFileAndModule = [undefined, undefined]
-    this.rng = rng
-    this._verbosityLevel = verbosityLevel
     this.compilationState = this.newCompilationState()
-    this._recorder = newTraceRecorder(verbosityLevel, rng)
-    this.evaluationState = newEvaluationState(this._recorder)
+    this.evaluationState =
+      newEvaluationState(newTraceRecorder(verbosityLevel, rng))
   }
 
   clone() {
@@ -99,16 +93,24 @@ class ReplState {
     this.exprHist = []
     this.compilationState = this.newCompilationState()
     this.evaluationState =
-      newEvaluationState(newTraceRecorder(this._verbosityLevel, this.rng))
+      newEvaluationState(newTraceRecorder(this.verbosity, this.rng))
+  }
+
+  get recorder(): TraceRecorder {
+    // ReplState always passes TraceRecorder in the evaluation state
+    return this.evaluationState.listener as TraceRecorder
+  }
+
+  get rng(): Rng {
+    return this.recorder.rng
   }
   
   get verbosity(): number {
-    return this._verbosityLevel
+    return this.recorder.verbosityLevel
   }
 
   set verbosity(level: number) {
-    this._verbosityLevel = level
-    this._recorder.verbosityLevel = level
+    this.recorder.verbosityLevel = level
   }
 
   get seed(): bigint {
@@ -215,7 +217,9 @@ export function quintRepl(
         multilineText = trimReplDecorations(line)
         rl.setPrompt(prompt(settings.continuePrompt))
       } else {
-        line.trim() === '' || tryEval(out, state, line + '\n')
+        if (line.trim() !== '') {
+          tryEvalAndClear(out, state, line + '\n')
+        }
       }
     } else {
       const trimmedLine = line.trim()
@@ -227,7 +231,7 @@ export function quintRepl(
         // End the multiline mode.
         // If recycle own output, then the current line is, most likely,
         // older input. Ignore it.
-        tryEval(out, state, multilineText)
+        tryEvalAndClear(out, state, multilineText)
         multilineText = ''
         recyclingOwnOutput = false
         rl.setPrompt(prompt(settings.prompt))
@@ -246,7 +250,7 @@ export function quintRepl(
     if (loadFromFile(out, state, filename)) {
       state.lastLoadedFileAndModule[0] = filename
       if (moduleName !== undefined) {
-        if (tryEval(out, state, `import ${moduleName}.*`)) {
+        if (tryEvalAndClear(out, state, `import ${moduleName}.*`)) {
           state.lastLoadedFileAndModule[1] = moduleName
         } else {
           out(chalk.yellow('Pick the right module name and import it (the file has been loaded)\n'))
@@ -437,7 +441,7 @@ function loadFromFile(out: writer, state: ReplState, filename: string): boolean 
         // and replay them one by one
 
         for (const groups of exprs) {
-          if (!tryEval(out, newState, groups[1])) {
+          if (!tryEvalAndClear(out, newState, groups[1])) {
             return false
           }
         }
@@ -550,6 +554,14 @@ function tryEvalHistory(out: writer, state: ReplState): boolean {
   state.evaluationState = context.evaluationState
 
   return true
+}
+
+// Try to evaluate the expression in a string and print it, if successful.
+// After that, clear the recorded stack.
+function tryEvalAndClear(out: writer, state: ReplState, newInput: string): boolean {
+  const result = tryEval(out, state, newInput)
+  state.recorder.clear()
+  return result
 }
 
 // try to evaluate the expression in a string and print it, if successful
@@ -723,7 +735,7 @@ function evalExpr(state: ReplState, out: writer): Either<string, QuintEx> {
           out('\n')
 
           if (verbosity.hasUserOpTracking(state.verbosity)) {
-            const trace = (state.evaluationState.listener as TraceRecorder).getBestTrace()
+            const trace = state.recorder.getBestTrace()
             if (trace.subframes.length > 0) {
               out('\n')
               trace.subframes.forEach((f, i) => {

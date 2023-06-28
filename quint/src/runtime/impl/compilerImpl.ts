@@ -54,6 +54,7 @@ export function builtinContext() {
 
 /**
  * Represents the state of evaluation of Quint code.
+ * All the fields are mutated by CompilerVisitor, either directly, or via calls.
  */
 export interface EvaluationState {
   // The context of the evaluation, containing the Computable objects.
@@ -231,7 +232,7 @@ export class CompilerVisitor implements IRVisitor {
     this.definitionDepth--
     // Either a runtime value, or a def, action, etc.
     // All of them are compiled to callables, which may have zero parameters.
-    const boundValue = this.compStack.pop()
+    let boundValue = this.compStack.pop()
     if (boundValue === undefined) {
       this.errorTracker.addCompileError(opdef.id, `No expression for ${opdef.name} on compStack`)
       return
@@ -240,14 +241,22 @@ export class CompilerVisitor implements IRVisitor {
     if (opdef.qualifier === 'action' && opdef.expr.kind !== 'lambda') {
       // A nullary action like `init` or `step`.
       // It is not handled via applyUserDefined.
-      // Wrap its evaluation with the listener calls.
-      const unwrappedEval = boundValue.eval
+      // Wrap this value with the listener calls.
+      // Importantly, we do not touch the original boundValue, but decorate it.
+      // Consider the following definitions:
+      //   action input1 = step
+      //   action input2 = step
+      //
+      // Both input1 and input2 wrap step, but in their individual computables.
+      const unwrappedValue = boundValue
       const app: ir.QuintApp = { id: opdef.id, kind: 'app', opcode: opdef.name, args: [] }
-      boundValue.eval = () => {
-        this.execListener.onUserOperatorCall(app)
-        const r = unwrappedEval()
-        this.execListener.onUserOperatorReturn(app, [], r)
-        return r
+      boundValue = {
+        eval: () => {
+          this.execListener.onUserOperatorCall(app)
+          const r = unwrappedValue.eval()
+          this.execListener.onUserOperatorReturn(app, [], r)
+          return r
+        }
       }
     }
 

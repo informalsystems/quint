@@ -152,6 +152,7 @@ export function compile(
     evaluationState: visitor.getEvaluationState(),
   }
 }
+
 export function compileExpr(
   state: CompilationState,
   evaluationState: EvaluationState,
@@ -159,6 +160,8 @@ export function compileExpr(
   expr: QuintEx
 ): CompilationContext {
   // Create a definition to encapsulate the parsed expression.
+  // Note that the expression may contain nested definitions.
+  // Hence, we have to compile it via an auxilliary definition.
   const def: QuintDef = { kind: 'def', qualifier: 'action', name: 'q::input', expr, id: state.idGen.nextId() }
 
   return compileDef(state, evaluationState, rng, def)

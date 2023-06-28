@@ -154,6 +154,11 @@ export interface TraceRecorder extends ExecutionListener {
   rng: Rng
 
   /**
+   * Clear the recorded trace
+   */
+  clear: () => void
+
+  /**
    * Get the best recorded trace.
    * @returns the best recorded trace.
    */
@@ -191,6 +196,12 @@ class TraceRecorderImpl implements TraceRecorder {
     this.bestTrace = bottom
     this.bestTraceSeed = rng.getState()
     this.runSeed = this.bestTraceSeed
+    this.frameStack = [bottom]
+  }
+
+  clear() {
+    const bottom = this.newBottomFrame()
+    this.bestTrace = bottom
     this.frameStack = [bottom]
   }
 
