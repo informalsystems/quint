@@ -1,7 +1,7 @@
 /*
  * REPL for quint.
  *
- * Igor Konnov, 2022-2023.
+ * Igor Konnov, Gabriela Moreira, 2022-2023.
  *
  * Copyright (c) Informal Systems 2022-2023. All rights reserved.
  * Licensed under the Apache 2.0.
