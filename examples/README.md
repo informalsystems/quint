@@ -27,7 +27,7 @@ yet. To set your expectations right, check the dashboard below first.
    writing easier. We collect them here. One day some of them will become the
    standard library. If you think you have invented a nice spell that would
    help others, [contribute your spell](./spells/contribute-your-spell.md).
- 
+
  - [language-features](./language-features). These are examples that
    demonstrate some language features in isolation. They are mostly used for
    testing the tool.
@@ -71,8 +71,9 @@ listed without any additional command line arguments.
 | [language-features/sets.qnt](./language-features/sets.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | [language-features/tuples.qnt](./language-features/tuples.qnt) | :white_check_mark: | :white_check_mark: | :x: | :x: |
 | [puzzles/prisoners/prisoners.qnt](./puzzles/prisoners/prisoners.qnt) | :white_check_mark: | :white_check_mark: | :x: | :x: |
+| [puzzles/river/river.qnt](./puzzles/river/river.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | [puzzles/tictactoe/tictactoe.qnt](./puzzles/tictactoe/tictactoe.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
-| [solidity/Coin/coin.qnt](./solidity/Coin/coin.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
+| [solidity/Coin/coin.qnt](./solidity/Coin/coin.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | [solidity/ERC20/erc20.qnt](./solidity/ERC20/erc20.qnt) | :white_check_mark: | :white_check_mark: | :x: | :x: |
 | [solidity/GradualPonzi/gradualPonzi.qnt](./solidity/GradualPonzi/gradualPonzi.qnt) | :white_check_mark: | :white_check_mark: | :x: | :x: |
 | [solidity/icse23-fig7/lottery.qnt](./solidity/icse23-fig7/lottery.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
