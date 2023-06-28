@@ -215,7 +215,7 @@ export function quintRepl(
         rl.setPrompt(prompt(settings.continuePrompt))
       } else {
         if (line.trim() !== '') {
-          tryEvalAndClear(out, state, line + '\n')
+          tryEvalAndClearRecorder(out, state, line + '\n')
         }
       }
     } else {
@@ -228,7 +228,7 @@ export function quintRepl(
         // End the multiline mode.
         // If recycle own output, then the current line is, most likely,
         // older input. Ignore it.
-        tryEvalAndClear(out, state, multilineText)
+        tryEvalAndClearRecorder(out, state, multilineText)
         multilineText = ''
         recyclingOwnOutput = false
         rl.setPrompt(prompt(settings.prompt))
@@ -247,7 +247,7 @@ export function quintRepl(
     if (loadFromFile(out, state, filename)) {
       state.lastLoadedFileAndModule[0] = filename
       if (moduleName !== undefined) {
-        if (tryEvalAndClear(out, state, `import ${moduleName}.*`)) {
+        if (tryEvalAndClearRecorder(out, state, `import ${moduleName}.*`)) {
           state.lastLoadedFileAndModule[1] = moduleName
         } else {
           out(chalk.yellow('Pick the right module name and import it (the file has been loaded)\n'))
@@ -438,7 +438,7 @@ function loadFromFile(out: writer, state: ReplState, filename: string): boolean 
         // and replay them one by one
 
         for (const groups of exprs) {
-          if (!tryEvalAndClear(out, newState, groups[1])) {
+          if (!tryEvalAndClearRecorder(out, newState, groups[1])) {
             return false
           }
         }
@@ -560,7 +560,7 @@ function tryEvalHistory(out: writer, state: ReplState): boolean {
 
 // Try to evaluate the expression in a string and print it, if successful.
 // After that, clear the recorded stack.
-function tryEvalAndClear(out: writer, state: ReplState, newInput: string): boolean {
+function tryEvalAndClearRecorder(out: writer, state: ReplState, newInput: string): boolean {
   const result = tryEval(out, state, newInput)
   state.recorder.clear()
   return result

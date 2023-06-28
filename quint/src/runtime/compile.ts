@@ -83,6 +83,8 @@ export function newCompilationState(): CompilationState {
 }
 
 export function errorContextFromMessage(listener: ExecutionListener): (errors: ErrorMessage[]) => CompilationContext {
+  const compilationState = newCompilationState()
+  const evaluationState = newEvaluationState(listener)
   return (errs: ErrorMessage[]) => {
     return {
       lookupTable: new Map(),
@@ -90,8 +92,8 @@ export function errorContextFromMessage(listener: ExecutionListener): (errors: E
       analysisErrors: [],
       compileErrors: [],
       getRuntimeErrors: () => [],
-      compilationState: newCompilationState(),
-      evaluationState: newEvaluationState(listener),
+      compilationState,
+      evaluationState,
     }
   }
 }
