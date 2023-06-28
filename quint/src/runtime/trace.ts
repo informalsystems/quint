@@ -312,8 +312,7 @@ class TraceRecorderImpl implements TraceRecorder {
     //  - there is an error, the new trace is shorter, or the old trace is non-error;
     //  - there is no error, the new trace is longer, and there was no error before.
     const override = notOk
-      ? this.bestTrace.args.length === 0 || !prevNotOk
-         || this.bestTrace.args.length >= bottom.args.length
+      ? this.bestTrace.args.length === 0 || !prevNotOk || this.bestTrace.args.length >= bottom.args.length
       : !prevNotOk && this.bestTrace.args.length <= bottom.args.length
 
     if (override) {
@@ -323,7 +322,7 @@ class TraceRecorderImpl implements TraceRecorder {
       this.bestTrace.args = trace
     }
   }
-  
+
   // create a bottom frame, which encodes the whole trace
   private newBottomFrame(): ExecutionFrame {
     return {

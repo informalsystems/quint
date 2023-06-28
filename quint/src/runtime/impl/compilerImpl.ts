@@ -66,9 +66,9 @@ export interface EvaluationState {
   // The list of shadow variables.
   shadowVars: Register[]
   // The error tracker for the evaluation to store errors on callbacks.
-  errorTracker: CompilerErrorTracker,
+  errorTracker: CompilerErrorTracker
   // The execution listener that the compiled code uses to report execution info.
-  listener: ExecutionListener,
+  listener: ExecutionListener
 }
 
 /**
@@ -256,7 +256,7 @@ export class CompilerVisitor implements IRVisitor {
           const r = unwrappedValue.eval()
           this.execListener.onUserOperatorReturn(app, [], r)
           return r
-        }
+        },
       }
     }
 

@@ -28,7 +28,6 @@ import { IdGenerator, newIdGenerator } from '../idGenerator'
 import { SourceLookupPath } from '../parsing/sourceResolver'
 import { addDefToFlatModule, flattenModules } from '../flattening'
 import { Rng } from '../rng'
-import { exec } from 'child_process'
 
 /**
  * The name of the shadow variable that stores the last found trace.
@@ -83,10 +82,9 @@ export function newCompilationState(): CompilationState {
   }
 }
 
-export function errorContextFromMessage(listener: ExecutionListener):
-  (errors: ErrorMessage[]) => CompilationContext {
+export function errorContextFromMessage(listener: ExecutionListener): (errors: ErrorMessage[]) => CompilationContext {
   return (errs: ErrorMessage[]) => {
-      return {
+    return {
       lookupTable: new Map(),
       syntaxErrors: errs,
       analysisErrors: [],
@@ -270,8 +268,7 @@ export function compileFromCode(
                 },
               ]
           const defsToCompile = main ? main.defs : []
-          const ctx = compile(compilationState,
-            newEvaluationState(execListener), flattenedTable, rand, defsToCompile)
+          const ctx = compile(compilationState, newEvaluationState(execListener), flattenedTable, rand, defsToCompile)
 
           const errorLocator = mkErrorMessage(sourceMap)
           return right({

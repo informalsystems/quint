@@ -62,7 +62,7 @@ class ReplState {
   exprHist: string[]
   // filename and module name that were loaded with .load filename module
   lastLoadedFileAndModule: [string?, string?]
- // The state of pre-compilation phases
+  // The state of pre-compilation phases
   compilationState: CompilationState
   // The state of the compiler visitor
   evaluationState: EvaluationState
@@ -73,8 +73,7 @@ class ReplState {
     this.exprHist = []
     this.lastLoadedFileAndModule = [undefined, undefined]
     this.compilationState = this.newCompilationState()
-    this.evaluationState =
-      newEvaluationState(newTraceRecorder(verbosityLevel, rng))
+    this.evaluationState = newEvaluationState(newTraceRecorder(verbosityLevel, rng))
   }
 
   clone() {
@@ -92,8 +91,7 @@ class ReplState {
     this.defsHist = ''
     this.exprHist = []
     this.compilationState = this.newCompilationState()
-    this.evaluationState =
-      newEvaluationState(newTraceRecorder(this.verbosity, this.rng))
+    this.evaluationState = newEvaluationState(newTraceRecorder(this.verbosity, this.rng))
   }
 
   get recorder(): TraceRecorder {
@@ -104,7 +102,7 @@ class ReplState {
   get rng(): Rng {
     return this.recorder.rng
   }
-  
+
   get verbosity(): number {
     return this.recorder.verbosityLevel
   }
@@ -171,8 +169,7 @@ export function quintRepl(
   const state: ReplState = new ReplState(options.verbosity, newRng())
 
   // Add the builtins to the text history as well
-  state.defsHist =
-    state.compilationState.modules[0].defs.map(def => definitionToString(def)).join('\n')
+  state.defsHist = state.compilationState.modules[0].defs.map(def => definitionToString(def)).join('\n')
 
   tryEvalHistory(out, state)
   // we let the user type a multiline string, which is collected here:
@@ -344,7 +341,7 @@ export function quintRepl(
               if (m === null) {
                 out(r('.verbosity requires a level from 0 to 5\n'))
               } else {
-                state.verbosity = Number(m[1]);
+                state.verbosity = Number(m[1])
                 if (verbosity.hasReplPrompt(state.verbosity)) {
                   out(g(`.verbosity=${state.verbosity}\n`))
                 }
@@ -532,9 +529,14 @@ function tryEvalHistory(out: writer, state: ReplState): boolean {
   const modulesText = prepareModulesText(state, '')
   const mainPath = fileSourceResolver().lookupPath(cwd(), 'repl.ts')
 
-  const context =
-    compileFromCode(newIdGenerator(),
-      modulesText, '__repl__', mainPath, state.evaluationState.listener, state.rng.next)
+  const context = compileFromCode(
+    newIdGenerator(),
+    modulesText,
+    '__repl__',
+    mainPath,
+    state.evaluationState.listener,
+    state.rng.next
+  )
   if (
     context.evaluationState?.context.size === 0 ||
     context.compileErrors.length > 0 ||
@@ -608,8 +610,7 @@ function tryEval(out: writer, state: ReplState, newInput: string): boolean {
   }
   if (parseResult.kind === 'toplevel') {
     // compile the module and add it to history if everything worked
-    const context = compileDef(state.compilationState,
-      state.evaluationState, state.rng, parseResult.def)
+    const context = compileDef(state.compilationState, state.evaluationState, state.rng, parseResult.def)
 
     if (
       context.evaluationState.context.size === 0 ||
