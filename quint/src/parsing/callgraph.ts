@@ -13,7 +13,7 @@ import { Map, Set } from "immutable";
 
 import { IRVisitor } from "../IRVisitor";
 import { LookupTable } from "../names/lookupTable";
-import { QuintDef, QuintName, QuintOpDef } from "../quintIr";
+import { QuintApp, QuintDef, QuintName, QuintOpDef } from "../quintIr";
 
 /**
  * The call graph is simply a mapping from the caller's id
@@ -31,12 +31,16 @@ export class CallGraphVisitor implements IRVisitor {
   /**
    * The call graph computed by the visitor.
    */
-  readonly graph: CallGraph
+  private _graph: CallGraph
 
   constructor (lookupTable: LookupTable) {
     this.lookupTable = lookupTable
-    this.graph = Map()
+    this._graph = Map()
     this.stack = []
+  }
+
+  get graph() {
+    return this._graph
   }
 
   enterDef(def: QuintDef) {
@@ -47,16 +51,27 @@ export class CallGraphVisitor implements IRVisitor {
     this.stack.pop()
   }
 
+  exitApp(app: QuintApp) {
+    const lookupDef = this.lookupTable.get(app.id)
+    if (lookupDef) {
+      this.addUses(lookupDef.reference)
+    }
+  }
+
   exitName(name: QuintName) {
     const lookupDef = this.lookupTable.get(name.id)
     if (lookupDef) {
-      // Add the reference for every definition on the stack.
-      // Hence, if we have nested definitions, top-level definitions
-      // are also designated as callers of the definition.
-      this.stack.forEach(def => {
-        const callees = this.graph.get(def.id) ?? Set()
-        this.graph.set(def.id, callees.add(lookupDef.reference))
-      })
+      this.addUses(lookupDef.reference)
     }
+  }
+
+  private addUses(usedId: bigint) {
+    // Add the reference for every definition on the stack.
+    // Hence, if we have nested definitions, top-level definitions
+    // are also designated as callers of the definition.
+    this.stack.forEach(def => {
+      const callees = this.graph.get(def.id) ?? Set()
+      this._graph = this._graph.set(def.id, callees.add(usedId))
+    })
   }
 }

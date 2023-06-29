@@ -38,15 +38,22 @@ describe('compute call graph', () => {
     return [modules[0], table]
   }
 
-  function findDef(module: QuintModule, name: string): QuintDef | undefined {
-    return module.defs.find(d => d.kind === 'def' && d.name === name)
+  function findDef(module: QuintModule, name: string): QuintDef {
+    const d = module.defs.find(d =>
+      (d.kind === 'def' || d.kind === 'const' || d.kind === 'var') && d.name === name
+    )
+    assert(d, `Definition ${name} not found`)
+    return d
   }
 
   describe('operator definitions', () => {
     const defs = [
+      'var N: int',
+      'var w: int',
       'pure def plus(x, y) = x + y',
       'pure def double(x) = plus(x, x)',
       'pure def triple(x) = plus(x, double(x, x))',
+      'val getW = w + N',
     ]
 
     const [module, table] = parseDefs(defs)
@@ -54,13 +61,14 @@ describe('compute call graph', () => {
     walkModule(visitor, module)
     const graph = visitor.graph
     const plus = findDef(module, "plus")
-    assert(plus)
     const double = findDef(module, "double")
-    assert(double)
     const triple = findDef(module, "triple")
-    assert(triple)
-    expect(graph.get(plus.id)).to.equal(undefined)
-    expect(graph.get(double.id)).to.equal(Set([plus.id]))
-    expect(graph.get(triple.id)).to.equal(Set([plus.id, double.id]))
+    const w = findDef(module, "w")
+    const N = findDef(module, "N")
+    const getW = findDef(module, "getW")
+    expect(graph.get(plus.id)?.size).to.equal(2)
+    expect(graph.get(double.id)?.toArray()).to.include.members([plus.id])
+    expect(graph.get(triple.id)?.toArray()).to.include.members([plus.id, double.id])
+    expect(graph.get(getW.id)?.toArray()).to.include.members([w.id, N.id])
   })
 })
