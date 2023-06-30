@@ -6,17 +6,27 @@ import { Map, Set } from 'immutable'
 import { toposort } from '../../src/static/toposort'
 
 describe('topological sort', () => {
+  const n1 = { id: 1n }
+  const n2 = { id: 2n }
+  const n3 = { id: 3n }
+  const n4 = { id: 4n }
+  const n5 = { id: 5n }
+  const n6 = { id: 6n }
+  const n7 = { id: 7n }
+  const n11 = { id: 11n }
+
   it('sorts empty', () => {
-    toposort(Map<number, Set<number>>(), [])
+    toposort(Map<bigint, Set<bigint>>(), [])
       .mapRight(s => assert(s.length === 0))
       .mapLeft(s => fail(`Expected an array, found: ${s}` ))
   })
 
   it('sorts a fork', () => {
     // 1 uses 3 and 2
-    const edges: [number, Set<number>][] = [ [ 1, Set([2, 3]) ] ]
-    toposort(Map(edges), [ 1, 3, 2 ])
-      .mapRight(s => expect(s).to.eql([ 3, 2, 1 ]))
+    const edges: [bigint, Set<bigint>][] = [ [ 1n, Set([2n, 3n]) ] ]
+    
+    toposort(Map(edges), [ n1, n3, n2 ])
+      .mapRight(s => expect(s).to.eql([ n3, n2, n1 ]))
       .mapLeft(s => fail(`Expected an array, found: ${s}` ))
   })
 
@@ -25,14 +35,26 @@ describe('topological sort', () => {
     // 2 uses 4
     // 3 uses 5
     // 4 uses 5
-    const edges: [number, Set<number>][] = [
-      [ 1, Set([ 2, 3 ]) ],
-      [ 2, Set([ 4 ]) ],
-      [ 3, Set([ 5 ]) ],
-      [ 4, Set([ 5 ]) ]
+    const edges: [bigint, Set<bigint>][] = [
+      [ 1n, Set([ 2n, 3n ]) ],
+      [ 2n, Set([ 4n ]) ],
+      [ 3n, Set([ 5n ]) ],
+      [ 4n, Set([ 5n ]) ]
     ]
-    toposort(Map(edges), [ 3, 2, 5, 4, 1 ])
-      .mapRight(s => expect(s).to.eql([ 5, 3, 4, 2, 1 ]))
+    toposort(Map(edges), [ n3, n2, n5, n4, n1 ])
+      .mapRight(s => expect(s).to.eql([ n5, n3, n4, n2, n1 ]))
+      .mapLeft(s => fail(`Expected an array, found: ${s}` ))
+  })
+
+  it('sorts two defs', () => {
+    // 5 uses 1 and 11
+    // 11 uses 6 and 7
+    const edges: [bigint, Set<bigint>][] = [
+      [ 5n, Set([ 1n, 11n ]) ],
+      [ 11n, Set([ 6n, 7n ]) ],
+    ]
+    toposort(Map(edges), [ n5, n11 ])
+      .mapRight(s => expect(s).to.eql([ n11, n5 ]))
       .mapLeft(s => fail(`Expected an array, found: ${s}` ))
   })
 })

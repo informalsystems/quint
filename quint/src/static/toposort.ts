@@ -23,9 +23,10 @@
 import { Either, left, right } from '@sweet-monads/either'
 import { Map } from 'immutable'
 import { Set } from 'immutable'
+import { WithId } from '../quintIr'
 
 // the type of edges
-type Edges<T> = Map<T, Set<T>>
+type Edges = Map<bigint, Set<bigint>>
 
 /**
  * Sort the elements of the list `unsorted` according to the dependencies that
@@ -41,10 +42,13 @@ type Edges<T> = Map<T, Set<T>>
  * @returns either `Right(sorted)` that contains the correctly sorted nodes,
  *   or `Left(nodes)` that contains a subgraph with a cycle inside.
  */
-export function toposort<T>(inEdges: Edges<T>, unsorted: T[]): Either<Set<T>, T[]> {
+export function toposort<T extends WithId>(inEdges: Edges, unsorted: T[]): Either<Set<bigint>, T[]> {
+  // map sorted ids to nodes
+  const idToNode: Map<bigint, T> =
+    unsorted.reduce((map, node) => map.set(node.id, node), Map<bigint, T>())
   // save the unsorted order to guarantee stability
-  const originalOrder: Map<T, number> =
-    unsorted.reduce((map, edge, i) => map.set(edge, i), Map<T, number>())
+  const originalOrder: Map<bigint, number> =
+    unsorted.reduce((map, node, i) => map.set(node.id, i), Map<bigint, number>())
 
   // Use Kahn's algorithm to sort the declarations in a topological order:
   // https://en.wikipedia.org/wiki/Topological_sorting
@@ -53,14 +57,19 @@ export function toposort<T>(inEdges: Edges<T>, unsorted: T[]): Either<Set<T>, T[
   // the nodes that have no incoming edges, then the declarations of layer 1 that have incoming edges
   // only from layer 1, etc. Within each layer, we maintain the original order of declarations.
 
-  // the list of sorted nodes
-  let sorted: T[] = []
+  // the list of the ids of sorted nodes
+  let sorted: bigint[] = []
   // The edges that have not been closed in the graph yet.
-  // We extend `inEdges` so every element of unsorted is a key in the map.
-  let edges =
-    unsorted.reduce((map, elem) => map.has(elem) ? map : map.set(elem, Set()), inEdges)
+  // We extend `inEdges` in two ways:
+  //  1. Every id that appears in the right-hand of an edge is a key in the map.
+  //  2. For every element of unsorted, its id is a key in the map.
+  const unsortedIds = Set(unsorted.map(n => n.id))
+  const allIds = inEdges.reduce((s, ids) => ids.union(s), unsortedIds)
+  let edges = allIds.reduce((map, id) =>
+    map.has(id) ? map : map.set(id, Set()), inEdges
+  )
    // the list of nodes that do not have incoming edges
-  let sinks: T[] = []
+  let sinks: bigint[] = []
 
   function updateSinksAndEdges() {
     const [otherEdges, sinkEdges] = edges.partition(incoming => incoming.isEmpty())
@@ -74,7 +83,8 @@ export function toposort<T>(inEdges: Edges<T>, unsorted: T[]): Either<Set<T>, T[
   // initialize sinks with the nodes that have no incoming edges
   updateSinksAndEdges()
   while (sinks.length > 0) {
-    sorted = sorted.concat(sinks)
+    // append the syncs that belong to unsorted
+    sorted = sorted.concat(sinks.filter(id => unsortedIds.has(id)))
     const toRemove = Set(sinks)
     // remove all incoming edges that contain one of the sinks as a source
     edges = edges.map(uses => uses.subtract(toRemove))
@@ -82,5 +92,10 @@ export function toposort<T>(inEdges: Edges<T>, unsorted: T[]): Either<Set<T>, T[
     updateSinksAndEdges()
   }
 
-  return edges.isEmpty() ? right(sorted) : left(Set(edges.keys()))
+  if (!edges.isEmpty()) {
+    // we have found a cycle, report an error
+    return left(Set(edges.keys()))
+  } else {
+    return right(sorted.map(id => idToNode.get(id)!))
+  }
 }

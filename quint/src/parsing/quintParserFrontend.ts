@@ -9,11 +9,14 @@
  */
 
 import { CharStreams, CommonTokenStream } from 'antlr4ts'
+import { Either, left, merge, mergeInMany, right } from '@sweet-monads/either'
+import { Set } from 'immutable'
+import { ParseTreeWalker } from 'antlr4ts/tree/ParseTreeWalker'
 
 import { QuintLexer } from '../generated/QuintLexer'
 import * as p from '../generated/QuintParser'
 import { QuintListener } from '../generated/QuintListener'
-import { ParseTreeWalker } from 'antlr4ts/tree/ParseTreeWalker'
+
 
 import { IrErrorMessage, QuintDef, QuintEx, QuintModule } from '../quintIr'
 import { IdGenerator } from '../idGenerator'
@@ -24,10 +27,13 @@ import { resolveImports } from '../names/importResolver'
 import { treeFromModule } from '../names/scoping'
 import { scanConflicts } from '../names/definitionsScanner'
 import { Definition, LookupTable } from '../names/lookupTable'
-import { Either, left, mergeInMany, right } from '@sweet-monads/either'
 import { mkErrorMessage } from '../cliCommands'
 import { DefinitionsByModule, DefinitionsByName } from '../names/definitionsByName'
 import { SourceLookupPath, SourceResolver, fileSourceResolver } from './sourceResolver'
+import { CallGraphVisitor } from '../static/callgraph'
+import { walkModule } from '../IRVisitor'
+import { toposort } from '../static/toposort'
+import { ErrorCode } from '../quintError'
 
 export interface Loc {
   source: string
@@ -49,8 +55,29 @@ export interface ErrorMessage {
   locs: Loc[]
 }
 
+/**
+ * A source map that is constructed by the parser phases.
+ */
+export type SourceMap = Map<bigint, Loc>
+
+/**
+ * Map an identifier to the corresponding location in the source map, if possible.
+ * @param sourceMap the source map
+ * @param id the identifier to map
+ * @returns the location, if found in the map, or the unknown location
+ */
+export function sourceIdToLoc(sourceMap: SourceMap, id: bigint): Loc {
+  let sourceLoc = sourceMap.get(id)
+  if (!sourceLoc) {
+    console.error(`No source location found for ${id}. Please report a bug.`)
+    return unknownLoc
+  } else {
+    return sourceLoc
+  }
+}
+
 // an adapter from IrErrorMessage to ErrorMessage
-export function fromIrErrorMessage(sourceMap: Map<bigint, Loc>): (err: IrErrorMessage) => ErrorMessage {
+export function fromIrErrorMessage(sourceMap: SourceMap): (err: IrErrorMessage) => ErrorMessage {
   return msg => {
     return {
       explanation: msg.explanation,
@@ -69,7 +96,7 @@ export type ParseResult<T> = Either<ErrorMessage[], T>
  */
 export interface ParserPhase1 {
   modules: QuintModule[]
-  sourceMap: Map<bigint, Loc>
+  sourceMap: SourceMap
 }
 
 /**
@@ -109,7 +136,7 @@ export function parseExpressionOrUnit(
   text: string,
   sourceLocation: string,
   idGenerator: IdGenerator,
-  sourceMap: Map<bigint, Loc>
+  sourceMap: SourceMap,
 ): ExpressionOrUnitParseResult {
   const errorMessages: ErrorMessage[] = []
   const parser = setupParser(text, sourceLocation, errorMessages)
@@ -261,7 +288,7 @@ export function parsePhase2sourceResolution(
  * Note that the IR may be ill-typed.
  */
 export function parsePhase3importAndNameResolution(phase2Data: ParserPhase2): ParseResult<ParserPhase3> {
-  const sourceMap: Map<bigint, Loc> = phase2Data.sourceMap
+  const sourceMap: SourceMap = phase2Data.sourceMap
 
   const definitionsByModule: DefinitionsByModule = new Map()
 
@@ -292,13 +319,7 @@ export function parsePhase3importAndNameResolution(phase2Data: ParserPhase2): Pa
 
           const locs = sources.map(source => {
             const id = source.kind === 'user' ? source.reference : 0n // Impossible case, but TS requires the check
-            let sourceLoc = sourceMap.get(id)
-            if (!sourceLoc) {
-              console.error(`No source location found for ${id}. Please report a bug.`)
-              return unknownLoc
-            } else {
-              return sourceLoc
-            }
+            return sourceIdToLoc(sourceMap, id)
           })
 
           return { explanation: msg, locs }
@@ -343,10 +364,31 @@ export function parsePhase3importAndNameResolution(phase2Data: ParserPhase2): Pa
  * that is, every name should be defined before it is used.
  */
 export function parsePhase4toposort(phase3Data: ParserPhase3): ParseResult<ParserPhase4> {
-  return right(phase3Data)
+  // topologically sort all definitions in each module
+  const cycleOrModules: Either<Set<bigint>, QuintModule[]> = 
+    merge(phase3Data.modules.map(mod => {
+      const visitor = new CallGraphVisitor(phase3Data.table)
+      walkModule(visitor, mod)
+      return toposort(visitor.graph, mod.defs)
+        .mapRight(defs => { return { ...mod, defs: defs } as QuintModule })
+    }))
+
+  return cycleOrModules
+    .mapLeft(cycleIds => {
+      // found a cycle, report it
+      const errorCode: ErrorCode = 'QNT099'
+      return [{
+        locs: cycleIds.toArray().map(id => sourceIdToLoc(phase3Data.sourceMap, id)),
+        explanation: `${errorCode}: Found cyclic definitions. Use fold and foldl instead of recursion`,
+      }] as ErrorMessage[]
+    })
+    .mapRight(modules => {
+      // reordered the definitions
+      return { ...phase3Data, modules: modules }
+    })
 }
 
-export function compactSourceMap(sourceMap: Map<bigint, Loc>): { sourceIndex: any; map: any } {
+export function compactSourceMap(sourceMap: SourceMap): { sourceIndex: any; map: any } {
   // Collect all sources in order to index them
   const sources: string[] = Array.from(sourceMap.values()).map(loc => loc.source)
 
