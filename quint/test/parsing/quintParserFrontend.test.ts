@@ -122,6 +122,10 @@ describe('parsing', () => {
   it('parses SuperSpec correctly', () => {
     parseAndCompare('SuperSpec')
   })
+
+  it('parses out of order definitions', () => {
+    parseAndCompare('_0099unorderedDefs')
+  })
 })
 
 describe('parse errors', () => {
@@ -214,5 +218,9 @@ describe('parse errors', () => {
 
   it('error on overriding values that are not constants', () => {
     parseAndCompare('_1016nonConstOverride')
+  })
+
+  it('error on cyclic definitions', () => {
+    parseAndCompare('_0100cyclicDefs')
   })
 })

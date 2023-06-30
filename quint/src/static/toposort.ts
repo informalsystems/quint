@@ -50,6 +50,9 @@ export function toposort<T extends WithId>(inEdges: Edges, unsorted: T[]): Eithe
   const originalOrder: Map<bigint, number> =
     unsorted.reduce((map, node, i) => map.set(node.id, i), Map<bigint, number>())
 
+  console.log('Original order:')
+  originalOrder.forEach((value, key) => console.log(` ${key} -> ${value}`))
+
   // Use Kahn's algorithm to sort the declarations in a topological order:
   // https://en.wikipedia.org/wiki/Topological_sorting
   //
@@ -72,6 +75,7 @@ export function toposort<T extends WithId>(inEdges: Edges, unsorted: T[]): Eithe
   let sinks: bigint[] = []
 
   function updateSinksAndEdges() {
+    console.log('updateSinksAndEdges')
     const [otherEdges, sinkEdges] = edges.partition(incoming => incoming.isEmpty())
     // since the sinks have no incoming edges, we can sort them by the original order
     sinks = [...sinkEdges.keys()]
@@ -96,6 +100,11 @@ export function toposort<T extends WithId>(inEdges: Edges, unsorted: T[]): Eithe
     // we have found a cycle, report an error
     return left(Set(edges.keys()))
   } else {
+    if (sorted.length != unsorted.length) {
+      console.error(`sorted.length == ${sorted.length}, whereas unsorted.length == ${unsorted.length}`)
+    }
+    console.log('sorted:')
+    sorted.forEach(value => console.log(` ${value}`))
     return right(sorted.map(id => idToNode.get(id)!))
   }
 }

@@ -241,6 +241,10 @@ class Flatenner {
     const qualifiedName = def.defName ? undefined : def.qualifiedName ?? def.protoName
 
     const protoModule = this.importedModules.get(def.protoName)!
+    if (!protoModule) {
+      // Something got went really wrong
+      console.error(`Imported module ${def.protoName} not found. Definitions out of order?`)
+    }
 
     // Add the new defs to the modules table under the qualified name
     if (qualifiedName) {

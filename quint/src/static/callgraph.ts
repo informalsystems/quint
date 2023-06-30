@@ -84,6 +84,7 @@ export class CallGraphVisitor implements IRVisitor {
     // are also designated as callers of the definition.
     this.stack.forEach(def => {
       const callees = this.graph.get(def.id) ?? Set()
+      console.log(` Callgraph: ${def.id} uses ${usedId}`)
       this._graph = this._graph.set(def.id, callees.add(usedId))
     })
   }

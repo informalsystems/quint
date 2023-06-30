@@ -370,7 +370,7 @@ export function parsePhase4toposort(phase3Data: ParserPhase3): ParseResult<Parse
       const visitor = new CallGraphVisitor(phase3Data.table)
       walkModule(visitor, mod)
       return toposort(visitor.graph, mod.defs)
-        .mapRight(defs => { return { ...mod, defs: defs } as QuintModule })
+        .mapRight(defs => { return { ...mod, defs } as QuintModule })
     }))
 
   return cycleOrModules
