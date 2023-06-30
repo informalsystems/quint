@@ -11,9 +11,10 @@
 
 import { Map, Set } from "immutable";
 
-import { IRVisitor } from "../IRVisitor";
+import { IRVisitor, walkType } from "../IRVisitor";
 import { LookupTable } from "../names/lookupTable";
-import { QuintApp, QuintDef, QuintName, QuintOpDef } from "../quintIr";
+import { QuintApp, QuintDef, QuintName, QuintOpDef, QuintTypeDef } from "../quintIr";
+import { QuintConstType, QuintType, Row } from "../quintTypes";
 
 /**
  * The call graph is simply a mapping from the caller's id
@@ -51,6 +52,7 @@ export class CallGraphVisitor implements IRVisitor {
     this.stack.pop()
   }
 
+  // e.g., called for plus inside plus(x, y)
   exitApp(app: QuintApp) {
     const lookupDef = this.lookupTable.get(app.id)
     if (lookupDef) {
@@ -58,10 +60,21 @@ export class CallGraphVisitor implements IRVisitor {
     }
   }
 
+  // e.g., called for x and y inside plus(x, y)
   exitName(name: QuintName) {
     const lookupDef = this.lookupTable.get(name.id)
     if (lookupDef) {
       this.addUses(lookupDef.reference)
+    }
+  }
+
+  // e.g., called for Bar inside type Foo = Set[Bar]
+  exitConstType(tp: QuintConstType) {
+    if (tp.id) {
+      const lookupDef = this.lookupTable.get(tp.id)
+      if (lookupDef) {
+        this.addUses(lookupDef.reference)
+      }
     }
   }
 

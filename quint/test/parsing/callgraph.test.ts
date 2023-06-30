@@ -40,15 +40,16 @@ describe('compute call graph', () => {
 
   function findDef(module: QuintModule, name: string): QuintDef {
     const d = module.defs.find(d =>
-      (d.kind === 'def' || d.kind === 'const' || d.kind === 'var') && d.name === name
+      (d.kind === 'def' || d.kind === 'const' || d.kind === 'var' || d.kind === 'typedef')
+        && d.name === name
     )
     assert(d, `Definition ${name} not found`)
     return d
   }
 
-  describe('operator definitions', () => {
+  describe('const, var, and operator definitions', () => {
     const defs = [
-      'var N: int',
+      'const N: int',
       'var w: int',
       'pure def plus(x, y) = x + y',
       'pure def double(x) = plus(x, x)',
@@ -67,8 +68,27 @@ describe('compute call graph', () => {
     const N = findDef(module, "N")
     const getW = findDef(module, "getW")
     expect(graph.get(plus.id)?.size).to.equal(2)
-    expect(graph.get(double.id)?.toArray()).to.include.members([plus.id])
-    expect(graph.get(triple.id)?.toArray()).to.include.members([plus.id, double.id])
-    expect(graph.get(getW.id)?.toArray()).to.include.members([w.id, N.id])
+    expect(graph.get(double.id)?.toArray()).to.include.members([ plus.id ])
+    expect(graph.get(triple.id)?.toArray()).to.include.members([ plus.id, double.id ])
+    expect(graph.get(getW.id)?.toArray()).to.include.members([ w.id, N.id ])
+  })
+
+  describe('typedefs', () => {
+    const defs = [
+      'type BagOfApples = Set[int]',
+      'type BoxOfApples = Set[BagOfApples]',
+      'var x: BoxOfApples',
+    ]
+
+    const [module, table] = parseDefs(defs)
+    const visitor = new CallGraphVisitor(table)
+    walkModule(visitor, module)
+    const graph = visitor.graph
+    const bagOfApples = findDef(module, "BagOfApples")
+    const boxOfApples = findDef(module, "BoxOfApples")
+    const x = findDef(module, "x")
+    expect(graph.get(bagOfApples.id)).to.be.undefined
+    expect(graph.get(boxOfApples.id)?.toArray()).to.eql([ bagOfApples.id ])
+    expect(graph.get(x.id)?.toArray()).to.eql([ boxOfApples.id ])
   })
 })
