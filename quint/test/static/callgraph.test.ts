@@ -8,7 +8,7 @@ import {
 } from '../../src/parsing/quintParserFrontend'
 import { SourceLookupPath, fileSourceResolver } from '../../src/parsing/sourceResolver'
 import { LookupTable, QuintModule, QuintDef } from '../../src'
-import { CallGraphVisitor } from '../../src/parsing/callgraph'
+import { CallGraphVisitor } from '../../src/static/callgraph'
 import { walkModule } from '../../src/IRVisitor'
 
 describe('compute call graph', () => {

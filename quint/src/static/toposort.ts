@@ -38,11 +38,10 @@ type Edges<T> = Map<T, Set<T>>
  *
  * @param unsorted a list of nodes
  *
- * @returns either `Left(sorted)` that
- *   contains the sorted nodes, or `Right(nodes)` that contains a subgraph with a
- *   cycle inside.
+ * @returns either `Right(sorted)` that contains the correctly sorted nodes,
+ *   or `Left(nodes)` that contains a subgraph with a cycle inside.
  */
-export function toposort<T>(inEdges: Edges<T>, unsorted: T[]): Either<T[], Set<T>> {
+export function toposort<T>(inEdges: Edges<T>, unsorted: T[]): Either<Set<T>, T[]> {
   // save the unsorted order to guarantee stability
   const originalOrder: Map<T, number> =
     unsorted.reduce((map, edge, i) => map.set(edge, i), Map<T, number>())
@@ -83,5 +82,5 @@ export function toposort<T>(inEdges: Edges<T>, unsorted: T[]): Either<T[], Set<T
     updateSinksAndEdges()
   }
 
-  return edges.isEmpty() ? left(sorted) : right(Set(edges.keys()))
+  return edges.isEmpty() ? right(sorted) : left(Set(edges.keys()))
 }
