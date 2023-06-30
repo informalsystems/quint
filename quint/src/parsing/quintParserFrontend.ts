@@ -1,8 +1,12 @@
-/* ----------------------------------------------------------------------------------
+/*
+ * The frontend to the Quint parser, which is generated with Antlr4.
+ *
+ * Igor Konnov, Gabriela Moreira, Shon Feder, 2021-2023
+ *
  * Copyright (c) Informal Systems 2021-2023. All rights reserved.
  * Licensed under the Apache 2.0.
  * See License.txt in the project root for license information.
- * --------------------------------------------------------------------------------- */
+ */
 
 import { CharStreams, CommonTokenStream } from 'antlr4ts'
 
@@ -55,18 +59,35 @@ export function fromIrErrorMessage(sourceMap: Map<bigint, Loc>): (err: IrErrorMe
   }
 }
 
+/**
+ * The result of parsing, T is specialized to a phase, see below.
+ */
 export type ParseResult<T> = Either<ErrorMessage[], T>
 
+/**
+ * Phase 1: Parsing a string of characters into intermediate representation.
+ */
 export interface ParserPhase1 {
   modules: QuintModule[]
   sourceMap: Map<bigint, Loc>
 }
 
+/**
+ * Phase 2: Import resolution and detection of cyclic imports.
+ */
 export interface ParserPhase2 extends ParserPhase1 {}
 
+/**
+ * Phase 3: Name resolution.
+ */
 export interface ParserPhase3 extends ParserPhase2 {
   table: LookupTable
 }
+
+/**
+ * Phase 4: Topological sort of definitions and cycle detection.
+ */
+export interface ParserPhase4 extends ParserPhase3 {}
 
 /**
  * The result of parsing an expression or unit.
@@ -239,12 +260,12 @@ export function parsePhase2sourceResolution(
  * resolve imports and names. Read the IR and check that all names are defined.
  * Note that the IR may be ill-typed.
  */
-export function parsePhase3importAndNameResolution(phase1Data: ParserPhase2): ParseResult<ParserPhase3> {
-  const sourceMap: Map<bigint, Loc> = phase1Data.sourceMap
+export function parsePhase3importAndNameResolution(phase2Data: ParserPhase2): ParseResult<ParserPhase3> {
+  const sourceMap: Map<bigint, Loc> = phase2Data.sourceMap
 
   const definitionsByModule: DefinitionsByModule = new Map()
 
-  const definitions = phase1Data.modules.reduce((result: Either<ErrorMessage[], LookupTable>, module) => {
+  const definitions = phase2Data.modules.reduce((result: Either<ErrorMessage[], LookupTable>, module) => {
     const scopeTree = treeFromModule(module)
     const definitionsBeforeImport = collectDefinitions(module)
     definitionsByModule.set(module.name, definitionsBeforeImport)
@@ -314,7 +335,15 @@ export function parsePhase3importAndNameResolution(phase1Data: ParserPhase2): Pa
       .mapLeft(errors => errors.flat())
   }, right(new Map()))
 
-  return definitions.map(table => ({ ...phase1Data, table }))
+  return definitions.map(table => ({ ...phase2Data, table }))
+}
+
+/**
+ * Phase 4 of the Quint parser. Sort all definitions in the topologocal order,
+ * that is, every name should be defined before it is used.
+ */
+export function parsePhase4toposort(phase3Data: ParserPhase3): ParseResult<ParserPhase4> {
+  return right(phase3Data)
 }
 
 export function compactSourceMap(sourceMap: Map<bigint, Loc>): { sourceIndex: any; map: any } {
@@ -352,13 +381,14 @@ export function parse(
   sourceLocation: string,
   mainPath: SourceLookupPath,
   code: string
-): ParseResult<ParserPhase3> {
+): ParseResult<ParserPhase4> {
   return parsePhase1fromText(idGen, code, sourceLocation)
     .chain(phase1Data => {
       const resolver = fileSourceResolver()
       return parsePhase2sourceResolution(idGen, resolver, mainPath, phase1Data)
     })
     .chain(phase2Data => parsePhase3importAndNameResolution(phase2Data))
+    .chain(phase3Data => parsePhase4toposort(phase3Data))
 }
 
 // setup a Quint parser, so it can be used to parse from various non-terminals

@@ -8,6 +8,7 @@ import {
   parsePhase1fromText,
   parsePhase2sourceResolution,
   parsePhase3importAndNameResolution,
+  parsePhase4toposort,
 } from '../../src/parsing/quintParserFrontend'
 import { lf } from 'eol'
 import { right } from '@sweet-monads/either'
@@ -39,7 +40,7 @@ function parseAndCompare(artifact: string): void {
     return path.replace(basepath, 'mocked_path/testFixture')
   })
   const mainPath = resolver.lookupPath(basepath, `${artifact}.qnt`)
-  const phase1Result = parsePhase1fromText(gen, readQuint(artifact), mainPath.toSourceName()).chain(res =>
+  const phase2Result = parsePhase1fromText(gen, readQuint(artifact), mainPath.toSourceName()).chain(res =>
     parsePhase2sourceResolution(gen, resolver, mainPath, res)
   )
   // read the expected result as JSON
@@ -48,9 +49,9 @@ function parseAndCompare(artifact: string): void {
   delete expected.table
   let outputToCompare
 
-  if (phase1Result.isLeft()) {
-    // An error occurred at phase 1, check if it is the expected result
-    phase1Result.mapLeft(
+  if (phase2Result.isLeft()) {
+    // An error occurred at phase 2, check if it is the expected result
+    phase2Result.mapLeft(
       err =>
         (outputToCompare = {
           stage: 'parsing',
@@ -58,10 +59,10 @@ function parseAndCompare(artifact: string): void {
           warnings: [],
         })
     )
-  } else if (phase1Result.isRight()) {
-    const { modules, sourceMap } = phase1Result.value
+  } else if (phase2Result.isRight()) {
+    const { modules, sourceMap } = phase2Result.value
     const expectedIds = modules.flatMap(m => collectIds(m)).sort()
-    // Phase 1 succeded, check that the source map is correct
+    // Phase 1-2 succededed, check that the source map is correct
     assert.sameDeepMembers(expectedIds, [...sourceMap.keys()].sort(), 'expected source map to contain all ids')
 
     const expectedSourceMap = readJson(`${artifact}.map`)
@@ -69,11 +70,13 @@ function parseAndCompare(artifact: string): void {
 
     assert.deepEqual(sourceMapResult, expectedSourceMap, 'expected source maps to be equal')
 
-    const phase3Result = parsePhase3importAndNameResolution(phase1Result.value)
+    const phase4Result =
+      parsePhase3importAndNameResolution(phase2Result.value)
+        .chain(phase3Data => parsePhase4toposort(phase3Data))
 
-    if (phase3Result.isLeft()) {
-      // An error occurred at phase 2, check if it is the expected result
-      phase3Result.mapLeft(
+    if (phase4Result.isLeft()) {
+      // An error occurred at phases 3-4, check if it is the expected result
+      phase4Result.mapLeft(
         err =>
           (outputToCompare = {
             stage: 'parsing',
@@ -82,7 +85,7 @@ function parseAndCompare(artifact: string): void {
           })
       )
     } else {
-      // Both phases succeeded, check that the module is correclty outputed
+      // All phases succeeded, check that the module is correclty outputed
       outputToCompare = { stage: 'parsing', warnings: [], modules: modules }
     }
   }
