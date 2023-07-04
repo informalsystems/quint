@@ -5,15 +5,11 @@
 
 set -euo pipefail
 
-# Match directories with blobs recursively
-# https://www.gnu.org/software/bash/manual/html_node/The-Shopt-Builtin.html
-shopt -s globstar
-
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 EXAMPLES_DIR="${SCRIPT_DIR}/.."
 cd "$EXAMPLES_DIR"
 
-export APALACHE_DIST=../quint/_build/apalache
+export APALACHE_DIST=${APALACHE_DIST:-../quint/_build/apalache}
 # Start the apalache server
 "$APALACHE_DIST"/bin/apalache-mc server &> /dev/null &
 
@@ -22,4 +18,7 @@ export APALACHE_DIST=../quint/_build/apalache
 # Since the output of each run is a row in the README.md table,
 # sorting the outputs lexographically gets the results in the
 # right order.
-parallel "${SCRIPT_DIR}/run-example.sh" ::: **/*.qnt | env LC_ALL=C sort --ignore-case
+#
+# We `cut` the first 2 characters of find to remove the leading `./`, making
+# the output prettier.
+find . -name "*.qnt" | cut -c3- | parallel "${SCRIPT_DIR}/run-example.sh" | env LC_ALL=C sort --ignore-case

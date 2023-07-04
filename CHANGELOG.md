@@ -8,10 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## UNRELEASED
 
 ### Added
+
+- One internal cache was added to the name resolution step, improving
+  performance for large specs (#1001)
+
 ### Changed
 ### Deprecated
 ### Removed
 ### Fixed
+### Security
+
+## v0.11.4 -- 2023-06-28
+
+### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+
+- Fixed a bug in the verbose trace output of REPL (#993)
+
 ### Security
 
 ## v0.11.3 -- 2023-06-23

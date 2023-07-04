@@ -40,7 +40,7 @@ listed without any additional command line arguments.
 
 | Example | Syntax (`parse`) | Types (`typecheck`) | Unit tests (`test`) | Apalache (`verify`) |
 |---------|:----------------:|:-------------------:|:-------------------:|:-------------------:|
-| [classic/distributed/ClockSync/clockSync3.qnt](./classic/distributed/ClockSync/clockSync3.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
+| [classic/distributed/ClockSync/clockSync3.qnt](./classic/distributed/ClockSync/clockSync3.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | [classic/distributed/ewd840/ewd840.qnt](./classic/distributed/ewd840/ewd840.qnt) | :white_check_mark: | :x: | :x: | :x: |
 | [classic/distributed/LamportMutex/LamportMutex.qnt](./classic/distributed/LamportMutex/LamportMutex.qnt) | :white_check_mark: | :white_check_mark: | :x: | :x: |
 | [classic/distributed/Paxos/Paxos.qnt](./classic/distributed/Paxos/Paxos.qnt) | :white_check_mark: | :white_check_mark: | :x: | :x: |
@@ -54,6 +54,7 @@ listed without any additional command line arguments.
 | [cosmos/ics20/ics20.qnt](./cosmos/ics20/ics20.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
 | [cosmos/ics23/ics23.qnt](./cosmos/ics23/ics23.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
 | [cosmos/lightclient/Blockchain.qnt](./cosmos/lightclient/Blockchain.qnt) | :white_check_mark: | :white_check_mark: | :x: | :x: |
+| [cosmos/lightclient/LCVerificationApi.qnt](./cosmos/lightclient/LCVerificationApi.qnt) | :white_check_mark: | :white_check_mark: | :x: | :x: |
 | [cosmos/lightclient/typedefs.qnt](./cosmos/lightclient/typedefs.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
 | [cosmos/tendermint/TendermintAcc005.qnt](./cosmos/tendermint/TendermintAcc005.qnt) | :white_check_mark: | :white_check_mark: | :x: | :x: |
 | [language-features/booleans.qnt](./language-features/booleans.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
@@ -72,7 +73,7 @@ listed without any additional command line arguments.
 | [language-features/tuples.qnt](./language-features/tuples.qnt) | :white_check_mark: | :white_check_mark: | :x: | :x: |
 | [puzzles/prisoners/prisoners.qnt](./puzzles/prisoners/prisoners.qnt) | :white_check_mark: | :white_check_mark: | :x: | :x: |
 | [puzzles/river/river.qnt](./puzzles/river/river.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| [puzzles/tictactoe/tictactoe.qnt](./puzzles/tictactoe/tictactoe.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
+| [puzzles/tictactoe/tictactoe.qnt](./puzzles/tictactoe/tictactoe.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | [solidity/Coin/coin.qnt](./solidity/Coin/coin.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | [solidity/ERC20/erc20.qnt](./solidity/ERC20/erc20.qnt) | :white_check_mark: | :white_check_mark: | :x: | :x: |
 | [solidity/GradualPonzi/gradualPonzi.qnt](./solidity/GradualPonzi/gradualPonzi.qnt) | :white_check_mark: | :white_check_mark: | :x: | :x: |
