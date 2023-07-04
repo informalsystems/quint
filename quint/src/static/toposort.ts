@@ -78,7 +78,7 @@ export function toposort<T extends WithId>(inEdges: Edges, unsorted: T[]): Eithe
     // append the syncs that belong to unsorted
     const newLayer = sinks.filter(id => unsortedIds.has(id))
     // sort the definitions inside the layer to compensate for non-determinism of maps
-    newLayer.sort((a, b) => Number(a - b))
+    newLayer.sort()
     sorted = sorted.concat(newLayer)
     const toRemove = Set(sinks)
     // remove all incoming edges that contain one of the sinks as a source

@@ -31,6 +31,12 @@ function readJson(name: string): any {
 
 // read the Quint file and the expected JSON, parse and compare the results
 function parseAndCompare(artifact: string): void {
+  // read the expected result as JSON
+  const expected = readJson(artifact)
+  // We're not interested in testing the contens of the table here
+  delete expected.table
+  let outputToCompare
+
   // read the input from the data directory and parse it
   const gen = newIdGenerator()
   const basepath = resolve(__dirname, '../../testFixture')
@@ -40,14 +46,9 @@ function parseAndCompare(artifact: string): void {
     return path.replace(basepath, 'mocked_path/testFixture')
   })
   const mainPath = resolver.lookupPath(basepath, `${artifact}.qnt`)
-  const phase2Result = parsePhase1fromText(gen, readQuint(artifact), mainPath.toSourceName()).chain(res =>
-    parsePhase2sourceResolution(gen, resolver, mainPath, res)
+  const phase2Result = parsePhase1fromText(gen, readQuint(artifact), mainPath.toSourceName())
+    .chain(res => parsePhase2sourceResolution(gen, resolver, mainPath, res)
   )
-  // read the expected result as JSON
-  const expected = readJson(artifact)
-  // We're not interested in testing the contens of the table here
-  delete expected.table
-  let outputToCompare
 
   if (phase2Result.isLeft()) {
     // An error occurred at phase 2, check if it is the expected result
@@ -60,8 +61,8 @@ function parseAndCompare(artifact: string): void {
         })
     )
   } else if (phase2Result.isRight()) {
-    const { modules, sourceMap } = phase2Result.value
-    const expectedIds = modules.flatMap(m => collectIds(m)).sort()
+    const { modules: modules2, sourceMap } = phase2Result.value
+    const expectedIds = modules2.flatMap(m => collectIds(m)).sort()
     // Phase 1-2 succededed, check that the source map is correct
     assert.sameDeepMembers(expectedIds, [...sourceMap.keys()].sort(), 'expected source map to contain all ids')
 
@@ -85,8 +86,9 @@ function parseAndCompare(artifact: string): void {
           })
       )
     } else {
-      // All phases succeeded, check that the module is correclty outputed
-      outputToCompare = { stage: 'parsing', warnings: [], modules: modules }
+      // All phases succeeded, check that the module is correclty output
+      const modules4 = phase4Result.value.modules
+      outputToCompare = { stage: 'parsing', warnings: [], modules: modules4 }
     }
   }
 

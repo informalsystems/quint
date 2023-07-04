@@ -385,7 +385,7 @@ export function parsePhase4toposort(phase3Data: ParserPhase3): ParseResult<Parse
     })
     .mapRight(modules => {
       // reordered the definitions
-      return { ...phase3Data, modules: modules }
+      return { ...phase3Data, modules }
     })
 }
 
