@@ -11,8 +11,6 @@ describe('topological sort', () => {
   const n3 = { id: 3n }
   const n4 = { id: 4n }
   const n5 = { id: 5n }
-  const n6 = { id: 6n }
-  const n7 = { id: 7n }
   const n11 = { id: 11n }
 
   it('sorts empty', () => {
@@ -23,7 +21,10 @@ describe('topological sort', () => {
 
   it('sorts a fork', () => {
     // 1 uses 3 and 2
-    const edges: [bigint, Set<bigint>][] = [ [ 1n, Set([2n, 3n]) ] ]
+    const edges: [bigint, Set<bigint>][] = [
+      [ 1n, Set([ 2n, 3n ]) ],
+      [ 2n, Set([ 3n ]) ],
+    ]
     
     toposort(Map(edges), [ n1, n3, n2 ])
       .mapRight(s => expect(s).to.eql([ n3, n2, n1 ]))

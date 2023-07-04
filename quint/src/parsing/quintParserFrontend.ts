@@ -30,7 +30,7 @@ import { Definition, LookupTable } from '../names/lookupTable'
 import { mkErrorMessage } from '../cliCommands'
 import { DefinitionsByModule, DefinitionsByName } from '../names/definitionsByName'
 import { SourceLookupPath, SourceResolver, fileSourceResolver } from './sourceResolver'
-import { CallGraphVisitor } from '../static/callgraph'
+import { CallGraphVisitor, mkCallGraphContext } from '../static/callgraph'
 import { walkModule } from '../IRVisitor'
 import { toposort } from '../static/toposort'
 import { ErrorCode } from '../quintError'
@@ -365,9 +365,10 @@ export function parsePhase3importAndNameResolution(phase2Data: ParserPhase2): Pa
  */
 export function parsePhase4toposort(phase3Data: ParserPhase3): ParseResult<ParserPhase4> {
   // topologically sort all definitions in each module
-  const cycleOrModules: Either<Set<bigint>, QuintModule[]> = 
+  const context = mkCallGraphContext(phase3Data.modules)
+  const cycleOrModules: Either<Set<bigint>, QuintModule[]> =
     merge(phase3Data.modules.map(mod => {
-      const visitor = new CallGraphVisitor(phase3Data.table)
+      const visitor = new CallGraphVisitor(phase3Data.table, context)
       walkModule(visitor, mod)
       return toposort(visitor.graph, mod.defs)
         .mapRight(defs => { return { ...mod, defs } as QuintModule })

@@ -3,10 +3,6 @@
  * following the Kahn's algorithm, see:
  * ${@link https://en.wikipedia.org/wiki/Topological_sorting"}.
  *
- * Our sorting is stable, that is, when two graph nodes belong to the same
- * layer, they are ordered by the original ordering. (We are assuming that the
- * input list contains no duplicates.)
- *
  * This code is a port of the Scala code from Apalache:
  *
  * ${@link
@@ -24,6 +20,7 @@ import { Either, left, right } from '@sweet-monads/either'
 import { Map } from 'immutable'
 import { Set } from 'immutable'
 import { WithId } from '../quintIr'
+import { newEvaluationState } from '../runtime/impl/compilerImpl'
 
 // the type of edges
 type Edges = Map<bigint, Set<bigint>>
@@ -46,12 +43,6 @@ export function toposort<T extends WithId>(inEdges: Edges, unsorted: T[]): Eithe
   // map sorted ids to nodes
   const idToNode: Map<bigint, T> =
     unsorted.reduce((map, node) => map.set(node.id, node), Map<bigint, T>())
-  // save the unsorted order to guarantee stability
-  const originalOrder: Map<bigint, number> =
-    unsorted.reduce((map, node, i) => map.set(node.id, i), Map<bigint, number>())
-
-  console.log('Original order:')
-  originalOrder.forEach((value, key) => console.log(` ${key} -> ${value}`))
 
   // Use Kahn's algorithm to sort the declarations in a topological order:
   // https://en.wikipedia.org/wiki/Topological_sorting
@@ -75,11 +66,8 @@ export function toposort<T extends WithId>(inEdges: Edges, unsorted: T[]): Eithe
   let sinks: bigint[] = []
 
   function updateSinksAndEdges() {
-    console.log('updateSinksAndEdges')
     const [otherEdges, sinkEdges] = edges.partition(incoming => incoming.isEmpty())
-    // since the sinks have no incoming edges, we can sort them by the original order
     sinks = [...sinkEdges.keys()]
-    sinks.sort((a, b) => (originalOrder.get(a) ?? 0) - (originalOrder.get(b) ?? 0))
     // the other edges still have to be sorted
     edges = otherEdges
   }
@@ -88,7 +76,10 @@ export function toposort<T extends WithId>(inEdges: Edges, unsorted: T[]): Eithe
   updateSinksAndEdges()
   while (sinks.length > 0) {
     // append the syncs that belong to unsorted
-    sorted = sorted.concat(sinks.filter(id => unsortedIds.has(id)))
+    const newLayer = sinks.filter(id => unsortedIds.has(id))
+    // sort the definitions inside the layer to compensate for non-determinism of maps
+    newLayer.sort((a, b) => Number(a - b))
+    sorted = sorted.concat(newLayer)
     const toRemove = Set(sinks)
     // remove all incoming edges that contain one of the sinks as a source
     edges = edges.map(uses => uses.subtract(toRemove))
@@ -103,8 +94,6 @@ export function toposort<T extends WithId>(inEdges: Edges, unsorted: T[]): Eithe
     if (sorted.length != unsorted.length) {
       console.error(`sorted.length == ${sorted.length}, whereas unsorted.length == ${unsorted.length}`)
     }
-    console.log('sorted:')
-    sorted.forEach(value => console.log(` ${value}`))
     return right(sorted.map(id => idToNode.get(id)!))
   }
 }
