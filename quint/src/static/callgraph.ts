@@ -9,13 +9,13 @@
  * information.
  */
 
-import { Map, Record, Set } from "immutable";
-import type { RecordOf } from "immutable";
+import { Map, Record, Set } from 'immutable'
+import type { RecordOf } from 'immutable'
 
-import { IRVisitor } from "../IRVisitor";
-import { LookupTable } from "../names/lookupTable";
-import { QuintApp, QuintDef, QuintExport, QuintImport, QuintInstance, QuintModule, QuintName } from "../quintIr";
-import { QuintConstType } from "../quintTypes";
+import { IRVisitor } from '../IRVisitor'
+import { LookupTable } from '../names/lookupTable'
+import { QuintApp, QuintDef, QuintExport, QuintImport, QuintInstance, QuintModule, QuintName } from '../quintIr'
+import { QuintConstType } from '../quintTypes'
 
 /**
  * The call graph is simply a mapping from the caller's id
@@ -27,9 +27,11 @@ export type CallGraph = Map<bigint, Set<bigint>>
 // in CallGraphContext.importsByName (see below).
 // This requires a bit of boilerplate, see:
 // https://immutable-js.com/docs/v4.3.0/Record/
-type ImportKeyRecordProps = { importingModuleId: bigint, importedModuleName: string }
-const importKeyRecordFactory: Record.Factory<ImportKeyRecordProps> =
-  Record({ importingModuleId: -1n, importedModuleName: '' })
+type ImportKeyRecordProps = { importingModuleId: bigint; importedModuleName: string }
+const importKeyRecordFactory: Record.Factory<ImportKeyRecordProps> = Record({
+  importingModuleId: -1n,
+  importedModuleName: '',
+})
 type ImportKeyRecordType = RecordOf<ImportKeyRecordProps>
 function mkImportKey(importingModuleId: bigint, importedModuleName: string) {
   return importKeyRecordFactory({ importingModuleId, importedModuleName })
@@ -60,7 +62,7 @@ export type CallGraphContext = {
 
 /**
  * Compute the context for computing the call graph.
- * 
+ *
  * @param modules the modules to compute the context for
  */
 export function mkCallGraphContext(modules: QuintModule[]): CallGraphContext {
@@ -70,8 +72,7 @@ export function mkCallGraphContext(modules: QuintModule[]): CallGraphContext {
   function collectImports(inMap: ImportsMap, mod: QuintModule): ImportsMap {
     // add a single import to the imports map
     function addImport(map: ImportsMap, importId: bigint, name: string) {
-      const key: ImportKeyRecordType =
-        importKeyRecordFactory({ importingModuleId: mod.id, importedModuleName: name })
+      const key: ImportKeyRecordType = importKeyRecordFactory({ importingModuleId: mod.id, importedModuleName: name })
       const value = map.get(key) ?? Set<bigint>()
       return map.set(key, value.add(importId))
     }
@@ -92,15 +93,14 @@ export function mkCallGraphContext(modules: QuintModule[]): CallGraphContext {
       }
     }, inMap)
   }
-  
+
   function collectDefinedAt(map: DefinedAtMap, mod: QuintModule): DefinedAtMap {
     return mod.defs.reduce((map, def) => map.set(def.id, mod), map)
   }
 
   const definedAt = modules.reduce(collectDefinedAt, Map())
   const importsByName = modules.reduce(collectImports, Map())
-  const modulesByName =
-    modules.reduce((map, mod) => map.set(mod.name, mod), Map<string, QuintModule>())
+  const modulesByName = modules.reduce((map, mod) => map.set(mod.name, mod), Map<string, QuintModule>())
 
   return { modulesByName, importsByName, definedAt }
 }
@@ -119,7 +119,7 @@ export class CallGraphVisitor implements IRVisitor {
    */
   private _graph: CallGraph
 
-  constructor (lookupTable: LookupTable, context: CallGraphContext) {
+  constructor(lookupTable: LookupTable, context: CallGraphContext) {
     this.lookupTable = lookupTable
     this.context = context
     this._graph = Map()
@@ -148,7 +148,7 @@ export class CallGraphVisitor implements IRVisitor {
   enterModule(module: QuintModule) {
     this.currentModuleId = module.id
   }
-  
+
   enterDef(def: QuintDef) {
     this.stack.push(def)
     const hostModule = this.context.definedAt.get(def.id)
@@ -157,8 +157,7 @@ export class CallGraphVisitor implements IRVisitor {
       // Hence, the definition A should appear after the statements
       // import A... and import A(...)...
       const key = mkImportKey(this.currentModuleId, hostModule.name)
-      const imports =
-        this.context.importsByName.get(key) ?? Set()
+      const imports = this.context.importsByName.get(key) ?? Set()
       this.graphAddAll(def.id, imports)
     }
   }
@@ -183,8 +182,7 @@ export class CallGraphVisitor implements IRVisitor {
 
   enterExport(def: QuintExport) {
     const key = mkImportKey(this.currentModuleId, def.protoName)
-    const imports =
-      this.context.importsByName.get(key) ?? Set()
+    const imports = this.context.importsByName.get(key) ?? Set()
     // the imports and instance of the same module must precede the export
     this.graphAddAll(def.id, imports)
   }

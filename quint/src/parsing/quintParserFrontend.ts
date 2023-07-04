@@ -17,7 +17,6 @@ import { QuintLexer } from '../generated/QuintLexer'
 import * as p from '../generated/QuintParser'
 import { QuintListener } from '../generated/QuintListener'
 
-
 import { IrErrorMessage, QuintDef, QuintEx, QuintModule } from '../quintIr'
 import { IdGenerator } from '../idGenerator'
 import { ToIrListener } from './ToIrListener'
@@ -136,7 +135,7 @@ export function parseExpressionOrUnit(
   text: string,
   sourceLocation: string,
   idGenerator: IdGenerator,
-  sourceMap: SourceMap,
+  sourceMap: SourceMap
 ): ExpressionOrUnitParseResult {
   const errorMessages: ErrorMessage[] = []
   const parser = setupParser(text, sourceLocation, errorMessages)
@@ -366,22 +365,26 @@ export function parsePhase3importAndNameResolution(phase2Data: ParserPhase2): Pa
 export function parsePhase4toposort(phase3Data: ParserPhase3): ParseResult<ParserPhase4> {
   // topologically sort all definitions in each module
   const context = mkCallGraphContext(phase3Data.modules)
-  const cycleOrModules: Either<Set<bigint>, QuintModule[]> =
-    merge(phase3Data.modules.map(mod => {
+  const cycleOrModules: Either<Set<bigint>, QuintModule[]> = merge(
+    phase3Data.modules.map(mod => {
       const visitor = new CallGraphVisitor(phase3Data.table, context)
       walkModule(visitor, mod)
-      return toposort(visitor.graph, mod.defs)
-        .mapRight(defs => { return { ...mod, defs } as QuintModule })
-    }))
+      return toposort(visitor.graph, mod.defs).mapRight(defs => {
+        return { ...mod, defs } as QuintModule
+      })
+    })
+  )
 
   return cycleOrModules
     .mapLeft(cycleIds => {
       // found a cycle, report it
       const errorCode: ErrorCode = 'QNT099'
-      return [{
-        locs: cycleIds.toArray().map(id => sourceIdToLoc(phase3Data.sourceMap, id)),
-        explanation: `${errorCode}: Found cyclic definitions. Use fold and foldl instead of recursion`,
-      }] as ErrorMessage[]
+      return [
+        {
+          locs: cycleIds.toArray().map(id => sourceIdToLoc(phase3Data.sourceMap, id)),
+          explanation: `${errorCode}: Found cyclic definitions. Use fold and foldl instead of recursion`,
+        },
+      ] as ErrorMessage[]
     })
     .mapRight(modules => {
       // reordered the definitions

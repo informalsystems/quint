@@ -20,7 +20,6 @@ import { Either, left, right } from '@sweet-monads/either'
 import { Map } from 'immutable'
 import { Set } from 'immutable'
 import { WithId } from '../quintIr'
-import { newEvaluationState } from '../runtime/impl/compilerImpl'
 
 // the type of edges
 type Edges = Map<bigint, Set<bigint>>
@@ -41,8 +40,7 @@ type Edges = Map<bigint, Set<bigint>>
  */
 export function toposort<T extends WithId>(inEdges: Edges, unsorted: T[]): Either<Set<bigint>, T[]> {
   // map sorted ids to nodes
-  const idToNode: Map<bigint, T> =
-    unsorted.reduce((map, node) => map.set(node.id, node), Map<bigint, T>())
+  const idToNode: Map<bigint, T> = unsorted.reduce((map, node) => map.set(node.id, node), Map<bigint, T>())
 
   // Use Kahn's algorithm to sort the declarations in a topological order:
   // https://en.wikipedia.org/wiki/Topological_sorting
@@ -59,10 +57,8 @@ export function toposort<T extends WithId>(inEdges: Edges, unsorted: T[]): Eithe
   //  2. For every element of unsorted, its id is a key in the map.
   const unsortedIds = Set(unsorted.map(n => n.id))
   const allIds = inEdges.reduce((s, ids) => ids.union(s), unsortedIds)
-  let edges = allIds.reduce((map, id) =>
-    map.has(id) ? map : map.set(id, Set()), inEdges
-  )
-   // the list of nodes that do not have incoming edges
+  let edges = allIds.reduce((map, id) => (map.has(id) ? map : map.set(id, Set())), inEdges)
+  // the list of nodes that do not have incoming edges
   let sinks: bigint[] = []
 
   function updateSinksAndEdges() {

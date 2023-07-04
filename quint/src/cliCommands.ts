@@ -214,18 +214,16 @@ export async function parse(loaded: LoadedStage): Promise<CLIProcedure<ParsedSta
         // Write source map to the specified file
         writeToJson(args.sourceMap, compactSourceMap(phase2Data.sourceMap))
       }
-      return parsePhase3importAndNameResolution(phase2Data)
-        .mapLeft(newErrs => {
-          const errors = parsing.errors ? parsing.errors.concat(newErrs) : newErrs
-          return { msg: 'parsing failed', stage: { ...parsing, errors } }
-        })
+      return parsePhase3importAndNameResolution(phase2Data).mapLeft(newErrs => {
+        const errors = parsing.errors ? parsing.errors.concat(newErrs) : newErrs
+        return { msg: 'parsing failed', stage: { ...parsing, errors } }
+      })
     })
     .chain(phase3Data => {
-      return parsePhase4toposort(phase3Data)
-        .mapLeft(newErrs => {
-          const errors = parsing.errors ? parsing.errors.concat(newErrs) : newErrs
-          return { msg: 'parsing failed', stage: { ...parsing, errors } }
-        })
+      return parsePhase4toposort(phase3Data).mapLeft(newErrs => {
+        const errors = parsing.errors ? parsing.errors.concat(newErrs) : newErrs
+        return { msg: 'parsing failed', stage: { ...parsing, errors } }
+      })
     })
     .map(phase4Data => ({ ...parsing, ...phase4Data, idGen }))
 }

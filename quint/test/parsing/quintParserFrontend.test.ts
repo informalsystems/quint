@@ -46,8 +46,8 @@ function parseAndCompare(artifact: string): void {
     return path.replace(basepath, 'mocked_path/testFixture')
   })
   const mainPath = resolver.lookupPath(basepath, `${artifact}.qnt`)
-  const phase2Result = parsePhase1fromText(gen, readQuint(artifact), mainPath.toSourceName())
-    .chain(res => parsePhase2sourceResolution(gen, resolver, mainPath, res)
+  const phase2Result = parsePhase1fromText(gen, readQuint(artifact), mainPath.toSourceName()).chain(res =>
+    parsePhase2sourceResolution(gen, resolver, mainPath, res)
   )
 
   if (phase2Result.isLeft()) {
@@ -71,9 +71,9 @@ function parseAndCompare(artifact: string): void {
 
     assert.deepEqual(sourceMapResult, expectedSourceMap, 'expected source maps to be equal')
 
-    const phase4Result =
-      parsePhase3importAndNameResolution(phase2Result.value)
-        .chain(phase3Data => parsePhase4toposort(phase3Data))
+    const phase4Result = parsePhase3importAndNameResolution(phase2Result.value).chain(phase3Data =>
+      parsePhase4toposort(phase3Data)
+    )
 
     if (phase4Result.isLeft()) {
       // An error occurred at phases 3-4, check if it is the expected result
