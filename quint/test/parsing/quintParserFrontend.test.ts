@@ -225,4 +225,8 @@ describe('parse errors', () => {
   it('error on cyclic definitions', () => {
     parseAndCompare('_0100cyclicDefs')
   })
+
+  it('error on accidental recursion', () => {
+    parseAndCompare('_0101noRecursion')
+  })
 })
