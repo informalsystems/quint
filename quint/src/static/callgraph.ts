@@ -19,7 +19,7 @@ import { QuintConstType } from '../quintTypes'
 
 /**
  * The call graph is simply a mapping from the caller's id
- * to the set of callee's ids.
+ * to the set of callees' ids.
  */
 export type CallGraph = Map<bigint, Set<bigint>>
 
@@ -48,8 +48,9 @@ export type CallGraphContext = {
   modulesByName: Map<string, QuintModule>
 
   /**
-   * For every module id A and the imported module name B, keep the set of
-   * import statements that refer to B in A.
+   * For every module A and the imported module name B, keep the set of
+   * import statements that refer to B in A. The values are sets of identifiers
+   * that refer to the import statements.
    */
   importsByName: Map<ImportKeyRecordType, Set<bigint>>
 

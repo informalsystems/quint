@@ -63,7 +63,7 @@ describe('compute call graph', () => {
     return d
   }
 
-  it('const, var, and operator definitions', () => {
+  it('computes a call graph of const, var, and operator definitions', () => {
     const code = dedent(
       `module main {
       |  const N: int
@@ -92,7 +92,7 @@ describe('compute call graph', () => {
     expect(graph.get(getW.id)?.toArray()).to.include.members([w.id, N.id])
   })
 
-  it('typedefs', () => {
+  it('computes a "uses" graph of typedefs', () => {
     const code = dedent(
       `module main {
       |  type BagOfApples = Set[int]
@@ -114,7 +114,7 @@ describe('compute call graph', () => {
     expect(graph.get(x.id)?.toArray()).to.eql([boxOfApples.id])
   })
 
-  it('imports and defs', () => {
+  it('computes a "uses" graph of imports and defs', () => {
     // the following definitions should always come in this order:
     const code = dedent(
       `module A {
