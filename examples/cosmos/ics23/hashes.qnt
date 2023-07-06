@@ -109,8 +109,8 @@ module hashes {
   pure def termConcat(left: Term_t, right: Term_t): Term_t = {
     pure val l = left.get([0])
     pure val r = right.get([0])
-    pure val isLeftRaw = isRaw(l)
-    pure val isRightRaw = isRaw(r)
+    pure val isLeftRaw = isRaw(left)
+    pure val isRightRaw = isRaw(right)
     if (isLeftRaw and l.b == []) {
       right
     } else if (isRightRaw and r.b == []) {
