@@ -59,48 +59,48 @@ module ics23test {
 
   pure val isLeftMost2Test =
     assert(isLeftMost([
-      { prefix: termConcat(raw([1]), EmptyChild), suffix: raw([]) },
-      { prefix: raw([2]), suffix: termHashWithLen(raw([3, 4, 5])) },
-      { prefix: raw([3]), suffix: termHashWithLen(raw([3, 4, 5])) }
+      { prefix: termConcat(raw([ 1, 2, 3, 4 ]), EmptyChild), suffix: raw([]) },
+      { prefix: raw([ 2, 3, 4, 5 ]), suffix: termHashWithLen(raw([3, 4, 5])) },
+      { prefix: raw([ 3, 4, 5, 6 ]), suffix: termHashWithLen(raw([3, 4, 5])) }
     ]))
 
   pure val isLeftMost3Test = {
     assert(isLeftMost([
-      { prefix: raw([1]), suffix: termHash(raw([3, 4, 5])) },
-      { prefix: termConcat(raw([2]), EmptyChild), suffix: raw([]) },
-      { prefix: raw([3]), suffix: termHash(raw([3, 4, 5])) }
+      { prefix: raw([ 1, 2, 3, 4 ]), suffix: termHashWithLen(raw([3, 4, 5])) },
+      { prefix: termConcat(raw([ 2, 3, 4, 5 ]), EmptyChild), suffix: raw([]) },
+      { prefix: raw([3, 4, 5, 6]), suffix: termHashWithLen(raw([3, 4, 5])) }
     ]))
   }
 
   pure val isRightMost1Test =
     assert(isRightMost([
-      { prefix: termConcat(raw([1]), termHash(raw([4, 5, 6]))), suffix: raw([]) },
-      { prefix: termConcat(raw([2]), termHash(raw([4, 5, 6]))), suffix: raw([]) },
-      { prefix: termConcat(raw([3]), termHash(raw([4, 5, 6]))), suffix: raw([]) }
+      { prefix: termConcat(raw([1, 2, 3, 4 ]), termHashWithLen(raw([ 4, 5, 6 ]))), suffix: raw([]) },
+      { prefix: termConcat(raw([2, 3, 4, 5 ]), termHashWithLen(raw([4, 5, 6]))), suffix: raw([]) },
+      { prefix: termConcat(raw([3, 4, 5, 6 ]), termHashWithLen(raw([4, 5, 6]))), suffix: raw([]) }
     ]))
 
   pure val isRightMost2Test =
     assert(isRightMost([
-      { prefix: termConcat(raw([1]), termHash(raw([4, 5, 6]))), suffix: raw([]) },
-      { prefix: raw([2]), suffix: EmptyChild },
-      { prefix: termConcat(raw([2]), termHash(raw([3, 4, 5]))), suffix: raw([]) }
+      { prefix: termConcat(raw([1, 2, 3, 4]), termHashWithLen(raw([4, 5, 6]))), suffix: raw([]) },
+      { prefix: raw([2, 3, 4, 5]), suffix: EmptyChild },
+      { prefix: termConcat(raw([2, 3, 4, 5]), termHashWithLen(raw([3, 4, 5]))), suffix: raw([]) }
     ]))
 
   pure val isLeftStep1Test =
     assert(isLeftStep(
-      { prefix: raw([1]), suffix: termHash(raw([4, 5, 6])) },
-      { prefix: termConcat(raw([2]), termHash(raw([7, 8, 9]))), suffix: raw([]) }
+      { prefix: raw([1, 2, 3, 4]), suffix: termHashWithLen(raw([4, 5, 6])) },
+      { prefix: termConcat(raw([2, 3, 4, 5]), termHashWithLen(raw([7, 8, 9]))), suffix: raw([]) }
     ))
 
   pure val isLeftNeighborTest =
     assert(isLeftNeighbor(
       [
-        { prefix: raw([1]), suffix: termHash(raw([4, 5, 6])) },
-        { prefix: termConcat(raw([2]), termHash(raw([7, 8, 9]))), suffix: raw([]) }
+        { prefix: raw([1, 2, 3, 4]), suffix: termHashWithLen(raw([4, 5, 6])) },
+        { prefix: termConcat(raw([2, 3, 4, 5]), termHashWithLen(raw([7, 8, 9]))), suffix: raw([]) }
       ],
       [
-        { prefix: termConcat(raw([1]), termHash(raw([4, 5, 6]))), suffix: raw([]) },
-        { prefix: termConcat(raw([2]), termHash(raw([7, 8, 9]))), suffix: raw([]) }
+        { prefix: termConcat(raw([1, 2, 3, 4]), termHashWithLen(raw([4, 5, 6]))), suffix: raw([]) },
+        { prefix: termConcat(raw([2, 3, 4, 5]), termHashWithLen(raw([7, 8, 9]))), suffix: raw([]) }
       ]
     ))
 
@@ -109,26 +109,26 @@ module ics23test {
     //   / \
     // 2:3 4:5
     pure val lhash = existsCalculate({
-      key: [2], value: [3], leaf: { prefix: raw([ 0 ]) }, path: []
+      key: [2], value: [3], leaf: { prefix: raw([ 0, 1, 2, 3 ]) }, path: []
     })
     pure val rhash = existsCalculate({
-      key:[4], value: [5], leaf: { prefix: raw([ 0 ]) }, path: []
+      key:[4], value: [5], leaf: { prefix: raw([ 0, 1, 2, 3 ]) }, path: []
     })
     // the left proof
     pure val lproof: ExistsProof_t = {
       key: [ 2 ],
       value: [ 3 ],
-      leaf: { prefix: raw([ 0 ]) },
-      path: [{ prefix: raw([0]), suffix: rhash }]
+      leaf: { prefix: raw([ 0, 1, 2, 3 ]) },
+      path: [{ prefix: raw([ 0, 1, 2, 3 ]), suffix: raw([32]).termConcat(rhash) }]
     }
     // the right proof
     pure val rproof: ExistsProof_t = {
       key: [ 4 ],
       value: [ 5 ],
-      leaf: { prefix: raw([ 0 ]) },
-      path: [{ prefix: raw([0]).termConcat(lhash), suffix: raw([]) }]
+      leaf: { prefix: raw([ 0, 1, 2, 3 ]) },
+      path: [{ prefix: raw([ 0, 1, 2, 3, 32 ]).termConcat(lhash), suffix: raw([ ]) }]
     }
-    pure val root = termHash(raw([0]).termConcat(lhash).termConcat(rhash))
+    pure val root = termHash(raw([ 0, 1, 2, 3, 32 ]).termConcat(lhash).termConcat(rhash))
     pure val nilProof: ExistsProof_t =
       { key: [], value: [], leaf: { prefix: raw([]) }, path: [] }
     and {
