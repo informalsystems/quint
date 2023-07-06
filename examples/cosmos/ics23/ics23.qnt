@@ -30,21 +30,22 @@ module ics23 {
   type CommitmentRoot_t = Term_t
   type CommitmentProof_t = Term_t
 
-  // ICS23 TendermintSpec has:
-  // MinPrefixLength = 1
-  // MaxPrefixLength = 1
-  // ChildSize = 32
+  // ICS23 IavlSpec has:
+  // MinPrefixLength = 4
+  // MaxPrefixLength = 12
+  // ChildSize = 33
   //
   // To ease spec testing, we set:
-  pure val MinPrefixLen = 1
-  pure val MaxPrefixLen = 1
+  pure val MinPrefixLen = 4
+  pure val MaxPrefixLen = 12
   // It is crucial to make sure that ChildSize > MaxPrefixLen
-  pure val ChildSize = 32 // 32 bytes in SHA256
+  pure val ChildSize = 33 // 32 bytes in SHA256 + 1 byte for the length marker
   // Empty child is a predefined sequence that fills an absent child.
-  // TODO: EmptyChild is set to nil in TendermintSpec. We have 32 bytes.
+  // TODO: EmptyChild is set to nil in IavlSpec. We have 33 bytes.
   pure val EmptyChild = raw([
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0,
   ])
 
   type LEAF_T = {

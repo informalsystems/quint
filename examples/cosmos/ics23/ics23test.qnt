@@ -26,18 +26,18 @@ module ics23test {
       key: [ 5 ],
       value: [ 5, 6 ],
       leaf: {
-        prefix: raw([ 9, 10, 11 ])
+        prefix: raw([ 9, 10, 11, 12 ])
       },
       path: [
-        { prefix: raw([5, 6]), suffix: raw([8]) },
-        { prefix: raw([5]), suffix: raw([7]) }
+        { prefix: raw([ 5, 6, 7, 8, 9 ]), suffix: raw([ 8 ]) },
+        { prefix: raw([ 5, 6, 7, 8 ]), suffix: raw([ 7 ]) }
       ]
     })
     // a map representation of the term with hashes
     pure val expected = Map(
-      [0, 0] -> { b: [5], t: "r" },
-      [0, 1, 0] -> { b: [5, 6], t: "r" },
-      [0, 1, 1, 0] -> { b: [9, 10, 11, 1, 5, 32], t: "r" },
+      [0, 0] -> { b: [5, 6, 7, 8], t: "r" },
+      [0, 1, 0] -> { b: [5, 6, 7, 8, 9], t: "r" },
+      [0, 1, 1, 0] -> { b: [9, 10, 11, 12, 1, 5, 32], t: "r" },
       [0, 1, 1, 1, 0] -> { b: [5, 6], t: "r" },
       [0, 1, 1, 1] -> { b: [], t: "h" },
       [0, 1, 1] -> { b: [], t: "h" },
@@ -51,17 +51,17 @@ module ics23test {
 
   pure val isLeftMost1Test = {
     assert(isLeftMost([
-      { prefix: raw([1]), suffix: termHash(raw([3, 4, 5])) },
-      { prefix: raw([2]), suffix: termHash(raw([3, 4, 5])) },
-      { prefix: raw([3]), suffix: termHash(raw([3, 4, 5])) }
+      { prefix: raw([1, 2, 3, 4]), suffix: termHashWithLen(raw([3, 4, 5])) },
+      { prefix: raw([2, 3, 4, 5]), suffix: termHashWithLen(raw([3, 4, 5])) },
+      { prefix: raw([3, 4, 5, 6]), suffix: termHashWithLen(raw([3, 4, 5])) }
     ]))
   }
 
   pure val isLeftMost2Test =
     assert(isLeftMost([
       { prefix: termConcat(raw([1]), EmptyChild), suffix: raw([]) },
-      { prefix: raw([2]), suffix: termHash(raw([3, 4, 5])) },
-      { prefix: raw([3]), suffix: termHash(raw([3, 4, 5])) }
+      { prefix: raw([2]), suffix: termHashWithLen(raw([3, 4, 5])) },
+      { prefix: raw([3]), suffix: termHashWithLen(raw([3, 4, 5])) }
     ]))
 
   pure val isLeftMost3Test = {
