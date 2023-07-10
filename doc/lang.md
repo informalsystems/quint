@@ -576,7 +576,7 @@ module ImportAll {
 }
 ```
 
-*No re-export by default.* It is important to know that `import` does not automatically introduce *any definitions in the module that uses `import`. Hence, the following example produces a lookup error:
+*No re-export by default.* It is important to know that `import` does not automatically introduce any definitions in the module that uses `import`. Hence, the following example produces a lookup error:
 
 ```bluespec
 module A {
