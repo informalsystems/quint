@@ -11,9 +11,10 @@ module vote {
   // https://github.com/Callum-A/cosmwasm-zero-to-hero/tree/main/05%20-%20State
 
   type Addr = str
-  val None : Addr = ""
-
   type UUID = str
+  type Uint64 = int  // FIXME: account for under/overflows
+
+  val None: Addr = ""
 
   type Config = {
     admin: Addr,
@@ -22,7 +23,7 @@ module vote {
   type Poll = {
     creator: Addr,
     question: str,
-    options: List[(str, int)]
+    options: List[(str, Uint64)]
   }
 
   type Ballot = {
