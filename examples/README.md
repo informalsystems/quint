@@ -58,6 +58,7 @@ listed without any additional command line arguments.
 | [cosmos/lightclient/Lightclient.qnt](./cosmos/lightclient/Lightclient.qnt) | :white_check_mark: | :white_check_mark: | :x: | :x: |
 | [cosmos/lightclient/typedefs.qnt](./cosmos/lightclient/typedefs.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
 | [cosmos/tendermint/TendermintAcc005.qnt](./cosmos/tendermint/TendermintAcc005.qnt) | :white_check_mark: | :white_check_mark: | :x: | :x: |
+| [cosmwasm/zero-to-hero/vote.qnt](./cosmwasm/zero-to-hero/vote.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
 | [language-features/booleans.qnt](./language-features/booleans.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | [language-features/counters.qnt](./language-features/counters.qnt) | :white_check_mark: | :white_check_mark: | :x: | :x: |
 | [language-features/importFrom.qnt](./language-features/importFrom.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
