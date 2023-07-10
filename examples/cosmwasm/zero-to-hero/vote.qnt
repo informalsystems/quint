@@ -1,7 +1,7 @@
 /// A Quint specification following Callum-A's cosmwasm-zero-to-hero tutorial:
 /// https://github.com/Callum-A/cosmwasm-zero-to-hero
 ///
-/// Numbers in square brackets [nn] refer to the relevant chapter.
+/// We refer to the relevant tutorial chapters in comments below.
 
 module vote {
 
@@ -77,7 +77,7 @@ module vote {
 
   /*** Functional layer ***/
 
-  // Instantiate [06]
+  // 06 - Instantiate
   // https://github.com/Callum-A/cosmwasm-zero-to-hero/tree/main/06%20-%20Instantiate
 
   def instantiate(cs: ContractState, info: MessageInfo,
@@ -87,7 +87,7 @@ module vote {
     { ...cs, config: { admin: admin } }
   }
 
-  // Execute 1 [09]
+  // 09 - Execute 1
   // https://github.com/Callum-A/cosmwasm-zero-to-hero/tree/main/09%20-%20Execute%201
 
   def execute_create_poll(cs: ContractState, info: MessageInfo, poll_id: UUID,
@@ -108,7 +108,7 @@ module vote {
     }
   }
 
-  // Execute 2 [10]
+  // 10 - Execute 2
   // https://github.com/Callum-A/cosmwasm-zero-to-hero/tree/main/10%20-%20Execute%202
 
   def execute_vote(cs: ContractState, info: MessageInfo, poll_id: UUID,
@@ -178,7 +178,7 @@ module vote {
 module tests {
   import vote.*
 
-  // Instantiate Test [07]
+  // 17 - Instantiate Test
   // https://github.com/Callum-A/cosmwasm-zero-to-hero/tree/main/07%20-%20Instantiate%20Test
 
   val ADDR1: Addr = "addr1"
@@ -194,7 +194,7 @@ module tests {
     assert(res.config.admin == ADDR1)
   }
 
-  // Execute Tests [11]
+  // 11 - Execute Tests
   // https://github.com/Callum-A/cosmwasm-zero-to-hero/tree/main/11%20-%20Execute%20Tests
 
   run test_execute_create_poll_valid = {
