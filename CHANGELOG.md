@@ -15,9 +15,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Operator `repeated` (#1026)
 
 ### Fixed
-
-- VSCode plugin: Highlighting of identifiers that contain numbers (#1028)
-
 ### Security
 
 ## v0.12.0 -- 2023-07-06
