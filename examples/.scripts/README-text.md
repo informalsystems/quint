@@ -31,6 +31,9 @@ yet. To set your expectations right, check the dashboard below first.
    demonstrate some language features in isolation. They are mostly used for
    testing the tool.
 
+[Cosmos ecosystem]: https://cosmos.network
+[TLA+ examples]: https://github.com/tlaplus/Examples/
+
 # Dashboard
 
 This dashboard shows, how far we have checked the examples in the Quint-Apalache
