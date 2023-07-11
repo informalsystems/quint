@@ -394,3 +394,13 @@ fi
 <!-- !test exit 0 -->
 <!-- !test check river - Run safety -->
     quint run --invariant=safety ../examples/puzzles/river/river.qnt
+
+### Regression test for #1035
+
+Reported in https://github.com/informalsystems/quint/issues/1035, the spec
+tested here was producing flaky, incorrect name resolution errors, that were
+sensitive to the order of operator and module definitions.
+
+<!-- !test exit 0 -->
+<!-- !test check regression test for 1035 -->
+    quint -r ./testFixture/simulator/importedOpOrderRegression.qnt::importedOpOrderRegression
