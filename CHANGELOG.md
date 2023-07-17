@@ -8,10 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## UNRELEASED
 
 ### Added
+### Changed
 
 - `quint run` produces a friendlier message when it meets a `const` (#1050)
 
-### Changed
 ### Deprecated
 ### Removed
 
