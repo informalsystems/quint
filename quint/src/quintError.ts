@@ -45,7 +45,7 @@ export type ErrorCode =
   | 'QNT007'
   /* QNT099: Found cyclic definitions */
   | 'QNT099'
-   /* QNT101: Conflicting definitions for '<name>' */
+  /* QNT101: Conflicting definitions for '<name>' */
   | 'QNT101'
   /* QNT102: Module with name '<name>' was already defined */
   | 'QNT102'
