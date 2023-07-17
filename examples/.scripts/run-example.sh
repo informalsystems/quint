@@ -25,6 +25,8 @@ get_main () {
     main="--main=LamportMutex_3_10"
   elif [[ "$file" == "classic/distributed/ReadersWriters/ReadersWriters.qnt" ]] ; then
     main="--main=ReadersWriters_5"
+  elif [[ "$file" == "puzzles/prisoners/prisoners.qnt" ]] ; then
+    main="--main=prisoners3"
   elif [[ "$file" == "solidity/ERC20/erc20.qnt" ]] ; then
     main="--main=erc20Tests"
   elif [[ "$file" == "solidity/SimplePonzi/simplePonzi.qnt" ]] ; then
