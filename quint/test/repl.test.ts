@@ -277,7 +277,6 @@ describe('repl ok', () => {
     await assertRepl(input, output)
   })
 
-
   it('caching nullary definitions', async () => {
     const input = dedent(
       `var x: int

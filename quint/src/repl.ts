@@ -724,19 +724,19 @@ function evalExpr(state: ReplState, out: writer): Either<string, QuintEx> {
     })
     .join()
 
-    if (verbosity.hasUserOpTracking(state.verbosity)) {
-      const trace = state.recorder.getBestTrace()
-      if (trace.subframes.length > 0) {
+  if (verbosity.hasUserOpTracking(state.verbosity)) {
+    const trace = state.recorder.getBestTrace()
+    if (trace.subframes.length > 0) {
+      out('\n')
+      trace.subframes.forEach((f, i) => {
+        out(`[Frame ${i}]\n`)
+        printExecutionFrameRec({ width: columns, out }, f, [])
         out('\n')
-        trace.subframes.forEach((f, i) => {
-          out(`[Frame ${i}]\n`)
-          printExecutionFrameRec({ width: columns, out }, f, [])
-          out('\n')
-        })
-      }
+      })
     }
+  }
 
-    return result
+  return result
 }
 
 function getMainModuleAnnotation(moduleHist: string): string | undefined {
