@@ -1388,11 +1388,7 @@ class RuntimeValueMapSet extends RuntimeValueBase implements RuntimeValue {
       `Domain size is over ${Number.MAX_SAFE_INTEGER}`
     )
     const sz = Number(domainSizeOrNone.value)
-    const rangeSizeOrNone = this.rangeSet.cardinality()
-    return rangeSizeOrNone
-      .map(rs => Array(sz).fill(just(rs)))
-      .or(just(Array(sz).fill(none())))
-      .unwrap()
+    return Array(sz).fill(this.rangeSet.cardinality())
   }
 
   toQuintEx(gen: IdGenerator): QuintEx {
