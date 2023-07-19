@@ -1391,7 +1391,7 @@ export class CompilerVisitor implements IRVisitor {
     this.compStack.push(mkFunComputable(lazyCompute))
   }
 
-  // Apply the operator oneOf.
+  // Apply the operator oneOf
   private applyOneOf(sourceId: bigint) {
     this.applyFun(sourceId, 1, set => {
       const bounds = set.bounds()
@@ -1405,7 +1405,8 @@ export class CompilerVisitor implements IRVisitor {
               return this.rand(sz)
             })
             // An infinite set, pick an integer from the range [-2^255, 2^255).
-            // TODO: make it a configurable parameter.
+            // TODO: make it a configurable parameter:
+            // https://github.com/informalsystems/quint/issues/279
             .or(just(-(2n ** 255n) + this.rand(2n ** 256n)))
             .unwrap()
         )
