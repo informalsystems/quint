@@ -332,7 +332,7 @@ fi
 <!-- !test exit 1 -->
 <!-- !test check gradualPonzi - Run noLeftoversInv -->
     quint run --invariant=noLeftoversInv --main=gradualPonziTest \
-      --seed=0x1ea5141b0fe9e1 \
+      --seed=0x405df8f62fcd7 \
       ../examples/solidity/GradualPonzi/gradualPonzi.qnt
 
 ### OK on test gradualPonzi

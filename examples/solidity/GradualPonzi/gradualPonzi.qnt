@@ -230,7 +230,8 @@ module gradualPonziTest {
   //
   // $ quint run --invariant=progressInv --main=gradualPonziTest gradualPonzi.qnt
   //
-  // Also try:
+  // If quint has not reported a violation, try:
+  //
   // $ quint run --invariant=progressInv --main=gradualPonziTest --seed=0x8385bfe3a7497 gradualPonzi.qnt
   val progressInv = {
     userAddr.exists(someone =>
@@ -245,7 +246,7 @@ module gradualPonziTest {
   // There should be no left over tokens on the contract balance.
   //
   // This invariant is violated due to rounding errors:
-  // $ quint run --invariant=noLeftovers --main=gradualPonziTest gradualPonzi.qnt
+  // $ quint run --invariant=noLeftoversInv --main=gradualPonziTest gradualPonzi.qnt
   val noLeftoversInv = {
     val sumRewards = addr.fold(0, (s, a) => s + ponziState.rewards.get(a))
     sumRewards == evmState.balances.get("contract")
