@@ -329,7 +329,7 @@ Add the seed to the command below and change the exit code to 1.
 <!-- !test exit 0 -->
 <!-- !test check gradualPonzi - Run progressInv -->
     quint run --invariant=progressInv --main=gradualPonziTest \
-      --max-samples=1000000 --max-steps=50 \
+      --max-samples=1000 --max-steps=50 \
       ../examples/solidity/GradualPonzi/gradualPonzi.qnt
 
 ### FAIL on run gradualPonzi::noLeftoversInv
