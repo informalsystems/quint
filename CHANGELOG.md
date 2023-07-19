@@ -10,10 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `quint repl` produces an evaluation trace on errors too (#1056)
+- `S.setOfMaps(Int).oneOf()` is now supported (#1060)
 
 ### Changed
 
 - `quint run` produces a friendlier message when it meets a `const` (#1050)
+- The behavior of `oneOf` has changed, update the seeds in `quint test` (#1060)
 
 ### Deprecated
 ### Removed
