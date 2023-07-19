@@ -1394,17 +1394,23 @@ export class CompilerVisitor implements IRVisitor {
   // Apply the operator oneOf.
   private applyOneOf(sourceId: bigint) {
     this.applyFun(sourceId, 1, set => {
-      const sizeOrNone = set.cardinality()
-      if (sizeOrNone.isJust()) {
-        if (sizeOrNone.value === 0n) {
-          this.errorTracker.addRuntimeError(sourceId, `Applied oneOf to an empty set`)
-          return none()
-        }
-        return set.pick(this.rand(sizeOrNone.value))
-      }
-      // an infinite set, pick an integer from the range [-2^255, 2^255)
-      return set.pick(-(2n ** 255n) + this.rand(2n ** 256n))
-    })
+      const bounds = set.bounds()
+      const positions: bigint[] = bounds.map(b => {
+        return b
+          .map(sz => {
+            if (sz === 0n) {
+              this.errorTracker.addRuntimeError(sourceId, `Applied oneOf to an empty set`)
+            }
+            return this.rand(sz)
+          })
+          // An infinite set, pick an integer from the range [-2^255, 2^255).
+          // TODO: make it a configurable parameter.
+          .or(just(-(2n ** 255n) + this.rand(2n ** 256n)))
+          .unwrap()
+      })
+
+      return set.pick(positions.values())
+   })
   }
 
   private test(sourceId: bigint) {
