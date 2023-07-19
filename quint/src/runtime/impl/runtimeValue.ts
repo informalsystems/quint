@@ -427,7 +427,7 @@ export interface RuntimeValue extends EvalResult, ValueObject, Iterable<RuntimeV
    * If this runtime value is set-line, compute the bounds for all subsets,
    * as a flat array. A none() value indicates infinity, whereas
    * just(n) indicates set cardinality. For example:
-   * 
+   *
    *  - bounds for Set(1, 2) is [just(2)],
    *  - bounds for Int is [none()]
    *  - bounds for 1.to(3).setOfMaps(3.to(6)) is [just(4), just(4), just(4)],
@@ -896,7 +896,7 @@ class RuntimeValueSet extends RuntimeValueBase implements RuntimeValue {
 
   pick(positions: Iterator<bigint>): Maybe<RuntimeValue> {
     const next = positions.next()
-    assert(!next.done, "Internal error: too few positions. Report a bug.")
+    assert(!next.done, 'Internal error: too few positions. Report a bug.')
     let index = next.value
     // Iterate over the set elements,
     // since the set is not indexed, find the first element that goes over
@@ -913,7 +913,7 @@ class RuntimeValueSet extends RuntimeValueBase implements RuntimeValue {
   }
 
   bounds(): Maybe<bigint>[] {
-    return [ this.cardinality() ]
+    return [this.cardinality()]
   }
 
   cardinality() {
@@ -1005,10 +1005,12 @@ class RuntimeValueInterval extends RuntimeValueBase implements RuntimeValue {
 
   pick(positions: Iterator<bigint>): Maybe<RuntimeValue> {
     const next = positions.next()
-    assert(!next.done, "Internal error: too few positions. Report a bug.")
+    assert(!next.done, 'Internal error: too few positions. Report a bug.')
     const index = next.value
-    assert(index >= 0 || index <= this.last - this.first,
-      `Internal error: index ${index} is out of bounds [${this.first}, ${this.last}]. Report a bug.`)
+    assert(
+      index >= 0 || index <= this.last - this.first,
+      `Internal error: index ${index} is out of bounds [${this.first}, ${this.last}]. Report a bug.`
+    )
     if (this.last < this.first) {
       return none()
     } else {
@@ -1017,7 +1019,7 @@ class RuntimeValueInterval extends RuntimeValueBase implements RuntimeValue {
   }
 
   bounds(): Maybe<bigint>[] {
-    return [ this.cardinality() ]
+    return [this.cardinality()]
   }
 
   cardinality() {
@@ -1150,8 +1152,7 @@ class RuntimeValueCrossProd extends RuntimeValueBase implements RuntimeValue {
   }
 
   pick(positions: Iterator<bigint>): Maybe<RuntimeValue> {
-    const elems: Maybe<RuntimeValue[]> =
-      merge(this.sets.map(elemSet => elemSet.pick(positions)))
+    const elems: Maybe<RuntimeValue[]> = merge(this.sets.map(elemSet => elemSet.pick(positions)))
 
     return elems.map(es => new RuntimeValueTupleOrList('Tup', List.of(...es)))
   }
@@ -1237,12 +1238,12 @@ class RuntimeValuePowerset extends RuntimeValueBase implements RuntimeValue {
 
   pick(positions: Iterator<bigint>): Maybe<RuntimeValue> {
     const next = positions.next()
-    assert(!next.done, "Internal error: too few positions. Report a bug.")
+    assert(!next.done, 'Internal error: too few positions. Report a bug.')
     return this.cardinality().map(_ => this.fromIndex(next.value))
   }
 
   bounds(): Maybe<bigint>[] {
-    return [ this.cardinality() ]
+    return [this.cardinality()]
   }
 
   toQuintEx(gen: IdGenerator): QuintEx {
@@ -1362,8 +1363,7 @@ class RuntimeValueMapSet extends RuntimeValueBase implements RuntimeValue {
     }
 
     const domainSize = domainSizeOrNone.value
-    if (domainSize === 0n
-        || rangeSizeOrNone.isJust() && rangeSizeOrNone.value === 0n) {
+    if (domainSize === 0n || (rangeSizeOrNone.isJust() && rangeSizeOrNone.value === 0n)) {
       // the set of maps is empty, no way to pick a value
       return none()
     }
@@ -1383,8 +1383,8 @@ class RuntimeValueMapSet extends RuntimeValueBase implements RuntimeValue {
 
   bounds(): Maybe<bigint>[] {
     const domainSizeOrNone = this.domainSet.cardinality()
-    assert(domainSizeOrNone.isJust()
-        && domainSizeOrNone.value <= Number.MAX_SAFE_INTEGER,
+    assert(
+      domainSizeOrNone.isJust() && domainSizeOrNone.value <= Number.MAX_SAFE_INTEGER,
       `Domain size is over ${Number.MAX_SAFE_INTEGER}`
     )
     const sz = Number(domainSizeOrNone.value)
@@ -1457,7 +1457,7 @@ class RuntimeValueInfSet extends RuntimeValueBase implements RuntimeValue {
     // Simply return the position. The actual range is up to the caller,
     // as Int and Nat do not really care about the ranges.
     const next = positions.next()
-    assert(!next.done, "Internal error: too few positions. Report a bug.")
+    assert(!next.done, 'Internal error: too few positions. Report a bug.')
     if (this.kind === 'Int') {
       // Simply return the position. It's up to the caller to pick the position.
       return just(rv.mkInt(next.value))
@@ -1470,7 +1470,7 @@ class RuntimeValueInfSet extends RuntimeValueBase implements RuntimeValue {
 
   bounds(): Maybe<bigint>[] {
     // it's an infinite set, so we return none() to indicate an infinite set
-    return [ none() ]
+    return [none()]
   }
 
   cardinality(): Maybe<bigint> {

@@ -636,7 +636,6 @@ describe('repl ok', () => {
     await assertRepl(input, output)
   })
 
-
   it('run q::test, q::testOnce, and q::lastTrace', async () => {
     const input = dedent(
       `
