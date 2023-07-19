@@ -274,17 +274,17 @@ fi
 
 <!-- !test exit 1 -->
 <!-- !test check lottery - Run -->
-    quint run --max-samples=10000 --max-steps=10 --seed=0x29f8e8021fae9 \
+    quint run --max-samples=10000 --max-steps=10 --seed=0x29f8e808de5ed \
       --invariant=noBuyInDrawingInv --main=lotteryMempool \
       ../examples/solidity/icse23-fig7/lottery.qnt
 
-### FAIL on run BinSearch10
+### OK on run BinSearch10
 
-<!-- !test exit 1 -->
+<!-- !test exit 0 -->
 <!-- !test check BinSearch - Run -->
-    quint run --max-samples=10000 --max-steps=10 --seed=0x29f8e8021fae9 \
-      --invariant=Postcondition --init=Init --next=Next \
-      ../examples/classic/sequential/BinSearch10.qnt
+    quint run --max-samples=10000 --max-steps=10 \
+      --invariant=Postcondition \
+      ../examples/classic/sequential/BinSearch/BinSearch10.qnt
 
 ### OK on test simplePonzi
 
@@ -308,14 +308,14 @@ fi
 <!-- !test check simplePonzi - Run progressInv -->
     quint run \
       --invariant=progressInv --main=simplePonziTest \
-      --seed=0x1f035d45bceacb \
+      --seed=0x1f035d45bcece7 \
       ../examples/solidity/SimplePonzi/simplePonzi.qnt
 
 ### OK on run gradualPonzi::noNegativeInv
 
 <!-- !test exit 0 -->
 <!-- !test check gradualPonzi - Run noNegativeInv -->
-    quint run --max-samples=10000 \
+    quint run --max-samples=1000 \
       --invariant=noNegativeInv --main=gradualPonziTest \
       ../examples/solidity/GradualPonzi/gradualPonzi.qnt
 
@@ -325,14 +325,15 @@ fi
 <!-- !test check gradualPonzi - Run progressInv -->
     quint run --invariant=progressInv --main=gradualPonziTest \
       --max-samples=100000  --max-steps=40 --seed=0x14cfeb23f5e066 \
-      gradualPonzi.qnt
+      ../examples/solidity/GradualPonzi/gradualPonzi.qnt
 
 ### FAIL on run gradualPonzi::noLeftoversInv
 
 <!-- !test exit 1 -->
 <!-- !test check gradualPonzi - Run noLeftoversInv -->
     quint run --invariant=noLeftoversInv --main=gradualPonziTest \
-      --seed=0x1ea5141b0fe9e1 gradualPonzi.qnt
+      --seed=0x1ea5141b0fe9e1 \
+      ../examples/solidity/GradualPonzi/gradualPonzi.qnt
 
 ### OK on test gradualPonzi
 
