@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `quint run` produces a friendlier message when it meets a `const` (#1050)
+- JSON output now wraps `bigint` values into a string (#1065)
 
 ### Deprecated
 ### Removed
