@@ -1405,6 +1405,7 @@ export class CompilerVisitor implements IRVisitor {
               return this.rand(sz)
             })
             // An infinite set, pick an integer from the range [-2^255, 2^255).
+            // Note that pick on Nat uses the absolute value of the passed integer.
             // TODO: make it a configurable parameter:
             // https://github.com/informalsystems/quint/issues/279
             .or(just(-(2n ** 255n) + this.rand(2n ** 256n)))
