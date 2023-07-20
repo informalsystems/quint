@@ -67,8 +67,8 @@ export function formatError(
   } catch (error: any) {
     // If it happens that an error occurs during the error reconstruction,
     // print that we could not construct a good explanation, instead of throwing.
-    console.error('\nSomething unexpected happened during error reconstruction. Report a bug.\n')
-    console.error('Please include this in the bug report: {')
+    console.error('\nSomething unexpected happened during error reconstruction. Please report a bug.\n')
+    console.error('Include this in the bug report: {')
     console.trace(error.message)
     console.error('} // end of the bug report\n')
 
