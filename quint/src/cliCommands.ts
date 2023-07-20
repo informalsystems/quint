@@ -8,10 +8,13 @@
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'fs'
-import JSONbig from 'json-bigint'
+import JSONbig_ from 'json-bigint'
 import { basename, dirname, resolve } from 'path'
 import { cwd } from 'process'
 import chalk from 'chalk'
+
+// serialize `bigint`s as string
+const JSONbig = JSONbig_({ storeAsString: true })
 
 import {
   ErrorMessage,

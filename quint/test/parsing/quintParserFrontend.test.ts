@@ -2,7 +2,7 @@ import { describe, it } from 'mocha'
 import { assert } from 'chai'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
-import JSONbig from 'json-bigint'
+import JSONbig_ from 'json-bigint'
 import {
   compactSourceMap,
   parsePhase1fromText,
@@ -15,6 +15,9 @@ import { right } from '@sweet-monads/either'
 import { newIdGenerator } from '../../src/idGenerator'
 import { collectIds } from '../util'
 import { fileSourceResolver } from '../../src/parsing/sourceResolver'
+
+// serialize `bigint`s as string
+const JSONbig = JSONbig_({ storeAsString: true })
 
 // read a Quint file from the test data directory
 function readQuint(name: string): string {
