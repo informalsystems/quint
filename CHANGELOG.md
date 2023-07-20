@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `quint run` produces a friendlier message when it meets a `const` (#1050)
-- The behavior of `oneOf` has changed, update the seeds in `quint test` (#1060)
+- Breaking: the behavior of `oneOf` has changed, existing seed values for `quint test` can exhibit different behavior than before (#1060)
 
 ### Deprecated
 ### Removed
