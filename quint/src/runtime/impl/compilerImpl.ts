@@ -33,6 +33,7 @@ import { ExecutionListener } from '../trace'
 import * as ir from '../../quintIr'
 
 import { RuntimeValue, rv } from './runtimeValue'
+import { ErrorCode } from '../../quintError'
 
 import { lastTraceName } from '../compile'
 
@@ -321,6 +322,13 @@ export class CompilerVisitor implements IRVisitor {
       boundValue.eval = boundValueEval
       return result
     }
+  }
+
+  exitConst(cdef: ir.QuintConst) {
+    // all constants should be instantiated before running the simulator
+    const code: ErrorCode = 'QNT500'
+    const msg = `${code}: Uninitialized const ${cdef.name}. Use: import <moduleName>(${cdef.name}=<value>).*`
+    this.errorTracker.addCompileError(cdef.id, msg)
   }
 
   exitVar(vardef: ir.QuintVar) {
@@ -1383,19 +1391,29 @@ export class CompilerVisitor implements IRVisitor {
     this.compStack.push(mkFunComputable(lazyCompute))
   }
 
-  // Apply the operator oneOf.
+  // Apply the operator oneOf
   private applyOneOf(sourceId: bigint) {
     this.applyFun(sourceId, 1, set => {
-      const sizeOrNone = set.cardinality()
-      if (sizeOrNone.isJust()) {
-        if (sizeOrNone.value === 0n) {
-          this.errorTracker.addRuntimeError(sourceId, `Applied oneOf to an empty set`)
-          return none()
-        }
-        return set.pick(this.rand(sizeOrNone.value))
-      }
-      // an infinite set, pick an integer from the range [-2^255, 2^255)
-      return set.pick(-(2n ** 255n) + this.rand(2n ** 256n))
+      const bounds = set.bounds()
+      const positions: bigint[] = bounds.map(b => {
+        return (
+          b
+            .map(sz => {
+              if (sz === 0n) {
+                this.errorTracker.addRuntimeError(sourceId, `Applied oneOf to an empty set`)
+              }
+              return this.rand(sz)
+            })
+            // An infinite set, pick an integer from the range [-2^255, 2^255).
+            // Note that pick on Nat uses the absolute value of the passed integer.
+            // TODO: make it a configurable parameter:
+            // https://github.com/informalsystems/quint/issues/279
+            .or(just(-(2n ** 255n) + this.rand(2n ** 256n)))
+            .unwrap()
+        )
+      })
+
+      return set.pick(positions.values())
     })
   }
 

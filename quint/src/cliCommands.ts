@@ -421,7 +421,8 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
     }
 
     if (failed.length > 0 && verbosity.hasHints(options.verbosity) && !verbosity.hasActionTracking(options.verbosity)) {
-      out(chalk.gray('\n  Use --verbosity=3 to show executions.'))
+      out(chalk.gray(`\n  Use --verbosity=3 to show executions.`))
+      out(chalk.gray(`  Further debug with: quint --verbosity=3 ${prev.args.input}`))
     }
   }
 
@@ -473,7 +474,10 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
   const startMs = Date.now()
 
   const mainPath = fileSourceResolver().lookupPath(dirname(prev.args.input), basename(prev.args.input))
-  const result = compileAndRun(newIdGenerator(), prev.sourceCode, mainName, mainPath, options)
+  const mainId = prev.modules.find(m => m.name === mainName)!.id
+  const mainStart = prev.sourceMap.get(mainId)!.start.index
+  const mainEnd = prev.sourceMap.get(mainId)!.end!.index
+  const result = compileAndRun(newIdGenerator(), prev.sourceCode, mainStart, mainEnd, mainName, mainPath, options)
 
   if (result.status === 'error') {
     const errors = prev.errors ? prev.errors.concat(result.errors) : result.errors
