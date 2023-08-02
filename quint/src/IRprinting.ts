@@ -13,7 +13,7 @@
  */
 
 import { OpQualifier, QuintDef, QuintEx, QuintModule, isAnnotatedDef } from './quintIr'
-import { EmptyRow, isTheUnit, QuintSumType, QuintType, Row, RowField, VarRow } from './quintTypes'
+import { EmptyRow, QuintSumType, QuintType, Row, RowField, VarRow, isTheUnit } from './quintTypes'
 import { TypeScheme } from './types/base'
 import { typeSchemeToString } from './types/printing'
 
