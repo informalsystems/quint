@@ -181,7 +181,7 @@ expr:           // apply a built-in operator via the dot notation
 matchSumExpr: MATCH expr '{' '|'? matchCase+=matchSumCase ('|' matchCase+=matchSumCase)* '}' ;
 matchSumCase: (variantMatch=matchSumVariant | wildCardMatch='_') '=>' expr ;
 matchSumVariant
-    : (variantLabel=simpleId["variant label"]) ('(' variantVar=simpleId["match case variable"] | variantHole='_' ')')? ;
+    : (variantLabel=simpleId["variant label"]) ('(' (variantParam=simpleId["match case parameter"] | '_') ')')? ;
 
 // A probing rule for REPL.
 // Note that a top-level declaration has priority over an expression.

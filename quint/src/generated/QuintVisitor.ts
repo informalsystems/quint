@@ -41,6 +41,7 @@ import { OrExprContext } from "./QuintParser";
 import { OrContext } from "./QuintParser";
 import { IffContext } from "./QuintParser";
 import { ImpliesContext } from "./QuintParser";
+import { MatchSumContext } from "./QuintParser";
 import { MatchContext } from "./QuintParser";
 import { ActionAllContext } from "./QuintParser";
 import { ActionAnyContext } from "./QuintParser";
@@ -83,6 +84,9 @@ import { TypeUnionRecOneContext } from "./QuintParser";
 import { RowContext } from "./QuintParser";
 import { RowLabelContext } from "./QuintParser";
 import { ExprContext } from "./QuintParser";
+import { MatchSumExprContext } from "./QuintParser";
+import { MatchSumCaseContext } from "./QuintParser";
+import { MatchSumVariantContext } from "./QuintParser";
 import { UnitOrExprContext } from "./QuintParser";
 import { LambdaContext } from "./QuintParser";
 import { IdentOrHoleContext } from "./QuintParser";
@@ -361,6 +365,14 @@ export interface QuintVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitImplies?: (ctx: ImpliesContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `matchSum`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitMatchSum?: (ctx: MatchSumContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by the `match`
@@ -676,6 +688,27 @@ export interface QuintVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitExpr?: (ctx: ExprContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `QuintParser.matchSumExpr`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitMatchSumExpr?: (ctx: MatchSumExprContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `QuintParser.matchSumCase`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitMatchSumCase?: (ctx: MatchSumCaseContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `QuintParser.matchSumVariant`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitMatchSumVariant?: (ctx: MatchSumVariantContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `QuintParser.unitOrExpr`.

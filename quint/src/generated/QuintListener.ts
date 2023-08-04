@@ -41,6 +41,7 @@ import { OrExprContext } from "./QuintParser";
 import { OrContext } from "./QuintParser";
 import { IffContext } from "./QuintParser";
 import { ImpliesContext } from "./QuintParser";
+import { MatchSumContext } from "./QuintParser";
 import { MatchContext } from "./QuintParser";
 import { ActionAllContext } from "./QuintParser";
 import { ActionAnyContext } from "./QuintParser";
@@ -83,6 +84,9 @@ import { TypeUnionRecOneContext } from "./QuintParser";
 import { RowContext } from "./QuintParser";
 import { RowLabelContext } from "./QuintParser";
 import { ExprContext } from "./QuintParser";
+import { MatchSumExprContext } from "./QuintParser";
+import { MatchSumCaseContext } from "./QuintParser";
+import { MatchSumVariantContext } from "./QuintParser";
 import { UnitOrExprContext } from "./QuintParser";
 import { LambdaContext } from "./QuintParser";
 import { IdentOrHoleContext } from "./QuintParser";
@@ -518,6 +522,19 @@ export interface QuintListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitImplies?: (ctx: ImpliesContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `matchSum`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 */
+	enterMatchSum?: (ctx: MatchSumContext) => void;
+	/**
+	 * Exit a parse tree produced by the `matchSum`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 */
+	exitMatchSum?: (ctx: MatchSumContext) => void;
 
 	/**
 	 * Enter a parse tree produced by the `match`
@@ -1022,6 +1039,39 @@ export interface QuintListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitExpr?: (ctx: ExprContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `QuintParser.matchSumExpr`.
+	 * @param ctx the parse tree
+	 */
+	enterMatchSumExpr?: (ctx: MatchSumExprContext) => void;
+	/**
+	 * Exit a parse tree produced by `QuintParser.matchSumExpr`.
+	 * @param ctx the parse tree
+	 */
+	exitMatchSumExpr?: (ctx: MatchSumExprContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `QuintParser.matchSumCase`.
+	 * @param ctx the parse tree
+	 */
+	enterMatchSumCase?: (ctx: MatchSumCaseContext) => void;
+	/**
+	 * Exit a parse tree produced by `QuintParser.matchSumCase`.
+	 * @param ctx the parse tree
+	 */
+	exitMatchSumCase?: (ctx: MatchSumCaseContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `QuintParser.matchSumVariant`.
+	 * @param ctx the parse tree
+	 */
+	enterMatchSumVariant?: (ctx: MatchSumVariantContext) => void;
+	/**
+	 * Exit a parse tree produced by `QuintParser.matchSumVariant`.
+	 * @param ctx the parse tree
+	 */
+	exitMatchSumVariant?: (ctx: MatchSumVariantContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `QuintParser.unitOrExpr`.
