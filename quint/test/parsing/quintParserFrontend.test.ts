@@ -131,24 +131,31 @@ describe('parsing', () => {
   })
 
   it('parses sum types', () => {
-    const mod = `
-    module SumTypes {
-      type T =
-        | A
-        | B(int)
+    const sumTypeIrIsFormedCorrectly: (mod: string) => void = mod => {
+      const result = parsePhase1fromText(newIdGenerator(), mod, 'test')
+      assert(result.isRight())
+      const typeDef = result.value.modules[0].defs[0]
+      assert(typeDef.kind === 'typedef')
+      const sumType = typeDef.type!
+      assert(sumType.kind === 'sum')
+      const [variantA, variantB] = sumType.fields.fields
+      assert(variantA.fieldName === 'A')
+      assert(isTheUnit(variantA.fieldType))
+      assert(variantB.fieldName === 'B')
+      assert(variantB.fieldType.kind === 'int')
     }
-    `
-    const result = parsePhase1fromText(newIdGenerator(), mod, 'test')
-    assert(result.isRight())
-    const typeDef = result.value.modules[0].defs[0]
-    assert(typeDef.kind === 'typedef')
-    const sumType = typeDef.type!
-    assert(sumType.kind === 'sum')
-    const [variantA, variantB] = sumType.fields.fields
-    assert(variantA.fieldName === 'A')
-    assert(isTheUnit(variantA.fieldType))
-    assert(variantB.fieldName === 'B')
-    assert(variantB.fieldType.kind === 'int')
+    sumTypeIrIsFormedCorrectly(`
+      module SumTypes {
+        type T =
+          | A
+          | B(int)
+      }
+    `)
+    sumTypeIrIsFormedCorrectly(`
+      module SumTypes {
+        type T = A | B(int)
+      }
+    `)
   })
 })
 

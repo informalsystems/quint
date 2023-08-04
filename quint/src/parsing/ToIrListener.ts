@@ -400,7 +400,7 @@ export class ToIrListener implements QuintListener {
     // Check if we have an accompanying type, and if not, then synthesize the
     // unit type.
     //
-    // I.e., we interpert a variant `A` as `A({})`.
+    // I.e., we interpret a variant `A` as `A({})`.
     if (poppedType === undefined) {
       const id = this.idGen.nextId()
       this.sourceMap.set(id, this.loc(ctx))

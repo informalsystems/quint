@@ -232,7 +232,7 @@ describe('typeToString', () => {
         other: { kind: 'empty' },
       },
     }
-    const expectedType = '| A(int)\n| B'
+    const expectedType = 'A(int) | B'
     assert.deepEqual(typeToString(type), expectedType)
   })
 

@@ -195,12 +195,12 @@ export function sumToString(s: QuintSumType): string {
   return s.fields.fields
     .map((f: RowField) => {
       if (isTheUnit(f.fieldType)) {
-        return `| ${f.fieldName}`
+        return `${f.fieldName}`
       } else {
-        return `| ${f.fieldName}(${typeToString(f.fieldType)})`
+        return `${f.fieldName}(${typeToString(f.fieldType)})`
       }
     })
-    .join('\n')
+    .join(' | ')
 }
 
 /**
