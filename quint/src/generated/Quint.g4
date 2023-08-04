@@ -57,7 +57,7 @@ typeDef
     | 'type' typeName=qualId '=' '|'? typeSumVariant ('|' typeSumVariant)*  # typeSumDef
     ;
 
-// A single variant case in a sum type definition.
+// A single variant case in a sum type definition or match statement.
 //
 // E.g., `A(t)` or `A`.
 typeSumVariant : sumLabel=simpleId["variant label"] ('(' type ')')? ;
@@ -157,6 +157,7 @@ expr:           // apply a built-in operator via the dot notation
         |       expr OR expr                                        # or
         |       expr IFF expr                                       # iff
         |       expr IMPLIES expr                                   # implies
+        |       matchSumExpr                                        # matchSum
         |       expr MATCH
                     ('|' STRING ':' parameter '=>' expr)+           # match
         |       'all' '{' expr (',' expr)* ','? '}'                 # actionAll
@@ -175,6 +176,12 @@ expr:           // apply a built-in operator via the dot notation
         |       '(' expr ')'                                        # paren
         |       '{' expr '}'                                        # braces
         ;
+
+// match e { A(a) => e1 | B => e2 | C(_)}
+matchSumExpr: MATCH expr '{' '|'? matchCase+=matchSumCase ('|' matchCase+=matchSumCase)* '}' ;
+matchSumCase: (variantMatch=matchSumVariant | wildCardMatch='_') '=>' expr ;
+matchSumVariant
+    : (variantLabel=simpleId["variant label"]) ('(' variantVar=simpleId["match case variable"] | variantHole='_' ')')? ;
 
 // A probing rule for REPL.
 // Note that a top-level declaration has priority over an expression.

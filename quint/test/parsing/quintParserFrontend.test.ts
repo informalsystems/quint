@@ -15,7 +15,7 @@ import { right } from '@sweet-monads/either'
 import { newIdGenerator } from '../../src/idGenerator'
 import { collectIds } from '../util'
 import { fileSourceResolver } from '../../src/parsing/sourceResolver'
-import { isTheUnit } from '../../src'
+import { errorTreeToString, isUnitType, moduleToString } from '../../src'
 
 // read a Quint file from the test data directory
 function readQuint(name: string): string {
@@ -131,31 +131,79 @@ describe('parsing', () => {
   })
 
   it('parses sum types', () => {
-    const sumTypeIrIsFormedCorrectly: (mod: string) => void = mod => {
+    parseAndCompare('_1043sumTypeDecl')
+    // const sumTypeIrIsFormedCorrectly: (mod: string) => void = mod => {
+    //   const result = parsePhase1fromText(newIdGenerator(), mod, 'test')
+    //   assert(result.isRight())
+    //   const [typeDef, constructorA, constructorB] = result.value.modules[0].defs
+
+    //   // Check the type
+    //   assert(typeDef.kind === 'typedef')
+    //   const sumType = typeDef.type!
+    //   assert(sumType.kind === 'sum')
+
+    //   const [variantA, variantB] = sumType.fields.fields
+    //   assert(variantA.fieldName === 'A')
+    //   assert(isUnitType(variantA.fieldType))
+    //   assert(variantB.fieldName === 'B')
+    //   assert(variantB.fieldType.kind === 'int')
+
+    //   // Check the generated constructors
+    //   assert(constructorA.kind === 'def')
+    //   assert(constructorA.name === 'A')
+    //   assert(constructorA.qualifier === 'val')
+    //   const lamA = constructorA.expr
+    //   assert(lamA.kind === 'lambda')
+    //   assert.deepEqual(lamA.params, [])
+    //   assert(lamA.expr === undefined)
+    // }
+    // sumTypeIrIsFormedCorrectly(`
+    //   module SumTypes {
+    //     type T =
+    //       | A
+    //       | B(int)
+    //   }
+    // `)
+    // sumTypeIrIsFormedCorrectly(`
+    //   module SumTypes {
+    //     type T = A | B(int)
+    //   }
+    // `)
+  })
+
+  it('parses match expressions', () => {
+    const parseToString: (mod: string) => string = mod => {
       const result = parsePhase1fromText(newIdGenerator(), mod, 'test')
-      assert(result.isRight())
-      const typeDef = result.value.modules[0].defs[0]
-      assert(typeDef.kind === 'typedef')
-      const sumType = typeDef.type!
-      assert(sumType.kind === 'sum')
-      const [variantA, variantB] = sumType.fields.fields
-      assert(variantA.fieldName === 'A')
-      assert(isTheUnit(variantA.fieldType))
-      assert(variantB.fieldName === 'B')
-      assert(variantB.fieldType.kind === 'int')
+      assert(result.isRight(), result.isLeft() ? result.value.map(err => err.explanation).join('\n') : 'impossible')
+      return moduleToString(result.value.modules[0])
     }
-    sumTypeIrIsFormedCorrectly(`
+    const multiLine = parseToString(`
       module SumTypes {
-        type T =
-          | A
-          | B(int)
+        val ex = match foo {
+          | A    => 0
+          | B(n) => n
+          | _    => -1
+        }
       }
     `)
-    sumTypeIrIsFormedCorrectly(`
+    assert.deepEqual(
+      multiLine,
+      `module SumTypes {
+  val ex = match foo { A(_) => 0 | B(n) => n | _ => iuminus(1) }
+}`
+    )
+
+    const singleLine = parseToString(`
       module SumTypes {
-        type T = A | B(int)
+        val ex = match foo { A => 0 | B(n) => n | _ => -1 }
       }
     `)
+    assert.deepEqual(
+      singleLine,
+      `module SumTypes {
+  val ex = match foo { A(_) => 0 | B(n) => n | _ => iuminus(1) }
+}`
+    )
   })
 })
 

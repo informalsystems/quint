@@ -3,22 +3,28 @@ import { IdGenerator } from '../idGenerator'
 import { ParserRuleContext } from 'antlr4ts/ParserRuleContext'
 import { QuintListener } from '../generated/QuintListener'
 import {
+  MatchCase,
   OpQualifier,
   QuintApp,
+  QuintBuiltinApp,
   QuintDef,
   QuintEx,
+  QuintLambda,
   QuintLambdaParameter,
+  QuintMatch,
   QuintModule,
   QuintName,
   QuintOpDef,
+  QuintVariant,
 } from '../quintIr'
-import { ConcreteFixedRow, QuintSumType, QuintType, Row, RowField, unitValue } from '../quintTypes'
+import { ConcreteFixedRow, QuintSumType, QuintType, Row, RowField, isUnitType, unitType } from '../quintTypes'
 import { strict as assert } from 'assert'
 import { ErrorMessage, Loc } from './quintParserFrontend'
 import { compact, zipWith } from 'lodash'
 import { Maybe, just, none } from '@sweet-monads/maybe'
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode'
 import { QuintTypeDef } from '../quintIr'
+import { zip } from '../../test/util'
 
 /**
  * An ANTLR4 listener that constructs QuintIr objects out of the abstract
@@ -371,43 +377,65 @@ export class ToIrListener implements QuintListener {
   // type T = | A | B(t1) | C(t2)
   exitTypeSumDef(ctx: p.TypeSumDefContext) {
     const name = ctx._typeName!.text!
-    const defId = this.idGen.nextId()
-    this.sourceMap.set(defId, this.loc(ctx))
+    const id = this.getId(ctx)
 
-    const typeId = this.idGen.nextId()
-    this.sourceMap.set(typeId, this.loc(ctx))
-
+    // Build the type declaraion
     const fields: RowField[] = popMany(this.variantStack, this.variantStack.length)
     const row: ConcreteFixedRow = { kind: 'row', fields, other: { kind: 'empty' } }
-    const type: QuintSumType = { id: defId, kind: 'sum', fields: row }
-
+    const type: QuintSumType = { id, kind: 'sum', fields: row }
     const def: QuintTypeDef = {
-      id: defId,
+      id: id,
       name,
       kind: 'typedef',
       type,
     }
 
-    this.definitionStack.push(def)
+    // Generate all the variant constructors
+    // a variant constructor is an operator that injects an exprssion
+    // into the sum type by wrapping it in a label
+    const constructors: QuintOpDef[] = zip(fields, ctx.typeSumVariant()).map(
+      ([{ fieldName, fieldType }, variantCtx]) => {
+        // Mangle the parameter name to avoid clashes
+        // This shouldn't be visible to users
+        const paramName = `__${fieldName}Param`
+
+        let params: QuintLambdaParameter[]
+        let expr: QuintEx
+        let qualifier: OpQualifier
+
+        if (isUnitType(fieldType)) {
+          // The nullary variant constructor is actual
+          // variant pairint a label with the unit.
+          params = []
+          expr = unitValue(this.getId(variantCtx._sumLabel))
+          // Its a `val` cause it takes no arguments
+          qualifier = 'val'
+        } else {
+          // Oherwise we will build constructor that takes one parameter
+          // and wraps it in a `variaint`
+          params = [{ id: this.getId(variantCtx.type()!), name: paramName }]
+          expr = { kind: 'name', name: paramName, id: this.getId(variantCtx._sumLabel) }
+          qualifier = 'def'
+        }
+
+        const variant: QuintVariant = { id: this.getId(variantCtx), kind: 'variant', label: fieldName, expr }
+        const lam: QuintLambda = { id: this.getId(variantCtx), kind: 'lambda', params, qualifier, expr: variant }
+        return { id: this.getId(variantCtx), kind: 'def', name: fieldName, qualifier, expr: lam }
+      }
+    )
+
+    this.definitionStack.push(def, ...constructors)
   }
 
   exitTypeSumVariant(ctx: p.TypeSumVariantContext) {
     const fieldName = ctx._sumLabel!.text!
     const poppedType = this.popType().value
 
-    let fieldType: QuintType
-
     // Check if we have an accompanying type, and if not, then synthesize the
     // unit type.
     //
     // I.e., we interpret a variant `A` as `A({})`.
-    if (poppedType === undefined) {
-      const id = this.idGen.nextId()
-      this.sourceMap.set(id, this.loc(ctx))
-      fieldType = unitValue(id)
-    } else {
-      fieldType = poppedType
-    }
+    const fieldType: QuintType = poppedType ? poppedType : unitType(this.getId(ctx))
 
     this.variantStack.push({ fieldName, fieldType })
   }
@@ -859,9 +887,53 @@ export class ToIrListener implements QuintListener {
   }
 
   // if (p) e1 else e2
-  exitIfElse(ctx: any) {
+  exitIfElse(ctx: p.IfElseContext) {
     const args = popMany(this.exprStack, 3)
     this.pushApplication(ctx, 'ite', args)
+  }
+
+  // match expr {
+  //    | Variant1(var1) => expr1
+  //    | Variantk(_) => exprk    // a hole in the payload
+  //    | ...
+  //    | Variantn(varn) => exprn
+  //    | _ => exprm              // A wildcard match, acting as a catchall
+  // }
+  exitMatchSumExpr(ctx: p.MatchSumExprContext) {
+    const matchId = this.getId(ctx)
+    // We will have one expression for each match case, plus the
+    const exprs = popMany(this.exprStack, ctx._matchCase.length + 1)
+    // The first expression is the one we are matching on
+    // the syntax rules ensure that at least this expression is given
+    const expr = exprs.shift()!
+    // after  shifting off the match expr, the remaing exprs are in eache case
+    const cases: MatchCase[] = zip(exprs, ctx._matchCase).map(([caseExpr, caseCtx]) => {
+      const caseId = this.getId(caseCtx)
+      let label: string
+      let params: QuintLambdaParameter[]
+      if (caseCtx._wildCardMatch) {
+        // a wildcard case: _ => expr
+        label = '_'
+        params = []
+      } else if (caseCtx._variantMatch) {
+        const variant = caseCtx._variantMatch
+        let name: string
+        if (variant._variantParam) {
+          name = variant._variantParam.text
+        } else {
+          // We either have a hole or no param specified, in which case our lambda only needs a hole
+          name = '_'
+        }
+        label = variant._variantLabel.text
+        params = [{ name, id: this.getId(variant) }]
+      } else {
+        throw new Error('impossible: either _wildCardMatch or _variantMatch must be present')
+      }
+      const elim: QuintLambda = { id: caseId, kind: 'lambda', qualifier: 'def', expr: caseExpr, params }
+      return { label, elim }
+    })
+    const matchExpr: QuintMatch = { id: matchId, kind: 'match', expr, cases }
+    this.exprStack.push(matchExpr)
   }
 
   // entry match
@@ -1172,4 +1244,14 @@ function popMany<T>(stack: T[], n: number): T[] {
 /* The comment content is the text of the comment minus the `/// ` prefix */
 function getDocText(doc: TerminalNode[]): string {
   return doc.map(l => l.text.slice(4, -1)).join('\n')
+}
+
+// Helper to construct an empty record (the unit value)
+function unitValue(id: bigint): QuintBuiltinApp {
+  return {
+    id,
+    kind: 'app',
+    opcode: 'Rec',
+    args: [],
+  }
 }

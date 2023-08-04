@@ -58,6 +58,10 @@ export class IRTransformer {
   exitLambda?: (expr: ir.QuintLambda) => ir.QuintLambda
   enterLet?: (expr: ir.QuintLet) => ir.QuintLet
   exitLet?: (expr: ir.QuintLet) => ir.QuintLet
+  enterMatch?: (expr: ir.QuintMatch) => ir.QuintMatch
+  exitMatch?: (expr: ir.QuintMatch) => ir.QuintMatch
+  enterVariant?: (expr: ir.QuintVariant) => ir.QuintVariant
+  exitVariant?: (expr: ir.QuintVariant) => ir.QuintVariant
 
   /** Types */
   enterLiteralType?: (
@@ -445,6 +449,37 @@ function transformExpression(transformer: IRTransformer, expr: ir.QuintEx): ir.Q
 
         if (transformer.exitLet) {
           newExpr = transformer.exitLet(newExpr)
+        }
+      }
+      break
+    case 'match':
+      {
+        if (transformer.enterMatch) {
+          newExpr = transformer.enterMatch(newExpr)
+        }
+
+        newExpr.expr = transformExpression(transformer, newExpr.expr)
+        newExpr.cases = newExpr.cases.map(matchCase => ({
+          ...matchCase,
+          expr: transformExpression(transformer, matchCase.elim),
+        }))
+
+        if (transformer.exitMatch) {
+          newExpr = transformer.exitMatch(newExpr)
+        }
+      }
+      break
+
+    case 'variant':
+      {
+        if (transformer.enterVariant) {
+          newExpr = transformer.enterVariant(newExpr)
+        }
+
+        newExpr.expr = transformExpression(transformer, newExpr)
+
+        if (transformer.exitVariant) {
+          newExpr = transformer.exitVariant(newExpr)
         }
       }
       break

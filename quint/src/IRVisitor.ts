@@ -62,6 +62,10 @@ export interface IRVisitor {
   exitLambda?: (_expr: ir.QuintLambda) => void
   enterLet?: (_expr: ir.QuintLet) => void
   exitLet?: (_expr: ir.QuintLet) => void
+  enterMatch?: (_expr: ir.QuintMatch) => void
+  exitMatch?: (_expr: ir.QuintMatch) => void
+  enterVariant?: (_expr: ir.QuintVariant) => void
+  exitVariant?: (_expr: ir.QuintVariant) => void
 
   /** Types */
   enterLiteralType?: (_type: t.QuintBoolType | t.QuintIntType | t.QuintStrType) => void
@@ -248,6 +252,9 @@ export function walkType(visitor: IRVisitor, type: t.QuintType): void {
 
     case 'sum':
       visitor.enterSumType?.(type)
+
+      walkRow(visitor, type.fields)
+
       visitor.exitSumType?.(type)
       break
 
@@ -301,6 +308,7 @@ export function walkDefinition(visitor: IRVisitor, def: ir.QuintDef): void {
       if (visitor.enterTypeDef) {
         visitor.enterTypeDef(def)
       }
+
       if (visitor.exitTypeDef) {
         visitor.exitTypeDef(def)
       }
@@ -403,6 +411,17 @@ function walkExpression(visitor: IRVisitor, expr: ir.QuintEx): void {
       if (visitor.exitLet) {
         visitor.exitLet(expr)
       }
+      break
+    case 'match':
+      visitor.enterMatch?.(expr)
+      visitor.exitMatch?.(expr)
+      break
+    case 'variant':
+      visitor.enterVariant?.(expr)
+      if (expr.expr) {
+        walkExpression(visitor, expr.expr)
+      }
+      visitor.exitVariant?.(expr)
       break
     default:
       unreachable(expr)

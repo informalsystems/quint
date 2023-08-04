@@ -251,7 +251,16 @@ export interface QuintLet extends WithId {
 /**
  * Discriminated union of Quint expressions.
  */
-export type QuintEx = QuintName | QuintBool | QuintInt | QuintStr | QuintApp | QuintLambda | QuintLet
+export type QuintEx =
+  | QuintName
+  | QuintBool
+  | QuintInt
+  | QuintStr
+  | QuintApp
+  | QuintLambda
+  | QuintLet
+  | QuintMatch
+  | QuintVariant
 
 /**
  * A user-defined operator that is defined via one of the qualifiers:
@@ -292,6 +301,30 @@ export interface QuintAssume extends WithId {
   name: string
   /** an expression to associate with the name */
   assumption: QuintEx
+}
+
+export type MatchCase = {
+  /** the variant label to match */
+  label: string
+  /** the lamba to apply to the variant's wrapped value */
+  elim: QuintLambda
+}
+
+export interface QuintMatch extends WithId {
+  kind: 'match'
+  /** the variant expression to match */
+  expr: QuintEx
+  /** the cases to match against */
+  cases: MatchCase[]
+}
+
+/** A variant value inhabiting a sum type */
+export interface QuintVariant extends WithId {
+  kind: 'variant'
+  /** the varian't tag, e.g., the `A` in `A(n)` */
+  label: string
+  /** the expression injected into the sum type  */
+  expr?: QuintEx
 }
 
 /** QuintTypeDefs represent both type aliases and abstract types

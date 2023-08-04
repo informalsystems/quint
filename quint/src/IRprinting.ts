@@ -12,8 +12,8 @@
  * @module
  */
 
-import { OpQualifier, QuintDef, QuintEx, QuintModule, isAnnotatedDef } from './quintIr'
-import { EmptyRow, QuintSumType, QuintType, Row, RowField, VarRow, isTheUnit } from './quintTypes'
+import { OpQualifier, QuintDef, QuintEx, QuintModule, isAnnotatedDef, MatchCase } from './quintIr'
+import { EmptyRow, QuintSumType, QuintType, Row, RowField, VarRow, isUnitType } from './quintTypes'
 import { TypeScheme } from './types/base'
 import { typeSchemeToString } from './types/printing'
 
@@ -126,7 +126,22 @@ export function expressionToString(expr: QuintEx): string {
       return `((${expr.params.map(p => p.name).join(', ')}) => ${expressionToString(expr.expr)})`
     case 'let':
       return `${definitionToString(expr.opdef)} { ${expressionToString(expr.expr)} }`
+    case 'variant': {
+      const param = expr.expr ? `(${expressionToString(expr.expr)})` : ''
+      return `${expr.label}${param}`
+    }
+    case 'match':
+      return `match ${expressionToString(expr.expr)} { ${matchCasesToString(expr.cases)} }`
   }
+}
+
+function matchCasesToString(cases: MatchCase[]): string {
+  return cases
+    .map(({ label, elim }) => {
+      const param = elim.params.length === 0 ? '' : `(${elim.params[0].name})`
+      return `${label}${param} => ${expressionToString(elim.expr)}`
+    })
+    .join(' | ')
 }
 
 /**
@@ -194,7 +209,7 @@ export function rowToString(r: Row): string {
 export function sumToString(s: QuintSumType): string {
   return s.fields.fields
     .map((f: RowField) => {
-      if (isTheUnit(f.fieldType)) {
+      if (isUnitType(f.fieldType)) {
         return `${f.fieldName}`
       } else {
         return `${f.fieldName}(${typeToString(f.fieldType)})`

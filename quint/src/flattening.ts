@@ -26,6 +26,7 @@ import {
   QuintOpDef,
   isAnnotatedDef,
   isFlat,
+  QuintLambda,
 } from './quintIr'
 import { definitionToString } from './IRprinting'
 import { ConcreteFixedRow, QuintType, Row } from './quintTypes'
@@ -343,16 +344,7 @@ class Flatenner {
         }
       }
       case 'lambda':
-        return {
-          ...expr,
-          params: expr.params.map(param => ({
-            name: this.namespacedName(name, param.name),
-            id: this.getNewIdWithSameData(param.id),
-          })),
-          expr: this.addNamespaceToExpr(name, expr.expr),
-          id,
-        }
-
+        return this.addNamespaceToLambda(id, name, expr)
       case 'let':
         return {
           ...expr,
@@ -360,6 +352,38 @@ class Flatenner {
           expr: this.addNamespaceToExpr(name, expr.expr),
           id,
         }
+
+      case 'match':
+        return {
+          ...expr,
+          expr: this.addNamespaceToExpr(name, expr.expr),
+          cases: expr.cases.map(({ label, elim }) => ({
+            label: this.namespacedName(name, label),
+            elim: this.addNamespaceToLambda(this.getNewIdWithSameData(elim.id), name, elim),
+          })),
+          id,
+        }
+
+      case 'variant':
+        return {
+          ...expr,
+          label: this.namespacedName(name, expr.label),
+          expr: expr.expr ? this.addNamespaceToExpr(name, expr.expr) : expr.expr,
+        }
+    }
+  }
+
+  // Gives us a more narrowly typed transformation on lambdsas, so we can use the same functionality for
+  // match exprssions.
+  private addNamespaceToLambda(id: bigint, name: string | undefined, lam: QuintLambda): QuintLambda {
+    return {
+      ...lam,
+      params: lam.params.map(param => ({
+        name: this.namespacedName(name, param.name),
+        id: this.getNewIdWithSameData(param.id),
+      })),
+      expr: this.addNamespaceToExpr(name, lam.expr),
+      id,
     }
   }
 
