@@ -132,43 +132,6 @@ describe('parsing', () => {
 
   it('parses sum types', () => {
     parseAndCompare('_1043sumTypeDecl')
-    // const sumTypeIrIsFormedCorrectly: (mod: string) => void = mod => {
-    //   const result = parsePhase1fromText(newIdGenerator(), mod, 'test')
-    //   assert(result.isRight())
-    //   const [typeDef, constructorA, constructorB] = result.value.modules[0].defs
-
-    //   // Check the type
-    //   assert(typeDef.kind === 'typedef')
-    //   const sumType = typeDef.type!
-    //   assert(sumType.kind === 'sum')
-
-    //   const [variantA, variantB] = sumType.fields.fields
-    //   assert(variantA.fieldName === 'A')
-    //   assert(isUnitType(variantA.fieldType))
-    //   assert(variantB.fieldName === 'B')
-    //   assert(variantB.fieldType.kind === 'int')
-
-    //   // Check the generated constructors
-    //   assert(constructorA.kind === 'def')
-    //   assert(constructorA.name === 'A')
-    //   assert(constructorA.qualifier === 'val')
-    //   const lamA = constructorA.expr
-    //   assert(lamA.kind === 'lambda')
-    //   assert.deepEqual(lamA.params, [])
-    //   assert(lamA.expr === undefined)
-    // }
-    // sumTypeIrIsFormedCorrectly(`
-    //   module SumTypes {
-    //     type T =
-    //       | A
-    //       | B(int)
-    //   }
-    // `)
-    // sumTypeIrIsFormedCorrectly(`
-    //   module SumTypes {
-    //     type T = A | B(int)
-    //   }
-    // `)
   })
 
   it('parses match expressions', () => {
