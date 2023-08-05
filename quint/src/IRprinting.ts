@@ -12,7 +12,7 @@
  * @module
  */
 
-import { OpQualifier, QuintDef, QuintEx, QuintModule, isAnnotatedDef, MatchCase } from './quintIr'
+import { MatchCase, OpQualifier, QuintDef, QuintEx, QuintModule, isAnnotatedDef } from './quintIr'
 import { EmptyRow, QuintSumType, QuintType, Row, RowField, VarRow, isUnitType } from './quintTypes'
 import { TypeScheme } from './types/base'
 import { typeSchemeToString } from './types/printing'

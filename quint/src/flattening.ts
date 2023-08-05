@@ -22,11 +22,11 @@ import {
   QuintExport,
   QuintImport,
   QuintInstance,
+  QuintLambda,
   QuintModule,
   QuintOpDef,
   isAnnotatedDef,
   isFlat,
-  QuintLambda,
 } from './quintIr'
 import { definitionToString } from './IRprinting'
 import { ConcreteFixedRow, QuintType, Row } from './quintTypes'
