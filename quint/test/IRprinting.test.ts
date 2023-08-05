@@ -3,7 +3,7 @@ import { assert } from 'chai'
 import { buildDef, buildExpression, buildModuleWithDefs, buildType } from './builders/ir'
 import { definitionToString, expressionToString, moduleToString, typeToString } from '../src/IRprinting'
 import { toScheme } from '../src/types/base'
-import { QuintSumType, unitType } from '../src'
+import { QuintInt, QuintSumType, QuintVariant, unitType } from '../src'
 
 describe('moduleToString', () => {
   const quintModule = buildModuleWithDefs(['var S: Set[int]', 'val f = S.filter(x => x + 1)'])
@@ -174,6 +174,20 @@ describe('expressionToString', () => {
     const expr = buildExpression('val x = 1 val y = 2 { x + y }')
     const expectedExpr = 'val x = 1 { val y = 2 { iadd(x, y) } }'
     assert.deepEqual(expressionToString(expr), expectedExpr)
+  })
+
+  it('pretty prints match expressions', () => {
+    const expr = buildExpression('match foo { A => 1 | B(n) => n | _ => 0 }')
+    const expectedExpr = 'match foo { A(_) => 1 | B(n) => n | _ => 0 }'
+    assert.deepEqual(expressionToString(expr), expectedExpr)
+  })
+
+  it('pretty prints variant expressions', () => {
+    const intexp: QuintInt = { id: 0n, kind: 'int', value: 1n }
+    const exprA: QuintVariant = { id: 0n, kind: 'variant', label: 'A', expr: intexp }
+    assert.deepEqual(expressionToString(exprA), 'A(1)')
+    const exprB: QuintVariant = { id: 0n, kind: 'variant', label: 'B' }
+    assert.deepEqual(expressionToString(exprB), 'B')
   })
 })
 
