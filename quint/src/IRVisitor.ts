@@ -414,6 +414,10 @@ function walkExpression(visitor: IRVisitor, expr: ir.QuintEx): void {
       break
     case 'match':
       visitor.enterMatch?.(expr)
+
+      walkExpression(visitor, expr.expr)
+      expr.cases.forEach(({ elim }) => walkExpression(visitor, elim))
+
       visitor.exitMatch?.(expr)
       break
     case 'variant':

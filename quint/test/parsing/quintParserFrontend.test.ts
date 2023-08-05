@@ -15,7 +15,6 @@ import { right } from '@sweet-monads/either'
 import { newIdGenerator } from '../../src/idGenerator'
 import { collectIds } from '../util'
 import { fileSourceResolver } from '../../src/parsing/sourceResolver'
-import { errorTreeToString, isUnitType, moduleToString } from '../../src'
 
 // read a Quint file from the test data directory
 function readQuint(name: string): string {
@@ -135,38 +134,7 @@ describe('parsing', () => {
   })
 
   it('parses match expressions', () => {
-    const parseToString: (mod: string) => string = mod => {
-      const result = parsePhase1fromText(newIdGenerator(), mod, 'test')
-      assert(result.isRight(), result.isLeft() ? result.value.map(err => err.explanation).join('\n') : 'impossible')
-      return moduleToString(result.value.modules[0])
-    }
-    const multiLine = parseToString(`
-      module SumTypes {
-        val ex = match foo {
-          | A    => 0
-          | B(n) => n
-          | _    => -1
-        }
-      }
-    `)
-    assert.deepEqual(
-      multiLine,
-      `module SumTypes {
-  val ex = match foo { A(_) => 0 | B(n) => n | _ => iuminus(1) }
-}`
-    )
-
-    const singleLine = parseToString(`
-      module SumTypes {
-        val ex = match foo { A => 0 | B(n) => n | _ => -1 }
-      }
-    `)
-    assert.deepEqual(
-      singleLine,
-      `module SumTypes {
-  val ex = match foo { A(_) => 0 | B(n) => n | _ => iuminus(1) }
-}`
-    )
+    parseAndCompare('_1044matchExpression')
   })
 })
 
