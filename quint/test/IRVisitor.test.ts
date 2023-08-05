@@ -134,18 +134,16 @@ describe('walkModule', () => {
       }
     }
 
-    const enteredTypes = [
+    const expectedTypes = [
       'int', // var a: int
       'int', // const B: int
       'int', // type MY_TYPE = int
     ]
 
-    const exitedTypes = enteredTypes
-
     const visitor = new TestVisitor()
     walkModule(visitor, quintModule)
-    // assert.deepEqual(visitor.entered.map(typeToString), enteredTypes)
-    assert.deepEqual(visitor.exited.map(typeToString), exitedTypes)
+    assert.deepEqual(expectedTypes, visitor.entered.map(typeToString))
+    assert.deepEqual(expectedTypes, visitor.exited.map(typeToString))
   })
 
   describe('visiting specific definitions', () => {
