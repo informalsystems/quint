@@ -903,8 +903,8 @@ export class ToIrListener implements QuintListener {
     const matchId = this.getId(ctx)
     // We will have one expression for each match case, plus the expression we are matching against
     const exprs = popMany(this.exprStack, ctx._matchCase.length + 1)
-    // The first expression is the one we are matching on
-    // the syntax rules ensure that at least this expression is given
+    // The first expression is the one we are matching on.
+    // The syntax rules ensure that at least this expression is given.
     const expr = exprs.shift()!
     // after  shifting off the match expr, the remaing exprs are in eache case
     const cases: MatchCase[] = zip(exprs, ctx._matchCase).map(([caseExpr, caseCtx]) => {
