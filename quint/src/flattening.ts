@@ -373,7 +373,7 @@ class Flatenner {
     }
   }
 
-  // Gives us a more narrowly typed transformation on lambdsas, so we can use the same functionality for
+  // Gives us a more narrowly typed transformation on lambdas, so we can use the same functionality for
   // match exprssions.
   private addNamespaceToLambda(id: bigint, name: string | undefined, lam: QuintLambda): QuintLambda {
     return {
