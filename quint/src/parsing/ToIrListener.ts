@@ -906,7 +906,7 @@ export class ToIrListener implements QuintListener {
     // The first expression is the one we are matching on.
     // The syntax rules ensure that at least this expression is given.
     const expr = exprs.shift()!
-    // after  shifting off the match expr, the remaing exprs are in eache case
+    // after  shifting off the match expr, the remaing exprs are must be paired with each case
     const cases: MatchCase[] = zip(exprs, ctx._matchCase).map(([caseExpr, caseCtx]) => {
       const caseId = this.getId(caseCtx)
       let label: string
