@@ -901,7 +901,7 @@ export class ToIrListener implements QuintListener {
   // }
   exitMatchSumExpr(ctx: p.MatchSumExprContext) {
     const matchId = this.getId(ctx)
-    // We will have one expression for each match case, plus the
+    // We will have one expression for each match case, plus the expression we are matching against
     const exprs = popMany(this.exprStack, ctx._matchCase.length + 1)
     // The first expression is the one we are matching on
     // the syntax rules ensure that at least this expression is given
