@@ -57,7 +57,7 @@ typeDef
     | 'type' typeName=qualId '=' '|'? typeSumVariant ('|' typeSumVariant)*  # typeSumDef
     ;
 
-// A single variant case in a sum type definition or match statement.
+// A single variant case in a sum type definition.
 //
 // E.g., `A(t)` or `A`.
 typeSumVariant : sumLabel=simpleId["variant label"] ('(' type ')')? ;
