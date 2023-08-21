@@ -12,7 +12,7 @@
  * @module
  */
 
-import { QuintType } from '../quintTypes'
+import { QuintType } from '../ir/quintTypes'
 
 /**
  * Possible kinds for definitions
@@ -147,10 +147,6 @@ export const builtinNames = [
   'enabled',
   'weakFair',
   'strongFair',
-  'guarantees',
-  'existsConst',
-  'forallConst',
-  'chooseConst',
   'Bool',
   'Int',
   'Nat',
