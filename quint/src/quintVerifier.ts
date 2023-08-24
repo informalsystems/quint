@@ -14,7 +14,7 @@
  * @module
  */
 
-import { Either, chain, left, right } from '@sweet-monads/either'
+import { Either, chain, left, right, fromPromise } from '@sweet-monads/either'
 import { ErrorMessage } from './parsing/quintParserFrontend'
 import { spawnSync } from 'child_process'
 import path from 'path'
@@ -22,9 +22,9 @@ import fs from 'fs'
 import os from 'os'
 import semver from 'semver'
 import fetch from 'node-fetch'
-import gunzip from 'gunzip-maybe'
+import { pipeline } from 'stream/promises'
 import child_process from 'child_process'
-import tar from 'tar-fs'
+import * as tar from 'tar'
 import * as grpc from '@grpc/grpc-js'
 import * as proto from '@grpc/proto-loader'
 import * as protobufDescriptor from 'protobufjs/ext/descriptor'
@@ -152,9 +152,14 @@ type ShaiPkg = {
   }
 }
 
+// Helper to construct errors data
+function errData(explanation: string, errors: ErrorMessage[] = [], traces?: ItfTrace[]): VerifyError {
+  return { explanation, errors, traces }
+}
+
 // Helper to construct errors results
 function err<A>(explanation: string, errors: ErrorMessage[] = [], traces?: ItfTrace[]): VerifyResult<A> {
-  return left({ explanation, errors, traces })
+  return left(errData(explanation, errors, traces))
 }
 
 function findApalacheDistribution(): VerifyResult<ApalacheDist> {
@@ -318,46 +323,26 @@ async function retryWithTimeout<T>(f: () => Promise<T>): Promise<VerifyResult<T>
 /**
  * Connect to the Apalache server, and verify the connection by pinging the server for up to 5 seconds.
  *
+ * If `retry === true`, then we will keep retrying the connection, otherwise we just try to ping once.
+ *
  * @returns A promise resolving to:
  *    - a `right<Apalache>` if the connection is successful, or
  *    - a `left<VerifyError>` if either the connection attempt is unsuccessful or pinging timed out.
  */
-async function tryConnect(): Promise<VerifyResult<Apalache>> {
+async function tryConnect(retry: Boolean): Promise<VerifyResult<Apalache>> {
   // Attempt to load proto definition:
   // - if APALACHE_DIST is set, from the Apalache distribution
   // - otherwise, via gRPC reflection
   const protoDefResult: VerifyResult<proto.PackageDefinition> = process.env.APALACHE_DIST
     ? findApalacheDistribution().chain(loadProtoDefViaDistribution)
     : await loadProtoDefViaReflection()
-  // Load gRPC client
-  const maybeCmdExecutor = protoDefResult.map(loadGrpcClient)
-  const pingResult = await maybeCmdExecutor.asyncChain(cmdExecutor =>
-    // Try to ping the server, with a timeout
-    retryWithTimeout(() => cmdExecutor.ping())
-  )
-  return pingResult.chain(_ => maybeCmdExecutor.map(apalache))
-}
-
-/**
- * Fetch the asset at `url` and pipe the response body through `gunzip` and `untar`.
- *
- * @returns A promise resolving to:
- *    - a `right<string>` equal to `unpackPath`, or
- *    - a `left<VerifyError>` indicating an error during fetching or unpacking.
- */
-async function fetchAndUnpack(url: string, unpackPath: string): Promise<VerifyResult<string>> {
-  fs.mkdirSync(unpackPath, { recursive: true })
-
-  return fetch(url).then(
-    res =>
-      new Promise((resolve, _) => {
-        const untar = tar.extract(unpackPath)
-        res.body.pipe(gunzip()).pipe(untar)
-        untar.on('close', () => resolve(right(unpackPath)))
-        untar.on('error', error => resolve(err(`Error unpacking .tgz: ${error}`)))
-      }),
-    error => err(`Error fetching ${url}: ${error}`)
-  )
+  return protoDefResult.map(loadGrpcClient).asyncChain(async cmdExecutor => {
+    // Try to ping the server with a timeout
+    const ping = await (retry
+      ? retryWithTimeout(() => cmdExecutor.ping())
+      : (await fromPromise(cmdExecutor.ping())).mapLeft(_ => errData('connection failed with no timeout')))
+    return ping.map(_ => apalache(cmdExecutor))
+  })
 }
 
 /**
@@ -369,16 +354,13 @@ async function fetchAndUnpack(url: string, unpackPath: string): Promise<VerifyRe
  */
 async function fetchApalache(): Promise<VerifyResult<string>> {
   // Fetch Github releases, find latest that satisfies `APALACHE_VERSION_TAG`
-  return octokitRequest('GET /repos/informalsystems/apalache/releases').then(
-    async resp => {
+  const respResult = await fromPromise(octokitRequest('GET /repos/informalsystems/apalache/releases'))
+
+  return respResult
+    .mapLeft(error => errData(`Fetching Apalache releases failed: ${error}`))
+    .asyncChain(async resp => {
       const releases = resp.data.map((element: { tag_name: string }) => element.tag_name)
       const latestTaggedVersion = semver.maxSatisfying(releases, APALACHE_VERSION_TAG)
-      // Filter release response to get dist archive asset URL
-      const taggedReleases = resp.data.filter(
-        (element: { tag_name: string }) => element.tag_name == latestTaggedVersion
-      )
-      const tgzAssets = taggedReleases[0].assets.filter((asset: { name: string }) => asset.name == APALACHE_TGZ)
-      const downloadUrl = tgzAssets[0].browser_download_url
       // Check if we have already downloaded this release
       const unpackPath = path.join(os.homedir(), '.quint', `apalache-dist-${latestTaggedVersion}`)
       const apalacheBinary = path.join(unpackPath, 'apalache', 'bin', 'apalache-mc')
@@ -387,13 +369,16 @@ async function fetchApalache(): Promise<VerifyResult<string>> {
         console.log(`Using existing Apalache distribution in ${unpackPath}`)
         return right(unpackPath)
       } else {
+        fs.mkdirSync(unpackPath, { recursive: true })
         // Download Apalache dist
-        console.log(`Downloading ${downloadUrl}`)
-        return await fetchAndUnpack(downloadUrl, unpackPath)
+        const downloadUrl = `https://github.com/informalsystems/apalache/releases/download/${latestTaggedVersion}/apalache.tgz`
+        console.log(`Downloading updated Apalache distribution from ${downloadUrl}`)
+        const fetchResult = await fromPromise(
+          fetch(downloadUrl).then(res => pipeline(res.body, tar.extract({ cwd: unpackPath, strict: true })))
+        )
+        return fetchResult.mapLeft(error => errData(`Error fetching ${downloadUrl}: ${error}`)).map(_ => unpackPath)
       }
-    },
-    error => err(`Fetching Apalache releases failed: ${error}`)
-  )
+    })
 }
 
 /**
@@ -408,14 +393,14 @@ async function fetchApalache(): Promise<VerifyResult<string>> {
  */
 async function connect(): Promise<VerifyResult<Apalache>> {
   // Try to connect to Shai, and try to ping it
-  const connectionResult = await tryConnect()
+  const connectionResult = await tryConnect(false)
   // We managed to connect, simply return this connection
   if (connectionResult.isRight()) {
     return connectionResult
   }
 
   // Connection or pinging failed, download Apalache
-  console.log("Couldn't connect to Apalache, downloading latest supported release")
+  console.log("Couldn't connect to Apalache")
   const distDir = await fetchApalache()
   // Launch Apalache from download
   return distDir
@@ -449,7 +434,7 @@ async function connect(): Promise<VerifyResult<Apalache>> {
           apalache.on('error', error => resolve(err(`Failed to launch Apalache server: ${error.message}`)))
         })
     )
-    .then(chain(tryConnect))
+    .then(chain(() => tryConnect(true)))
 }
 
 /**
