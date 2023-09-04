@@ -75,21 +75,11 @@ module hashes {
     input._bytes.foldl((0, false),
       (p, b) =>
         if (b == -1) {
-          if (p._2) {
-            // the marker for the end of a hash sequence
-            (p._1 + HASH_LEN, false)
-           } else {
-            // the marker for the start of a hash sequence
-            (p._1, true)
-           }
+          val newLen = p._1 + if (p._2) HASH_LEN else 0 // We add the total hash length at the terminator
+          (newLen, not(p._2)) // toggle the "in hash" flag
         } else {
-          if (p._2) {
-            // in hash, keep the length
-            (p._1, true)
-          } else {
-            // in plain text
-            (p._1 + 1, false)
-          }
+          val newLen = p._1 + if (p._2) 0 else 1 // if in hash, the total hash length gets added in the terminator
+          (newLen, p._2)
         }
     )._1
   }
