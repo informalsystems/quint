@@ -1249,30 +1249,6 @@ export class CompilerVisitor implements IRVisitor {
     this.compStack.push(mkFunComputable(lazyCompute))
   }
 
-  // translate A.repeated(i)
-  //
-  // TODO: Soon to be removed: https://github.com/informalsystems/quint/issues/848
-  private translateRepeated(app: ir.QuintApp): void {
-    if (this.compStack.length < 2) {
-      this.errorTracker.addCompileError(app.id, `Not enough arguments on stack for "${app.opcode}"`)
-      return
-    }
-    const [action, niterations] = this.compStack.splice(-2)
-
-    const lazyCompute = () => {
-      // compute the number of iterations and repeat 'action' that many times
-      return niterations
-        .eval()
-        .map(num => {
-          const n = Number((num as RuntimeValue).toInt())
-          return this.chainAllOrThen(new Array(n).fill(action), 'then')
-        })
-        .join()
-    }
-
-    this.compStack.push(mkFunComputable(lazyCompute))
-  }
-
   // translate n.reps(A)
   private translateReps(app: ir.QuintApp): void {
     if (this.compStack.length < 2) {
