@@ -8,15 +8,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## UNRELEASED
 
 ### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security
 
-- `quint repl` produces an evaluation trace on errors too (#1056)
-- `S.setOfMaps(Int).oneOf()` is now supported (#1060)
+## v0.14.1 -- 2023-08-28
+
+### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+
+- Fix problem with broken dependency by pinning versions (#1129)
+
+### Security
+
+## v0.14.0 -- 2023-08-25
+
+### Added
+
+- The `verify` command now automatically acquires the Apalache distribution and
+  starts the server, if the server is not already running (#1115)
 
 ### Changed
 
-- **Breaking**: the behavior of `oneOf` has changed, existing seed values for `quint test`
-  can exhibit different behavior than before (#1060)
+- Module management was rewritten, and instances should behave much better in
+  the simulator, REPL, and in integration with Apalache (#1119)
+
+### Deprecated
+### Removed
+### Fixed
+
+- Fixed a problem where definitions were not properly loaded in the REPL when
+  the main module was provided in the CLI argument (#1112)
+
+### Security
+
+## v0.13.0 -- 2023-08-03
+
+### Added
+
+- `quint repl` produces an evaluation trace on errors too (#1056)
+- `S.setOfMaps(Int).oneOf()` is now supported (#1060)
 - `quint run` produces a friendlier message when it meets a `const` (#1050)
+
+### Changed
+
+- The behavior of `oneOf` has changed, existing seed values for `quint test`
+  can exhibit different behavior than before (#1060)
+- `APALACHE_DIST` no longer needed to run `quint verify` (#1075)
+- Record field labels that include `::` are now illegal and raise a syntax error
+  (#1086)
 
 ### Deprecated
 ### Removed
@@ -33,6 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   server (#1074)
 - Fix a problem where some definitions would have to be exported from the
   main module in order for the REPL and the simulator to load them (#1039 and #1051)
+- Invalid arities when applying record and tuple operator no longer cause a crash (#1054)
 
 ### Security
 

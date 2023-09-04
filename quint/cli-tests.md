@@ -70,17 +70,17 @@ Temporarily disabled.
 ### OK on parse Tendermint
 
 <!-- !test check Tendermint -->
-    quint parse ../examples/cosmos/tendermint/TendermintAcc005.qnt
+    quint parse ../examples/cosmos/tendermint/Tendermint.qnt
 
 ### OK on typecheck Tendermint
 
 <!-- !test check Tendermint - Types & Effects -->
-    quint typecheck ../examples/cosmos/tendermint/TendermintAcc005.qnt
+    quint typecheck ../examples/cosmos/tendermint/Tendermint.qnt
 
 ### OK on test Tendermint
 
 <!-- !test check Tendermint - Test -->
-    quint test --max-samples=100 --main InstanceTests ../examples/cosmos/tendermint/TendermintAcc005.qnt
+    quint test --max-samples=100 --main TendermintModels ../examples/cosmos/tendermint/TendermintModels.qnt
 
 ### OK on parse imports
 
@@ -278,13 +278,13 @@ fi
       --invariant=noBuyInDrawingInv --main=lotteryMempool \
       ../examples/solidity/icse23-fig7/lottery.qnt
 
-### OK on run BinSearch10
+### OK on run BinSearch
 
 <!-- !test exit 0 -->
 <!-- !test check BinSearch - Run -->
     quint run --max-samples=10000 --max-steps=10 \
-      --invariant=Postcondition \
-      ../examples/classic/sequential/BinSearch/BinSearch10.qnt
+      --invariant=Postcondition --main=BinSearch10 \
+      ../examples/classic/sequential/BinSearch/BinSearch.qnt
 
 ### OK on test simplePonzi
 

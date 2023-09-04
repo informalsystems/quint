@@ -76,16 +76,16 @@ error: parsing failed
 <!-- !test in module AST is output -->
 ```
 quint parse --out parse-out-example.json ../examples/language-features/tuples.qnt
-jq '.modules[0].name, .table."7".reference' < parse-out-example.json
+jq '.modules[0].name, .table."7".id' < parse-out-example.json
 rm parse-out-example.json
 ```
 
-`"Tuples"` is the name of the module given in the IR and 5 is the reference for
+`"tuples"` is the name of the module given in the IR and 5 is the reference for
 in the lookup table for the expression with ID 7:
 
 <!-- !test out module AST is output -->
 ```
-"Tuples"
+"tuples"
 5
 ```
 
@@ -198,6 +198,20 @@ echo "init" | quint -r ../examples/language-features/counters.qnt::counters 2>&1
 >>> true
 >>> 
 ```
+
+### Repl loads a file and a module with -r when the module is not the last one
+
+<!-- !test in repl loads module that is not the last -->
+```
+echo "init" | quint -r ../examples/language-features/imports.qnt::E 2>&1 | tail -n +3
+```
+
+<!-- !test out repl loads module that is not the last -->
+```
+>>> true
+>>> 
+```
+
 
 ### Repl loads a file with .load
 
@@ -850,11 +864,6 @@ exit $exit_code
 <!-- !test exit 1 -->
 <!-- !test out run uninitialized -->
 ```
-An example execution:
-
-[failure] Found an issue (duration).
-Use --seed=0x0 to reproduce.
-Use --verbosity=3 to show executions.
 <module_input>:2:3 - error: QNT500: Uninitialized const N. Use: import <moduleName>(N=<value>).*
 2:   const N: int
      ^^^^^^^^^^^^
@@ -863,5 +872,5 @@ Use --verbosity=3 to show executions.
 5:   action init = { x' = N }
                           ^
 
-error: Runtime error
+error: run failed
 ```
