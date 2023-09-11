@@ -252,20 +252,17 @@ export class CompilerVisitor implements IRVisitor {
       // Both input1 and input2 wrap step, but in their individual computables.
       const unwrappedValue = boundValue
       const app: ir.QuintApp = { id: opdef.id, kind: 'app', opcode: opdef.name, args: [] }
-      const evalApp: ir.QuintApp = { id: 0n, kind: 'app', opcode: 'q::eval', args: [ app ] }
+      const evalApp: ir.QuintApp = { id: 0n, kind: 'app', opcode: '_', args: [ app ] }
       boundValue = {
         eval: () => {
           if (app.opcode === 'q::input') {
             this.execListener.onUserOperatorCall(evalApp)
+            // do not return from q::eval, as it may span over multiple frames
           } else {
             this.execListener.onUserOperatorCall(app)
           }
           const r: Maybe<EvalResult> = unwrappedValue.eval()
-          if (app.opcode === 'q::input') {
-            this.execListener.onUserOperatorReturn(evalApp, [ rv.mkStr('...') ], r)
-          } else {
-            this.execListener.onUserOperatorReturn(app, [], r)
-          }
+          this.execListener.onUserOperatorReturn(app, [], r)
           return r
         },
       }
@@ -1236,8 +1233,11 @@ export class CompilerVisitor implements IRVisitor {
 
       // switch to the next frame, when implementing A.then(B)
       if (kind === 'then' && nactionsLeft > 0) {
+        const oldState: RuntimeValue = this.varsToRecord()
         this.shiftVars()
         this.extendTrace()
+        const newState: RuntimeValue = this.varsToRecord()
+        this.execListener.onNextState(oldState, newState)
       }
     }
 
