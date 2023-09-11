@@ -21,6 +21,14 @@ import { rv } from './impl/runtimeValue'
  * A snapshot of how a single operator (e.g., an action) was executed.
  * In stack-based languages, this usually corresponds to a stack frame.
  * In Quint, it is simply the applied operator and the arguments.
+ * 
+ * In addition to that, we use a top-level execution frame to represent a trace:
+ * 
+ *  - `subframes` stores the executed actions, e.g., `init` and `step`
+ *  - `result` stores the result of the overall computation:
+ *    just(false), just(true), or none().
+ *  - `args` stores the visited states. Note that |subframes| = |args|.
+ *  - `app` is a dummy operator, e.g., an empty record.
  */
 export interface ExecutionFrame {
   /**
@@ -39,20 +47,6 @@ export interface ExecutionFrame {
    * The frames of the operators that were called by this operator.
    */
   subframes: ExecutionFrame[]
-}
-
-/**
- * A trace that is recorded when evaluating an action or an expression.
- * Since we are following the operator hierarchy, this trace is not just
- * a list, but it is a tree with ordered children.
- */
-export interface ExecutionTree {
-  /**
-   * The top-level frames that were produced in an execution.
-   * Normally, frames is a single-element array. However, the simulator
-   * may produce multiple frames, when it executes several actions in a row.
-   */
-  frames: ExecutionFrame[]
 }
 
 /**
@@ -227,7 +221,7 @@ class TraceRecorderImpl implements TraceRecorder {
     }
   }
 
-  onUserOperatorReturn(app: QuintApp, args: EvalResult[], result: Maybe<EvalResult>) {
+  onUserOperatorReturn(_app: QuintApp, args: EvalResult[], result: Maybe<EvalResult>) {
     if (verbosity.hasUserOpTracking(this.verbosityLevel)) {
       const top = this.frameStack.pop()
       if (top) {

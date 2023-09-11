@@ -35,6 +35,11 @@ import { flattenModules } from '../flattening/fullFlattener'
 export const lastTraceName = 'q::lastTrace'
 
 /**
+ * The name of a definition that wraps the user input, e.g., in REPL.
+ */
+//export const inputDefName = 'q::input'
+
+/**
  * A compilation context returned by 'compile'.
  */
 export interface CompilationContext {

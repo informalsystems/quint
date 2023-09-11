@@ -252,11 +252,20 @@ export class CompilerVisitor implements IRVisitor {
       // Both input1 and input2 wrap step, but in their individual computables.
       const unwrappedValue = boundValue
       const app: ir.QuintApp = { id: opdef.id, kind: 'app', opcode: opdef.name, args: [] }
+      const evalApp: ir.QuintApp = { id: 0n, kind: 'app', opcode: 'q::eval', args: [ app ] }
       boundValue = {
         eval: () => {
-          this.execListener.onUserOperatorCall(app)
-          const r = unwrappedValue.eval()
-          this.execListener.onUserOperatorReturn(app, [], r)
+          if (app.opcode === 'q::input') {
+            this.execListener.onUserOperatorCall(evalApp)
+          } else {
+            this.execListener.onUserOperatorCall(app)
+          }
+          const r: Maybe<EvalResult> = unwrappedValue.eval()
+          if (app.opcode === 'q::input') {
+            this.execListener.onUserOperatorReturn(evalApp, [ rv.mkStr('...') ], r)
+          } else {
+            this.execListener.onUserOperatorReturn(app, [], r)
+          }
           return r
         },
       }
@@ -1221,7 +1230,7 @@ export class CompilerVisitor implements IRVisitor {
         // Restore the values of the next variables,
         // as evaluation was not successful.
         this.recoverNextVars(savedValues)
-        this.resetTrace(savedTrace.map(rv.mkList))
+        this.resetTrace(just(rv.mkList(savedTrace)))
         break
       }
 
@@ -1499,14 +1508,14 @@ export class CompilerVisitor implements IRVisitor {
                     // drop the run. Otherwise, we would have a lot of false
                     // positives, which look like deadlocks but they are not.
                     this.execListener.onUserOperatorReturn(nextApp, [], nextResult)
-                    this.execListener.onRunReturn(just(rv.mkBool(true)), this.trace().or(just(rv.mkList([]))).value)
+                    this.execListener.onRunReturn(just(rv.mkBool(true)), this.trace().toArray())
                     break
                   }
                 }
               }
             }
             const outcome = !failure ? just(rv.mkBool(!errorFound)) : none()
-            this.execListener.onRunReturn(outcome, this.trace().or(just(rv.mkList([]))).value)
+            this.execListener.onRunReturn(outcome, this.trace().toArray())
             // recover the state variables
             this.recoverVars(vars)
             this.recoverNextVars(nextVars)
@@ -1520,9 +1529,13 @@ export class CompilerVisitor implements IRVisitor {
     this.compStack.push(mkFunComputable(doRun))
   }
 
-  private trace() {
+  private trace(): List<RuntimeValue> {
     let trace = this.shadowVars.find(r => r.name === lastTraceName)
-    return trace ? trace.registerValue.map(t => t.toList()) : none()
+    if (trace && trace.registerValue.isJust()) {
+      return trace.registerValue.value.toList()
+    } else {
+      return List<RuntimeValue>()
+    }
   }
 
   private resetTrace(value: Maybe<RuntimeValue> = just(rv.mkList([]))) {
@@ -1535,13 +1548,13 @@ export class CompilerVisitor implements IRVisitor {
   private extendTrace() {
     let trace = this.shadowVars.find(r => r.name === lastTraceName)
     if (trace) {
-      const extended = this.trace().map(t => rv.mkList(t.push(this.varsToRecord())))
-      trace.registerValue = extended
+      const extended = this.trace().push(this.varsToRecord())
+      trace.registerValue = just(rv.mkList(extended))
     }
   }
 
   // convert the current variable values to a record
-  private varsToRecord() {
+  private varsToRecord(): RuntimeValue {
     const map: [string, RuntimeValue][] = this.vars
       .filter(r => r.registerValue.isJust())
       .map(r => [r.name, r.registerValue.value as RuntimeValue])
