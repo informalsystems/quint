@@ -38,8 +38,10 @@ import { ErrorCode } from '../../quintError'
 import { inputDefName, lastTraceName } from '../compile'
 import { unreachable } from '../../util'
 
-// TODO: if we replace 'q::input' with inputDefName, everything breaks
-const specialNames = ['q::input', 'q::runResult', 'q::nruns', 'q::nsteps', 'q::init', 'q::next', 'q::inv']
+// Internal names in the compiler, which have special treatment.
+// For some reason, if we replace 'q::input' with inputDefName, everything breaks.
+// What kind of JS magic is that?
+const specialNames = [ 'q::input', 'q::runResult', 'q::nruns', 'q::nsteps', 'q::init', 'q::next', 'q::inv' ]
 
 /**
  * Returns a Map containing the built-in Computable objects for the Quint language.
