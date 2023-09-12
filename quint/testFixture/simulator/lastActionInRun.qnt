@@ -1,3 +1,5 @@
+// See:
+// https://github.com/informalsystems/quint/issues/1133
 module lastActionInRun {
     var s: str
 
