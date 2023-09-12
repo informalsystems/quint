@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 ### Changed
+
+ - Introduce frames on actions in the verbose output. The verbose output has changed! (#1158)
+
 ### Deprecated
 ### Removed
 ### Fixed
