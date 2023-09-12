@@ -241,8 +241,7 @@ describe('repl ok', () => {
       |5
       |
       |[Frame 0]
-      |q::eval("...") => 5
-      |└─ plus(2, 3) => 5
+      |plus(2, 3) => 5
       |
       |>>> `
     )
@@ -264,8 +263,7 @@ describe('repl ok', () => {
       |>>> div(2, 0)
       |
       |[Frame 0]
-      |q::eval("...") => none
-      |└─ div(2, 0) => none
+      |div(2, 0) => none
       |
       |runtime error: error: Division by zero
       |div(2, 0)
@@ -300,7 +298,7 @@ describe('repl ok', () => {
       |true
       |
       |[Frame 0]
-      |q::eval("...") => true
+      |_ => true
       |
       |>>> action step = x' = x + 1
       |
@@ -312,17 +310,15 @@ describe('repl ok', () => {
       |true
       |
       |[Frame 0]
-      |q::eval("...") => true
-      |└─ input1() => true
-      |   └─ step() => true
+      |input1 => true
+      |└─ step => true
       |
       |>>> input2
       |true
       |
       |[Frame 0]
-      |q::eval("...") => true
-      |└─ input2() => true
-      |   └─ step() => true
+      |input2 => true
+      |└─ step => true
       |
       |>>> `
     )
@@ -658,13 +654,13 @@ describe('repl ok', () => {
       |true
       |
       |[Frame 0]
-      |init() => true
+      |init => true
       |
       |[Frame 1]
-      |step() => true
+      |step => true
       |
       |[Frame 2]
-      |step() => true
+      |step => true
       |
       |>>> `
     )
