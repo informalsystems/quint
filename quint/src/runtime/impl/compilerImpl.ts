@@ -41,7 +41,7 @@ import { unreachable } from '../../util'
 // Internal names in the compiler, which have special treatment.
 // For some reason, if we replace 'q::input' with inputDefName, everything breaks.
 // What kind of JS magic is that?
-const specialNames = [ 'q::input', 'q::runResult', 'q::nruns', 'q::nsteps', 'q::init', 'q::next', 'q::inv' ]
+const specialNames = ['q::input', 'q::runResult', 'q::nruns', 'q::nsteps', 'q::init', 'q::next', 'q::inv']
 
 /**
  * Returns a Map containing the built-in Computable objects for the Quint language.
@@ -255,7 +255,7 @@ export class CompilerVisitor implements IRVisitor {
       // Both input1 and input2 wrap step, but in their individual computables.
       const unwrappedValue = boundValue
       const app: ir.QuintApp = { id: opdef.id, kind: 'app', opcode: opdef.name, args: [] }
-      const evalApp: ir.QuintApp = { id: 0n, kind: 'app', opcode: '_', args: [ app ] }
+      const evalApp: ir.QuintApp = { id: 0n, kind: 'app', opcode: '_', args: [app] }
       boundValue = {
         eval: () => {
           if (app.opcode === inputDefName) {

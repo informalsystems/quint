@@ -21,10 +21,10 @@ import { rv } from './impl/runtimeValue'
  * A snapshot of how a single operator (e.g., an action) was executed.
  * In stack-based languages, this usually corresponds to a stack frame.
  * In Quint, it is simply the applied operator and the arguments.
- * 
+ *
  * In addition to that, we use a top-level execution frame to represent
  * the execution history:
- * 
+ *
  *  - `subframes` stores the executed actions, e.g., `init` and `step`
  *  - `result` stores the result of the overall computation:
  *    just(false), just(true), or none().
@@ -228,7 +228,7 @@ class TraceRecorderImpl implements TraceRecorder {
       const newFrame = { app: app, args: [], result: none(), subframes: [] }
       if (this.frameStack.length == 0) {
         // this should not happen, as there is always bottomFrame, but let's handle it
-        this.frameStack = [ newFrame ]
+        this.frameStack = [newFrame]
       } else if (this.frameStack.length === 2 && this.frameStack[1].app.opcode === '_') {
         // A placeholder frame created from `q::input` or `then`. Modify in place.
         const frame = this.frameStack[1]
@@ -309,7 +309,7 @@ class TraceRecorderImpl implements TraceRecorder {
       const dummy: QuintApp = { id: 0n, kind: 'app', opcode: '_', args: [] }
       const newFrame = { app: dummy, args: [], result: none(), subframes: [] }
       // forget the frames, except the bottom one, and push the new one
-      this.frameStack = [ this.frameStack[0], newFrame ]
+      this.frameStack = [this.frameStack[0], newFrame]
       // connect the new frame to the topmost frame, which effects in a new step
       this.frameStack[0].subframes.push(newFrame)
     }
