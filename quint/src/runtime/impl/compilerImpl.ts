@@ -35,9 +35,10 @@ import * as ir from '../../ir/quintIr'
 import { RuntimeValue, rv } from './runtimeValue'
 import { ErrorCode } from '../../quintError'
 
-import { lastTraceName } from '../compile'
+import { inputDefName, lastTraceName } from '../compile'
 import { unreachable } from '../../util'
 
+// TODO: if we replace 'q::input' with inputDefName, everything breaks
 const specialNames = ['q::input', 'q::runResult', 'q::nruns', 'q::nsteps', 'q::init', 'q::next', 'q::inv']
 
 /**
@@ -255,7 +256,7 @@ export class CompilerVisitor implements IRVisitor {
       const evalApp: ir.QuintApp = { id: 0n, kind: 'app', opcode: '_', args: [ app ] }
       boundValue = {
         eval: () => {
-          if (app.opcode === 'q::input') {
+          if (app.opcode === inputDefName) {
             this.execListener.onUserOperatorCall(evalApp)
             // do not return from q::eval, as it may span over multiple frames
           } else {

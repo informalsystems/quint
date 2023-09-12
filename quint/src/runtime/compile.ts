@@ -184,7 +184,7 @@ export function compileExpr(
   // Create a definition to encapsulate the parsed expression.
   // Note that the expression may contain nested definitions.
   // Hence, we have to compile it via an auxilliary definition.
-  const def: QuintDef = { kind: 'def', qualifier: 'action', name: 'q::input', expr, id: state.idGen.nextId() }
+  const def: QuintDef = { kind: 'def', qualifier: 'action', name: inputDefName, expr, id: state.idGen.nextId() }
 
   return compileDecl(state, evaluationState, rng, def)
 }
