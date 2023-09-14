@@ -260,7 +260,7 @@ export class CompilerVisitor implements IRVisitor {
         eval: () => {
           if (app.opcode === inputDefName) {
             this.execListener.onUserOperatorCall(evalApp)
-            // do not return from '_', as it may span over multiple frames
+            // do not call onUserOperatorReturn on '_' later, as it may span over multiple frames
           } else {
             this.execListener.onUserOperatorCall(app)
           }

@@ -689,11 +689,11 @@ exit $exit_code
 ]
 ```
 
-### Test does not mean assignments (#1133)
+### Test does not skip assignments (#1133)
 
 See: https://github.com/informalsystems/quint/issues/1133
 
-FIXME
+FIXME: fix the traces found by the simulator once #1133 is resolved.
 
 <!-- !test in test1133 -->
 ```

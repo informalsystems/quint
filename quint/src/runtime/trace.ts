@@ -227,7 +227,9 @@ class TraceRecorderImpl implements TraceRecorder {
     if (verbosity.hasUserOpTracking(this.verbosityLevel)) {
       const newFrame = { app: app, args: [], result: none(), subframes: [] }
       if (this.frameStack.length == 0) {
-        // this should not happen, as there is always bottomFrame, but let's handle it
+        // this should not happen, as there is always bottomFrame,
+        // but we do not throw here, as trace collection is not the primary
+        // function of the simulator.
         this.frameStack = [newFrame]
       } else if (this.frameStack.length === 2 && this.frameStack[1].app.opcode === '_') {
         // A placeholder frame created from `q::input` or `then`. Modify in place.
