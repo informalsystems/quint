@@ -301,8 +301,9 @@ async function fetchApalache(verbosityLevel: number): Promise<VerifyResult<strin
     return right(apalacheBinary)
   } else {
     fs.mkdirSync(apalacheDistDir(), { recursive: true })
-    console.log(`Downloading Apalache distribution...`)
+    process.stdout.write('Downloading Apalache distribution...')
     const res = await downloadAndUnpackApalache()
+    process.stdout.write(' done.\n')
     return res.map(_ => apalacheBinary)
   }
 
@@ -437,8 +438,5 @@ function debugLog(verbosityLevel: number, msg: string) {
  */
 export async function verify(config: any, verbosityLevel: number): Promise<VerifyResult<void>> {
   const connectionResult = await connect(verbosityLevel)
-  return connectionResult.asyncChain(conn => {
-    console.log('Calling Apalache...')
-    return conn.check(config)
-  })
+  return connectionResult.asyncChain(conn => conn.check(config))
 }

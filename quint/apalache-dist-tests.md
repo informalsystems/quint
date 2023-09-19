@@ -31,12 +31,10 @@ quint verify ../examples/language-features/booleans.qnt | \
 
 <!-- !test out server not running -->
 ```
-Downloading Apalache distribution...
-Calling Apalache...
+Downloading Apalache distribution... done.
 [ok] No violation found (duration).
 You may increase --max-steps.
 Use --verbosity to produce more (or less) output.
-Calling Apalache...
 [ok] No violation found (duration).
 You may increase --max-steps.
 Use --verbosity to produce more (or less) output.
