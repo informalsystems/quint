@@ -9,7 +9,9 @@
  */
 
 /**
- * A generator of unique ids.
+ * A generator of unique ids. Every such generator should guarantee that
+ * it produces identifiers in a strict monotonically growing order.
+ * It's fine to have gaps in the sequences of produced identifiers.
  */
 export interface IdGenerator {
   /**

@@ -14,6 +14,7 @@ import {
   Loc,
   fromIrErrorMessage,
   parse,
+  parsePhase2sourceResolution,
   parsePhase3importAndNameResolution,
 } from '../parsing/quintParserFrontend'
 import { Computable, ComputableKind, kindName } from './runtime'
@@ -25,9 +26,10 @@ import { LookupTable } from '../names/base'
 import { AnalysisOutput, analyzeInc, analyzeModules } from '../quintAnalyzer'
 import { mkErrorMessage } from '../cliCommands'
 import { IdGenerator, newIdGenerator } from '../idGenerator'
-import { SourceLookupPath } from '../parsing/sourceResolver'
+import { SourceLookupPath, fileSourceResolver, stringSourceResolver } from '../parsing/sourceResolver'
 import { Rng } from '../rng'
 import { flattenModules } from '../flattening/fullFlattener'
+import { QuintError } from '../quintError'
 
 /**
  * The name of the shadow variable that stores the last found trace.
@@ -171,6 +173,7 @@ export function compile(
  * @param state - The current compilation state
  * @param evaluationState - The current evaluation state
  * @param rng - The random number generator
+ * @param mainPath the lookup path of the main module
  * @param expr - The Quint exporession to be compiled
  *
  * @returns A compilation context with the compiled expression or its errors
@@ -179,14 +182,14 @@ export function compileExpr(
   state: CompilationState,
   evaluationState: EvaluationState,
   rng: Rng,
+  mainPath: SourceLookupPath,
   expr: QuintEx
 ): CompilationContext {
   // Create a definition to encapsulate the parsed expression.
   // Note that the expression may contain nested definitions.
   // Hence, we have to compile it via an auxilliary definition.
   const def: QuintDef = { kind: 'def', qualifier: 'action', name: inputDefName, expr, id: state.idGen.nextId() }
-
-  return compileDecl(state, evaluationState, rng, def)
+  return compileDecl(state, evaluationState, rng, mainPath, def)
 }
 
 /**
@@ -197,6 +200,7 @@ export function compileExpr(
  * @param state - The current compilation state
  * @param evaluationState - The current evaluation state
  * @param rng - The random number generator
+ * @param mainPath the lookup path of the main module
  * @param decl - The Quint declaration to be compiled
  *
  * @returns A compilation context with the compiled definition or its errors
@@ -205,6 +209,7 @@ export function compileDecl(
   state: CompilationState,
   evaluationState: EvaluationState,
   rng: Rng,
+  mainPath: SourceLookupPath,
   decl: QuintDeclaration
 ): CompilationContext {
   if (state.originalModules.length === 0 || state.modules.length === 0) {
@@ -221,31 +226,64 @@ export function compileDecl(
   })
 
   const mainModule = state.modules.find(m => m.name === state.mainName)!
+  const resolver = fileSourceResolver()
+
+  // Generate a new identifier that is used as a watermark.
+  // All definitions that are above the watermark will be new definitions,
+  // which we have to compile.
+  const watermarkId = state.idGen.nextId()
+  console.log(`watermarkId = ${watermarkId}`)
 
   // We need to resolve names for this new definition. Incremental name
   // resolution is not our focus now, so just resolve everything again.
-  return parsePhase3importAndNameResolution({ modules: originalModules, sourceMap: state.sourceMap })
+  return parsePhase2sourceResolution(state.idGen, resolver, mainPath,
+       { modules: originalModules, sourceMap: state.sourceMap })
+    .chain(parsePhase3importAndNameResolution)
     .mapLeft(errorContextFromMessage(evaluationState.listener))
-    .map(({ table }) => {
-      const [analysisErrors, analysisOutput] = analyzeInc(state.analysisOutput, table, decl)
+    .map(({ sourceMap, table, modules: originalAndNewModules }) => {
+      // The most common case, originalAndNewModules == originalModules.
+      // However, if decl is an 'import ... from...',
+      // then originalModules is a subset of originalAndNewModules.
+      console.log(`new watermark = ${state.idGen.nextId()}`)
+      // find all new declarations that might have arrived via an import
+      const newDeclsToAnalyze =
+        originalAndNewModules.map(m => m.declarations.filter(d => d.id > watermarkId)).flat()
+      // the declaration has been there already, so we have to add it too
+      newDeclsToAnalyze.push(decl)
+      console.log(`Found ${newDeclsToAnalyze.length} definitions to analyze`)
+      const [analysisErrors, analysisOutput] =
+        newDeclsToAnalyze.reduce(([prevErr, prevOut], d) => {
+            const [err, out] = analyzeInc(prevOut, table, d)
+            return [ prevErr.concat(err), out ]
+          },
+          [ [] as [bigint, QuintError][], state.analysisOutput ]
+        )
 
+      // Flatten instances, imports, and exports.
+      // Note that 'import ... from' is resolved at phase 2.
+      // The important thing to remember is that flattening prunes unused definitions.
       const {
         flattenedModules: flatModules,
         flattenedTable,
         flattenedAnalysis,
-      } = flattenModules(originalModules, table, state.idGen, state.sourceMap, analysisOutput)
+      } = flattenModules(originalAndNewModules, table, state.idGen, sourceMap, analysisOutput)
+
+      flatModules.forEach(m => console.log(m.name))
 
       const newState = {
         ...state,
         analysisOutput: flattenedAnalysis,
         modules: flatModules,
-        originalModules: originalModules,
+        originalModules: originalAndNewModules,
+        sourceMap,
       }
 
-      const flatDefinitions = flatModules.find(m => m.name === state.mainName)!.declarations
-
       // Filter definitions that were not compiled yet
-      const defsToCompile = flatDefinitions.filter(d => !mainModule.declarations.some(d2 => d2.id === d.id))
+      const flatDefinitions = flatModules.find(m => m.name === state.mainName)!.declarations
+      const defsToCompileOld = flatDefinitions.filter(d => !mainModule.declarations.some(d2 => d2.id === d.id))
+      console.log(`Found ${defsToCompileOld.length} definitions to compile the old way`)
+      const defsToCompile = flatModules.map(m => m.declarations.filter(d => d.id > watermarkId)).flat()
+      console.log(`Found ${defsToCompile.length} definitions to compile`)
 
       const ctx = compile(newState, evaluationState, flattenedTable, rng.next, defsToCompile)
 
@@ -265,6 +303,7 @@ export function compileDecl(
  * @param code text that stores one or several Quint modules,
  *        which should be parseable without any context
  * @param mainName the name of the module that may contain state varibles
+ * @param mainPath the lookup path of the main module
  * @param execListener execution listener
  * @param rand the random number generator
  * @returns the compilation context

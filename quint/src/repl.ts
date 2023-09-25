@@ -549,9 +549,11 @@ function tryEval(out: writer, state: ReplState, newInput: string): boolean {
     // a comment or whitespaces
     return true
   }
+
+  const mainPath = fileSourceResolver().lookupPath(cwd(), 'repl.ts')
   // evaluate the input, depending on its type
   if (parseResult.kind === 'expr') {
-    const context = compileExpr(state.compilationState, state.evaluationState, state.rng, parseResult.expr)
+    const context = compileExpr(state.compilationState, state.evaluationState, state.rng, mainPath, parseResult.expr)
 
     if (context.syntaxErrors.length > 0 || context.compileErrors.length > 0 || context.analysisErrors.length > 0) {
       printErrors(out, state, context, newInput)
@@ -576,7 +578,7 @@ function tryEval(out: writer, state: ReplState, newInput: string): boolean {
   }
   if (parseResult.kind === 'declaration') {
     // compile the module and add it to history if everything worked
-    const context = compileDecl(state.compilationState, state.evaluationState, state.rng, parseResult.decl)
+    const context = compileDecl(state.compilationState, state.evaluationState, state.rng, mainPath, parseResult.decl)
 
     if (
       context.evaluationState.context.size === 0 ||

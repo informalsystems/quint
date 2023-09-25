@@ -26,12 +26,12 @@ import { newEvaluationState } from '../../src/runtime/impl/compilerImpl'
 
 // Use a global id generator, limited to this test suite.
 const idGen = newIdGenerator()
+const mockLookupPath = stringSourceResolver(new Map()).lookupPath('/', './mock')
 
 // Compile an expression, evaluate it, convert to QuintEx, then to a string,
 // compare the result. This is the easiest path to test the results.
 function assertResultAsString(input: string, expected: string | undefined) {
   const moduleText = `module __runtime { val ${inputDefName} = ${input} }`
-  const mockLookupPath = stringSourceResolver(new Map()).lookupPath('/', './mock')
   const context = compileFromCode(idGen, moduleText, '__runtime', mockLookupPath, noExecutionListener, newRng().next)
 
   assert.isEmpty(context.syntaxErrors, `Syntax errors: ${context.syntaxErrors.map(e => e.explanation).join(', ')}`)
@@ -1041,7 +1041,7 @@ describe('incremental compilation', () => {
         compilationState.sourceMap
       )
       const expr = parsed.kind === 'expr' ? parsed.expr : undefined
-      const context = compileExpr(compilationState, evaluationState, dummyRng, expr!)
+      const context = compileExpr(compilationState, evaluationState, dummyRng, mockLookupPath, expr!)
 
       assert.deepEqual(context.compilationState.analysisOutput.types.get(expr!.id)?.type, { kind: 'int', id: 3n })
 
@@ -1060,7 +1060,7 @@ describe('incremental compilation', () => {
         compilationState.sourceMap
       )
       const def = parsed.kind === 'declaration' ? parsed.decl : undefined
-      const context = compileDecl(compilationState, evaluationState, dummyRng, def!)
+      const context = compileDecl(compilationState, evaluationState, dummyRng, mockLookupPath, def!)
 
       assert.deepEqual(context.compilationState.analysisOutput.types.get(def!.id)?.type, { kind: 'int', id: 3n })
 
@@ -1081,7 +1081,7 @@ describe('incremental compilation', () => {
         compilationState.sourceMap
       )
       const decl = parsed.kind === 'declaration' ? parsed.decl : undefined
-      const context = compileDecl(compilationState, evaluationState, dummyRng, decl!)
+      const context = compileDecl(compilationState, evaluationState, dummyRng, mockLookupPath, decl!)
 
       assert.sameDeepMembers(context.syntaxErrors, [
         {
