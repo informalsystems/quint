@@ -548,8 +548,7 @@ describe('compiling specs to runtime values', () => {
     })
 
     it('unpacks tuples in map', () => {
-      assertResultAsString('tuples(1.to(3), 4.to(6)).map(((x, y)) => x + y)',
-        'Set(5, 6, 7, 8, 9)')
+      assertResultAsString('tuples(1.to(3), 4.to(6)).map(((x, y)) => x + y)', 'Set(5, 6, 7, 8, 9)')
     })
 
     it('computes map over intervals', () => {
@@ -566,8 +565,7 @@ describe('compiling specs to runtime values', () => {
     })
 
     it('unpacks tuples in filter', () => {
-      assertResultAsString('tuples(1.to(5), 2.to(3)).filter(((x, y)) => x < y)',
-        'Set(Tup(1, 2), Tup(1, 3), Tup(2, 3))')
+      assertResultAsString('tuples(1.to(5), 2.to(3)).filter(((x, y)) => x < y)', 'Set(Tup(1, 2), Tup(1, 3), Tup(2, 3))')
     })
 
     it('computes filter over intervals', () => {

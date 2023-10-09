@@ -1101,7 +1101,7 @@ export class CompilerVisitor implements IRVisitor {
     // apply the lambda to a single element of the set
     const evaluateElem = function (elem: RuntimeValue): Maybe<[RuntimeValue, RuntimeValue]> {
       // evaluate the predicate against the actual arguments
-      const result = callable.eval([ just(elem) ])
+      const result = callable.eval([just(elem)])
       return result.map(result => [result as RuntimeValue, elem])
     }
     this.applyFun(sourceId, 1, (iterable: Iterable<RuntimeValue>): Maybe<RuntimeValue> => {
