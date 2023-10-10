@@ -804,7 +804,7 @@ The latter form `((x, y)) => e2` is equivalent to:
 )
 ```
 
-As a result, the form `((x_1, ..., x_n)) => e_n` is a syntax sugar for tuple
+As a result, the form `((x_1, ..., x_n)) => e_n` is syntax sugar for tuple
 unpacking, as shown in the above example.
 
 ### Two forms of operator application
