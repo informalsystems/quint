@@ -6,3 +6,5 @@ client/server
 .yalc
 *.vsix
 _build
+quint/src/generated/.antlr
+quint/src/generated/imports/.antlr

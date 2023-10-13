@@ -53,7 +53,11 @@ export type ErrorCode =
   | 'QNT012'
   /* QNT013: import ... from <source>: could not load */
   | 'QNT013'
-  /* QNT098: Cyclic imports */
+  /* QNT014: Syntax error in a module definition */
+  | 'QNT014'
+  /* QNT015: Syntax error in a constant definition */
+  | 'QNT015'
+   /* QNT098: Cyclic imports */
   | 'QNT098'
   /* QNT099: Found cyclic definitions */
   | 'QNT099'

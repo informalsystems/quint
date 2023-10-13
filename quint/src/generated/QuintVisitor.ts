@@ -101,6 +101,7 @@ import { OperatorContext } from "./QuintParser";
 import { LiteralContext } from "./QuintParser";
 import { QualIdContext } from "./QuintParser";
 import { SimpleIdContext } from "./QuintParser";
+import { EmptyContext } from "./QuintParser";
 
 
 /**
@@ -807,5 +808,12 @@ export interface QuintVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitSimpleId?: (ctx: SimpleIdContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `QuintParser.empty`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitEmpty?: (ctx: EmptyContext) => Result;
 }
 

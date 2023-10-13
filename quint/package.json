@@ -77,7 +77,7 @@
     "apalache-integration": "txm apalache-tests.md",
     "apalache-dist": "txm apalache-dist-tests.md",
     "generate": "npm run antlr && npm run compile && npm link && npm run api-docs && npm run update-fixtures",
-    "antlr": "antlr4ts -visitor ./src/generated/Quint.g4 && antlr4ts -visitor ./src/generated/Effect.g4",
+    "antlr": "antlr4ts -visitor ./src/generated/Quint.g4 && antlr4ts -visitor ./src/generated/Effect.g4 && antlr4ts ./src/generated/QuintErrors.g4",
     "api-docs": "quint docs ./src/builtin.qnt > ../doc/builtin.md",
     "update-fixtures": "./scripts/update-fixtures.sh",
     "format-check": "npx prettier --check '**/*.ts' && npx eslint '**/*.ts'",

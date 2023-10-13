@@ -8,10 +8,11 @@
  * See License.txt in the project root for license information.
  */
 
-import { CharStreams, CommonTokenStream } from 'antlr4ts'
+import { BailErrorStrategy, CharStreams, CommonTokenStream, LexerNoViableAltException, RecognitionException } from 'antlr4ts'
 import { Either, left, merge, right } from '@sweet-monads/either'
 import { Set } from 'immutable'
 import { ParseTreeWalker } from 'antlr4ts/tree/ParseTreeWalker'
+import { ParseCancellationException } from 'antlr4ts/misc/ParseCancellationException'
 
 import { QuintLexer } from '../generated/QuintLexer'
 import * as p from '../generated/QuintParser'
@@ -27,8 +28,8 @@ import { SourceLookupPath, SourceResolver, fileSourceResolver } from './sourceRe
 import { CallGraphVisitor, mkCallGraphContext } from '../static/callgraph'
 import { walkModule } from '../ir/IRVisitor'
 import { toposort } from '../static/toposort'
-import { ErrorCode } from '../quintError'
-import { Loc } from '../ErrorMessage'
+import { Loc, Position } from '../ErrorMessage'
+import { explainParseErrors, startNonTerminal as goalNonTerminal } from './parseErrorExplanator'
 
 /**
  * A source map that is constructed by the parser phases.
@@ -88,18 +89,15 @@ export function parseExpressionOrDeclaration(
   idGenerator: IdGenerator,
   sourceMap: SourceMap
 ): ExpressionOrDeclarationParseResult {
-  const errors: QuintError[] = []
-  const parser = setupParser(text, sourceLocation, errors, sourceMap, idGenerator)
-  const tree = parser.declarationOrExpr()
-  if (errors.length > 0) {
-    return { kind: 'error', errors: errors }
+  const errorsOrTree = runParser(text, 'declarationOrExpr', sourceLocation, sourceMap, idGenerator)
+  if (errorsOrTree.isLeft()) {
+    return { kind: 'error', errors: errorsOrTree.value }
   } else {
+    // walk over the abstract syntax tree and construct the intermediate representation
     const listener = new ExpressionOrDeclarationListener(sourceLocation, idGenerator)
-
     // Use an existing source map as a starting point.
     listener.sourceMap = sourceMap
-
-    ParseTreeWalker.DEFAULT.walk(listener as QuintListener, tree)
+    ParseTreeWalker.DEFAULT.walk(listener as QuintListener, errorsOrTree.value)
     return listener.result ?? { kind: 'error', errors: listener.errors }
   }
 }
@@ -114,18 +112,15 @@ export function parsePhase1fromText(
   text: string,
   sourceLocation: string
 ): ParseResult<ParserPhase1> {
-  const errors: QuintError[] = []
   const sourceMap: SourceMap = new Map()
-  const parser = setupParser(text, sourceLocation, errors, sourceMap, idGen)
-  // run the parser
-  const tree = parser.modules()
-  if (errors.length > 0) {
+  const errorsOrTree = runParser(text, 'modules', sourceLocation, sourceMap, idGen)
+  if (errorsOrTree.isLeft()) {
     // report the errors
-    return left({ errors: errors, sourceMap: sourceMap })
+    return left({ errors: errorsOrTree.value, sourceMap: sourceMap })
   } else {
     // walk through the AST and construct the IR
     const listener = new ToIrListener(sourceLocation, idGen)
-    ParseTreeWalker.DEFAULT.walk(listener as QuintListener, tree)
+    ParseTreeWalker.DEFAULT.walk(listener as QuintListener, errorsOrTree.value)
 
     if (listener.errors.length > 0) {
       return left({ errors: listener.errors, sourceMap: listener.sourceMap })
@@ -338,46 +333,64 @@ export function parseDefOrThrow(text: string, idGen?: IdGenerator, sourceMap?: S
   }
 }
 
-// setup a Quint parser, so it can be used to parse from various non-terminals
-function setupParser(
+// run the Quint parser
+function runParser(
   text: string,
+  goal: goalNonTerminal,
   sourceLocation: string,
-  errors: QuintError[],
   sourceMap: SourceMap,
   idGen: IdGenerator
-): p.QuintParser {
-  // error listener to report lexical and syntax errors
-  const errorListener: any = {
-    syntaxError: (_recognizer: any, offendingSymbol: any, line: number, charPositionInLine: number, msg: string) => {
-      const id = idGen.nextId()
-      const len = offendingSymbol ? offendingSymbol.stopIndex - offendingSymbol.startIndex : 0
-      const index = offendingSymbol ? offendingSymbol.startIndex : 0
-      const start = { line: line - 1, col: charPositionInLine, index }
-      const end = { line: line - 1, col: charPositionInLine + len, index: index + len }
-      const loc: Loc = { source: sourceLocation, start, end }
-      sourceMap.set(id, loc)
-
-      const code = (msg.match(/QNT\d\d\d/)?.[0] as ErrorCode) ?? 'QNT000'
-
-      errors.push({ code, message: msg.replace(`[${code}] `, ''), reference: id })
-    },
+): Either<QuintError[], any> {
+  // register an error location and return its id
+  const mkIdForLoc = (start: Position, end: Position): bigint => {
+    const id = idGen.nextId()
+    const loc: Loc = { source: sourceLocation, start, end }
+    sourceMap.set(id, loc)
+    return id
   }
 
+  // This error listener simply throws an exception on the first error.
+  // We used to bail out of the lexical errors, as there seems to be no
+  // way to set BailErrorStrategy for a lexer.
+  const throwingErrorListener: any = {
+    syntaxError: (_recognizer: any, _offendingSymbol: any, _line: number,
+        _charPositionInLine: number, _msg: string, exc: RecognitionException) => {
+      throw new ParseCancellationException(exc)
+    }
+  }
   // Create the lexer and parser
   const inputStream = CharStreams.fromString(text)
   const lexer = new QuintLexer(inputStream)
-  // remove the console listener and add our listener
+  // remove the console listener and add the throwing error listener
   lexer.removeErrorListeners()
-  lexer.addErrorListener(errorListener)
+  lexer.addErrorListener(throwingErrorListener)
 
   const tokenStream = new CommonTokenStream(lexer)
   const parser = new p.QuintParser(tokenStream)
 
-  // remove the console listener and add our listener
+  // remove the console listener
   parser.removeErrorListeners()
-  parser.addErrorListener(errorListener)
+  // set the bail out strategy, which throws on the first error
+  parser.errorHandler = new BailErrorStrategy()
 
-  return parser
+  try {
+    // call the first stage parser that is defined in Quint.g4
+    switch (goal) {
+      case 'modules':
+        return right(parser.modules())
+
+      case 'declarationOrExpr':
+        return right(parser.declarationOrExpr())
+    }
+  } catch (e) {
+    if (e instanceof ParseCancellationException) {
+      // call the second stage parser to explain errors,
+      // which is defined in QuintErrors.g4
+      return left(explainParseErrors(text, goal, mkIdForLoc))
+    } else {
+      throw e
+    }
+  }
 }
 
 // A simple listener to parse a declaration or expression

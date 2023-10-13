@@ -23,10 +23,40 @@ export interface ErrorMessage {
   locs: Loc[]
 }
 
+/**
+ * A position in a source file.
+ */
+export interface Position {
+  /**
+   * The line number, 0-based.
+   */
+  line: number
+  /**
+   * The column within the line, 0-based.
+   */
+  col: number
+  /**
+   * The absolute position (in characters) from the beginning of the file, 0-based.
+   */
+  index: number
+}
+
+/**
+ * An error location, either a single point, or an interval.
+ */
 export interface Loc {
+  /**
+   * The name of the source, e.g., a filename.
+   */
   source: string
-  start: { line: number; col: number; index: number }
-  end?: { line: number; col: number; index: number }
+  /**
+   * The starting position within the source.
+   */
+  start: Position
+  /**
+   * Optionally, the ending position within the source.
+   */
+  end?: Position
 }
 
 /**

@@ -1,14 +1,12 @@
 /**
- * A grammar of Quint
+ * This is a specialized grammar of Quint that is tuned for error explanation.
+ * We keep QuintErrors.g4 separate from Quint.g4, as we do not want to obfuscate
+ * the grammar with error handling.  It should be updated accordingly, whenever
+ * Quint.g4 is updated.
  *
- * Our goals are:
- *  1. Keep the grammar simple,
- *  2. Make it expressive enough to capture all of the TLA logic.
- *
- * @author: Igor Konnov, Shon Feder, Gabriela Moreira, Jure Kukovec, Thomas Pani
- *          Informal Systems, 2021-2023
+ * @author: Igor Konnov, Informal Systems, 2023
  */
-grammar Quint;
+grammar QuintErrors;
 
 import QuintTokens;
 
@@ -21,24 +19,29 @@ import { quintErrorToString } from '../quintError'
 // entry point for the parser
 modules : module+ EOF;
 
-module : DOCCOMMENT* 'module' qualId '{' documentedDeclaration* '}';
-documentedDeclaration : DOCCOMMENT* declaration;
+module : DOCCOMMENT* 'module' qualId '{' (DOCCOMMENT* declaration)* '}';
 
 // a module declaration
-declaration : 'const' qualId ':' type                     # const
-            | 'var'   qualId ':' type                     # var
-            | 'assume' identOrHole '=' expr               # assume
-            | instanceMod                                 # instance
-            | operDef                                     # oper
-            | typeDef                                     # typeDefs
-            | importMod                                   # importDef
-            | exportMod                                   # exportDef
-            // https://github.com/informalsystems/quint/issues/378
-            //| 'nondet' qualId (':' type)? '=' expr ';'? expr {
-            //  const m = "QNT007: 'nondet' is only allowed inside actions"
-            //  this.notifyErrorListeners(m)
-            //}                                                 # nondetError
-            ;
+declaration : 'const' constDef
+            | 'var'   qualId ':' type
+            | 'assume' identOrHole '=' expr
+            | instanceMod
+            | operDef
+            | typeDef
+            | importMod
+            | exportMod
+            | . {
+                const m = "[QNT000] expected one of definition, const, var, import/export, assume"
+                this.notifyErrorListeners(m)
+              }
+           ;
+
+constDef : qualId ':' type
+         | . {
+                const m = "[QNT015] expected a constant definition"
+                this.notifyErrorListeners(m)
+         }
+         ;
 
 // An operator definition.
 // We embed two kinds of parameters right in this rule.
@@ -254,48 +257,3 @@ simpleId[context: string]
         this.notifyErrorListeners(err)
       }
     ;
-
-// TOKENS
-
-// literals
-// Strings cannot be escaped, as they are pseudo-identifiers.
-STRING          : '"' .*? '"' ;
-BOOL            : ('false' | 'true') ;
-// Similar to Solidity, integer literals can be written in two formats:
-//  - Decimal, possibly, with '_' as separators, or
-//  - Hexadecimal, possibly, with '_' as separators.
-INT             : ('0' | [1-9]([0-9]|'_'[0-9])* | '0x' [0-9a-fA-F]([0-9a-fA-F]|'_'[0-9a-fA-F])*) ;
-
-// a few keywords
-AND             :   'and' ;
-OR              :   'or'  ;
-IFF             :   'iff' ;
-IMPLIES         :   'implies' ;
-SET             :   'Set' ;
-LIST            :   'List' ;
-MAP             :   'Map' ;
-MATCH           :   'match' ;
-PLUS            :   '+' ;
-MINUS           :   '-' ;
-MUL             :   '*' ;
-DIV             :   '/' ;
-MOD             :   '%' ;
-GT              :   '>' ;
-LT              :   '<' ;
-GE              :   '>=' ;
-LE              :   '<=' ;
-NE              :   '!=' ;
-EQ              :   '==' ;
-ASGN            :   '=' ;
-LPAREN          :   '(' ;
-RPAREN          :   ')' ;
-
-// other TLA+ identifiers
-IDENTIFIER      : ([a-zA-Z][a-zA-Z0-9_]*|[_][a-zA-Z0-9_]+) ;
-
-DOCCOMMENT : '///' .*? '\n';
-
-// comments and whitespaces
-LINE_COMMENT    :   '//' .*? '\n'   -> skip ;
-COMMENT         :   '/*' .*? '*/'   -> skip ;
-WS              :   [ \t\r\n]+      -> skip ; // skip spaces, tabs, newlines
