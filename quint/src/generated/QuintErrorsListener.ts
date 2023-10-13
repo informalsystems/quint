@@ -63,9 +63,8 @@ import { TypeDefContext } from "./QuintErrorsParser";
 import { TypeSumVariantContext } from "./QuintErrorsParser";
 import { NondetOperDefContext } from "./QuintErrorsParser";
 import { QualifierContext } from "./QuintErrorsParser";
-import { ImportModContext } from "./QuintErrorsParser";
+import { ImportOrInstanceContext } from "./QuintErrorsParser";
 import { ExportModContext } from "./QuintErrorsParser";
-import { InstanceModContext } from "./QuintErrorsParser";
 import { ModuleNameContext } from "./QuintErrorsParser";
 import { NameContext } from "./QuintErrorsParser";
 import { QualifiedNameContext } from "./QuintErrorsParser";
@@ -786,15 +785,15 @@ export interface QuintErrorsListener extends ParseTreeListener {
 	exitQualifier?: (ctx: QualifierContext) => void;
 
 	/**
-	 * Enter a parse tree produced by `QuintErrorsParser.importMod`.
+	 * Enter a parse tree produced by `QuintErrorsParser.importOrInstance`.
 	 * @param ctx the parse tree
 	 */
-	enterImportMod?: (ctx: ImportModContext) => void;
+	enterImportOrInstance?: (ctx: ImportOrInstanceContext) => void;
 	/**
-	 * Exit a parse tree produced by `QuintErrorsParser.importMod`.
+	 * Exit a parse tree produced by `QuintErrorsParser.importOrInstance`.
 	 * @param ctx the parse tree
 	 */
-	exitImportMod?: (ctx: ImportModContext) => void;
+	exitImportOrInstance?: (ctx: ImportOrInstanceContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `QuintErrorsParser.exportMod`.
@@ -806,17 +805,6 @@ export interface QuintErrorsListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitExportMod?: (ctx: ExportModContext) => void;
-
-	/**
-	 * Enter a parse tree produced by `QuintErrorsParser.instanceMod`.
-	 * @param ctx the parse tree
-	 */
-	enterInstanceMod?: (ctx: InstanceModContext) => void;
-	/**
-	 * Exit a parse tree produced by `QuintErrorsParser.instanceMod`.
-	 * @param ctx the parse tree
-	 */
-	exitInstanceMod?: (ctx: InstanceModContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `QuintErrorsParser.moduleName`.

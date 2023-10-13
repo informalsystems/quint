@@ -29,10 +29,10 @@ declaration : 'const' constDef
             | typeDef
             | 'import' importOrInstance
             | 'export' exportMod
-            | ~('import') {
-                const m = "[QNT000] expected one of definition, const, var, import/export, assume"
-                this.notifyErrorListeners(m)
-              }
+//            | ~('import') {
+//               const m = "[QNT000] expected one of definition, const, var, import/export, assume"
+//                this.notifyErrorListeners(m)
+//              }
            ;
 
 constDef : qualId ':' type
@@ -85,10 +85,6 @@ importOrInstance
           // creating an instance and importing all names with a prefix
           | moduleName '(' (name '=' expr (',' name '=' expr)*) ')' 'as' qualifiedName
                   ('from' fromSource)?
-          | . {
-                const m = "[QNT000] expected an import or an instance"
-                this.notifyErrorListeners(m)
-              }
           ;
 
 exportMod : name '.' identOrStar

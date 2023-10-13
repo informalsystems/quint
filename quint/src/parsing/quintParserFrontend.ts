@@ -349,13 +349,18 @@ function runParser(
     return id
   }
 
+  // this variable is set to true, whenever an error listener has registered an error.
+  let foundError = false
+
   // This error listener simply throws an exception on the first error.
   // We used to bail out of the lexical errors, as there seems to be no
   // way to set BailErrorStrategy for a lexer.
   const throwingErrorListener: any = {
     syntaxError: (_recognizer: any, _offendingSymbol: any, _line: number,
-        _charPositionInLine: number, _msg: string, exc: RecognitionException) => {
-      throw new ParseCancellationException(exc)
+        _charPositionInLine: number, _msg: string, _exc: RecognitionException) => {
+      // updated the error flag
+      foundError = true
+      //throw new ParseCancellationException(exc)
     }
   }
   // Create the lexer and parser
@@ -372,24 +377,39 @@ function runParser(
   parser.removeErrorListeners()
   // set the bail out strategy, which throws on the first error
   parser.errorHandler = new BailErrorStrategy()
+  parser.addErrorListener(throwingErrorListener)
 
   try {
     // call the first stage parser that is defined in Quint.g4
     switch (goal) {
-      case 'modules':
-        return right(parser.modules())
+      case 'modules': {
+        const tree = parser.modules()
+        if (!foundError) {
+          return right(tree)
+        }
+      }
 
-      case 'declarationOrExpr':
-        return right(parser.declarationOrExpr())
+      case 'declarationOrExpr': {
+        const tree = parser.declarationOrExpr()
+        if (!foundError) {
+          return right(tree)
+        }
+      }
     }
   } catch (e) {
     if (e instanceof ParseCancellationException) {
-      // call the second stage parser to explain errors,
-      // which is defined in QuintErrors.g4
-      return left(explainParseErrors(text, goal, mkIdForLoc))
+      foundError = true
     } else {
       throw e
     }
+  }
+  
+  if (foundError) {
+    // call the second stage parser to explain errors,
+    // which is defined in QuintErrors.g4
+    return left(explainParseErrors(text, goal, mkIdForLoc))
+  } else {
+    throw Error("Expected a parser error")
   }
 }
 
