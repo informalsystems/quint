@@ -25,12 +25,11 @@ module : DOCCOMMENT* 'module' qualId '{' (DOCCOMMENT* declaration)* '}';
 declaration : 'const' constDef
             | 'var'   qualId ':' type
             | 'assume' identOrHole '=' expr
-            | instanceMod
             | operDef
             | typeDef
-            | importMod
-            | exportMod
-            | . {
+            | 'import' importOrInstance
+            | 'export' exportMod
+            | ~('import') {
                 const m = "[QNT000] expected one of definition, const, var, import/export, assume"
                 this.notifyErrorListeners(m)
               }
@@ -77,23 +76,24 @@ qualifier : 'val'
           | 'temporal'
           ;
 
-importMod : 'import' name '.' identOrStar ('from' fromSource)?
-          | 'import' name ('as' name)? ('from' fromSource)?
+importOrInstance
+          : name '.' identOrStar ('from' fromSource)?
+          | name ('as' name)? ('from' fromSource)?
+          // creating an instance and importing all names introduced in the instance
+          | moduleName '(' (name '=' expr (',' name '=' expr)*) ')' '.' '*'
+                  ('from' fromSource)?
+          // creating an instance and importing all names with a prefix
+          | moduleName '(' (name '=' expr (',' name '=' expr)*) ')' 'as' qualifiedName
+                  ('from' fromSource)?
+          | . {
+                const m = "[QNT000] expected an import or an instance"
+                this.notifyErrorListeners(m)
+              }
           ;
 
-exportMod : 'export' name '.' identOrStar
-          | 'export' name ('as' name)?
+exportMod : name '.' identOrStar
+          | name ('as' name)?
           ;
-
-// an instance may have a special parameter '*',
-// which means that the missing parameters are identity, e.g., x = x, y = y
-instanceMod :   // creating an instance and importing all names introduced in the instance
-                'import' moduleName '(' (name '=' expr (',' name '=' expr)*) ')' '.' '*'
-                  ('from' fromSource)?
-                // creating an instance and importing all names with a prefix
-            |   'import' moduleName '(' (name '=' expr (',' name '=' expr)*) ')' 'as' qualifiedName
-                  ('from' fromSource)?
-        ;
 
 moduleName : qualId;
 name: qualId;

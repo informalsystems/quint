@@ -29,9 +29,9 @@ export interface QuintError {
 export type ErrorCode =
   /* Placeholder for errors that have not been assigned a proper code yet */
   | 'QNT000'
-  /* QNT001: Expected 'const', 'var', 'def', 'type', etc. */
+  /* QNT001: A lexical error */
   | 'QNT001'
-  /* QNT002: Missing ': type' after 'var' or 'const' */
+  /* QNT002: End of file */
   | 'QNT002'
   /* QNT003: Expected an expression */
   | 'QNT003'

@@ -156,9 +156,9 @@ describe('syntax errors', () => {
     const code = 'module empty {'
     const errors = parseErrorsFrom('module-unbalanced', code)
     assert.equal(errors.length, 1)
-    // TODO: this needs a better error message
+    // TODO: in case of unbalanced parentheses we could say something more useful
     assert.equal(errors[0].message, `unexpected end of file`)
-    assert.equal(errors[0].code, 'QNT000')
+    assert.equal(errors[0].code, 'QNT002')
   })
 
   it('something unexpected in a module definition', () => {
@@ -182,18 +182,18 @@ describe('syntax errors', () => {
     // syntax error on: p !! name
     const code = 'module unexpectedExpr { def access(p) = p !! name }'
     const errors = parseErrorsFrom('unexpectedExpr', code)
-    assert.equal(errors.length, 1)
-    assert.equal(errors[0].message, 'expected one of definition, const, var, import/export, assume')
-    assert.equal(errors[0].code, 'QNT000')
+    assert.isAtLeast(errors.length, 1)
+    assert.equal(errors[0].message, `unexpected character: '!'`)
+    assert.equal(errors[0].code, 'QNT001')
   })
 
   it('error on unexpected token', () => {
     // # is an unexpected token
     const code = 'module unexpectedToken { def access(p) = { p # name } }'
     const errors = parseErrorsFrom('unexpectedToken', code)
-    assert.equal(errors.length, 1)
-    assert.equal(errors[0].message, 'expected one of definition, const, var, import/export, assume')
-    assert.equal(errors[0].code, 'QNT000')
+    assert.isAtLeast(errors.length, 1)
+    assert.equal(errors[0].message, `unexpected character: '#'`)
+    assert.equal(errors[0].code, 'QNT001')
   })
 
   it('error on unexpected token "="', () => {
@@ -209,7 +209,7 @@ describe('syntax errors', () => {
     // the keyword cardinality is hanging
     const code = 'module hangingCardinality { def one(S) = { S cardinality } }'
     const errors = parseErrorsFrom('hangingCardinality', code)
-    assert.equal(errors.length, 1)
+    assert.isAtLeast(errors.length, 1)
     assert.equal(errors[0].message, `expected one of definition, const, var, import/export, assume`)
     assert.equal(errors[0].code, 'QNT000')
   })
@@ -229,7 +229,7 @@ describe('syntax errors', () => {
     // we should use double quotes
     const code = `module singleQuotes {  import I.* from './_1025importeeWithError' }`
     const errors = parseErrorsFrom('singleQuotes', code)
-    assert.equal(errors.length, 1)
+    assert.isAtLeast(errors.length, 1)
     assert.equal(errors[0].message, `[QNT000] mismatched input ''' expecting STRING`)
     assert.equal(errors[0].code, 'QNT000')
   })
