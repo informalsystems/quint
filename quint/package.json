@@ -69,15 +69,16 @@
     "yargs": "^17.2.1"
   },
   "scripts": {
-    "compile": "genversion -e src/version.ts && tsc && copyfiles -u 1 ./src/reflection.proto ./src/builtin.qnt ./dist/src/",
+    "compile": "genversion -e src/version.ts && tsc && copyfiles -u 1 ./src/reflection.proto ./src/builtin.qnt src/generated/quint.ohm-bundle.* ./dist/src/",
     "prepare": "rm -rf ./dist && npm run compile && chmod +x ./dist/src/cli.js",
     "test": "mocha --reporter-option maxDiffSize=0 -r ts-node/register test/*.test.ts test/**/*.test.ts",
     "coverage": "nyc npm run test",
     "integration": "txm cli-tests.md && txm io-cli-tests.md",
     "apalache-integration": "txm apalache-tests.md",
     "apalache-dist": "txm apalache-dist-tests.md",
-    "generate": "npm run antlr && npm run compile && npm link && npm run api-docs && npm run update-fixtures",
+    "generate": "npm run antlr && npm run ohmjs && npm run compile && npm link && npm run api-docs && npm run update-fixtures",
     "antlr": "antlr4ts -visitor ./src/generated/Quint.g4 && antlr4ts -visitor ./src/generated/Effect.g4",
+    "ohmjs": "npx ohm generateBundles --withTypes src/generated/quint.ohm",
     "api-docs": "quint docs ./src/builtin.qnt > ../doc/builtin.md",
     "update-fixtures": "./scripts/update-fixtures.sh",
     "format-check": "npx prettier --check '**/*.ts' && npx eslint '**/*.ts'",
@@ -85,6 +86,7 @@
     "debug": "npx ts-node ./src/cli.ts"
   },
   "devDependencies": {
+    "@ohm-js/cli": "^2.0.0",
     "@types/chai": "^4.2.18",
     "@types/json-bigint": "^1.0.1",
     "@types/lodash.isequal": "^4.5.6",

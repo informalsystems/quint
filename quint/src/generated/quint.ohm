@@ -1,0 +1,231 @@
+// A Quint parser tuned towards error explanation.
+//
+// The project QuintLang.
+// Authors: Igor Konnov, 2023.
+// Copyright [2023] Informal Systems.
+// Licensed under the Apache 2.0.
+// See License.txt in the project root for license information.
+
+Quint {
+   Modules
+      = Module+
+      
+   Module
+      = DocComment* "module" ident "{" (~BlockedWords DocDefinition)* "}"
+
+   // some words cannot start a definition, block them to get better errors
+   BlockedWords = "from"
+
+   DocDefinition
+      = DocComment* Definition   
+
+   Definition (definition)
+      = "const" ident ":" Type                            -- constDef
+      | "var" ident ":" Type                              -- varDef
+      | "assume" identOrHole "=" Expr                     -- assumeDef
+      | TypeDef                                           -- typeDef
+      | "import" ident "." NameRef FromFile?              -- importDef
+      | "export" ident "." NameRef FromFile?              -- exportDef
+      | Instance                                          -- instanceDef
+      | OperDef                                           -- operDef
+
+   NameRef =
+      | "." identOrStar    -- identOrStarRef
+      | ("as" QualId)?     -- asRef
+
+   // use this predicate to detect the next definition, when skipping due to errors
+   DefinitionStart =
+      | "const" | "var" | "type" | "import" | "export"
+      | "pure" | "def" | "val" | "action" | "temporal" | "}"
+
+   FromFile =
+      | "from" string                     -- fromOk
+      | "from" (~DefinitionStart any)+    -- fromError
+
+   Instance =
+      | "import" QualId "(" (ident "=" Expr ("," ident "=" Expr)*) ")" NameRef
+         FromFile?
+
+   OperDef (operator definition)
+      = Qualifier NormalCallName OperParams? ("=" Expr)? ";"?
+
+   OperParams (operator parameters)
+      = // C-like parameter lists
+        "(" (Parameter ":" Type ( "," Parameter ":" Type)*) ")" ":" Type   -- paramsC
+        // ML-like parameter lists with optional type annotations
+        | "(" (Parameter ("," Parameter)*)? ")" (":" Type)?                -- paramsMLnary
+        | ":" Type                                                         -- paramsMLnullary
+       
+   Parameter
+      = QualId
+      | "_"
+   
+   NormalCallName
+      = QualId
+      | "and"
+      | "or"
+      | "iff"
+      | "implies"
+      | "Set"
+      | "List"
+      | "Map"
+
+   TypeDef =
+      | "type" QualId                                                -- typeAbstractDef
+      | "type" QualId "=" Type                                       -- typeAlias
+      | "type" QualId "=" "|"? TypeSumVariant ("|" TypeSumVariant)*  -- typeSumDef
+
+   TypeSumVariant = ident ("(" Type ")")?
+
+   Type (type)
+      = Type "->" Type                             -- funType
+      | Type "=>" Type                             -- unaryOperType
+      | "(" (Type ("," Type)*) ","? ")" "=>" Type  -- naryOperType
+      | "Set" "[" Type "]"                         -- setType
+      | "List" "[" Type "]"                        -- listType
+      | "(" (Type "," Type ("," Type)*) ","? ")"   -- tupleType
+      | "{" Row "}"                                -- recordType
+      | "int"                                      -- intType
+      | "str"                                      -- strType
+      | "bool"                                     -- boolType
+      | QualId                                     -- uninterpretedType
+      | "(" Type ")"                               -- parenType
+
+   Row (record row)
+      = ident ":" Type ("," ident ":" Type)* ("|" ident)? (",")?
+
+   Qualifier
+      = "val"           -- valQual
+      | "def"           -- defQual
+      | "pure" "val"    -- pureValQual
+      | "pure" "def"    -- pureDefQual
+      | "action"        -- actionQual
+      | "run"           -- runQual
+      | "temporal"      -- temporalQual
+
+   Expr =
+        // apply an operator via the dot notation
+      | Expr "." NameAfterDot ("(" Expr ("," Expr)* ")")?      -- dotCallExpr
+      | Lambda                                                 -- lambdaExpr
+        // call an operator
+      | NormalCallName "(" (Expr ("," Expr)*)? ")"             -- appExpr
+        // list access via index
+      | Expr "[" Expr "]"                                      -- listAppExpr
+        // power over integers, it must be right-associative,
+        // but for error reporting, it does not matter
+      | Expr "^" Expr                                          -- powExpr
+      | "-" Expr                                               -- uminusExpr
+         // normally, we need additional rules for multiplication and addition,
+         // to take care of priorities. This does not matter for error reporting
+      | Expr ("*" | "/" | "%") Expr                            -- multDivExpr
+      | Expr ("+" | "-") Expr                                  -- plusMinusExpr
+         // standard relations
+      | Expr (">" | "<" | ">=" | "<=" | "!=" | "==") Expr      -- relationsExpr
+      | QualId "'" "=" Expr                                    -- asgnExpr
+      | "and" "{" Expr ("," Expr)* ","? "}"                    -- naryAndExpr
+      | Expr "and" Expr                                        -- andExpr
+      | "or" "{" Expr ("," Expr)* ","? "}"                     -- orExpr
+      | Expr "or" Expr                                         -- naryOrExpr
+      | Expr "iff" Expr                                        -- iffExpr
+      | Expr "implies" Expr                                    -- impliesExpr
+      | MatchSum                                               -- matchExpr
+      | "all" "{" Expr ("," Expr)* ","? "}"                    -- allExpr
+      | "any" "{" Expr ("," Expr)* ","? "}"                    -- anyExpr
+         // this case should be considered to be an error
+      | Expr "=" Expr                                          -- asgnError
+      | "false"                                                -- falseExpr
+      | "true"                                                 -- trueExpr
+      | ident                                                  -- identExpr
+      | integer                                                -- intExpr
+      | string                                                 -- strExpr
+      | "(" Expr ("," Expr)+ ","? ")"                          -- tupleExpr
+      | Expr "->" Expr                                         -- pairExpr
+      | "{" RecElem ("," RecElem)+ ","? "}"                    -- recordExpr
+      | "[" Expr? ("," Expr)* ","? "]"                         -- listExpr
+      | "if" "(" Expr ")" Expr "else" Expr                     -- ifElseExpr
+      | OperDef Expr                                           -- letInExpr
+      | NondetOperDef Expr                                     -- nondetExpr
+      | "(" Expr ")"                                           -- parenExpr
+      | "{" Expr "}"                                           -- bracesExpr
+
+   RecElem =
+      | ident ":" Expr                                         -- keyValueExpr
+      | "..." Expr                                             -- spreadExpr
+
+   MatchSum =
+      | "match" Expr "{" "|"? MatchCase ("|" MatchCase)* "}"      
+
+   MatchCase =
+      | ident ("(" (ident | "_") ")")? "=>" Expr               -- labelMatch
+      | "_" "=>" Expr                                          -- underscoreMatch
+
+   NondetOperDef =
+      | "nondet" QualId (":" Type)? "=" Expr ";"?
+
+   Lambda (lambda) =
+      | LambdaUnsugared
+      | LambdaTupleSugar
+
+   LambdaUnsugared =
+      | Parameter "=>" Expr                           -- unaryLambda
+      | "(" Parameter ("," Parameter)* ")" "=>" Expr  -- naryLambda
+
+   LambdaTupleSugar =
+      "(" "(" Parameter ("," Parameter)+ ")" ")" "=>" Expr
+
+   // A few infix operators may be called via lhs.oper(rhs),
+   // without causing any ambiguity.
+   NameAfterDot =
+      | QualId
+      | "and"
+      | "or"
+      | "iff"
+      | "implies"
+
+   DocComment
+     = "///" (~lineTerminator any)*
+
+   QualId (qualified id)
+      = ident ("::" ident)*
+
+   // lexical rules
+
+   string (string)
+     = "\"" doubleStringCharacter* "\""
+  
+   doubleStringCharacter = ~("\"" | "\\" | lineTerminator) any
+
+   ident (identifier)
+      = letter (alnum | "_")*
+      | "_" (alnum | "_")+
+
+   identOrHole (identifier or hole)
+      = ident
+      | "_"
+
+   identOrStar (identifier or star)
+      = ident
+      | "*"
+
+   integer (integer)
+      = digit+
+
+   lineTerminator = "\n" | "\r" | "\u2028" | "\u2029"      
+
+   // Override Ohm's built-in definition of space.
+   space := whiteSpace | lineTerminator | comment
+
+   whiteSpace =
+      | "\t"
+      | " "
+
+   comment = 
+    | multiLineComment
+    | singleLineComment
+
+   multiLineComment = 
+      | "/*" (~"*/" any)* "*/"
+
+   singleLineComment = 
+      | "//" (~lineTerminator any)*
+}

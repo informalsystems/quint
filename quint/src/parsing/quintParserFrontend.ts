@@ -29,6 +29,7 @@ import { walkModule } from '../ir/IRVisitor'
 import { toposort } from '../static/toposort'
 import { ErrorCode } from '../quintError'
 import { Loc } from '../ErrorMessage'
+import grammar from '../generated/quint.ohm-bundle'
 
 /**
  * A source map that is constructed by the parser phases.
@@ -120,6 +121,12 @@ export function parsePhase1fromText(
   // run the parser
   const tree = parser.modules()
   if (errors.length > 0) {
+    // run the peggy parser to explain errors
+    const r = grammar.match(text)
+    if (r.failed()) {
+      console.log(r.message)
+    }
+    
     // report the errors
     return left({ errors: errors, sourceMap: sourceMap })
   } else {
