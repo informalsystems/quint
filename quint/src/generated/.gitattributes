@@ -2,3 +2,4 @@
 *.tokens linguist-generated
 *.ts linguist-generated
 *.jar linguist-generated
+*.ohm-bundle.* linguist-generated
