@@ -11,10 +11,7 @@ Quint {
       = Module+
       
    Module
-      = DocComment* "module" ident "{" (~BlockedWords DocDefinition)* "}"
-
-   // some words cannot start a definition, block them to get better errors
-   BlockedWords = "from"
+      = DocComment* "module" ident "{" DocDefinition* "}"
 
    DocDefinition
       = DocComment* Definition   
@@ -24,8 +21,8 @@ Quint {
       | "var" ident ":" Type                              -- varDef
       | "assume" identOrHole "=" Expr                     -- assumeDef
       | TypeDef                                           -- typeDef
-      | "import" ident "." NameRef FromFile?              -- importDef
-      | "export" ident "." NameRef FromFile?              -- exportDef
+      | "import" ident NameRef FromFile?                  -- importDef
+      | "export" ident NameRef FromFile?                  -- exportDef
       | Instance                                          -- instanceDef
       | OperDef                                           -- operDef
 

@@ -30,6 +30,7 @@ import { toposort } from '../static/toposort'
 import { ErrorCode } from '../quintError'
 import { Loc } from '../ErrorMessage'
 import grammar from '../generated/quint.ohm-bundle'
+import { explainParseErrors } from './parseErrorExplanator'
 
 /**
  * A source map that is constructed by the parser phases.
@@ -121,14 +122,13 @@ export function parsePhase1fromText(
   // run the parser
   const tree = parser.modules()
   if (errors.length > 0) {
-    // run the peggy parser to explain errors
-    const r = grammar.match(text)
-    if (r.failed()) {
-      console.log(r.message)
+    const betterErrors = explainParseErrors(text)
+    if (betterErrors.length > 0) {
+      return left({ errors: betterErrors, sourceMap: sourceMap })
+    } else {
+      // fall back to ugly errors by antlr4
+      return left({ errors: errors, sourceMap: sourceMap })
     }
-    
-    // report the errors
-    return left({ errors: errors, sourceMap: sourceMap })
   } else {
     // walk through the AST and construct the IR
     const listener = new ToIrListener(sourceLocation, idGen)

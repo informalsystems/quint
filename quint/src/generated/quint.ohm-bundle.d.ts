@@ -20,8 +20,8 @@ export interface QuintActionDict<T> extends BaseActionDict<T> {
   Definition_varDef?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: TerminalNode, arg3: NonterminalNode) => T;
   Definition_assumeDef?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: TerminalNode, arg3: NonterminalNode) => T;
   Definition_typeDef?: (this: NonterminalNode, arg0: NonterminalNode) => T;
-  Definition_importDef?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: TerminalNode, arg3: NonterminalNode, arg4: IterationNode) => T;
-  Definition_exportDef?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: TerminalNode, arg3: NonterminalNode, arg4: IterationNode) => T;
+  Definition_importDef?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: NonterminalNode, arg3: IterationNode) => T;
+  Definition_exportDef?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: NonterminalNode, arg3: IterationNode) => T;
   Definition_instanceDef?: (this: NonterminalNode, arg0: NonterminalNode) => T;
   Definition_operDef?: (this: NonterminalNode, arg0: NonterminalNode) => T;
   Definition?: (this: NonterminalNode, arg0: NonterminalNode) => T;
