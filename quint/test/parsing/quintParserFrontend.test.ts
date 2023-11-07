@@ -13,7 +13,7 @@ import {
 import { lf } from 'eol'
 import { newIdGenerator } from '../../src/idGenerator'
 import { collectIds } from '../util'
-import { fileSourceResolver, stringSourceResolver } from '../../src/parsing/sourceResolver'
+import { fileSourceResolver } from '../../src/parsing/sourceResolver'
 import { mkErrorMessage } from '../../src/cliCommands'
 import { QuintError } from '../../src'
 
@@ -63,17 +63,17 @@ function parseAndCompare(artifact: string): void {
     // Only check source map if there are no errors. Otherwise, ids generated for error nodes might be missing from the
     // actual modules
     const expectedIds = modules.flatMap(m => collectIds(m)).sort()
-        assert.sameDeepMembers([...sourceMap.keys()].sort(), expectedIds, 'expected source map to contain all ids')
+    assert.sameDeepMembers([...sourceMap.keys()].sort(), expectedIds, 'expected source map to contain all ids')
     const expectedSourceMap = readJson(`${artifact}.map`)
     const sourceMapResult = JSONbig.parse(JSONbig.stringify(compactSourceMap(sourceMap)))
 
     assert.deepEqual(sourceMapResult, expectedSourceMap, 'expected source maps to be equal')
-}
+  }
   // All phases succeeded, check that the module is correclty output
   outputToCompare = {
-            stage: 'parsing',
-                        warnings: [],
-          modules: modules,
+    stage: 'parsing',
+    warnings: [],
+    modules: modules,
     errors: errors.map(mkErrorMessage(sourceMap)),
   }
 
@@ -92,7 +92,7 @@ describe('parsing', () => {
     )
     const module = { id: 1n, name: 'empty', declarations: [] }
     assert.deepEqual(result.modules[0], module)
-      })
+  })
 
   it('parses SuperSpec', () => {
     const result = parsePhase1fromText(
@@ -127,8 +127,10 @@ describe('syntax errors', () => {
     const code = 'module empty {'
     const errors = parseErrorsFrom('module-unbalanced', code)
     assert.equal(errors.length, 1)
-    assert.equal(errors[0].message,
-      `mismatched input '<EOF>' expecting {'}', 'const', 'var', 'assume', 'type', 'val', 'def', 'pure', 'action', 'run', 'temporal', 'import', 'export', DOCCOMMENT}`)
+    assert.equal(
+      errors[0].message,
+      `mismatched input '<EOF>' expecting {'}', 'const', 'var', 'assume', 'type', 'val', 'def', 'pure', 'action', 'run', 'temporal', 'import', 'export', DOCCOMMENT}`
+    )
     assert.equal(errors[0].code, 'QNT000')
   })
 
@@ -136,8 +138,10 @@ describe('syntax errors', () => {
     const code = 'module empty { something }'
     const errors = parseErrorsFrom('module-unexpected', code)
     assert.equal(errors.length, 1)
-    assert.equal(errors[0].message,
-      `extraneous input 'something' expecting {'}', 'const', 'var', 'assume', 'type', 'val', 'def', 'pure', 'action', 'run', 'temporal', 'import', 'export', DOCCOMMENT}`)
+    assert.equal(
+      errors[0].message,
+      `extraneous input 'something' expecting {'}', 'const', 'var', 'assume', 'type', 'val', 'def', 'pure', 'action', 'run', 'temporal', 'import', 'export', DOCCOMMENT}`
+    )
     assert.equal(errors[0].code, 'QNT000')
   })
 
@@ -181,8 +185,10 @@ describe('syntax errors', () => {
     const code = 'module hangingCardinality { def one(S) = { S cardinality } }'
     const errors = parseErrorsFrom('hangingCardinality', code)
     assert.isAtLeast(errors.length, 1)
-    assert.equal(errors[0].message,
-      `extraneous input '(' expecting {'}', 'const', 'var', 'assume', 'type', 'val', 'def', 'pure', 'action', 'run', 'temporal', 'import', 'export', DOCCOMMENT}`)
+    assert.equal(
+      errors[0].message,
+      `extraneous input '(' expecting {'}', 'const', 'var', 'assume', 'type', 'val', 'def', 'pure', 'action', 'run', 'temporal', 'import', 'export', DOCCOMMENT}`
+    )
     assert.equal(errors[0].code, 'QNT000')
   })
 
