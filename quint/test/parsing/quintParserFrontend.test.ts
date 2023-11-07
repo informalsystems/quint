@@ -13,8 +13,9 @@ import {
 import { lf } from 'eol'
 import { newIdGenerator } from '../../src/idGenerator'
 import { collectIds } from '../util'
-import { fileSourceResolver } from '../../src/parsing/sourceResolver'
+import { fileSourceResolver, stringSourceResolver } from '../../src/parsing/sourceResolver'
 import { mkErrorMessage } from '../../src/cliCommands'
+import { QuintError } from '../../src'
 
 // read a Quint file from the test data directory
 function readQuint(name: string): string {
@@ -27,6 +28,12 @@ function readQuint(name: string): string {
 function readJson(name: string): any {
   const p = resolve(__dirname, '../../testFixture', name + '.json')
   return JSONbig.parse(readFileSync(p).toString('utf8'))
+}
+
+// parse the text and return all parse errors (of phase 1)
+function parseErrorsFrom(sourceName: string, code: string): QuintError[] {
+  const gen = newIdGenerator()
+  return parsePhase1fromText(gen, code, sourceName).errors
 }
 
 // read the Quint file and the expected JSON, parse and compare the results
@@ -56,17 +63,17 @@ function parseAndCompare(artifact: string): void {
     // Only check source map if there are no errors. Otherwise, ids generated for error nodes might be missing from the
     // actual modules
     const expectedIds = modules.flatMap(m => collectIds(m)).sort()
-    assert.sameDeepMembers([...sourceMap.keys()].sort(), expectedIds, 'expected source map to contain all ids')
+        assert.sameDeepMembers([...sourceMap.keys()].sort(), expectedIds, 'expected source map to contain all ids')
     const expectedSourceMap = readJson(`${artifact}.map`)
     const sourceMapResult = JSONbig.parse(JSONbig.stringify(compactSourceMap(sourceMap)))
 
     assert.deepEqual(sourceMapResult, expectedSourceMap, 'expected source maps to be equal')
-  }
+}
   // All phases succeeded, check that the module is correclty output
   outputToCompare = {
-    stage: 'parsing',
-    warnings: [],
-    modules: modules,
+            stage: 'parsing',
+                        warnings: [],
+          modules: modules,
     errors: errors.map(mkErrorMessage(sourceMap)),
   }
 
@@ -85,7 +92,7 @@ describe('parsing', () => {
     )
     const module = { id: 1n, name: 'empty', declarations: [] }
     assert.deepEqual(result.modules[0], module)
-  })
+      })
 
   it('parses SuperSpec', () => {
     const result = parsePhase1fromText(
@@ -113,29 +120,100 @@ describe('parsing', () => {
   })
 })
 
-describe('parse errors', () => {
-  it('error in module unit', () => {
-    parseAndCompare('_1002emptyWithError')
+// instead of testing how errors are produced in json,
+// we only test the error messages
+describe('syntax errors', () => {
+  it('unbalanced module definition', () => {
+    const code = 'module empty {'
+    const errors = parseErrorsFrom('module-unbalanced', code)
+    assert.equal(errors.length, 1)
+    assert.equal(errors[0].message,
+      `mismatched input '<EOF>' expecting {'}', 'const', 'var', 'assume', 'type', 'val', 'def', 'pure', 'action', 'run', 'temporal', 'import', 'export', DOCCOMMENT}`)
+    assert.equal(errors[0].code, 'QNT000')
   })
 
-  it('error on malformed disjoint union', () => {
-    parseAndCompare('_1005constRecordsError')
+  it('something unexpected in a module definition', () => {
+    const code = 'module empty { something }'
+    const errors = parseErrorsFrom('module-unexpected', code)
+    assert.equal(errors.length, 1)
+    assert.equal(errors[0].message,
+      `extraneous input 'something' expecting {'}', 'const', 'var', 'assume', 'type', 'val', 'def', 'pure', 'action', 'run', 'temporal', 'import', 'export', DOCCOMMENT}`)
+    assert.equal(errors[0].code, 'QNT000')
+  })
+
+  it('error in a constant definition', () => {
+    const code = 'module err { const broken }'
+    const errors = parseErrorsFrom('const broken', code)
+    assert.equal(errors.length, 1)
+    assert.equal(errors[0].message, 'expected a constant definition')
+    assert.equal(errors[0].code, 'QNT015')
   })
 
   it('error on unexpected symbol after expression', () => {
-    parseAndCompare('_1006unexpectedExpr')
+    // syntax error on: p !! name
+    const code = 'module unexpectedExpr { def access(p) = p !! name }'
+    const errors = parseErrorsFrom('unexpectedExpr', code)
+    assert.isAtLeast(errors.length, 1)
+    assert.equal(errors[0].message, `token recognition error at: '!!'`)
+    assert.equal(errors[0].code, 'QNT000')
   })
 
-  it('error on unrecognized token', () => {
-    parseAndCompare('_1007unexpectedToken')
+  it('error on unexpected token', () => {
+    // # is an unexpected token
+    const code = 'module unexpectedToken { def access(p) = { p # name } }'
+    const errors = parseErrorsFrom('unexpectedToken', code)
+    assert.isAtLeast(errors.length, 1)
+    assert.equal(errors[0].message, `token recognition error at: '#'`)
+    assert.equal(errors[0].code, 'QNT000')
   })
 
-  it('error on unexpected "="', () => {
-    parseAndCompare('_1008unexpectedEq')
+  it('error on unexpected token "="', () => {
+    // "=" is unexpected
+    const code = 'module unexpectedEq { val errorHere = x = 1 }'
+    const errors = parseErrorsFrom('unexpectedEq', code)
+    assert.equal(errors.length, 1)
+    assert.equal(errors[0].message, `unexpected '=', did you mean '=='?`)
+    assert.equal(errors[0].code, 'QNT006')
   })
 
-  it('error on infix without arguments', () => {
-    parseAndCompare('_1009infixFewArgs')
+  it('error on hanging operator name', () => {
+    // the keyword cardinality is hanging
+    const code = 'module hangingCardinality { def one(S) = { S cardinality } }'
+    const errors = parseErrorsFrom('hangingCardinality', code)
+    assert.isAtLeast(errors.length, 1)
+    assert.equal(errors[0].message,
+      `extraneous input '(' expecting {'}', 'const', 'var', 'assume', 'type', 'val', 'def', 'pure', 'action', 'run', 'temporal', 'import', 'export', DOCCOMMENT}`)
+    assert.equal(errors[0].code, 'QNT000')
+  })
+
+  it('error on double spread', () => {
+    const code = `module spreadError {
+  val rec = { a: 1, b: true }
+  val errorRec = { ...rec, ...rec }
+  }`
+    const errors = parseErrorsFrom('spreadError', code)
+    assert.equal(errors.length, 1)
+    assert.equal(errors[0].message, '... may be used once in { ...record, <fields> }')
+    assert.equal(errors[0].code, 'QNT012')
+  })
+
+  it('error on single quotes in import', () => {
+    // we should use double quotes
+    const code = `module singleQuotes {  import I.* from './_1025importeeWithError' }`
+    const errors = parseErrorsFrom('singleQuotes', code)
+    assert.isAtLeast(errors.length, 1)
+    assert.equal(errors[0].message, `mismatched input ''' expecting STRING`)
+    assert.equal(errors[0].code, 'QNT000')
+  })
+})
+
+// Test the JSON error output.  Most of the tests here should migrate to the
+// above test suite called 'syntax errors' or other test suites for the later
+// phases.  It is sufficient to have a few tests that compare JSON. For the
+// rest, we are interested in checking the error messages, not the JSON files.
+describe('parse errors', () => {
+  it('error in module unit', () => {
+    parseAndCompare('_1002emptyWithError')
   })
 
   it('error on unresolved name', () => {
@@ -170,16 +248,8 @@ describe('parse errors', () => {
     parseAndCompare('_1023importFromUnresolved')
   })
 
-  it('errors on an import that contains syntax errors', () => {
-    parseAndCompare('_1024importFromSyntaxError')
-  })
-
   it('errors on cyclic imports', () => {
     parseAndCompare('_1026importCycleA')
-  })
-
-  it('double spread should produce an error', () => {
-    parseAndCompare('_1029spreadError')
   })
 
   it('a module with a constant', () => {
