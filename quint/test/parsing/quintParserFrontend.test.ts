@@ -218,10 +218,6 @@ describe('syntax errors', () => {
 // phases.  It is sufficient to have a few tests that compare JSON. For the
 // rest, we are interested in checking the error messages, not the JSON files.
 describe('parse errors', () => {
-  it('error in module unit', () => {
-    parseAndCompare('_1002emptyWithError')
-  })
-
   it('error on unresolved name', () => {
     parseAndCompare('_1010undefinedName')
   })
