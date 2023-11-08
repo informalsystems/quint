@@ -17,6 +17,9 @@ import { fileSourceResolver } from '../../src/parsing/sourceResolver'
 import { mkErrorMessage } from '../../src/cliCommands'
 import { QuintError } from '../../src'
 
+// the name that we are using by default
+const defaultSourceName = 'moduleName'
+
 // read a Quint file from the test data directory
 function readQuint(name: string): string {
   const p = resolve(__dirname, '../../testFixture', name + '.qnt')
@@ -125,7 +128,7 @@ describe('parsing', () => {
 describe('syntax errors', () => {
   it('unbalanced module definition', () => {
     const code = 'module empty {'
-    const errors = parseErrorsFrom('module-unbalanced', code)
+    const errors = parseErrorsFrom(defaultSourceName, code)
     assert.equal(errors.length, 1)
     assert.equal(
       errors[0].message,
@@ -136,7 +139,7 @@ describe('syntax errors', () => {
 
   it('something unexpected in a module definition', () => {
     const code = 'module empty { something }'
-    const errors = parseErrorsFrom('module-unexpected', code)
+    const errors = parseErrorsFrom(defaultSourceName, code)
     assert.equal(errors.length, 1)
     assert.equal(
       errors[0].message,
@@ -147,7 +150,7 @@ describe('syntax errors', () => {
 
   it('error in a constant definition', () => {
     const code = 'module err { const broken }'
-    const errors = parseErrorsFrom('const broken', code)
+    const errors = parseErrorsFrom(defaultSourceName, code)
     assert.equal(errors.length, 1)
     assert.equal(errors[0].message, `mismatched input '}' expecting {':', '::'}`)
     assert.equal(errors[0].code, 'QNT000')
@@ -156,7 +159,7 @@ describe('syntax errors', () => {
   it('error on unexpected symbol after expression', () => {
     // syntax error on: p !! name
     const code = 'module unexpectedExpr { def access(p) = p !! name }'
-    const errors = parseErrorsFrom('unexpectedExpr', code)
+    const errors = parseErrorsFrom(defaultSourceName, code)
     assert.isAtLeast(errors.length, 1)
     assert.equal(errors[0].message, `token recognition error at: '!!'`)
     assert.equal(errors[0].code, 'QNT000')
@@ -165,7 +168,7 @@ describe('syntax errors', () => {
   it('error on unexpected token', () => {
     // # is an unexpected token
     const code = 'module unexpectedToken { def access(p) = { p # name } }'
-    const errors = parseErrorsFrom('unexpectedToken', code)
+    const errors = parseErrorsFrom(defaultSourceName, code)
     assert.isAtLeast(errors.length, 1)
     assert.equal(errors[0].message, `token recognition error at: '#'`)
     assert.equal(errors[0].code, 'QNT000')
@@ -174,7 +177,7 @@ describe('syntax errors', () => {
   it('error on unexpected token "="', () => {
     // "=" is unexpected
     const code = 'module unexpectedEq { val errorHere = x = 1 }'
-    const errors = parseErrorsFrom('unexpectedEq', code)
+    const errors = parseErrorsFrom(defaultSourceName, code)
     assert.equal(errors.length, 1)
     assert.equal(errors[0].message, `unexpected '=', did you mean '=='?`)
     assert.equal(errors[0].code, 'QNT006')
@@ -183,7 +186,7 @@ describe('syntax errors', () => {
   it('error on hanging operator name', () => {
     // the keyword cardinality is hanging
     const code = 'module hangingCardinality { def one(S) = { S cardinality } }'
-    const errors = parseErrorsFrom('hangingCardinality', code)
+    const errors = parseErrorsFrom(defaultSourceName, code)
     assert.isAtLeast(errors.length, 1)
     assert.equal(
       errors[0].message,
@@ -197,7 +200,7 @@ describe('syntax errors', () => {
   val rec = { a: 1, b: true }
   val errorRec = { ...rec, ...rec }
   }`
-    const errors = parseErrorsFrom('spreadError', code)
+    const errors = parseErrorsFrom(defaultSourceName, code)
     assert.equal(errors.length, 1)
     assert.equal(errors[0].message, '... may be used once in { ...record, <fields> }')
     assert.equal(errors[0].code, 'QNT012')
@@ -206,7 +209,7 @@ describe('syntax errors', () => {
   it('error on single quotes in import', () => {
     // we should use double quotes
     const code = `module singleQuotes {  import I.* from './_1025importeeWithError' }`
-    const errors = parseErrorsFrom('singleQuotes', code)
+    const errors = parseErrorsFrom(defaultSourceName, code)
     assert.isAtLeast(errors.length, 1)
     assert.equal(errors[0].message, `mismatched input ''' expecting STRING`)
     assert.equal(errors[0].code, 'QNT000')
