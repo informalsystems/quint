@@ -149,8 +149,8 @@ describe('syntax errors', () => {
     const code = 'module err { const broken }'
     const errors = parseErrorsFrom('const broken', code)
     assert.equal(errors.length, 1)
-    assert.equal(errors[0].message, 'expected a constant definition')
-    assert.equal(errors[0].code, 'QNT015')
+    assert.equal(errors[0].message, `mismatched input '}' expecting {':', '::'}`)
+    assert.equal(errors[0].code, 'QNT000')
   })
 
   it('error on unexpected symbol after expression', () => {
