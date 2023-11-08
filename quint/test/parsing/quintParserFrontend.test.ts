@@ -213,9 +213,9 @@ describe('syntax errors', () => {
   })
 })
 
-// Test the JSON error output.  Most of the tests here should migrate to the
+// Test the JSON error output. Most of the tests here should migrate to the
 // above test suite called 'syntax errors' or other test suites for the later
-// phases.  It is sufficient to have a few tests that compare JSON. For the
+// phases. It is sufficient to have a few tests that compare JSON. For the
 // rest, we are interested in checking the error messages, not the JSON files.
 describe('parse errors', () => {
   it('error on unresolved name', () => {
