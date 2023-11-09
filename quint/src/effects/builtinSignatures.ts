@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------------------
- * Copyright (c) Informal Systems 2022. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2022 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  * --------------------------------------------------------------------------------- */
 
 /**
@@ -16,6 +16,7 @@ import { ComponentKind, Effect, EffectComponent, EffectScheme, Entity, Signature
 import { parseEffectOrThrow } from './parser'
 import { range, times } from 'lodash'
 import { QuintBuiltinOpcode } from '../ir/quintIr'
+import { zip } from '../util'
 
 export function getSignatures(): Map<string, Signature> {
   return new Map<string, Signature>(fixedAritySignatures.concat(multipleAritySignatures))
@@ -226,6 +227,10 @@ const otherOperators = [
     name: 'ite',
     effect: parseAndQuantify('(Read[r1], Read[r2] & Update[u], Read[r3] & Update[u]) => Read[r1, r2, r3] & Update[u]'),
   },
+  {
+    name: 'variant',
+    effect: parseAndQuantify('(Pure, Read[r] & Update[u]) => Read[r] & Update[u]'),
+  },
 ]
 
 const multipleAritySignatures: [QuintBuiltinOpcode, Signature][] = [
@@ -238,11 +243,35 @@ const multipleAritySignatures: [QuintBuiltinOpcode, Signature][] = [
   ['and', standardPropagation],
   ['or', standardPropagation],
   [
-    'unionMatch',
+    // A match operator that looks like
+    //
+    // matchVariant(expr: s_i, label0: string, elim0: (s_0) => t, ..., labeln: string, elimn: (s_n) => t))
+    //   : t
+    // {where 0 <= i <= n}
+    //
+    // has an effect signature matching the scheme
+    //
+    // (a, Pure, (a) => Read[r0] & Update[u0], ..., (a) => Read[rn] & Update[un])
+    //   => Read[r0,...,rn] & Update[u0,...,un]
+    //
+    // Because:
+    //
+    // - Assuming `expr` has effect `a`, each eliminator must take a parameter with effect `a`.
+    // - Each label is a string literal, which must be `Pure`.
+    // - The result of applying the operator may have the effect of the body of any of the eliminators:
+    //   the union of effect variables here corresponding to the disjunctive structure of the sum-type eliminator.
+    'matchVariant',
     (arity: number) => {
-      const readVars = times((arity - 1) / 2, i => `r${i}`)
-      const args = readVars.map(r => `Pure, (Pure) => Read[${r}]`)
-      return parseAndQuantify(`(Read[r], ${args.join(', ')}) => Read[${readVars.join(', ')}]`)
+      // We need indexes for each eliminator (i.e., lambdas), so that we can number
+      // the effect variables corresponding to body of each respective eliminator.
+      const eliminatorIdxs = range((arity - 1) / 2)
+      const readVars = eliminatorIdxs.map(i => `r${i}`)
+      const updateVars = eliminatorIdxs.map(i => `u${i}`)
+      const matchedExprEffect = 'a'
+      const eliminationCaseEffects = zip(readVars, updateVars).map(([r, u]) => `Pure, (a) => Read[${r}] & Update[${u}]`)
+      const argumentEffects = [matchedExprEffect, ...eliminationCaseEffects].join(', ')
+      const resultEffect = `Read[${readVars.join(',')}] & Update[${updateVars.join(',')}]`
+      return parseAndQuantify(`(${argumentEffects}) => ${resultEffect}`)
     },
   ],
   [

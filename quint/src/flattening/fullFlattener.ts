@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------------------
- * Copyright (c) Informal Systems 2023. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2023 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  * --------------------------------------------------------------------------------- */
 
 /**
@@ -113,11 +113,11 @@ export function flattenModules(
 }
 
 function resolveNamesOrThrow(modules: QuintModule[], sourceMap: SourceMap): ParserPhase3 {
-  const result = parsePhase3importAndNameResolution({ modules, sourceMap })
-  if (result.isLeft()) {
+  const result = parsePhase3importAndNameResolution({ modules, sourceMap, errors: [] })
+  if (result.errors.length > 0) {
     modules.forEach(m => console.log(moduleToString(m)))
-    throw new Error('Internal error while flattening ' + result.value.errors.map(quintErrorToString))
+    throw new Error('Internal error while flattening ' + result.errors.map(quintErrorToString))
   }
 
-  return result.unwrap()
+  return result
 }

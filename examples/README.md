@@ -49,7 +49,7 @@ listed without any additional command line arguments.
 | Example | Syntax (`parse`) | Types (`typecheck`) | Unit tests (`test`) | Apalache (`verify`) |
 |---------|:----------------:|:-------------------:|:-------------------:|:-------------------:|
 | [classic/distributed/ClockSync/clockSync3.qnt](./classic/distributed/ClockSync/clockSync3.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| [classic/distributed/ewd840/ewd840.qnt](./classic/distributed/ewd840/ewd840.qnt) | :white_check_mark: | :x:<sup>https://github.com/informalsystems/quint/issues/581</sup> | :x:<sup>https://github.com/informalsystems/quint/issues/581</sup> | :x:<sup>https://github.com/informalsystems/quint/issues/581</sup> |
+| [classic/distributed/ewd840/ewd840.qnt](./classic/distributed/ewd840/ewd840.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | [classic/distributed/LamportMutex/LamportMutex.qnt](./classic/distributed/LamportMutex/LamportMutex.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | [classic/distributed/Paxos/Paxos.qnt](./classic/distributed/Paxos/Paxos.qnt) | :white_check_mark: | :white_check_mark: | :x:<sup>https://github.com/informalsystems/quint/issues/244</sup> | :x:<sup>https://github.com/informalsystems/quint/issues/244</sup> |
 | [classic/distributed/Paxos/Voting.qnt](./classic/distributed/Paxos/Voting.qnt) | :white_check_mark: | :white_check_mark: | :x:<sup>https://github.com/informalsystems/quint/issues/244</sup> | :x:<sup>https://github.com/informalsystems/quint/issues/244</sup> |
@@ -80,7 +80,7 @@ listed without any additional command line arguments.
 | [language-features/lists.qnt](./language-features/lists.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | [language-features/maps.qnt](./language-features/maps.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | [language-features/nondetEx.qnt](./language-features/nondetEx.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| [language-features/option.qnt](./language-features/option.qnt) | :white_check_mark: | :x:<sup>https://github.com/informalsystems/quint/issues/244</sup> | :x:<sup>https://github.com/informalsystems/quint/issues/244</sup> | :x:<sup>https://github.com/informalsystems/quint/issues/244</sup> |
+| [language-features/option.qnt](./language-features/option.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:<sup>https://github.com/informalsystems/quint/issues/244</sup> |
 | [language-features/records.qnt](./language-features/records.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | [language-features/sets.qnt](./language-features/sets.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | [language-features/tuples.qnt](./language-features/tuples.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
@@ -94,6 +94,7 @@ listed without any additional command line arguments.
 | [solidity/SimpleAuction/SimpleAuction.qnt](./solidity/SimpleAuction/SimpleAuction.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | N/A[^nostatemachine] |
 | [solidity/SimplePonzi/simplePonzi.qnt](./solidity/SimplePonzi/simplePonzi.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | [spells/basicSpells.qnt](./spells/basicSpells.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | N/A[^nostatemachine] |
+| [spells/BoundedUInt.qnt](./spells/BoundedUInt.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | N/A[^nostatemachine] |
 | [spells/commonSpells.qnt](./spells/commonSpells.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | N/A[^nostatemachine] |
 | [spells/rareSpells.qnt](./spells/rareSpells.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | N/A[^nostatemachine] |
 | [verification/defaultOpNames.qnt](./verification/defaultOpNames.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |

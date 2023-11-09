@@ -93,8 +93,9 @@ export function parseMockedModule(text: string): ParserPhase3 {
   const idGen = newIdGenerator()
   const fake_path: SourceLookupPath = { normalizedPath: 'fake_path', toSourceName: () => 'fake_path' }
   const parseResult = parse(idGen, 'fake_location', fake_path, text)
-  if (parseResult.isLeft()) {
-    assert.fail('Failed to parse mocked up module')
-  }
-  return parseResult.unwrap()
+
+  // We use deepEqual instead of `isEmpty` so we'll get informative
+  // output on failure.
+  assert.deepEqual([], parseResult.errors)
+  return parseResult
 }

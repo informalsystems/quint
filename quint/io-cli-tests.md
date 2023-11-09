@@ -267,6 +267,25 @@ echo -e "init\nMyF::ExportedBasics::double(2)" | quint -r ../examples/language-f
 >>> 
 ```
 
+### Repl reports proper errors for malformed expressions 
+
+<!-- !test in repl malformed expressions -->
+```
+echo -e "1 +" | quint | tail -n +3
+```
+
+<!-- !test out repl malformed expressions -->
+```
+>>> [DEBUG] generating undefined expr to fill hole in: 1+
+syntax error: error: [QNT000] mismatched input '<EOF>' expecting {'{', 'nondet', 'val', 'def', 'pure', 'action', 'run', 'temporal', '[', 'all', 'any', 'if', '_', STRING, BOOL, INT, 'and', 'or', 'iff', 'implies', 'Set', 'List', 'Map', 'match', '-', '(', IDENTIFIER}
+
+
+
+
+>>> 
+```
+
+
 ### Tests works as expected
 
 The command `test` finds failing tests and prints error messages.
@@ -972,3 +991,24 @@ exit $exit_code
 >>> Map("p1" -> 0, "p2" -> 0, "p3" -> 0)
 >>> 
 ```
+
+### Errors are reported in the right file
+
+File `ImportFileWithError.qnt` has no error, but it imports a module from file `FileWithError.qnt`, which has a type error. The error should be reported only in `FileWithError.qnt`.
+
+<!-- !test in error for file -->
+```
+quint typecheck ./testFixture/typechecking/ImportFileWithError.qnt 2>&1 | sed 's#.*quint/\(testFixture\)#HOME/\1#g'
+```
+
+<!-- !test out error for file -->
+```
+HOME/testFixture/typechecking/FileWithError.qnt:2:3 - error: [QNT000] Couldn't unify bool and int
+Trying to unify bool and int
+
+2:   val a: int = true
+     ^^^^^^^^^^^^^^^^^
+
+error: typechecking failed
+```
+

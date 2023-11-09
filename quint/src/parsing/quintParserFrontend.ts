@@ -3,14 +3,12 @@
  *
  * Igor Konnov, Gabriela Moreira, Shon Feder, 2021-2023
  *
- * Copyright (c) Informal Systems 2021-2023. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2021-2023 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  */
 
 import { CharStreams, CommonTokenStream } from 'antlr4ts'
-import { Either, left, merge, right } from '@sweet-monads/either'
-import { Set } from 'immutable'
 import { ParseTreeWalker } from 'antlr4ts/tree/ParseTreeWalker'
 
 import { QuintLexer } from '../generated/QuintLexer'
@@ -20,7 +18,7 @@ import { QuintListener } from '../generated/QuintListener'
 import { QuintDeclaration, QuintDef, QuintEx, QuintModule, isDef } from '../ir/quintIr'
 import { IdGenerator, newIdGenerator } from '../idGenerator'
 import { ToIrListener } from './ToIrListener'
-import { LookupTable, NameResolutionResult, UnusedDefinitions } from '../names/base'
+import { LookupTable, UnusedDefinitions } from '../names/base'
 import { resolveNames } from '../names/resolver'
 import { QuintError } from '../quintError'
 import { SourceLookupPath, SourceResolver, fileSourceResolver } from './sourceResolver'
@@ -31,6 +29,7 @@ import { ErrorCode } from '../quintError'
 import { Loc } from '../ErrorMessage'
 import grammar from '../generated/quint.ohm-bundle'
 import { explainParseErrors } from './parseErrorExplanator'
+import { flow } from 'lodash'
 
 /**
  * A source map that is constructed by the parser phases.
@@ -40,7 +39,7 @@ export type SourceMap = Map<bigint, Loc>
 /**
  * The result of parsing, T is specialized to a phase, see below.
  */
-export type ParseResult<T> = Either<{ errors: QuintError[]; sourceMap: SourceMap }, T>
+export type ParseResult<T> = T
 
 /**
  * Phase 1: Parsing a string of characters into intermediate representation.
@@ -48,6 +47,7 @@ export type ParseResult<T> = Either<{ errors: QuintError[]; sourceMap: SourceMap
 export interface ParserPhase1 {
   modules: QuintModule[]
   sourceMap: SourceMap
+  errors: QuintError[]
 }
 
 /**
@@ -93,17 +93,14 @@ export function parseExpressionOrDeclaration(
   const errors: QuintError[] = []
   const parser = setupParser(text, sourceLocation, errors, sourceMap, idGenerator)
   const tree = parser.declarationOrExpr()
-  if (errors.length > 0) {
-    return { kind: 'error', errors: errors }
-  } else {
-    const listener = new ExpressionOrDeclarationListener(sourceLocation, idGenerator)
+  const listener = new ExpressionOrDeclarationListener(sourceLocation, idGenerator)
 
-    // Use an existing source map as a starting point.
-    listener.sourceMap = sourceMap
+  // Use an existing source map as a starting point.
+  listener.sourceMap = sourceMap
 
-    ParseTreeWalker.DEFAULT.walk(listener as QuintListener, tree)
-    return listener.result ?? { kind: 'error', errors: listener.errors }
-  }
+  ParseTreeWalker.DEFAULT.walk(listener as QuintListener, tree)
+  errors.push(...listener.errors)
+  return errors.length > 0 ? { kind: 'error', errors: errors } : listener.result!
 }
 
 /**
@@ -117,31 +114,41 @@ export function parsePhase1fromText(
   sourceLocation: string
 ): ParseResult<ParserPhase1> {
   const errors: QuintError[] = []
-  const sourceMap: SourceMap = new Map()
-  const parser = setupParser(text, sourceLocation, errors, sourceMap, idGen)
+  const listener = new ToIrListener(sourceLocation, idGen)
+  const parser = setupParser(text, sourceLocation, errors, listener.sourceMap, idGen)
   // run the parser
   const tree = parser.modules()
-  if (errors.length > 0) {
-    const betterErrors = explainParseErrors(text)
-    if (betterErrors.length > 0) {
-      return left({ errors: betterErrors, sourceMap: sourceMap })
-    } else {
-      // fall back to ugly errors by antlr4
-      return left({ errors: errors, sourceMap: sourceMap })
-    }
-  } else {
-    // walk through the AST and construct the IR
-    const listener = new ToIrListener(sourceLocation, idGen)
-    ParseTreeWalker.DEFAULT.walk(listener as QuintListener, tree)
 
-    if (listener.errors.length > 0) {
-      return left({ errors: listener.errors, sourceMap: listener.sourceMap })
-    } else if (listener.modules.length > 0) {
-      return right({ modules: listener.modules, sourceMap: listener.sourceMap })
-    } else {
-      // istanbul ignore next
-      throw new Error('Illegal state: root module is undefined. Please report a bug.')
+  // wrap this in a try catch, since we are running the parser even if there are
+  // errors after the previous command.
+  try {
+    // walk through the AST and construct the IR
+    ParseTreeWalker.DEFAULT.walk(listener as QuintListener, tree)
+  } catch (e) {
+    if (errors.length === 0) {
+      throw e
     }
+    console.debug(`[DEBUG] ignoring listener exception in favor of parse errors. Exception: ${e}`)
+    // ignore the exception, we already have errors to report.
+    //
+    // This happens in a situation where the first part of parsing (constructing
+    // the AST) has finished with errors, but we still want to try and build an
+    // IR out of it in order to collect as many errors as we can (from this and subsequent
+    // phases). So, we try to proceed, but it's fine if it doesn't work out.
+    //
+    // It is safe to ignore errors here because, normally, we wouldn't even run
+    // this code after parse failures. However, if we want to run subsequent
+    // phases on top of the generated IR, it is important to consider that it is
+    // only a partial result and might have undefined components or be incomplete.
+  }
+    
+  if (errors.length > 0) {
+  const betterErrors = explainParseErrors(text)
+  if (betterErrors.length > 0) {
+    return left({ errors: betterErrors.concat(listener.errors), sourceMap: sourceMap })
+  } else {
+    // fall back to ugly errors by antlr4
+    return left({ errors: errors.concat(listener.errors), sourceMap: sourceMap })
   }
 }
 
@@ -197,7 +204,7 @@ export function parsePhase2sourceResolution(
             message: `Cyclic imports: ${cycle}`,
             reference: decl.id,
           }
-          return left({ errors: [err], sourceMap: sourceMap })
+          return { ...mainPhase1Result, errors: mainPhase1Result.errors.concat([err]), sourceMap }
         }
         if (sourceToModules.has(importeePath.normalizedPath)) {
           // The source has been parsed already. Just push the module rank,
@@ -214,22 +221,18 @@ export function parsePhase2sourceResolution(
             message: `import ... from '${decl.fromSource}': could not load`,
             reference: decl.id,
           }
-          return left({ errors: [err], sourceMap: sourceMap })
+          return { ...mainPhase1Result, errors: mainPhase1Result.errors.concat([err]), sourceMap }
         }
         // try to parse the source code
         const parseResult = parsePhase1fromText(idGen, errorOrText.value, importeePath.toSourceName())
-        if (parseResult.isLeft()) {
-          // failed to parse the code of the loaded file
-          return parseResult
-        }
         // all good: add the new modules to the worklist, and update the source map
-        const newModules = Array.from(parseResult.value.modules).reverse()
+        const newModules = Array.from(parseResult.modules).reverse()
         newModules.forEach(m => {
           worklist.push([m, pathTrail.concat([importeePath])])
         })
         sourceToModules.set(importeePath.normalizedPath, newModules)
         newModules.forEach(m => moduleRank.set(m.name, maxModuleRank++))
-        sourceMap = new Map([...sourceMap, ...parseResult.value.sourceMap])
+        sourceMap = new Map([...sourceMap, ...parseResult.sourceMap])
       }
     }
   }
@@ -240,7 +243,7 @@ export function parsePhase2sourceResolution(
     allModules = allModules.concat(mods)
   }
   allModules.sort((m1, m2) => moduleRank.get(m2.name)! - moduleRank.get(m1.name)!)
-  return right({ modules: allModules, sourceMap: sourceMap })
+  return { ...mainPhase1Result, modules: allModules, sourceMap }
 }
 
 /**
@@ -249,9 +252,8 @@ export function parsePhase2sourceResolution(
  * Note that the IR may be ill-typed.
  */
 export function parsePhase3importAndNameResolution(phase2Data: ParserPhase2): ParseResult<ParserPhase3> {
-  return resolveNames(phase2Data.modules)
-    .mapLeft(errors => ({ errors, sourceMap: phase2Data.sourceMap }))
-    .map((result: NameResolutionResult) => ({ ...phase2Data, ...result }))
+  const result = resolveNames(phase2Data.modules)
+  return { ...phase2Data, ...result, errors: phase2Data.errors.concat(result.errors) }
 }
 
 /**
@@ -261,34 +263,26 @@ export function parsePhase3importAndNameResolution(phase2Data: ParserPhase2): Pa
 export function parsePhase4toposort(phase3Data: ParserPhase3): ParseResult<ParserPhase4> {
   // topologically sort all declarations in each module
   const context = mkCallGraphContext(phase3Data.modules)
-  const cycleOrModules: Either<Set<bigint>, QuintModule[]> = merge(
-    phase3Data.modules.map(mod => {
-      const visitor = new CallGraphVisitor(phase3Data.table, context)
-      walkModule(visitor, mod)
-      return toposort(visitor.graph, mod.declarations).mapRight(decls => {
-        return { ...mod, declarations: decls }
-      })
-    })
-  )
+  const errors = phase3Data.errors
+  const modules = phase3Data.modules.map(mod => {
+    const visitor = new CallGraphVisitor(phase3Data.table, context)
+    walkModule(visitor, mod)
+    const result = toposort(visitor.graph, mod.declarations)
 
-  return cycleOrModules
-    .mapLeft(cycleIds => {
-      // found a cycle, report it
-      return {
-        errors: cycleIds.toArray().map((id): QuintError => {
-          return {
-            code: 'QNT099',
-            message: 'Found cyclic declarations. Use fold and foldl instead of recursion',
-            reference: id,
-          }
-        }),
-        sourceMap: phase3Data.sourceMap,
-      }
-    })
-    .mapRight(modules => {
-      // reordered the declarations
-      return { ...phase3Data, modules }
-    })
+    errors.push(
+      ...result.cycles.toArray().map((id): QuintError => {
+        return {
+          code: 'QNT099',
+          message: 'Found cyclic declarations. Use fold and foldl instead of recursion',
+          reference: id,
+        }
+      })
+    )
+
+    return { ...mod, declarations: result.sorted }
+  })
+
+  return { ...phase3Data, modules, errors }
 }
 
 export function compactSourceMap(sourceMap: SourceMap): { sourceIndex: any; map: any } {
@@ -319,21 +313,25 @@ export function compactSourceMap(sourceMap: SourceMap): { sourceIndex: any; map:
  * @param sourceLocation A string describing the source location of the code being parsed.
  * @param mainPath The main source lookup path for resolving imports.
  * @param code The Quint code string to parse.
+ * @param sourceCode Optionally a map of previously parsed files, to be updated by this function
  * @returns A `ParseResult` containing the result of all three parsing phases.
  */
 export function parse(
   idGen: IdGenerator,
   sourceLocation: string,
   mainPath: SourceLookupPath,
-  code: string
+  code: string,
+  sourceCode: Map<string, string> = new Map()
 ): ParseResult<ParserPhase4> {
-  return parsePhase1fromText(idGen, code, sourceLocation)
-    .chain(phase1Data => {
-      const resolver = fileSourceResolver()
+  return flow([
+    () => parsePhase1fromText(idGen, code, sourceLocation),
+    phase1Data => {
+      const resolver = fileSourceResolver(sourceCode)
       return parsePhase2sourceResolution(idGen, resolver, mainPath, phase1Data)
-    })
-    .chain(phase2Data => parsePhase3importAndNameResolution(phase2Data))
-    .chain(phase3Data => parsePhase4toposort(phase3Data))
+    },
+    parsePhase3importAndNameResolution,
+    parsePhase4toposort,
+  ])()
 }
 
 export function parseDefOrThrow(text: string, idGen?: IdGenerator, sourceMap?: SourceMap): QuintDef {
@@ -341,7 +339,8 @@ export function parseDefOrThrow(text: string, idGen?: IdGenerator, sourceMap?: S
   if (result.kind === 'declaration' && isDef(result.decl)) {
     return result.decl
   } else {
-    throw new Error(`Expected a definition, got ${result.kind}, parsing ${text}`)
+    const msg = result.kind === 'error' ? result.errors.join('\n') : `Expected a definition, got ${result.kind}`
+    throw new Error(`${msg}, parsing ${text}`)
   }
 }
 

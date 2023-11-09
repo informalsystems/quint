@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------------------
- * Copyright (c) Informal Systems 2022. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2022 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  * --------------------------------------------------------------------------------- */
 
 /**
@@ -140,6 +140,10 @@ export function applySubstitution(table: LookupTable, subs: Substitutions, t: Qu
  */
 export function applySubstitutionToConstraint(table: LookupTable, subs: Substitutions, c: Constraint): Constraint {
   switch (c.kind) {
+    case 'empty':
+      return c
+    case 'isDefined':
+      return { ...c, type: applySubstitution(table, subs, c.type) }
     case 'eq': {
       const ts: [QuintType, QuintType] = [
         applySubstitution(table, subs, c.types[0]),
@@ -147,8 +151,6 @@ export function applySubstitutionToConstraint(table: LookupTable, subs: Substitu
       ]
       return { kind: c.kind, types: ts, sourceId: c.sourceId }
     }
-    case 'empty':
-      return c
     case 'conjunction': {
       const cs = c.constraints.map(con => applySubstitutionToConstraint(table, subs, con))
       return { kind: 'conjunction', constraints: cs, sourceId: c.sourceId }

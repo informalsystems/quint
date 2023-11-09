@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------------------
- * Copyright (c) Informal Systems 2022. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2022 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  * --------------------------------------------------------------------------------- */
 
 /**
@@ -42,8 +42,10 @@ import {
   fieldConstraints,
   fieldNamesConstraints,
   itemConstraints,
+  matchConstraints,
   recordConstructorConstraints,
   tupleConstructorConstraints,
+  variantConstraints,
   withConstraints,
 } from './specialConstraints'
 import { FreshVarGenerator } from '../FreshVarGenerator'
@@ -218,6 +220,13 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
             )
           case 'item':
             return validateArity(e.opcode, results, l => l === 2, '2').chain(() => itemConstraints(e.id, results, a))
+          // Sum type operators
+          case 'variant':
+            return validateArity(e.opcode, results, l => l === 2, '2').chain(() => variantConstraints(e.id, results, a))
+          case 'matchVariant':
+            return validateArity(e.opcode, results, l => l % 2 !== 0, 'odd number of').chain(() =>
+              matchConstraints(e.id, results, a)
+            )
           // Otherwise it's a standard operator with a definition in the context
           default:
             return definedSignature.map(t1 => {

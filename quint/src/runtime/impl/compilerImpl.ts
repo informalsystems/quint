@@ -4,9 +4,9 @@
  *
  * Igor Konnov, Gabriela Moreira, 2022-2023
  *
- * Copyright (c) Informal Systems 2022-2023. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2022-2023 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  */
 
 import { strict as assert } from 'assert'
@@ -930,9 +930,8 @@ export class CompilerVisitor implements IRVisitor {
           break
 
         // builtin operators that are not handled by REPL
-        case 'unionMatch':
         case 'variant': // TODO: https://github.com/informalsystems/quint/issues/1033
-        case 'match': // TODO: https://github.com/informalsystems/quint/issues/1033
+        case 'matchVariant': // TODO: https://github.com/informalsystems/quint/issues/1033
         case 'orKeep':
         case 'mustChange':
         case 'weakFair':
