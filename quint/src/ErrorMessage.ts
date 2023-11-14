@@ -23,10 +23,22 @@ export interface ErrorMessage {
   locs: Loc[]
 }
 
+/**
+ * A single-point position in a file.
+ */
+export interface Pos {
+  line: number
+  col: number
+  index: number
+}
+
+/**
+ * An interval in a file.
+ */
 export interface Loc {
   source: string
-  start: { line: number; col: number; index: number }
-  end?: { line: number; col: number; index: number }
+  start: Pos
+  end?: Pos
 }
 
 /**

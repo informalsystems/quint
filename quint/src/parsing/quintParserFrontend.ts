@@ -26,8 +26,7 @@ import { CallGraphVisitor, mkCallGraphContext } from '../static/callgraph'
 import { walkModule } from '../ir/IRVisitor'
 import { toposort } from '../static/toposort'
 import { ErrorCode } from '../quintError'
-import { Loc } from '../ErrorMessage'
-import grammar from '../generated/quint.ohm-bundle'
+import { Loc, Pos } from '../ErrorMessage'
 import { explainParseErrors } from './parseErrorExplanator'
 import { flow } from 'lodash'
 
@@ -143,12 +142,26 @@ export function parsePhase1fromText(
   }
     
   if (errors.length > 0) {
-  const betterErrors = explainParseErrors(text)
-  if (betterErrors.length > 0) {
-    return left({ errors: betterErrors.concat(listener.errors), sourceMap: sourceMap })
-  } else {
-    // fall back to ugly errors by antlr4
-    return left({ errors: errors.concat(listener.errors), sourceMap: sourceMap })
+    const registerLoc = (start: Pos, end: Pos) => {
+      const id = idGen.nextId()
+      const loc: Loc = { source: sourceLocation, start, end }
+      listener.sourceMap.set(id, loc)
+      return id
+    }
+    const betterErrors = explainParseErrors(text, registerLoc)
+    if (betterErrors.length > 0) {
+      return {
+        errors: betterErrors.concat(listener.errors),
+        modules: listener.modules,
+        sourceMap: listener.sourceMap
+      }
+    }
+  }
+  // fall back to ugly errors by antlr4
+  return {
+    errors: errors.concat(listener.errors),
+    modules: listener.modules,
+    sourceMap: listener.sourceMap
   }
 }
 
