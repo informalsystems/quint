@@ -7,7 +7,7 @@ would like to start with Quint.
 
 Spells are simply Quint modules that contain often-used definitions. There is
 nothing special about these definitions. They are probably a bit more
-well-thought than a definition someone would write on the spot. Check the page
+thought-out than a definition someone would write on the spot. Check the page
 on [Spells][].
 
 ### Difference between `pure def` and `def`
