@@ -1,5 +1,5 @@
 /*
- * An error explanation framework.
+ * An error explanation framework that uses an auxilliary parser.
  *
  * Igor Konnov, 2023
  *
@@ -24,11 +24,11 @@ export function explainParseErrors(text: string, registerLoc: (s: Pos, e: Pos) =
     // run the ohmjs parser to explain errors
     const r = grammar.match(text)
     if (r.failed()) {
-      const left = r.getInterval().collapsedLeft().getLineAndColumn()
-      const right = r.getInterval().collapsedRight().getLineAndColumn()
-
-      const start = { line: left.lineNum - 1, col: left.colNum - 1, index: left.offset }
-      const end = { line: right.lineNum - 2, col: right.colNum - 1, index: right.offset }
+      // TODO: ohmjs always returns the rightmost failing point.
+      // Hence, we cannot produce an interval.
+      const point = r.getInterval().collapsedLeft().getLineAndColumn()
+      const start = { line: point.lineNum - 1, col: point.colNum - 1, index: point.offset }
+      const end = { line: point.lineNum - 1, col: point.colNum, index: point.offset }
       const referenceId = registerLoc(start, end)
       const msg = r.message ?? 'unknown error'
       return [{ code: 'QNT000', message: msg, reference: referenceId }]

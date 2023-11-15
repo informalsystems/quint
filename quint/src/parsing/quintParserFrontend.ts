@@ -142,6 +142,7 @@ export function parsePhase1fromText(
   }
     
   if (errors.length > 0) {
+    // invoke the Ohmjs parser in hope of producing better error messages
     const registerLoc = (start: Pos, end: Pos) => {
       const id = idGen.nextId()
       const loc: Loc = { source: sourceLocation, start, end }

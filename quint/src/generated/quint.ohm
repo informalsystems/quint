@@ -58,14 +58,14 @@ Quint {
       | "_"
    
    NormalCallName
-      = QualId
-      | "and"
+      = "and"
       | "or"
       | "iff"
       | "implies"
       | "Set"
       | "List"
       | "Map"
+      | QualId
 
    TypeDef =
       | "type" QualId "=" Type                                       -- typeAlias
