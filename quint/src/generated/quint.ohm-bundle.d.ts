@@ -14,16 +14,15 @@ import {
 export interface QuintActionDict<T> extends BaseActionDict<T> {
   Modules?: (this: NonterminalNode, arg0: IterationNode) => T;
   Module?: (this: NonterminalNode, arg0: IterationNode, arg1: TerminalNode, arg2: NonterminalNode, arg3: TerminalNode, arg4: IterationNode, arg5: TerminalNode) => T;
-  BlockedWords?: (this: NonterminalNode, arg0: TerminalNode) => T;
   DocDefinition?: (this: NonterminalNode, arg0: IterationNode, arg1: NonterminalNode) => T;
   Definition_constDef?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: TerminalNode, arg3: NonterminalNode) => T;
   Definition_varDef?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: TerminalNode, arg3: NonterminalNode) => T;
   Definition_assumeDef?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: TerminalNode, arg3: NonterminalNode) => T;
-  Definition_typeDef?: (this: NonterminalNode, arg0: NonterminalNode) => T;
   Definition_importDef?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: NonterminalNode, arg3: IterationNode) => T;
   Definition_exportDef?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: NonterminalNode, arg3: IterationNode) => T;
   Definition_instanceDef?: (this: NonterminalNode, arg0: NonterminalNode) => T;
   Definition_operDef?: (this: NonterminalNode, arg0: NonterminalNode) => T;
+  Definition_typeDef?: (this: NonterminalNode, arg0: NonterminalNode) => T;
   Definition?: (this: NonterminalNode, arg0: NonterminalNode) => T;
   NameRef_identOrStarRef?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode) => T;
   NameRef_asRef?: (this: NonterminalNode, arg0: IterationNode, arg1: IterationNode) => T;
@@ -40,9 +39,9 @@ export interface QuintActionDict<T> extends BaseActionDict<T> {
   OperParams?: (this: NonterminalNode, arg0: NonterminalNode) => T;
   Parameter?: (this: NonterminalNode, arg0: NonterminalNode | TerminalNode) => T;
   NormalCallName?: (this: NonterminalNode, arg0: NonterminalNode | TerminalNode) => T;
-  TypeDef_typeAbstractDef?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode) => T;
   TypeDef_typeAlias?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: TerminalNode, arg3: NonterminalNode) => T;
   TypeDef_typeSumDef?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: TerminalNode, arg3: IterationNode, arg4: NonterminalNode, arg5: IterationNode, arg6: IterationNode) => T;
+  TypeDef_typeAbstractDef?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode) => T;
   TypeDef?: (this: NonterminalNode, arg0: NonterminalNode) => T;
   TypeSumVariant?: (this: NonterminalNode, arg0: NonterminalNode, arg1: IterationNode, arg2: IterationNode, arg3: IterationNode) => T;
   Type_funType?: (this: NonterminalNode, arg0: NonterminalNode, arg1: TerminalNode, arg2: NonterminalNode) => T;
@@ -67,6 +66,7 @@ export interface QuintActionDict<T> extends BaseActionDict<T> {
   Qualifier_runQual?: (this: NonterminalNode, arg0: TerminalNode) => T;
   Qualifier_temporalQual?: (this: NonterminalNode, arg0: TerminalNode) => T;
   Qualifier?: (this: NonterminalNode, arg0: NonterminalNode) => T;
+  Expr_ifElseExpr?: (this: NonterminalNode, arg0: TerminalNode, arg1: TerminalNode, arg2: NonterminalNode, arg3: TerminalNode, arg4: NonterminalNode, arg5: TerminalNode, arg6: NonterminalNode) => T;
   Expr_dotCallExpr?: (this: NonterminalNode, arg0: NonterminalNode, arg1: TerminalNode, arg2: NonterminalNode, arg3: IterationNode, arg4: IterationNode, arg5: IterationNode, arg6: IterationNode, arg7: IterationNode) => T;
   Expr_lambdaExpr?: (this: NonterminalNode, arg0: NonterminalNode) => T;
   Expr_appExpr?: (this: NonterminalNode, arg0: NonterminalNode, arg1: TerminalNode, arg2: IterationNode, arg3: IterationNode, arg4: IterationNode, arg5: TerminalNode) => T;
@@ -89,16 +89,15 @@ export interface QuintActionDict<T> extends BaseActionDict<T> {
   Expr_asgnError?: (this: NonterminalNode, arg0: NonterminalNode, arg1: TerminalNode, arg2: NonterminalNode) => T;
   Expr_falseExpr?: (this: NonterminalNode, arg0: TerminalNode) => T;
   Expr_trueExpr?: (this: NonterminalNode, arg0: TerminalNode) => T;
-  Expr_identExpr?: (this: NonterminalNode, arg0: NonterminalNode) => T;
-  Expr_intExpr?: (this: NonterminalNode, arg0: NonterminalNode) => T;
-  Expr_strExpr?: (this: NonterminalNode, arg0: NonterminalNode) => T;
   Expr_tupleExpr?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: IterationNode, arg3: IterationNode, arg4: IterationNode, arg5: TerminalNode) => T;
   Expr_pairExpr?: (this: NonterminalNode, arg0: NonterminalNode, arg1: TerminalNode, arg2: NonterminalNode) => T;
   Expr_recordExpr?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: IterationNode, arg3: IterationNode, arg4: IterationNode, arg5: TerminalNode) => T;
   Expr_listExpr?: (this: NonterminalNode, arg0: TerminalNode, arg1: IterationNode, arg2: IterationNode, arg3: IterationNode, arg4: IterationNode, arg5: TerminalNode) => T;
-  Expr_ifElseExpr?: (this: NonterminalNode, arg0: TerminalNode, arg1: TerminalNode, arg2: NonterminalNode, arg3: TerminalNode, arg4: NonterminalNode, arg5: TerminalNode, arg6: NonterminalNode) => T;
   Expr_letInExpr?: (this: NonterminalNode, arg0: NonterminalNode, arg1: NonterminalNode) => T;
   Expr_nondetExpr?: (this: NonterminalNode, arg0: NonterminalNode, arg1: NonterminalNode) => T;
+  Expr_intExpr?: (this: NonterminalNode, arg0: NonterminalNode) => T;
+  Expr_strExpr?: (this: NonterminalNode, arg0: NonterminalNode) => T;
+  Expr_identExpr?: (this: NonterminalNode, arg0: NonterminalNode) => T;
   Expr_parenExpr?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: TerminalNode) => T;
   Expr_bracesExpr?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: TerminalNode) => T;
   Expr?: (this: NonterminalNode, arg0: NonterminalNode) => T;

@@ -20,11 +20,11 @@ Quint {
       = "const" ident ":" Type                            -- constDef
       | "var" ident ":" Type                              -- varDef
       | "assume" identOrHole "=" Expr                     -- assumeDef
-      | TypeDef                                           -- typeDef
       | "import" ident NameRef FromFile?                  -- importDef
       | "export" ident NameRef FromFile?                  -- exportDef
       | Instance                                          -- instanceDef
       | OperDef                                           -- operDef
+      | TypeDef                                           -- typeDef
 
    NameRef =
       | "." identOrStar    -- identOrStarRef
@@ -44,7 +44,7 @@ Quint {
          FromFile?
 
    OperDef (operator definition)
-      = Qualifier NormalCallName OperParams? ("=" Expr)? ";"?
+      = Qualifier QualId OperParams? ("=" Expr)? ";"?
 
    OperParams (operator parameters)
       = // C-like parameter lists
@@ -68,9 +68,9 @@ Quint {
       | "Map"
 
    TypeDef =
-      | "type" QualId                                                -- typeAbstractDef
       | "type" QualId "=" Type                                       -- typeAlias
       | "type" QualId "=" "|"? TypeSumVariant ("|" TypeSumVariant)*  -- typeSumDef
+      | "type" QualId                                                -- typeAbstractDef
 
    TypeSumVariant = ident ("(" Type ")")?
 
@@ -102,7 +102,8 @@ Quint {
 
    Expr =
         // apply an operator via the dot notation
-      | Expr "." NameAfterDot ("(" Expr ("," Expr)* ")")?      -- dotCallExpr
+      | "if" "(" Expr ")" Expr "else" Expr                     -- ifElseExpr
+      | Expr "." NameAfterDot ("(" (Expr ("," Expr)*)? ")")?   -- dotCallExpr
       | Lambda                                                 -- lambdaExpr
         // call an operator
       | NormalCallName "(" (Expr ("," Expr)*)? ")"             -- appExpr
@@ -117,7 +118,7 @@ Quint {
       | Expr ("*" | "/" | "%") Expr                            -- multDivExpr
       | Expr ("+" | "-") Expr                                  -- plusMinusExpr
          // standard relations
-      | Expr (">" | "<" | ">=" | "<=" | "!=" | "==") Expr      -- relationsExpr
+      | Expr (">=" | "<=" | ">" | "<" | "!=" | "==") Expr      -- relationsExpr
       | QualId "'" "=" Expr                                    -- asgnExpr
       | "and" "{" Expr ("," Expr)* ","? "}"                    -- naryAndExpr
       | Expr "and" Expr                                        -- andExpr
@@ -132,16 +133,15 @@ Quint {
       | Expr "=" Expr                                          -- asgnError
       | "false"                                                -- falseExpr
       | "true"                                                 -- trueExpr
-      | ident                                                  -- identExpr
-      | integer                                                -- intExpr
-      | string                                                 -- strExpr
       | "(" Expr ("," Expr)+ ","? ")"                          -- tupleExpr
       | Expr "->" Expr                                         -- pairExpr
       | "{" RecElem ("," RecElem)+ ","? "}"                    -- recordExpr
       | "[" Expr? ("," Expr)* ","? "]"                         -- listExpr
-      | "if" "(" Expr ")" Expr "else" Expr                     -- ifElseExpr
       | OperDef Expr                                           -- letInExpr
       | NondetOperDef Expr                                     -- nondetExpr
+      | integer                                                -- intExpr
+      | string                                                 -- strExpr
+      | ident                                                  -- identExpr
       | "(" Expr ")"                                           -- parenExpr
       | "{" Expr "}"                                           -- bracesExpr
 
