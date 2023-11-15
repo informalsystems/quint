@@ -27,8 +27,8 @@ export function explainParseErrors(text: string, registerLoc: (s: Pos, e: Pos) =
       const left = r.getInterval().collapsedLeft().getLineAndColumn()
       const right = r.getInterval().collapsedRight().getLineAndColumn()
 
-      const start = { line: left.lineNum, col: left.colNum, index: left.offset }
-      const end = { line: right.lineNum - 1, col: right.colNum, index: right.offset }
+      const start = { line: left.lineNum - 1, col: left.colNum - 1, index: left.offset }
+      const end = { line: right.lineNum - 2, col: right.colNum - 1, index: right.offset }
       const referenceId = registerLoc(start, end)
       const msg = r.message ?? 'unknown error'
       return [{ code: 'QNT000', message: msg, reference: referenceId }]
