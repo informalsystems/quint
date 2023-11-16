@@ -41,7 +41,7 @@ declaration : 'const' qualId ':' type                     # const
 // An operator definition.
 // We embed two kinds of parameters right in this rule.
 // Otherwise, the parser would start recognizing parameters everywhere.
-operDef : qualifier normalCallName
+operDef : qualifier qualId
             ( /* ML-like parameter lists */
                 '(' (parameter (',' parameter)*)? ')' (':' type)?
                 | ':' type

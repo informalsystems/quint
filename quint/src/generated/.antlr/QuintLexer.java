@@ -1,4 +1,4 @@
-// Generated from /Users/thomas/src/quint/quint/src/generated/Quint.g4 by ANTLR 4.13.1
+// Generated from /Users/igor/devl/informal/quint/quint/src/generated/Quint.g4 by ANTLR 4.13.1
 
 
 // Used for forming errors

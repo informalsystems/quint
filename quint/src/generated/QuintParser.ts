@@ -464,7 +464,7 @@ export class QuintParser extends Parser {
 			this.state = 130;
 			this.qualifier();
 			this.state = 131;
-			this.normalCallName();
+			this.qualId();
 			this.state = 168;
 			this._errHandler.sync(this);
 			switch ( this.interpreter.adaptivePredict(this._input, 9, this._ctx) ) {
@@ -3515,7 +3515,7 @@ export class QuintParser extends Parser {
 		"\x14\v\x02\x81\x83\x05\x16\f\x02\x82n\x03\x02\x02\x02\x82s\x03\x02\x02" +
 		"\x02\x82x\x03\x02\x02\x02\x82}\x03\x02\x02\x02\x82~\x03\x02\x02\x02\x82" +
 		"\x7F\x03\x02\x02\x02\x82\x80\x03\x02\x02\x02\x82\x81\x03\x02\x02\x02\x83" +
-		"\t\x03\x02\x02\x02\x84\x85\x05\x12\n\x02\x85\xAA\x05B\"\x02\x86\x8F\x07" +
+		"\t\x03\x02\x02\x02\x84\x85\x05\x12\n\x02\x85\xAA\x05J&\x02\x86\x8F\x07" +
 		"A\x02\x02\x87\x8C\x05:\x1E\x02\x88\x89\x07\n\x02\x02\x89\x8B\x05:\x1E" +
 		"\x02\x8A\x88\x03\x02\x02\x02\x8B\x8E\x03\x02\x02\x02\x8C\x8A\x03\x02\x02" +
 		"\x02\x8C\x8D\x03\x02\x02\x02\x8D\x90\x03\x02\x02\x02\x8E\x8C\x03\x02\x02" +
@@ -4201,8 +4201,8 @@ export class OperDefContext extends ParserRuleContext {
 	public qualifier(): QualifierContext {
 		return this.getRuleContext(0, QualifierContext);
 	}
-	public normalCallName(): NormalCallNameContext {
-		return this.getRuleContext(0, NormalCallNameContext);
+	public qualId(): QualIdContext {
+		return this.getRuleContext(0, QualIdContext);
 	}
 	public LPAREN(): TerminalNode | undefined { return this.tryGetToken(QuintParser.LPAREN, 0); }
 	public RPAREN(): TerminalNode | undefined { return this.tryGetToken(QuintParser.RPAREN, 0); }

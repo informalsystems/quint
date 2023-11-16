@@ -217,7 +217,7 @@ export class ToIrListener implements QuintListener {
 
   // translate a top-level or nested operator definition
   exitOperDef(ctx: p.OperDefContext) {
-    const name = ctx.normalCallName().text
+    const name = ctx.qualId().text
     const [params, typeTag] = this.processOpDefParams(ctx)
     // get the definition body
     const expr: QuintEx = ctx.expr()
