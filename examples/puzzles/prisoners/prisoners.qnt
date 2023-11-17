@@ -13,6 +13,11 @@ module prisoners {
     // The prisoner who is counting (any of allPrisoners)
     const counter: str
 
+    def myInitOp = and {
+      allPrisoners == Set("foo"),
+      counter == "foo",
+    }
+
     assume _ = allPrisoners.contains(counter)
 
     // All prisoners but the counter
