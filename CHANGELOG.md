@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 ### Deprecated
 ### Removed
+### Fixed
+### Security
+
+## v0.16.0 -- 2023-11-20
+
+### Added
+### Changed
+### Deprecated
+### Removed
 
 - The long deprecated union types have been removed, in favor of the new sum
   types (#1245).
