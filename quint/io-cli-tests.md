@@ -1012,3 +1012,35 @@ Trying to unify bool and int
 error: typechecking failed
 ```
 
+### run fails on invalid module
+
+<!-- !test exit 1 -->
+<!-- !test in run invalid module -->
+```
+output=$(quint run --main=invalid ./testFixture/_1050diffName.qnt)
+exit_code=$?
+echo "$output"
+exit $exit_code
+```
+
+<!-- !test err run invalid module -->
+```
+error: Main module invalid not found
+```
+
+### test fails on invalid module
+
+<!-- !test exit 1 -->
+<!-- !test in test invalid module -->
+```
+output=$(quint test --main=invalid ./testFixture/_1050diffName.qnt)
+exit_code=$?
+echo "$output"
+exit $exit_code
+```
+
+<!-- !test err test invalid module -->
+```
+error: [QNT405] Main module invalid not found
+error: Tests failed
+```
