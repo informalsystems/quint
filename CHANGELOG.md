@@ -8,10 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## UNRELEASED
 
 ### Added
+
+- Use the module's name when the input has only one module (#1260)
+
 ### Changed
 ### Deprecated
 ### Removed
 ### Fixed
+
+- Produce proper error messages on invalid module name (#1260)
+
 ### Security
 
 ## v0.16.0 -- 2023-11-20
