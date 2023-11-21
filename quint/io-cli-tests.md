@@ -1017,10 +1017,7 @@ error: typechecking failed
 <!-- !test exit 1 -->
 <!-- !test in run invalid module -->
 ```
-output=$(quint run --main=invalid ./testFixture/_1050diffName.qnt)
-exit_code=$?
-echo "$output"
-exit $exit_code
+quint run --main=invalid ./testFixture/_1050diffName.qnt
 ```
 
 <!-- !test err run invalid module -->
@@ -1033,10 +1030,7 @@ error: Main module invalid not found
 <!-- !test exit 1 -->
 <!-- !test in test invalid module -->
 ```
-output=$(quint test --main=invalid ./testFixture/_1050diffName.qnt)
-exit_code=$?
-echo "$output"
-exit $exit_code
+quint test --main=invalid ./testFixture/_1050diffName.qnt
 ```
 
 <!-- !test err test invalid module -->
