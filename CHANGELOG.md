@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Use the module's name when the input has only one module (#1260)
+- When an input file only one module, it will be inferred as the main module  (#1260)
 
 ### Changed
 ### Deprecated
