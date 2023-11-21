@@ -215,8 +215,7 @@ export async function parse(loaded: LoadedStage): Promise<CLIProcedure<ParsedSta
     () => {
       const phase1Data = parsePhase1fromText(idGen, text, path)
       // if there is exactly one module in the original text, make it the main one
-      const defaultModuleName =
-        (phase1Data.modules.length === 1) ? just(phase1Data.modules[0].name) : none()
+      const defaultModuleName = phase1Data.modules.length === 1 ? just(phase1Data.modules[0].name) : none()
       return { ...phase1Data, defaultModuleName }
     },
     phase1Data => {
