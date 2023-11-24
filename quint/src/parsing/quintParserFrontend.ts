@@ -219,7 +219,7 @@ export function parsePhase2sourceResolution(
 
   return {
     ...mainPhase1Result,
-    errors: sortingResult.errors,
+    errors: mainPhase1Result.errors.concat(sortingResult.errors),
     modules: sortingResult.modules,
     sourceMap
   }
