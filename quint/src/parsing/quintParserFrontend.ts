@@ -30,7 +30,6 @@ import { ErrorCode } from '../quintError'
 import { Loc } from '../ErrorMessage'
 import { flow } from 'lodash'
 import { Maybe, just, none } from '@sweet-monads/maybe'
-import assert from 'assert'
 
 /**
  * A source map that is constructed by the parser phases.
@@ -221,7 +220,7 @@ export function parsePhase2sourceResolution(
     ...mainPhase1Result,
     errors: mainPhase1Result.errors.concat(sortingResult.errors),
     modules: sortingResult.modules,
-    sourceMap
+    sourceMap,
   }
 }
 
@@ -230,11 +229,9 @@ export function parsePhase2sourceResolution(
  * @param modules the modules to sort
  * @return a structure that contains errors (if any were found) and the modules (sorted if no errors)
  */
-function sortModules(modules: QuintModule[]): { errors: QuintError[], modules: QuintModule[] } {
-  const idToModule =
-    modules.reduce((accuMap, mod) => accuMap.set(mod.id, mod), ImmutMap<bigint, QuintModule>())
-  const nameToModule =
-    modules.reduce((accuMap, mod) => accuMap.set(mod.name, mod), ImmutMap<string, QuintModule>())
+function sortModules(modules: QuintModule[]): { errors: QuintError[]; modules: QuintModule[] } {
+  const idToModule = modules.reduce((accuMap, mod) => accuMap.set(mod.id, mod), ImmutMap<bigint, QuintModule>())
+  const nameToModule = modules.reduce((accuMap, mod) => accuMap.set(mod.name, mod), ImmutMap<string, QuintModule>())
   if (nameToModule.size < modules.length) {
     // sort the modules by their names
     modules.sort((m1, m2) => m1.name.localeCompare(m2.name))
@@ -247,12 +244,12 @@ function sortModules(modules: QuintModule[]): { errors: QuintError[], modules: Q
           message: `Two modules have a conflict on the same name: ${mod.name}`,
           reference: mod.id,
         }
-        return { errors: [ err ], modules }
+        return { errors: [err], modules }
       }
       prev = just(mod)
     }
     // this line should not be reachable, unless there is a bug above
-    throw new Error("This line should not be reached. Report a bug.")
+    throw new Error('This line should not be reached. Report a bug.')
   }
   // create the import graph
   let edges = ImmutMap<bigint, ImmutSet<bigint>>()
@@ -266,7 +263,7 @@ function sortModules(modules: QuintModule[]): { errors: QuintError[], modules: Q
             message: `Module ${mod.name} imports an unknown module ${decl.protoName}`,
             reference: decl.id,
           }
-          return { errors: [ err ], modules }
+          return { errors: [err], modules }
         }
         imports = imports.add(nameToModule.get(decl.protoName)!.id)
       }
@@ -280,16 +277,14 @@ function sortModules(modules: QuintModule[]): { errors: QuintError[], modules: Q
     return { errors: [], modules: result.sorted }
   } else {
     // note that the modules in the cycle are not always sorted according to the imports
-    const cycle =
-      result.cycles.map(id => idToModule.get(id)?.name)
-        .join(', ')
+    const cycle = result.cycles.map(id => idToModule.get(id)?.name).join(', ')
     const err: QuintError = {
       code: 'QNT098',
       message: `Cyclic imports among: ${cycle}`,
       reference: result.cycles.first(),
     }
 
-    return { errors: [ err ], modules }
+    return { errors: [err], modules }
   }
 }
 

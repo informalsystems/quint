@@ -21,7 +21,7 @@ describe('checkModes', () => {
     assert.isEmpty(errors, `Should find no errors, found: ${[...errors.values()].map(errorTreeToString)}`)
 
     const modeChecker = new ModeChecker()
-    
+
     return modeChecker.checkModes(wrapper.declarations, effects)
   }
 
