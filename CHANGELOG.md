@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Produce proper error messages on invalid module name (#1260)
+- Topological sorting of modules (#1268)
 
 ### Security
 
