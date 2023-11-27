@@ -260,7 +260,10 @@ function sortModules(modules: QuintModule[]): { errors: QuintError[]; modules: Q
   for (const mod of modules) {
     let imports = ImmutSet<bigint>()
     for (const decl of mod.declarations) {
-      if (decl.kind === 'import' || decl.kind === 'instance' || decl.kind === 'export') {
+      // We only keep track of imports and instances, but not of the exports:
+      //  - Exports flow in the opposite direction of imports.
+      //  - An export cannot be used without a corresponding import.
+      if (decl.kind === 'import' || decl.kind === 'instance') {
         if (!nameToModule.has(decl.protoName)) {
           const err: QuintError = {
             code: 'QNT405',
