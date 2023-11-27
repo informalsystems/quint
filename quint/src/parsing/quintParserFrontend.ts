@@ -29,6 +29,7 @@ import { toposort } from '../static/toposort'
 import { ErrorCode } from '../quintError'
 import { Loc } from '../ErrorMessage'
 import { flow } from 'lodash'
+import { Maybe, just, none } from '@sweet-monads/maybe'
 
 /**
  * A source map that is constructed by the parser phases.
@@ -237,7 +238,7 @@ function sortModules(modules: QuintModule[]): { errors: QuintError[]; modules: Q
     ([idMap, namesMap, dups], mod) => {
       const newIdMap = idMap.set(mod.id, mod)
       const newNamesMap = namesMap.set(mod.name, mod)
-      const newDups = idMap.has(mod.id) ? dups.add(mod) : dups
+      const newDups = namesMap.has(mod.name) ? dups.add(mod) : dups
       return [newIdMap, newNamesMap, newDups]
     },
     [ImmutMap<bigint, QuintModule>(), ImmutMap<string, QuintModule>(), ImmutSet<QuintModule>()]
