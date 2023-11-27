@@ -256,7 +256,7 @@ function sortModules(modules: QuintModule[]): { errors: QuintError[]; modules: Q
   for (const mod of modules) {
     let imports = ImmutSet<bigint>()
     for (const decl of mod.declarations) {
-      if (decl.kind === 'import' || decl.kind === 'instance') {
+      if (decl.kind === 'import' || decl.kind === 'instance' || decl.kind === 'export') {
         if (!nameToModule.has(decl.protoName)) {
           const err: QuintError = {
             code: 'QNT405',
