@@ -230,27 +230,28 @@ export function parsePhase2sourceResolution(
  * @return a structure that contains errors (if any were found) and the modules (sorted if no errors)
  */
 function sortModules(modules: QuintModule[]): { errors: QuintError[]; modules: QuintModule[] } {
-  const idToModule = modules.reduce((accuMap, mod) => accuMap.set(mod.id, mod), ImmutMap<bigint, QuintModule>())
-  const nameToModule = modules.reduce((accuMap, mod) => accuMap.set(mod.name, mod), ImmutMap<string, QuintModule>())
-  if (nameToModule.size < modules.length) {
-    // sort the modules by their names
-    modules.sort((m1, m2) => m1.name.localeCompare(m2.name))
-    // find the first two adjacent modules that have the same name
-    let prev: Maybe<QuintModule> = none()
-    for (const mod of modules) {
-      if (prev.isJust() && prev.value.name === mod.name) {
-        const err: QuintError = {
-          code: 'QNT101',
-          message: `Two modules have a conflict on the same name: ${mod.name}`,
-          reference: mod.id,
-        }
-        return { errors: [err], modules }
+  // iterate over the modules to construct:
+  //  - the map from module identifiers to modules
+  //  - the map from module names to modules
+  //  - the set of modules with duplicate names, if there are any
+  const [ idToModule, nameToModule, duplicates ] = modules.reduce(([ idMap, namesMap, dups ], mod) => {
+    const newIdMap = idMap.set(mod.id, mod)
+    const newNamesMap = namesMap.set(mod.name, mod)
+    const newDups = idMap.has(mod.id) ? dups.add(mod) : dups
+    return [ newIdMap, newNamesMap, newDups ]
+  }, [ImmutMap<bigint, QuintModule>(), ImmutMap<string, QuintModule>(), ImmutSet<QuintModule>()])
+
+  if (!duplicates.isEmpty()) {
+    const errors: QuintError[] = duplicates.toArray().map(mod => {
+      return {
+        code: 'QNT101',
+        message: `Multiple modules conflict on the same name: ${mod.name}`,
+        reference: mod.id,
       }
-      prev = just(mod)
-    }
-    // this line should not be reachable, unless there is a bug above
-    throw new Error('This line should not be reached. Report a bug.')
+    })
+    return { errors, modules }
   }
+ 
   // create the import graph
   let edges = ImmutMap<bigint, ImmutSet<bigint>>()
   for (const mod of modules) {
