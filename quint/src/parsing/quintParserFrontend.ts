@@ -29,7 +29,6 @@ import { toposort } from '../static/toposort'
 import { ErrorCode } from '../quintError'
 import { Loc } from '../ErrorMessage'
 import { flow } from 'lodash'
-import { Maybe, just, none } from '@sweet-monads/maybe'
 
 /**
  * A source map that is constructed by the parser phases.
@@ -234,12 +233,15 @@ function sortModules(modules: QuintModule[]): { errors: QuintError[]; modules: Q
   //  - the map from module identifiers to modules
   //  - the map from module names to modules
   //  - the set of modules with duplicate names, if there are any
-  const [ idToModule, nameToModule, duplicates ] = modules.reduce(([ idMap, namesMap, dups ], mod) => {
-    const newIdMap = idMap.set(mod.id, mod)
-    const newNamesMap = namesMap.set(mod.name, mod)
-    const newDups = idMap.has(mod.id) ? dups.add(mod) : dups
-    return [ newIdMap, newNamesMap, newDups ]
-  }, [ImmutMap<bigint, QuintModule>(), ImmutMap<string, QuintModule>(), ImmutSet<QuintModule>()])
+  const [idToModule, nameToModule, duplicates] = modules.reduce(
+    ([idMap, namesMap, dups], mod) => {
+      const newIdMap = idMap.set(mod.id, mod)
+      const newNamesMap = namesMap.set(mod.name, mod)
+      const newDups = idMap.has(mod.id) ? dups.add(mod) : dups
+      return [newIdMap, newNamesMap, newDups]
+    },
+    [ImmutMap<bigint, QuintModule>(), ImmutMap<string, QuintModule>(), ImmutSet<QuintModule>()]
+  )
 
   if (!duplicates.isEmpty()) {
     const errors: QuintError[] = duplicates.toArray().map(mod => {
@@ -251,7 +253,7 @@ function sortModules(modules: QuintModule[]): { errors: QuintError[]; modules: Q
     })
     return { errors, modules }
   }
- 
+
   // create the import graph
   let edges = ImmutMap<bigint, ImmutSet<bigint>>()
   for (const mod of modules) {
