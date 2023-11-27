@@ -29,7 +29,6 @@ import { toposort } from '../static/toposort'
 import { ErrorCode } from '../quintError'
 import { Loc } from '../ErrorMessage'
 import { flow } from 'lodash'
-import { Maybe, just, none } from '@sweet-monads/maybe'
 
 /**
  * A source map that is constructed by the parser phases.
