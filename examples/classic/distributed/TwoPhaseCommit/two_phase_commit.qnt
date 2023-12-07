@@ -49,8 +49,8 @@ module resource_managers {
 
   action abort(resourceManager: str): bool = all {
     or {
-      // Resource manager chooses to abort
-      statuses.get(resourceManager) == Aborted,
+      // Resource manager is working, and chooses to abort spontaneously
+      statuses.get(resourceManager) == Working,
       // Resource manager receives an abort message from the transaction manager
       msg::channel.contains(msg::Abort),
     },
