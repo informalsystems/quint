@@ -200,9 +200,10 @@ export function parsePhase2sourceResolution(
             //  - Either the same file is imported via paths in different cases, or
             //  - Two different files are imported via case-sensitive paths.
             // Ask the user to disambiguate.
-            const original = [...visitedPaths.values()].find(name =>
-              name.toLowerCase() === importeeLowerCase && name !== importeeLowerCase
-            ) ?? importeeLowerCase
+            const original =
+              [...visitedPaths.values()].find(
+                name => name.toLowerCase() === importeeLowerCase && name !== importeeLowerCase
+              ) ?? importeeLowerCase
             const err: QuintError = {
               code: 'QNT408',
               message: `Importing two files that only differ in case: ${original} vs. ${importeeNormalized}. Choose one.`,

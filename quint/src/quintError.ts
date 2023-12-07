@@ -75,7 +75,7 @@ export type ErrorCode =
   | 'QNT407'
   /* QNT408: Case-sensitive filenames */
   | 'QNT408'
-   /* QNT500: Uninitialized constant */
+  /* QNT500: Uninitialized constant */
   | 'QNT500'
   /* QNT501: Internal compiler error */
   | 'QNT501'
