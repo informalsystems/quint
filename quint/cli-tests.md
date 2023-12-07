@@ -381,3 +381,9 @@ Regression test for [#1108](https://github.com/informalsystems/quint/issues/1108
 
 <!-- !test check 1108 -->
     quint parse testFixture/_1052one.qnt
+
+### FAIL on run river::noSolution
+
+<!-- !test exit 1 -->
+<!-- !test check parse testFixture/_1060case.qnt - parse case sensitive filenames -->
+    quint parse testFixture/_1060case.qnt
