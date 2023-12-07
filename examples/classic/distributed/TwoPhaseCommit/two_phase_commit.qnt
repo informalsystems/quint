@@ -5,151 +5,201 @@
 
    https://github.com/tlaplus/Examples/blob/master/specifications/transaction_commit/TwoPhase.tla */
 
-module two_phase_commit {
-  const resourceManagers: Set[str]
-
-  type ResourceManagerState = Working | Prepared | Committed | Aborted
-  type TransactionManagerState = Init | TMCommitted | TMAborted
-  type Message =
+module message {
+  type T =
     | Abort
     | Commit
-    | RMPrepared(str)
+    | Prepared(str)
 
-  var RM::states: str -> ResourceManagerState
-  var TM::state: TransactionManagerState
-  /// The set of resource managers from which the transaction manager has
-  /// received RMPrepared messages
-  var TM::preparedRMs: Set[str]
-  var messages: Set[Message]
+  var channel: Set[T]
 
-  action init = all {
-    RM::states' = resourceManagers.mapBy(r => Working),
-    TM::state' = Init,
-    TM::preparedRMs' = Set(),
-    messages' = Set(),
+  action init: bool = {
+    channel' = Set()
   }
 
-  /* Transaction Manager (TM) actions */
+  action stutter = all {
+    channel' = channel
+  }
+
+  action send(m: T): bool = {
+    channel' = channel.union(Set(m))
+  }
+
+}
+
+module resource_managers {
+  import message as msg
+
+  type Status = | Working | Prepared | Committed | Aborted
+  var statuses : str -> Status
+
+  action init(rms: Set[str]): bool = {
+    statuses' = rms.mapBy(r => Working)
+  }
+
+  action stutter = all {
+    statuses' = statuses
+  }
+
+  action prepare(resourceManager: str): bool = all {
+    statuses.get(resourceManager) == Working,
+    statuses' = statuses.set(resourceManager, Prepared),
+    msg::send(msg::Prepared(resourceManager))
+  }
+
+  action abort(resourceManager: str): bool = all {
+    or {
+      // Resource manager chooses to abort
+      statuses.get(resourceManager) == Aborted,
+      // Resource manager receives an abort message from the transaction manager
+      msg::channel.contains(msg::Abort),
+    },
+    statuses' = statuses.set(resourceManager, Aborted),
+    // There is no need to let others know that this resource manager aborted
+    msg::stutter,
+  }
+
+
+  // A resource manager commits due to a Commit message
+  action commit(resourceManager: str): bool = all {
+    msg::channel.contains(msg::Commit),
+    statuses' = statuses.set(resourceManager, Committed),
+    msg::stutter,
+  }
+
+
+  def consistencyInv(resourceManagers) =
+    tuples(resourceManagers, resourceManagers)
+    .forall(((r1, r2)) =>
+      not( statuses.get(r1) == Committed
+           and
+           statuses.get(r2) == Aborted))
+}
+
+module transaction_manager {
+  import message as msg
+
+  type Status = | TMInitiated | TMCommitted | TMAborted
+
+  var status : Status
+  /// The set of resource managers from which the transaction manager has
+  /// received msg::Prepared messages
+  var preparedRMs : Set[str]
+
+  action init: bool = all {
+    status' = TMInitiated,
+    preparedRMs' = Set(),
+  }
+
+  action stutter = all {
+    status' = status,
+    preparedRMs' = preparedRMs,
+  }
 
   /// The transaction manager receives a RMPrepared(rm) message from the resource manager rm
-  action TM::addPreparedResourceManager(resourceManager: str): bool = all {
-    TM::state == Init,
-    messages.contains(RMPrepared(resourceManager)),
-    TM::preparedRMs' = TM::preparedRMs.union(Set(resourceManager))
+  action addPreparedResourceManager(resourceManager: str): bool = all {
+    status == TMInitiated,
+    msg::channel.contains(msg::Prepared(resourceManager)),
+    preparedRMs' = preparedRMs.union(Set(resourceManager)),
+    status' = status,
   }
 
   /// The transaction manager commits the transaction; enabled iff the
   /// transaction manager is in its initial state and every resource manager has
   /// sent an RMPrepared message.
-  action TM::decideOnCommit = all {
-    TM::state == Init,
-    TM::preparedRMs == resourceManagers,
-    TM::state' = TMCommitted,
-    messages' = messages.union(Set(Commit))
+  action decideOnCommit(resourceManagers) = all {
+    status == TMInitiated,
+    preparedRMs == resourceManagers,
+    status' = TMCommitted,
+    preparedRMs' = preparedRMs,
+    msg::send(msg::Commit)
   }
 
   /// The transaction manager spontaneously aborts the transaction
-  action TM::decideOnAbort = all {
-    TM::state == Init,
-    TM::state' = TMAborted,
-    messages' = messages.union(Set(Abort))
+  action decideOnAbort = all {
+    status == TMInitiated,
+    status' = TMAborted,
+    preparedRMs' = preparedRMs,
+    msg::send(msg::Abort)
   }
+}
 
-  /* Resource Manager (RM) actions */
+module two_phase_commit {
+  const resourceManagers: Set[str]
 
-  /// A resource manager prepares
-  action RM::prepare(resourceManager: str): bool = all {
-    RM::states.get(resourceManager) == Working,
-    RM::states' = RM::states.set(resourceManager, Prepared),
-    messages' = messages.union(Set(RMPrepared(resourceManager)))
-  }
-
-  /// A resource manager aborts, either spontaneously or because of an Abort message
-  action RM::abort(resourceManager: str): bool = all {
-    or {
-      // Resource manager chooses to abort
-      RM::states.get(resourceManager) == Working,
-      // Resource manager receives an abort message from the transaction manager
-      messages.contains(Abort),
-    },
-    RM::states' = RM::states.set(resourceManager, Aborted),
-    // There is no need to let others know that this resource manager aborted
-    messages' = messages
-  }
-
-  // A resource manager commits due to a Commit message
-  action RM::commit(resourceManager: str): bool = all {
-    messages.contains(Commit),
-    RM::states' = RM::states.set(resourceManager, Committed),
-    messages' = messages
-  }
+  import resource_managers as RM
+  import transaction_manager as TM
+  import message as msg
 
   action step = any {
     // Resource manager actions
     all {
       nondet rm = resourceManagers.oneOf()
-      any { RM::prepare(rm), RM::abort(rm), RM::commit(rm) },
-      TM::state' = TM::state,
-      TM::preparedRMs' = TM::preparedRMs,
+      any { RM::prepare(rm),
+            RM::abort(rm),
+            RM::commit(rm) },
+      TM::stutter
     },
     // Transaction manager decisions (commit or abort)
     all {
-      any { TM::decideOnCommit, TM::decideOnAbort },
-      TM::preparedRMs' = TM::preparedRMs,
-      RM::states' = RM::states,
+      any { TM::decideOnCommit(resourceManagers),
+            TM::decideOnAbort },
+      RM::stutter,
     },
     // Transaction managers message consumption
     all {
       nondet rm = resourceManagers.oneOf()
       TM::addPreparedResourceManager(rm),
-      TM::state' = TM::state,
-      RM::states' = RM::states,
-      messages' = messages,
+      RM::stutter,
+      msg::stutter
     }
   }
 
+  action init = all {
+    msg::init,
+    TM::init,
+    RM::init(resourceManagers),
+  }
+
   /// Two resource managers have not arrived at conflicting decisions
-  val consistencyInv = tuples(resourceManagers, resourceManagers).forall(((r1, r2)) =>
-    not(RM::states.get(r1) == Committed and RM::states.get(r2) == Aborted)
-  )
+  val inv = RM::consistencyInv(resourceManagers)
 }
 
-module two_phase_commit_3 {
+module two_phase_commit_tests {
   import two_phase_commit(resourceManagers = Set("rm1", "rm2", "rm3")).*
+
+  import resource_managers as RM
+  import transaction_manager as TM
+  import message as msg
 
   /// Compose two actions: send an RMPrepare message and consume it in the
   /// transaction manager
   run preparation(rm) = (all {
     RM::prepare(rm),
-    TM::state' = TM::state,
-    TM::preparedRMs' = TM::preparedRMs,
+    TM::stutter,
   }).then(all {
     TM::addPreparedResourceManager(rm),
-    TM::state' = TM::state,
-    RM::states' = RM::states,
-    messages' = messages,
+    RM::stutter,
+    msg::stutter,
   })
 
   /// Compose several actions: The transaction manager decides to commit and
   /// each resource manager consumes its Commit message
   run commitment = (all {
-    TM::decideOnCommit,
-    TM::preparedRMs' = TM::preparedRMs,
-    RM::states' = RM::states,
+    TM::decideOnCommit(resourceManagers),
+    RM::stutter
   }).then(all {
     RM::commit("rm1"),
-    TM::state' = TM::state,
-    TM::preparedRMs' = TM::preparedRMs,
+    TM::stutter
   }).then(all {
     RM::commit("rm2"),
-    TM::state' = TM::state,
-    TM::preparedRMs' = TM::preparedRMs,
+    TM::stutter
   }).then(all {
     RM::commit("rm3"),
-    TM::state' = TM::state,
-    TM::preparedRMs' = TM::preparedRMs,
+    TM::stutter
   })
 
+  // run successTest = init.then(step).then(step)
   run successTest = init
     .then(preparation("rm1"))
     .then(preparation("rm2"))
