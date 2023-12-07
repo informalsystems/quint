@@ -170,8 +170,8 @@ export function parsePhase2sourceResolution(
   // Collect modules produced by every source.
   const sourceToModules = new Map<string, QuintModule[]>()
   // Collect visited paths, so we don't have to load the same file twice.
-  // that some filesystems are case-insensitive, whereas some are case
-  // sensitive.  To prevent errors like #1194 from happening, we store both the
+  // Some filesystems are case-insensitive, whereas some are case sensitive.
+  // To prevent errors like #1194 from happening, we store both the
   // original filename and its lower case version. If the user uses the same
   // filename in different registers, we report an error. Otherwise, it would be
   // quite hard to figure out tricky naming errors in the case-sensitive
