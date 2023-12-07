@@ -199,10 +199,10 @@ module two_phase_commit_tests {
     TM::stutter
   })
 
-  // run successTest = init.then(step).then(step)
-  run successTest = init
-    .then(preparation("rm1"))
-    .then(preparation("rm2"))
-    .then(preparation("rm3"))
-    .then(commitment)
+  run successTest = init.then(step).then(step)
+  // run successTest = init
+  //   .then(preparation("rm1"))
+  //   .then(preparation("rm2"))
+  //   .then(preparation("rm3"))
+  //   .then(commitment)
 }
