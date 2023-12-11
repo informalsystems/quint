@@ -206,7 +206,7 @@ export function parsePhase2sourceResolution(
               ) ?? importeeLowerCase
             const err: QuintError = {
               code: 'QNT408',
-              message: `Importing two files that only differ in case: ${original} vs. ${importeeNormalized}. Choose one.`,
+              message: `Importing two files that only differ in case: ${original} vs. ${importeeNormalized}. Choose one way.`,
               reference: decl.id,
             }
             return { ...mainPhase1Result, errors: mainPhase1Result.errors.concat([err]), sourceMap }
