@@ -231,7 +231,7 @@ export function parsePhase2sourceResolution(
           worklist.push([m, pathTrail.concat([importeePath])])
         })
         sourceToModules.set(importeePath.normalizedPath, newModules)
-        visitedPaths.set(importeePath.normalizedPath.toLocaleLowerCase(), importeePath.normalizedPath)
+        visitedPaths.set(importeeLowerCase, importeeNormalized)
         sourceMap = new Map([...sourceMap, ...parseResult.sourceMap])
       }
     }
