@@ -790,6 +790,19 @@ module builtin {
   /// ```
   action then(a, b): (bool, bool) => bool
 
+  /// `a.expect(b)` is true for a step from `s1` to `s2` if
+  ///
+  ///  - `a` is true for a step from `s1` to `s2`, and
+  ///  - `b` holds true in `s2`.
+  ///
+  /// ### Examples
+  ///
+  /// ```
+  /// var x: int
+  /// run test = (x' = 1).expect(x == 1).then(x' = 3).expect(assert(x == 3))
+  /// ```
+  action expect(a, b): (bool, bool) => bool
+
   /// `n.reps(i => A(i))` or `n.reps(A)` the action `A`, `n` times.
   /// The iteration number, starting with 0, is passed as an argument of `A`.
   /// As actions are usually not parameterized by the iteration number,
