@@ -920,6 +920,10 @@ export class CompilerVisitor implements IRVisitor {
           })
           break
 
+        case 'expect':
+          this.translateExpect(app)
+          break
+
         case 'assert':
           this.applyFun(app.id, 1, cond => {
             if (!cond.toBool()) {
@@ -1299,6 +1303,57 @@ export class CompilerVisitor implements IRVisitor {
 
     const kind = app.opcode === 'then' ? 'then' : 'all'
     const lazyCompute = () => this.chainAllOrThen(args, kind)
+
+    this.compStack.push(mkFunComputable(lazyCompute))
+  }
+
+  // Translate A.expect(P):
+  //  - Evaluate A.
+  //  - When A's result is 'false', emit a runtime error.
+  //  - When A's result is 'true':
+  //    - Commit the variable updates: Shift the primed variables to unprimed.
+  //    - Evaluate `P`.
+  //    - If `P` evaluates to `false`, emit a runtime error (similar to `assert`).
+  //    - If `P` evaluates to `true`, rollback to the previous state and return `true`.
+  private translateExpect(app: ir.QuintApp): void {
+    // The code below is an adaption of chainAllOrThen.
+    // If someone finds how to nicely combine both, please refactor.
+    if (this.compStack.length !== 2) {
+      this.errorTracker.addCompileError(app.id, 'QNT501', `Not enough arguments on stack for "${app.opcode}"`)
+      return
+    }
+    const [action, pred] = this.compStack.splice(-2)
+    const lazyCompute = (): Maybe<EvalResult> => {
+      const savedNextVars = this.snapshotNextVars()
+      const savedTrace = this.trace()
+      const actionResult = action.eval()
+      if (actionResult.isNone() || !(actionResult.value as RuntimeValue).toBool()) {
+        // 'A' evaluates to 'false', or produces an error.
+        // Restore the values of the next variables.
+        this.recoverNextVars(savedNextVars)
+        this.resetTrace(just(rv.mkList(savedTrace)))
+        // expect emits an error when the run could not finish
+        this.errorTracker.addRuntimeError(app.args[0].id, 'QNT508', 'Cannot continue to "expect"')
+        return none()
+      } else {
+        // temporarily, switch to the next frame, to make a look-ahead evaluation
+        const savedVarsAfterAction = this.snapshotVars()
+        const savedNextVarsAfterAction = this.snapshotNextVars()
+        const savedTraceAfterAction = this.trace()
+        this.shiftVars()
+        // evaluate P
+        const predResult = pred.eval()
+        // rollback to the previous state in any case
+        this.recoverVars(savedVarsAfterAction)
+        this.recoverNextVars(savedNextVarsAfterAction)
+        this.resetTrace(just(rv.mkList(savedTraceAfterAction)))
+        if (predResult.isNone() || !(predResult.value as RuntimeValue).toBool()) {
+          this.errorTracker.addRuntimeError(app.args[1].id, 'QNT508', 'Expect condition does not hold true')
+          return none()
+        }
+        return predResult
+      }
+    }
 
     this.compStack.push(mkFunComputable(lazyCompute))
   }

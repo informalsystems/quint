@@ -795,6 +795,9 @@ module builtin {
   ///  - `a` is true for a step from `s1` to `s2`, and
   ///  - `b` holds true in `s2`.
   ///
+  /// If `a` evaluates to `false`, evaluation of `a.expect(b)`
+  /// fails with an error message.
+  ///
   /// ### Examples
   ///
   /// ```
