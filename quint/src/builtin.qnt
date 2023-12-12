@@ -802,8 +802,10 @@ module builtin {
   /// ### Examples
   ///
   /// ```
-  /// var x: int
-  /// run test = (x' = 1).expect(x == 1).then(x' = 3).expect(assert(x == 3))
+  /// var n: int
+  /// run expectConditionOkTest = (n' = 0).then(n' = 3).expect(n == 3)
+  /// run expectConditionFailsTest = (n' = 0).then(n' = 3).expect(n == 4)
+  /// run expectRunFailsTest = (n' = 0).then(all { n == 2, n' = 3 }).expect(n == 4)
   /// ```
   action expect(a, b): (bool, bool) => bool
 
