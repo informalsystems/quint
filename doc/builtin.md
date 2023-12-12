@@ -860,6 +860,23 @@ var x: int
 run test = (x' = 1).then(x' = 2).then(x' = 3).then(assert(x == 3))
 ```
 
+## `action expect: (bool, bool) => bool`
+
+`a.expect(b)` is true for a step from `s1` to `s2` if
+
+ - `a` is true for a step from `s1` to `s2`, and
+ - `b` holds true in `s2`.
+
+If `a` evaluates to `false`, evaluation of `a.expect(b)`
+fails with an error message.
+
+### Examples
+
+```
+var x: int
+run test = (x' = 1).expect(x == 1).then(x' = 3).expect(assert(x == 3))
+```
+
 ## `action reps: (int, (int) => bool) => bool`
 
 `n.reps(i => A(i))` or `n.reps(A)` the action `A`, `n` times.
