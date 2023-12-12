@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 ### Changed
+
+- Change in `A.then(B)`: If `A` returns `false`, `A.then(B)` fails (#1304)
+
 ### Deprecated
 ### Removed
 ### Fixed
