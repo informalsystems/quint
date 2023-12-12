@@ -1253,7 +1253,13 @@ export class CompilerVisitor implements IRVisitor {
     }
   }
 
-  // compute all { ... } or A.then(B)...then(E) for a chain of actions
+  /**
+   *  Compute all { ... } or A.then(B)...then(E) for a chain of actions.
+   * @param actions actions as computable to execute
+   * @param kind is it 'all { ... }' or 'A.then(B)'?
+   * @param actionId given the action index, return the id that produced this action
+   * @returns evaluation result
+   */
   private chainAllOrThen(
     actions: Computable[],
     kind: 'all' | 'then',
