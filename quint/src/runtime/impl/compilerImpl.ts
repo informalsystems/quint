@@ -1336,14 +1336,18 @@ export class CompilerVisitor implements IRVisitor {
         this.errorTracker.addRuntimeError(app.args[0].id, 'QNT508', 'Cannot continue to "expect"')
         return none()
       } else {
-        // temporarily, switch to the next frame, to make a look-ahead evaluation
         const savedVarsAfterAction = this.snapshotVars()
         const savedNextVarsAfterAction = this.snapshotNextVars()
         const savedTraceAfterAction = this.trace()
+        // Temporarily, switch to the next frame, to make a look-ahead evaluation.
+        // For example, if `x == 1` and `x' == 2`, we would have `x == 2` and `x'` would be undefined.
         this.shiftVars()
         // evaluate P
         const predResult = pred.eval()
-        // rollback to the previous state in any case
+        // Recover the assignments to unprimed and primed variables.
+        // E.g., we recover variables to `x == 1` and `x' == 2` in the above example.
+        // This lets us combine the result of `expect` with other actions via `then`.
+        // For example: `A.expect(P).then(B)`.
         this.recoverVars(savedVarsAfterAction)
         this.recoverNextVars(savedNextVarsAfterAction)
         this.resetTrace(just(rv.mkList(savedTraceAfterAction)))
