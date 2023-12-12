@@ -1775,7 +1775,8 @@ The semantics of this operator is as follows:
     - Commit the variable updates.
     - Evaluate `P`:
       - If `P` evaluates to `false`, emit a runtime error (similar to `assert`).
-      - If `P` evaluates to `true`, rollback to the previous state and return `true`.
+      - If `P` evaluates to `true`, undo the updates back to the state where we
+        were after `A` was applied.
 
 ##### Example
 
