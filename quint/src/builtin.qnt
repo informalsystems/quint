@@ -796,7 +796,8 @@ module builtin {
   ///  - `b` holds true in `s2`.
   ///
   /// If `a` evaluates to `false`, evaluation of `a.expect(b)`
-  /// fails with an error message.
+  /// fails with an error message. If `b` evaluates to `false`,
+  /// evaluation of `a.expect(b)` fails with an error message.
   ///
   /// ### Examples
   ///

@@ -868,7 +868,8 @@ run test = (x' = 1).then(x' = 2).then(x' = 3).then(assert(x == 3))
  - `b` holds true in `s2`.
 
 If `a` evaluates to `false`, evaluation of `a.expect(b)`
-fails with an error message.
+fails with an error message. If `b` evaluates to `false`,
+evaluation of `a.expect(b)` fails with an error message.
 
 ### Examples
 
