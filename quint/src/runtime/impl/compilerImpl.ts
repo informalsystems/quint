@@ -1270,7 +1270,8 @@ export class CompilerVisitor implements IRVisitor {
     for (const action of actions) {
       nactionsLeft--
       result = action.eval()
-      if (result.isNone() || !(result.value as RuntimeValue).toBool()) {
+      const isFalse = result.isJust() && !(result.value as RuntimeValue).toBool()
+      if (result.isNone() || isFalse) {
         // As soon as one of the arguments does not evaluate to true,
         // break out of the loop.
         // Restore the values of the next variables,
@@ -1278,7 +1279,7 @@ export class CompilerVisitor implements IRVisitor {
         this.recoverNextVars(savedValues)
         this.resetTrace(just(rv.mkList(savedTrace)))
 
-        if (kind === 'then' && nactionsLeft > 0 && result.isJust() && !(result.value as RuntimeValue).toBool()) {
+        if (kind === 'then' && nactionsLeft > 0 && isFalse) {
           // Cannot extend a run. Emit an error message.
           const actionNo = actions.length - (nactionsLeft + 1)
           this.errorTracker.addRuntimeError(

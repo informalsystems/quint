@@ -101,7 +101,7 @@ function callableFromContext(ctx: CompilationContext, callee: string): Either<st
 }
 
 // Scan the context for a callable. If found, evaluate it and return the value of the given var.
-// Assumes the input has a single callable `callee` is used for error reporting.
+// Assumes the input has a single definition whose name is stored in `callee`.
 function evalVarAfterRun(varName: string, callee: string, input: string): Either<string, string> {
   // use a combination of Maybe and Either.
   // Recall that left(...) is used for errors,
@@ -115,7 +115,6 @@ function evalVarAfterRun(varName: string, callee: string, input: string): Either
             if ((res as RuntimeValue).toBool() === true) {
               // extract the value of the state variable
               const nextVal = (ctx.evaluationState.context.get(kindName('nextvar', varName)) ?? fail).eval()
-              // using if-else, as map-or-unwrap confuses the compiler a lot
               if (nextVal.isNone()) {
                 return left(`Value of the variable ${varName} is undefined`)
               } else {
@@ -138,7 +137,6 @@ function evalVarAfterRun(varName: string, callee: string, input: string): Either
 
 // Evaluate a run and return the result.
 function evalRun(callee: string, input: string): Either<string, string> {
-  // use a combination of Maybe and Either.
   // Recall that left(...) is used for errors,
   // whereas right(...) is used for non-errors in sweet monads.
   const callback = (ctx: CompilationContext): Either<string, string> => {
