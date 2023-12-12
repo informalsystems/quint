@@ -107,28 +107,30 @@ function evalVarAfterRun(varName: string, callee: string, input: string): Either
   // Recall that left(...) is used for errors,
   // whereas right(...) is used for non-errors in sweet monads.
   const callback = (ctx: CompilationContext): Either<string, string> => {
-    return callableFromContext(ctx, callee).mapRight(run => {
-      return run
-        .eval()
-        .map(res => {
-          if ((res as RuntimeValue).toBool() === true) {
-            // extract the value of the state variable
-            const nextVal = (ctx.evaluationState.context.get(kindName('nextvar', varName)) ?? fail).eval()
-            // using if-else, as map-or-unwrap confuses the compiler a lot
-            if (nextVal.isNone()) {
-              return left(`Value of the variable ${varName} is undefined`)
+    return callableFromContext(ctx, callee)
+      .mapRight(run => {
+        return run
+          .eval()
+          .map(res => {
+            if ((res as RuntimeValue).toBool() === true) {
+              // extract the value of the state variable
+              const nextVal = (ctx.evaluationState.context.get(kindName('nextvar', varName)) ?? fail).eval()
+              // using if-else, as map-or-unwrap confuses the compiler a lot
+              if (nextVal.isNone()) {
+                return left(`Value of the variable ${varName} is undefined`)
+              } else {
+                return right(expressionToString(nextVal.value.toQuintEx(idGen)))
+              }
             } else {
-              return right(expressionToString(nextVal.value.toQuintEx(idGen)))
+              const s = expressionToString(res.toQuintEx(idGen))
+              const m = `Callable ${callee} was expected to evaluate to true, found: ${s}`
+              return left<string, string>(m)
             }
-          } else {
-            const s = expressionToString(res.toQuintEx(idGen))
-            const m = `Callable ${callee} was expected to evaluate to true, found: ${s}`
-            return left<string, string>(m)
-          }
-        })
-        .or(just(left(`Value of ${callee} is undefined`)))
-        .unwrap()
-    }).join()
+          })
+          .or(just(left(`Value of ${callee} is undefined`)))
+          .unwrap()
+      })
+      .join()
   }
 
   return evalInContext(input, callback)
@@ -140,15 +142,17 @@ function evalRun(callee: string, input: string): Either<string, string> {
   // Recall that left(...) is used for errors,
   // whereas right(...) is used for non-errors in sweet monads.
   const callback = (ctx: CompilationContext): Either<string, string> => {
-    return callableFromContext(ctx, callee).mapRight(run => {
-      return run
-        .eval()
-        .map(res => {
-          return right<string, string>(expressionToString(res.toQuintEx(idGen)))
-        })
-        .or(just(left(`Value of ${callee} is undefined`)))
-        .unwrap()
-    }).join()
+    return callableFromContext(ctx, callee)
+      .mapRight(run => {
+        return run
+          .eval()
+          .map(res => {
+            return right<string, string>(expressionToString(res.toQuintEx(idGen)))
+          })
+          .or(just(left(`Value of ${callee} is undefined`)))
+          .unwrap()
+      })
+      .join()
   }
 
   return evalInContext(input, callback)

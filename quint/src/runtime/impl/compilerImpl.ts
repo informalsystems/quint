@@ -1254,8 +1254,11 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   // compute all { ... } or A.then(B)...then(E) for a chain of actions
-  private chainAllOrThen(actions: Computable[], kind: 'all' | 'then',
-      actionId: (idx: number) => bigint): Maybe<EvalResult> {
+  private chainAllOrThen(
+    actions: Computable[],
+    kind: 'all' | 'then',
+    actionId: (idx: number) => bigint
+  ): Maybe<EvalResult> {
     // save the values of the next variables, as actions may update them
     const savedValues = this.snapshotNextVars()
     const savedTrace = this.trace()
@@ -1275,12 +1278,14 @@ export class CompilerVisitor implements IRVisitor {
         this.recoverNextVars(savedValues)
         this.resetTrace(just(rv.mkList(savedTrace)))
 
-        if (kind === 'then' && nactionsLeft > 0
-              && result.isJust() && !(result.value as RuntimeValue).toBool()) {
+        if (kind === 'then' && nactionsLeft > 0 && result.isJust() && !(result.value as RuntimeValue).toBool()) {
           // Cannot extend a run. Emit an error message.
           const actionNo = actions.length - (nactionsLeft + 1)
-          this.errorTracker.addRuntimeError(actionId(actionNo),
-            'QNT513', `Cannot continue in A.then(B), A evaluates to 'false'`)
+          this.errorTracker.addRuntimeError(
+            actionId(actionNo),
+            'QNT513',
+            `Cannot continue in A.then(B), A evaluates to 'false'`
+          )
           return none()
         } else {
           return result
@@ -1309,7 +1314,7 @@ export class CompilerVisitor implements IRVisitor {
     const args = this.compStack.splice(-app.args.length)
 
     const kind = app.opcode === 'then' ? 'then' : 'all'
-    const lazyCompute = () => this.chainAllOrThen(args, kind, (idx) => app.args[idx].id)
+    const lazyCompute = () => this.chainAllOrThen(args, kind, idx => app.args[idx].id)
 
     this.compStack.push(mkFunComputable(lazyCompute))
   }
@@ -1336,7 +1341,7 @@ export class CompilerVisitor implements IRVisitor {
               },
             }
           })
-          return this.chainAllOrThen(actions, 'then', (_) => app.args[1].id)
+          return this.chainAllOrThen(actions, 'then', _ => app.args[1].id)
         })
         .join()
     }
