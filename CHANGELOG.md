@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## UNRELEASED
 
 ### Added
+
+- Add a run operator `A.expect(P)` to evaluate the result of `A` with `P` (#1303)
+
 ### Changed
 ### Deprecated
 ### Removed
