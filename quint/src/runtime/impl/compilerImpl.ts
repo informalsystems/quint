@@ -1254,7 +1254,8 @@ export class CompilerVisitor implements IRVisitor {
   }
 
   // compute all { ... } or A.then(B)...then(E) for a chain of actions
-  private chainAllOrThen(actions: Computable[], kind: 'all' | 'then'): Maybe<EvalResult> {
+  private chainAllOrThen(actions: Computable[], kind: 'all' | 'then',
+      actionId: (idx: number) => bigint): Maybe<EvalResult> {
     // save the values of the next variables, as actions may update them
     const savedValues = this.snapshotNextVars()
     const savedTrace = this.trace()
@@ -1273,7 +1274,17 @@ export class CompilerVisitor implements IRVisitor {
         // as evaluation was not successful.
         this.recoverNextVars(savedValues)
         this.resetTrace(just(rv.mkList(savedTrace)))
-        break
+
+        if (kind === 'then' && nactionsLeft > 0
+              && result.isJust() && !(result.value as RuntimeValue).toBool()) {
+          // Cannot extend a run. Emit an error message.
+          const actionNo = actions.length - (nactionsLeft + 1)
+          this.errorTracker.addRuntimeError(actionId(actionNo),
+            'QNT513', `Cannot continue in A.then(B), A evaluates to 'false'`)
+          return none()
+        } else {
+          return result
+        }
       }
 
       // switch to the next frame, when implementing A.then(B)
@@ -1298,7 +1309,7 @@ export class CompilerVisitor implements IRVisitor {
     const args = this.compStack.splice(-app.args.length)
 
     const kind = app.opcode === 'then' ? 'then' : 'all'
-    const lazyCompute = () => this.chainAllOrThen(args, kind)
+    const lazyCompute = () => this.chainAllOrThen(args, kind, (idx) => app.args[idx].id)
 
     this.compStack.push(mkFunComputable(lazyCompute))
   }
@@ -1325,7 +1336,7 @@ export class CompilerVisitor implements IRVisitor {
               },
             }
           })
-          return this.chainAllOrThen(actions, 'then')
+          return this.chainAllOrThen(actions, 'then', (_) => app.args[1].id)
         })
         .join()
     }
