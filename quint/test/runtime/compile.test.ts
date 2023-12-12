@@ -985,8 +985,7 @@ describe('compiling specs to runtime values', () => {
         `
       )
 
-      evalVarAfterCall('n', 'run1', input)
-        .mapRight(m => assert.fail(`Expected the run to fail, found: ${m}`))
+      evalVarAfterCall('n', 'run1', input).mapRight(m => assert.fail(`Expected the run to fail, found: ${m}`))
     })
 
     it('expect ok', () => {
@@ -1006,8 +1005,7 @@ describe('compiling specs to runtime values', () => {
         `
       )
 
-      evalVarAfterCall('n', 'run1', input)
-        .mapRight(m => assert.fail(`Expected the run to fail, found: ${m}`))
+      evalVarAfterCall('n', 'run1', input).mapRight(m => assert.fail(`Expected the run to fail, found: ${m}`))
     })
 
     it('expect and then expect fail', () => {
@@ -1017,8 +1015,7 @@ describe('compiling specs to runtime values', () => {
         `
       )
 
-      evalVarAfterCall('n', 'run1', input)
-        .mapRight(m => assert.fail(`Expected the run to fail, found: ${m}`))
+      evalVarAfterCall('n', 'run1', input).mapRight(m => assert.fail(`Expected the run to fail, found: ${m}`))
     })
 
     it('q::debug', () => {
