@@ -4,13 +4,13 @@
 " Latest Revision: 03 February 2023
 "
 " How to install:
-" 1. Copy this file to ~/.vim/syntax/
+" 1. Copy this file to ~/.vim/syntax/ (vim) or to ~/.config/nvim/syntax (neovim).
 " 2a. Either manually set syntax with :set syntax=quint
 " 2b. Or add the following in your ~/.vimrc
-"    augroup syntax
-"    au! BufNewFile,BufReadPost *.qnt
-"    au  BufNewFile,BufReadPost *.qnt so ~/vim/syntax/quint.vim
-"    augroup END
+"    au  BufNewFile,BufReadPost *.qnt runtime syntax/quint.vim
+" 2c. Use modelines, which should be enabled Vim (they are disabled
+"     by default in Mac OS), by adding at end of the Quint file:
+"    // vim: syntax=quint
 
 if exists("b:current_syntax")
   finish

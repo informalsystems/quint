@@ -535,7 +535,7 @@ assert(List(1, 2, 3).select(x -> x % 2 == 0) == List(2))
 
 ## `pure def foldl: (List[a], b, (b, a) => b) => b`
 
-`l.foldl(z, f)` reduces the elements in `s` using `f`,
+`l.foldl(z, f)` reduces the elements in `l` using `f`,
 starting with `z` from the left.
 
 I.e., `f(f(f(z, x0), x1)..., xn)`.
@@ -851,7 +851,9 @@ run test = (x' = 0).then(a).then(assert(x == 3))
 
 `a` is true for a step from `s1` to `t` and `b` is true for a step from `t` to `s2`.
 
-This is the action composition operator.
+This is the action composition operator. If `a` evaluates to `false`, then
+`a.then(b)` reports an error. If `b` evaluates to `false` after `a`, then
+`a.then(b)` returns `false`.
 
 ### Examples
 
@@ -860,31 +862,24 @@ var x: int
 run test = (x' = 1).then(x' = 2).then(x' = 3).then(assert(x == 3))
 ```
 
-## `action repeated: (bool, int) => bool`
+## `action expect: (bool, bool) => bool`
 
-**Deprecated**: use `n.reps(A)` instead.
+`a.expect(b)` is true for a step from `s1` to `s2` if
 
-`a.repeated(n)` is the action `a` repeated `n` times.
+ - `a` is true for a step from `s1` to `s2`, and
+ - `b` holds true in `s2`.
 
-The semantics of this operator is as follows:
-
-- When `n <= 0`, this operator is equivalent to `unchanged`.
-- When `n = 1`, `a.repeated(n)` is equivalent to `a`.
-- When `n > 1`, `a.repeated(a)`, is equivalent to `a.then(a.repeated(n - 1))`.
-
-Note that the operator `a.repeated(n)` applies `a` exactly `n` times (when `n` is
-non-negative). If you want to repeat `a` from `i` to `j` times, you can combine
-it with `orKeep`:
-
-```
-a.repeated(i).then((a.orKeep(vars)).repeated(j - i))
-```
+If `a` evaluates to `false`, evaluation of `a.expect(b)`
+fails with an error message. If `b` evaluates to `false`,
+evaluation of `a.expect(b)` fails with an error message.
 
 ### Examples
 
 ```
-var x: int
-run test = (x' = 0).then((x' = x + 1).repeated(3)).then(assert(x == 3))
+var n: int
+run expectConditionOkTest = (n' = 0).then(n' = 3).expect(n == 3)
+run expectConditionFailsTest = (n' = 0).then(n' = 3).expect(n == 4)
+run expectRunFailsTest = (n' = 0).then(all { n == 2, n' = 3 }).expect(n == 4)
 ```
 
 ## `action reps: (int, (int) => bool) => bool`
@@ -924,7 +919,7 @@ It does not change the state.
 
 ```
 var x: int
-run test = (x' = 0).then(3.times(x' = x + 1)).then(assert(x == 3))
+run test = (x' = 0).then(3.reps(x' = x + 1)).then(assert(x == 3))
 ```
 
 ```
@@ -933,4 +928,23 @@ action Init = x' = 0
 action Next = x' = x + 1
 
 run test = Init.then(all { Next, assert(x > 0) })
+```
+
+## `pure def q::debug: (str, a) => a`
+
+`q::debug(msg, value)` prints the given message and value to the console,
+separated by a space.
+
+It also returns the given value unchanged,
+so that it can be used directly within expressions.
+
+### Examples
+
+```
+var x: int
+>>> (x' = 0).then(3.reps(i => x' = q::debug("new x:", x + 1)))
+> new x: 1
+> new x: 2
+> new x: 3
+true
 ```

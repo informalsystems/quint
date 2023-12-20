@@ -1,5 +1,3 @@
-true
-
 4
 Set(2, 4, 6)
 32
@@ -8,12 +6,11 @@ false
 true
 -40
 104
-runtime error: error: Variable temperature is not set
+runtime error: error: [QNT502] Variable temperature is not set
     var temperature: int
     ^^^^^^^^^^^^^^^^^^^^
 
 <undefined value>
-
 true
 20
 false

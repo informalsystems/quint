@@ -1,16 +1,6 @@
+import { DocumentSymbol, SymbolKind } from 'vscode-languageserver/node'
 
-import {
-  DocumentSymbol,
-  SymbolKind
-} from 'vscode-languageserver/node'
-
-import {
-  Loc,
-  QuintConst,
-  QuintModule,
-  QuintOpDef,
-  QuintVar
-} from '@informalsystems/quint'
+import { Loc, QuintConst, QuintModule, QuintOpDef, QuintVar } from '@informalsystems/quint'
 import { locToRange } from './reporting'
 
 export function getDocumentSymbols(modules: QuintModule[], sourceMap: Map<bigint, Loc>): DocumentSymbol[] {
@@ -23,6 +13,19 @@ export function getDocumentSymbols(modules: QuintModule[], sourceMap: Map<bigint
 function symbolKind(def: QuintOpDef | QuintConst | QuintVar): SymbolKind {
   switch (def.kind) {
     case 'def':
+      switch (def.qualifier) {
+        case 'def':
+          return SymbolKind.Method
+        case 'puredef':
+          return SymbolKind.Function
+        case 'val':
+        case 'pureval':
+          return SymbolKind.Field
+        case 'action':
+          return SymbolKind.Event
+        case 'run':
+          return SymbolKind.Property
+      }
       return SymbolKind.Function
     case 'const':
       return SymbolKind.Constant
@@ -34,11 +37,16 @@ function symbolKind(def: QuintOpDef | QuintConst | QuintVar): SymbolKind {
 /**
  * Return the def symbols defined in a module
  */
-function getDefs(module: QuintModule, sourceMap: Map<bigint, Loc>) : DocumentSymbol[] {
-  return module.defs.reduce((symbols, def) => {
+function getDefs(module: QuintModule, sourceMap: Map<bigint, Loc>): DocumentSymbol[] {
+  return module.declarations.reduce((symbols, def) => {
     // skip certain kinds of defs
-    if (def.kind === 'assume' || def.kind === 'instance' || def.kind === 'import' ||
-        def.kind === 'export' || def.kind === 'typedef') {
+    if (
+      def.kind === 'assume' ||
+      def.kind === 'instance' ||
+      def.kind === 'import' ||
+      def.kind === 'export' ||
+      def.kind === 'typedef'
+    ) {
       return symbols
     }
     const loc = sourceMap.get(def.id)

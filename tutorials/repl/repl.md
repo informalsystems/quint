@@ -40,7 +40,7 @@ state machine that describes how it works from the user's point of view:
 
 ## 1. Installation
 
-You have to install `quint` first. See [README](../quint/README.md).
+You have to install `quint` first. See the [README](../../README.md#installation).
 
 ## 2. Running REPL
 
@@ -241,7 +241,6 @@ runtime error: error: Variable temperature is not set
     ^^^^^^^^^^^^^^^^^^^^
 
 <undefined value>
-
 ```
 
 ### 5.2. Initializing state variables

@@ -51,11 +51,11 @@ module denomTrace {
 
   /// `channelNamesUniquePerChain` is true iff channel names are unique by chain
   pure def channelNamesUniquePerChain(topology: ChannelTopology): bool =
-    pure val chainNames = Set("A", "B", "C") // should be topology.keys(), but that's breaking the effect checker somehow (see issue #808)
+    pure val chainNames = topology.keys()
     and {
       // Check the domain for the second level of chains
       chainNames.forall(chain => topology.get(chain).keys() == chainNames),
-      tuples(chainNames, chainNames).forall((fromChain, toChain) =>
+      tuples(chainNames, chainNames).forall( ((fromChain, toChain)) =>
         fromChain != toChain implies // we dont care about channels from chain to itself
           chainNames.forall((thirdChain) =>
             thirdChain != toChain implies
@@ -246,23 +246,23 @@ module denomTraceSimulation {
 // Fails because the channel topology is not proper
 // The aim is to show that it is, in fact, necessary to enforce `channelNamesUniquePerChain`
 module randomChannelsTests {
-  pure val chains = Set("A", "B", "C")
-  pure val channelNames = Set("channelToA", "channelToB", "channelToC")
+  pure val myChains = Set("A", "B", "C")
+  pure val myChannelNames = Set("channelToA", "channelToB", "channelToC")
 
   import denomTraceSimulation(
-    possibleChannelTopologies = chains.setOfMaps(chains.setOfMaps(channelNames))
-  ) as S
+    possibleChannelTopologies = myChains.setOfMaps(myChains.setOfMaps(myChannelNames))
+  ).*
 }
 
 // Passes because the channel topology is proper
 module properChannelsTests {
-  pure val chains = Set("A", "B", "C")
-  pure val channelNames = Set("channelToA", "channelToB", "channelToC")
+  pure val myChains = Set("A", "B", "C")
+  pure val myChannelNames = Set("channelToA", "channelToB", "channelToC")
 
   import base.* from "./base"
   import denomTrace.channelNamesUniquePerChain
 
   import denomTraceSimulation(
-    possibleChannelTopologies = chains.setOfMaps(chains.setOfMaps(channelNames)).filter(channelNamesUniquePerChain)
-  ) as S
+    possibleChannelTopologies = myChains.setOfMaps(myChains.setOfMaps(myChannelNames)).filter(channelNamesUniquePerChain)
+  ).*
 }
