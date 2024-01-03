@@ -41,7 +41,7 @@ declaration : 'const' qualId ':' type                     # const
 // An operator definition.
 // We embed two kinds of parameters right in this rule.
 // Otherwise, the parser would start recognizing parameters everywhere.
-operDef : qualifier normalCallName
+operDef : qualifier operDefName
             ( /* ML-like parameter lists */
                 '(' (parameter (',' parameter)*)? ')' (':' type)?
                 | ':' type
@@ -50,6 +50,18 @@ operDef : qualifier normalCallName
             )?
             ('=' expr)? ';'?
         ;
+
+operDefName
+    : qualId
+    | keyword {
+        const err = quintErrorToString(
+          { code: 'QNT101',
+            message: "Built-in name " + $keyword.text + " cannot be redefined"
+          },
+        )
+        this.notifyErrorListeners(err)
+      }
+    ;
 
 typeDef
     : 'type' qualId                                                         # typeAbstractDef
@@ -242,6 +254,9 @@ simpleId[context: string]
         this.notifyErrorListeners(err)
       }
     ;
+
+// Builtin alphabetic keywords.
+keyword : AND | IFF | IMPLIES | LIST | MAP | MATCH OR | SET ;
 
 // TOKENS
 

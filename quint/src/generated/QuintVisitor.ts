@@ -66,6 +66,7 @@ import { ModuleContext } from "./QuintParser";
 import { DocumentedDeclarationContext } from "./QuintParser";
 import { DeclarationContext } from "./QuintParser";
 import { OperDefContext } from "./QuintParser";
+import { OperDefNameContext } from "./QuintParser";
 import { TypeDefContext } from "./QuintParser";
 import { TypeSumVariantContext } from "./QuintParser";
 import { NondetOperDefContext } from "./QuintParser";
@@ -95,10 +96,10 @@ import { ArgListContext } from "./QuintParser";
 import { RecElemContext } from "./QuintParser";
 import { NormalCallNameContext } from "./QuintParser";
 import { NameAfterDotContext } from "./QuintParser";
-import { OperatorContext } from "./QuintParser";
 import { LiteralContext } from "./QuintParser";
 import { QualIdContext } from "./QuintParser";
 import { SimpleIdContext } from "./QuintParser";
+import { KeywordContext } from "./QuintParser";
 
 
 /**
@@ -561,6 +562,13 @@ export interface QuintVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitOperDef?: (ctx: OperDefContext) => Result;
 
 	/**
+	 * Visit a parse tree produced by `QuintParser.operDefName`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitOperDefName?: (ctx: OperDefNameContext) => Result;
+
+	/**
 	 * Visit a parse tree produced by `QuintParser.typeDef`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -764,13 +772,6 @@ export interface QuintVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitNameAfterDot?: (ctx: NameAfterDotContext) => Result;
 
 	/**
-	 * Visit a parse tree produced by `QuintParser.operator`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitOperator?: (ctx: OperatorContext) => Result;
-
-	/**
 	 * Visit a parse tree produced by `QuintParser.literal`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -790,5 +791,12 @@ export interface QuintVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitSimpleId?: (ctx: SimpleIdContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `QuintParser.keyword`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitKeyword?: (ctx: KeywordContext) => Result;
 }
 

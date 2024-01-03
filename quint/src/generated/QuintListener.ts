@@ -66,6 +66,7 @@ import { ModuleContext } from "./QuintParser";
 import { DocumentedDeclarationContext } from "./QuintParser";
 import { DeclarationContext } from "./QuintParser";
 import { OperDefContext } from "./QuintParser";
+import { OperDefNameContext } from "./QuintParser";
 import { TypeDefContext } from "./QuintParser";
 import { TypeSumVariantContext } from "./QuintParser";
 import { NondetOperDefContext } from "./QuintParser";
@@ -95,10 +96,10 @@ import { ArgListContext } from "./QuintParser";
 import { RecElemContext } from "./QuintParser";
 import { NormalCallNameContext } from "./QuintParser";
 import { NameAfterDotContext } from "./QuintParser";
-import { OperatorContext } from "./QuintParser";
 import { LiteralContext } from "./QuintParser";
 import { QualIdContext } from "./QuintParser";
 import { SimpleIdContext } from "./QuintParser";
+import { KeywordContext } from "./QuintParser";
 
 
 /**
@@ -838,6 +839,17 @@ export interface QuintListener extends ParseTreeListener {
 	exitOperDef?: (ctx: OperDefContext) => void;
 
 	/**
+	 * Enter a parse tree produced by `QuintParser.operDefName`.
+	 * @param ctx the parse tree
+	 */
+	enterOperDefName?: (ctx: OperDefNameContext) => void;
+	/**
+	 * Exit a parse tree produced by `QuintParser.operDefName`.
+	 * @param ctx the parse tree
+	 */
+	exitOperDefName?: (ctx: OperDefNameContext) => void;
+
+	/**
 	 * Enter a parse tree produced by `QuintParser.typeDef`.
 	 * @param ctx the parse tree
 	 */
@@ -1157,17 +1169,6 @@ export interface QuintListener extends ParseTreeListener {
 	exitNameAfterDot?: (ctx: NameAfterDotContext) => void;
 
 	/**
-	 * Enter a parse tree produced by `QuintParser.operator`.
-	 * @param ctx the parse tree
-	 */
-	enterOperator?: (ctx: OperatorContext) => void;
-	/**
-	 * Exit a parse tree produced by `QuintParser.operator`.
-	 * @param ctx the parse tree
-	 */
-	exitOperator?: (ctx: OperatorContext) => void;
-
-	/**
 	 * Enter a parse tree produced by `QuintParser.literal`.
 	 * @param ctx the parse tree
 	 */
@@ -1199,5 +1200,16 @@ export interface QuintListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitSimpleId?: (ctx: SimpleIdContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `QuintParser.keyword`.
+	 * @param ctx the parse tree
+	 */
+	enterKeyword?: (ctx: KeywordContext) => void;
+	/**
+	 * Exit a parse tree produced by `QuintParser.keyword`.
+	 * @param ctx the parse tree
+	 */
+	exitKeyword?: (ctx: KeywordContext) => void;
 }
 
