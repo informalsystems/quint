@@ -224,12 +224,6 @@ nameAfterDot :  qualId
         |       op=(AND | OR | IFF | IMPLIES)
         ;
 
-// special operators
-operator: (AND | OR | IFF | IMPLIES |
-           GT  | LT  | GE  | LE | NE | EQ |
-           MUL | DIV | MOD | PLUS | MINUS | '^')
-        ;
-
 // literals
 literal: (STRING | BOOL | INT)
         ;
