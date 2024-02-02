@@ -121,13 +121,11 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
   exitDef(def: QuintDef) {
     if (this.constraints.length > 0) {
       this.solveConstraints().map(subs => {
-        if (!isAnnotatedDef(def)) {
-          return
+        if (isAnnotatedDef(def)) {
+          checkAnnotationGenerality(subs, def.typeAnnotation).mapLeft(err =>
+            this.errors.set(def.typeAnnotation?.id ?? def.id, err)
+          )
         }
-
-        checkAnnotationGenerality(subs, def.typeAnnotation).mapLeft(err =>
-          this.errors.set(def.typeAnnotation?.id ?? def.id, err)
-        )
       })
     }
   }
