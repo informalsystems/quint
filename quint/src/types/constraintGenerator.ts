@@ -191,7 +191,7 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
     )
 
     // We want `definedSignature` computed before the fresh variable `a` so that the
-    // numbering of ther fresh variables stays in order, with `a`, used for return types,
+    // numbering of their fresh variables stays in order, with `a`, used for return types,
     // bearing the highest number.
     const definedSignature = this.typeForName(e.opcode, e.id, e.args.length)
     const a: QuintType = { kind: 'var', name: this.freshVarGenerator.freshVar('_t') }
@@ -298,6 +298,8 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
     this.addToResults(e.id, this.fetchResult(e.expr.id))
   }
 
+  // TODO: On type app exit, add constraints for the type operators?
+  // TODO: Need similar logic on exiting a type def (to create a scheme for a lambda) and
   exitOpDef(e: QuintOpDef) {
     if (this.errors.size !== 0) {
       return
