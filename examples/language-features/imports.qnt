@@ -64,7 +64,6 @@ module test {
 // Qualified imports and exports
 module E {
   var x: int
-  action init = x' = 1
 
   // Export Math as a qualified name
   // to be accessed by E::Math
@@ -80,15 +79,21 @@ module F {
   export basics as ExportedBasics
 }
 
+module G {
+  import E.*
+  action init = x' = 1
+}
+
 module imports {
   import E
   import F as MyF
+  import G
 
   val test_exported1 = E::Math::pow(2, 2) == 4
   val test_exported2 = MyF::ExportedBasics::double(2) == 4
 
   action init = all {
-    E::init,
+    G::init,
     MyF::init
   }
 

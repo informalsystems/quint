@@ -365,6 +365,19 @@ export class CompilerVisitor implements IRVisitor {
       return
     }
 
+    // Also, the other way around because of flattening non-instances
+    if (this.context.has(kindName('var', vardef.id))) {
+      const register = this.context.get(kindName('var', vardef.id))!
+      this.context.set(kindName('var', varName), register)
+
+      if (this.context.has(kindName('nextvar', vardef.id))) {
+        const register = this.context.get(kindName('nextvar', vardef.id))!
+        this.context.set(kindName('nextvar', varName), register)
+      }
+
+      return
+    }
+
     // simply introduce two registers:
     //  one for the variable, and
     //  one for its next-state version

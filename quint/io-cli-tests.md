@@ -205,7 +205,7 @@ echo "init" | quint -r ../examples/language-features/counters.qnt::counters 2>&1
 
 <!-- !test in repl loads module that is not the last -->
 ```
-echo "init" | quint -r ../examples/language-features/imports.qnt::E 2>&1 | tail -n +3
+echo "init" | quint -r ../examples/language-features/imports.qnt::G 2>&1 | tail -n +3
 ```
 
 <!-- !test out repl loads module that is not the last -->
