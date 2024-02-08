@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Erroneous effect checking failure resulting from invalid occurs check. This
   error prevented some valid specs from being simulated or verified (#1359).
+- Compilation problem in some scenarios where a module with state variables is
+  imported by different paths with different namespaces (#1363)
 
 ### Security
 
