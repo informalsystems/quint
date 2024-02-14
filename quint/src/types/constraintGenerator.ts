@@ -486,10 +486,16 @@ function checkAnnotationGenerality(
     return right(subs)
   }
 
-  // Look for type/row variables in the annotation that are bound by `subs`
+  // Look for type and row variables in the annotation that are bound to non-variables in
+  // the substitutions. This indicates that the inferred type is more specific than the
+  // annotated type, which means the annotation is too general.
   const names = typeNames(typeAnnotation)
-  const tooGeneralTypes = subs.filter(s => s.kind === 'type' && names.typeVariables.has(s.name))
-  const tooGeneralRows = subs.filter(s => s.kind === 'row' && names.rowVariables.has(s.name))
+  const tooGeneralTypes = subs.filter(
+    s => s.kind === 'type' && !(s.value.kind === 'var') && names.typeVariables.has(s.name)
+  )
+  const tooGeneralRows = subs.filter(
+    s => s.kind === 'row' && !(s.value.kind === 'var') && names.rowVariables.has(s.name)
+  )
 
   const errors = [...tooGeneralTypes, ...tooGeneralRows].map(s => {
     const expected = s.kind === 'type' ? typeToString(s.value) : rowToString(s.value)
