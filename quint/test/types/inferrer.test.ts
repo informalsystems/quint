@@ -419,4 +419,20 @@ module B {
       ]
     )
   })
+
+  it('prioritizes solving constraints from type annotations', () => {
+    // Regression test for https://github.com/informalsystems/quint/issues/1177
+    const defs = [
+      `pure def foo(s: str): int = {
+  val x = s.map(y => y + 1)
+  val y = s + 1
+  y
+}`,
+    ]
+
+    const [errors] = inferTypesForDefs(defs)
+    const msg = [...errors.values()].map(errorTreeToString)
+
+    assert.sameDeepMembers(msg, [])
+  })
 })
