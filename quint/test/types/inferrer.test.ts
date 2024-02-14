@@ -435,7 +435,7 @@ module B {
     const msgs: string[] = [...errors.values()].map(errorTreeToString)
     const expectedMessage = `Couldn't unify set and str
 Trying to unify Set[int] and str
-Trying to unify (Set[_t1], (_t1) => _t2) => Set[_t2] and (str, (int) => int) => _t3
+Trying to unify (_t0, Set[_t0]) => bool and (int, str) => _t1
 `
     assert.equal(msgs[0], expectedMessage)
   })
