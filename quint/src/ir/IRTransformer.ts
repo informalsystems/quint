@@ -372,7 +372,7 @@ export function transformDefinition(transformer: IRTransformer, def: ir.QuintDef
   if (transformer.enterDef) {
     newDef = transformer.enterDef(newDef)
   }
-  if (ir.isAnnotatedDef(newDef)) {
+  if (ir.isAnnotated(newDef)) {
     newDef.typeAnnotation = transformType(transformer, newDef.typeAnnotation)
   } else if (ir.isTypeAlias(newDef)) {
     newDef.type = transformType(transformer, newDef.type)
@@ -444,6 +444,11 @@ export function transformDefinition(transformer: IRTransformer, def: ir.QuintDef
  */
 function transformExpression(transformer: IRTransformer, expr: ir.QuintEx): ir.QuintEx {
   let newExpr = { ...expr }
+
+  if (ir.isAnnotated(expr)) {
+    newExpr.typeAnnotation = transformType(transformer, expr.typeAnnotation)
+  }
+
   if (transformer.enterExpr) {
     newExpr = transformer.enterExpr(newExpr)
   }

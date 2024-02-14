@@ -26,7 +26,7 @@ import {
   textify,
 } from './prettierimp'
 
-import { QuintDeclaration, QuintEx, isAnnotatedDef } from './ir/quintIr'
+import { QuintDeclaration, QuintEx, isAnnotated } from './ir/quintIr'
 import { ExecutionFrame } from './runtime/trace'
 import { zerog } from './idGenerator'
 import { ConcreteRow, QuintType, Row, isUnitType } from './ir/quintTypes'
@@ -137,11 +137,14 @@ export function prettyQuintEx(ex: QuintEx): Doc {
 }
 
 export function prettyQuintDeclaration(decl: QuintDeclaration, includeBody: boolean = true, type?: TypeScheme): Doc {
-  const typeAnnotation = isAnnotatedDef(decl)
-    ? [text(': '), prettyQuintType(decl.typeAnnotation)]
-    : type // If annotation is not present, but type is, use the type
-    ? [text(': '), prettyTypeScheme(type)]
-    : []
+  const typeAnnotation =
+    decl.kind === 'def' && isAnnotated(decl.expr)
+      ? [text(': '), prettyQuintType(decl.expr.typeAnnotation)]
+      : isAnnotated(decl)
+      ? [text(': '), prettyQuintType(decl.typeAnnotation)]
+      : type // If annotation is not present, but type is, use the type
+      ? [text(': '), prettyTypeScheme(type)]
+      : []
 
   switch (decl.kind) {
     case 'def': {

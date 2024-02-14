@@ -133,10 +133,9 @@ class InstanceFlattener implements IRTransformer {
       newModuleDecls.push({
         kind: 'def',
         qualifier: 'pureval',
-        expr: expr,
+        expr: { ...expr, typeAnnotation: this.lookupTable.get(param.id)?.typeAnnotation },
         id: param.id,
         name: [newName, param.name].join('::'),
-        typeAnnotation: this.lookupTable.get(param.id)?.typeAnnotation,
       })
     })
 

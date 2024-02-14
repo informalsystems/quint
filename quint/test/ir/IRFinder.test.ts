@@ -10,7 +10,7 @@ describe('findExpressionWithId', () => {
     const expr = findExpressionWithId(modules, 1n)
 
     assert.isDefined(expr)
-    assert.deepEqual(expr, { id: 1n, kind: 'name', name: 'Nat' })
+    assert.deepEqual(expr, { id: 1n, kind: 'name', name: 'Nat', typeAnnotation: undefined })
   })
 
   it('returns undefined for inexisting id', () => {
@@ -49,7 +49,7 @@ describe('findDefinitionWithId', () => {
       kind: 'def',
       qualifier: 'val',
       name: 'a',
-      expr: { id: 1n, kind: 'int', value: 1n },
+      expr: { id: 1n, kind: 'int', value: 1n, typeAnnotation: undefined },
     })
   })
 

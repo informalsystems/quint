@@ -71,41 +71,69 @@ export interface WithOptionalDoc {
  */
 export type OpQualifier = 'pureval' | 'puredef' | 'val' | 'def' | 'nondet' | 'action' | 'run' | 'temporal'
 
-export interface QuintName extends WithId {
+interface QuintExprData extends WithId, WithOptionalTypeAnnotation {}
+
+export interface QuintName extends QuintExprData {
   /** Expressions kind ('name' -- name reference) */
   kind: 'name'
   /** A name of: a variable, constant, parameter, user-defined operator */
   name: string
 }
 
-export interface QuintBool extends WithId {
+export interface QuintBool extends QuintExprData {
   /** Expressions kind ('bool' -- a boolean literal) */
   kind: 'bool'
   /** The boolean literal value */
   value: boolean
 }
 
-export interface QuintInt extends WithId {
+export interface QuintInt extends QuintExprData {
   /** Expressions kind ('int' -- an integer literal) */
   kind: 'int'
   /** The integer literal value */
   value: bigint
 }
 
-export interface QuintStr extends WithId {
+export interface QuintStr extends QuintExprData {
   /** Expressions kind ('str' -- a string literal) */
   kind: 'str'
   /** The string literal value */
   value: string
 }
 
-export interface QuintApp extends WithId {
+export interface QuintApp extends QuintExprData {
   /** Expressions kind ('app' -- operator application) */
   kind: 'app'
   /** The name of the operator being applied */
   opcode: string
   /** A list of arguments to the operator */
   args: QuintEx[]
+}
+
+// Not an expression, but still carries the base expression data
+export interface QuintLambdaParameter extends QuintExprData {
+  /** The name of the formal parameter */
+  name: string
+}
+
+export interface QuintLambda extends QuintExprData {
+  /** Expressions kind ('lambda' -- operator abstraction) */
+  kind: 'lambda'
+  /** The formal parameters */
+  params: QuintLambdaParameter[]
+  /** The qualifier for the defined operator */
+  qualifier: OpQualifier
+  /** The definition body */
+  expr: QuintEx
+}
+
+export interface QuintLet extends QuintExprData {
+  /** Expressions kind ('let' -- a let-in binding defined via 'def', 'val', etc.) */
+  kind: 'let'
+  /** The operator being defined to be used in the body */
+  opdef: QuintOpDef
+  /** The body */
+  expr: QuintEx
 }
 
 /** A subtype of `QuintApp` covering all quint builtin operators */
@@ -218,31 +246,6 @@ export const builtinOpCodes = [
 
 export type QuintBuiltinOpcode = (typeof builtinOpCodes)[number]
 
-export interface QuintLambdaParameter extends WithId {
-  /** The name of the formal parameter */
-  name: string
-}
-
-export interface QuintLambda extends WithId {
-  /** Expressions kind ('lambda' -- operator abstraction) */
-  kind: 'lambda'
-  /** The formal parameters */
-  params: QuintLambdaParameter[]
-  /** The qualifier for the defined operator */
-  qualifier: OpQualifier
-  /** The definition body */
-  expr: QuintEx
-}
-
-export interface QuintLet extends WithId {
-  /** Expressions kind ('let' -- a let-in binding defined via 'def', 'val', etc.) */
-  kind: 'let'
-  /** The operator being defined to be used in the body */
-  opdef: QuintOpDef
-  /** The body */
-  expr: QuintEx
-}
-
 /**
  * Discriminated union of Quint expressions.
  */
@@ -255,7 +258,7 @@ export type QuintEx = QuintName | QuintBool | QuintInt | QuintStr | QuintApp | Q
  * If an operator definition has formal parameters, then `expr`
  * should be a lambda expression over those parameters.
  */
-export interface QuintOpDef extends WithId, WithOptionalTypeAnnotation, WithOptionalDoc {
+export interface QuintOpDef extends WithId, WithOptionalDoc {
   /** definition kind ('def' -- operator definition) */
   kind: 'def'
   /** definition name */
@@ -385,14 +388,14 @@ export interface QuintModule extends WithId {
 export type QuintDef = (QuintOpDef | QuintConst | QuintVar | QuintAssume | QuintTypeDef) & WithOptionalDoc
 
 /**
- * Checks if a definition has a type annotation.
+ * A type guard to promote a type `WithOptionalTypeAnnotation` to one known to be `WithTypeAnnotation`
  *
- * @param def The definition to check.
+ * @param elem The IR element to check.
  *
- * @returns True if the definition has a type annotation, false otherwise.
+ * @returns True if the element has a type annotation, false otherwise.
  */
-export function isAnnotatedDef(def: any): def is WithTypeAnnotation {
-  return def.typeAnnotation !== undefined
+export function isAnnotated(elem: any): elem is WithTypeAnnotation {
+  return elem.typeAnnotation !== undefined
 }
 
 /**

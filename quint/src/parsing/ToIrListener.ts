@@ -180,7 +180,7 @@ export class ToIrListener implements QuintListener {
         typeAnnotation = maybeType.value
       }
     }
-    const expr = this.exprStack.pop() ?? this.undefinedExpr(ctx)()
+    const expr = { ...(this.exprStack.pop() ?? this.undefinedExpr(ctx)()), typeAnnotation }
 
     const id = this.getId(ctx)
 
@@ -190,7 +190,6 @@ export class ToIrListener implements QuintListener {
       name,
       qualifier: 'nondet',
       expr,
-      typeAnnotation,
     }
 
     this.declarationStack.push(def)
@@ -222,7 +221,7 @@ export class ToIrListener implements QuintListener {
   // translate a top-level or nested operator definition
   exitOperDef(ctx: p.OperDefContext) {
     const name = ctx.normalCallName().text
-    const [params, typeTag] = this.processOpDefParams(ctx)
+    const [params, maybeTypeAnnotation] = this.processOpDefParams(ctx)
     // get the definition body
     const expr: QuintEx = ctx.expr()
       ? this.exprStack.pop() ?? this.undefinedExpr(ctx)()
@@ -231,44 +230,27 @@ export class ToIrListener implements QuintListener {
         { id: this.getId(ctx), kind: 'bool', value: true }
 
     // extract the qualifier
-    let qualifier: OpQualifier = 'def'
-    if (ctx.qualifier()) {
-      const qtext = ctx.qualifier().text
-      // case distinction to make the type checker happy
-      if (
-        qtext === 'pureval' ||
-        qtext === 'puredef' ||
-        qtext === 'val' ||
-        qtext === 'def' ||
-        qtext === 'action' ||
-        qtext === 'run' ||
-        qtext === 'temporal'
-      ) {
-        qualifier = qtext
-      }
-    }
+    // the grammer should guarantee this is valid OpQualifier, or we should crash
+    let qualifier: OpQualifier = ctx.qualifier().text as OpQualifier
 
-    let body = expr
+    const body: QuintEx =
+      params.length === 0
+        ? { ...expr, typeAnnotation: maybeTypeAnnotation.value }
+        : {
+            id: this.getId(ctx),
+            kind: 'lambda',
+            params,
+            qualifier,
+            expr,
+            typeAnnotation: maybeTypeAnnotation.value,
+          }
 
-    if (params.length > 0) {
-      // if the definition has parameters, introduce a lambda
-      body = {
-        id: this.getId(ctx),
-        kind: 'lambda',
-        params,
-        qualifier,
-        expr,
-      }
-    }
     const def: QuintOpDef = {
       id: this.getId(ctx),
       kind: 'def',
       name,
       qualifier,
       expr: body,
-    }
-    if (typeTag.isJust()) {
-      def.typeAnnotation = typeTag.value
     }
     this.declarationStack.push(def)
   }
@@ -460,8 +442,6 @@ export class ToIrListener implements QuintListener {
 
         let qualifier: OpQualifier
         let expr: QuintEx
-        let typeAnnotation: QuintType
-
         const label: QuintStr = { id: this.getId(variantCtx), kind: 'str', value: fieldName }
         if (isUnitType(fieldType)) {
           // Its a `val` cause it has no parameters
@@ -477,12 +457,12 @@ export class ToIrListener implements QuintListener {
           // a variant pairing a label with the unit.
           const wrappedExpr = unitValue(this.getId(variantCtx._sumLabel))
 
-          typeAnnotation = constructorReturnType
           expr = {
             id: this.getId(variantCtx),
             kind: 'app',
             opcode: 'variant',
             args: [label, wrappedExpr],
+            typeAnnotation: constructorReturnType,
           }
         } else {
           // Otherwise we will build a constructor that takes one parameter
@@ -503,11 +483,17 @@ export class ToIrListener implements QuintListener {
             args: [label, wrappedExpr],
           }
 
-          typeAnnotation = { kind: 'oper', args: [fieldType], res: constructorReturnType }
-          expr = { id: this.getId(variantCtx), kind: 'lambda', params, qualifier, expr: variant }
+          expr = {
+            id: this.getId(variantCtx),
+            kind: 'lambda',
+            params,
+            qualifier,
+            expr: variant,
+            typeAnnotation: { kind: 'oper', args: [fieldType], res: constructorReturnType },
+          }
         }
 
-        return { id: this.getId(variantCtx), kind: 'def', name: fieldName, qualifier, typeAnnotation, expr }
+        return { id: this.getId(variantCtx), kind: 'def', name: fieldName, qualifier, expr }
       }
     )
 

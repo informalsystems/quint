@@ -354,7 +354,7 @@ export function walkDefinition(visitor: IRVisitor, def: ir.QuintDef): void {
     visitor.enterDef(def)
   }
 
-  if (ir.isAnnotatedDef(def)) {
+  if (ir.isAnnotated(def)) {
     walkType(visitor, def.typeAnnotation)
   } else if (ir.isTypeAlias(def)) {
     walkType(visitor, def.type)
@@ -418,6 +418,10 @@ export function walkDefinition(visitor: IRVisitor, def: ir.QuintDef): void {
 }
 
 export function walkExpression(visitor: IRVisitor, expr: ir.QuintEx): void {
+  if (ir.isAnnotated(expr)) {
+    walkType(visitor, expr.typeAnnotation)
+  }
+
   if (visitor.enterExpr) {
     visitor.enterExpr(expr)
   }

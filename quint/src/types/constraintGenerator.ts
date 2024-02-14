@@ -28,9 +28,10 @@ import {
   QuintOpDef,
   QuintStr,
   QuintVar,
-  isAnnotatedDef,
+  isAnnotated,
+  QuintLambdaParameter,
 } from '../ir/quintIr'
-import { QuintType, rowNames, typeNames } from '../ir/quintTypes'
+import { QuintType, QuintVarType, rowNames, typeNames } from '../ir/quintTypes'
 import { expressionToString, rowToString, typeToString } from '../ir/IRprinting'
 import { Either, left, mergeInMany, right } from '@sweet-monads/either'
 import { Error, ErrorTree, buildErrorLeaf, buildErrorTree, errorTreeToString } from '../errorTree'
@@ -49,6 +50,7 @@ import {
   withConstraints,
 } from './specialConstraints'
 import { FreshVarGenerator } from '../FreshVarGenerator'
+import { forEach, zip } from 'lodash'
 
 export type SolvingFunctionType = (
   _table: LookupTable,
@@ -118,16 +120,31 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
     this.location = `Generating constraints for ${expressionToString(e)}`
   }
 
+  exitExpr(e: QuintEx) {
+    if (this.errors.size !== 0) {
+      return
+    }
+
+    if (isAnnotated(e)) {
+      return this.fetchResult(e.id).map(expressionType => {
+        this.constraints.push({ kind: 'eq', types: [expressionType.type, e.typeAnnotation], sourceId: e.id })
+      })
+    }
+  }
+
   exitDef(def: QuintDef) {
     if (this.constraints.length > 0) {
       this.solveConstraints().map(subs => {
-        if (!isAnnotatedDef(def)) {
-          return
-        }
+        const annotation =
+          def.kind === 'def' && isAnnotated(def.expr)
+            ? def.expr.typeAnnotation
+            : isAnnotated(def)
+            ? def.typeAnnotation
+            : undefined
 
-        checkAnnotationGenerality(subs, def.typeAnnotation).mapLeft(err =>
-          this.errors.set(def.typeAnnotation?.id ?? def.id, err)
-        )
+        if (annotation) {
+          checkAnnotationGenerality(subs, annotation).mapLeft(err => this.errors.set(annotation.id ?? def.id, err))
+        }
       })
     }
   }
@@ -250,10 +267,26 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
       typeVariables: new Set(lastParamNames.typeVariables),
       rowVariables: new Set(lastParamNames.rowVariables),
     }
-    expr.params.forEach(p => {
+
+    let params: QuintLambdaParameter[] = []
+    if (isAnnotated(expr) && expr.typeAnnotation.kind === 'oper') {
+      zip(expr.params, expr.typeAnnotation.args).forEach(([param, typeAnnotation]) => {
+        if (param) {
+          params.push({ ...param, typeAnnotation })
+        }
+      })
+    } else {
+      params = expr.params
+    }
+
+    params.forEach(p => {
       const varName = p.name === '_' ? this.freshVarGenerator.freshVar('_t') : `t_${p.name}_${p.id}`
       paramNames.typeVariables.add(varName)
-      this.addToResults(p.id, right(toScheme({ kind: 'var', name: varName })))
+      const typeVar: QuintVarType = { kind: 'var', name: varName }
+      if (isAnnotated(p)) {
+        this.constraints.push({ kind: 'eq', types: [typeVar, p.typeAnnotation], sourceId: p.id })
+      }
+      this.addToResults(p.id, right(toScheme(typeVar)))
     })
 
     this.freeNames.push(paramNames)
@@ -303,9 +336,6 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
 
     this.fetchResult(e.expr.id).map(t => {
       this.addToResults(e.id, right(this.quantify(t.type)))
-      if (e.typeAnnotation) {
-        this.constraints.push({ kind: 'eq', types: [t.type, e.typeAnnotation], sourceId: e.id })
-      }
     })
   }
 

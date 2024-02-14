@@ -12,7 +12,7 @@
  * @module
  */
 
-import { OpQualifier, QuintDeclaration, QuintDef, QuintEx, QuintModule, isAnnotatedDef } from './quintIr'
+import { OpQualifier, QuintDeclaration, QuintDef, QuintEx, QuintModule, isAnnotated } from './quintIr'
 import { ConcreteRow, QuintSumType, QuintType, Row, RowField, isUnitType } from './quintTypes'
 import { TypeScheme } from '../types/base'
 import { typeSchemeToString } from '../types/printing'
@@ -103,20 +103,20 @@ export function declarationToString(decl: QuintDeclaration, includeBody: boolean
  * @returns a string with the pretty printed definition.
  */
 export function definitionToString(def: QuintDef, includeBody: boolean = true, type?: TypeScheme): string {
-  const typeAnnotation = isAnnotatedDef(def)
-    ? `: ${typeToString(def.typeAnnotation)}`
-    : type // If annotation is not present, but type is, use the type
-    ? `: ${typeSchemeToString(type)}`
-    : ''
   switch (def.kind) {
     case 'def': {
+      const typeAnnotation = isAnnotated(def.expr)
+        ? `: ${typeToString(def.expr.typeAnnotation)}`
+        : type // If annotation is not present, but type is, use the type
+        ? `: ${typeSchemeToString(type)}`
+        : ''
       const header = `${qualifierToString(def.qualifier)} ${def.name}${typeAnnotation}`
       return includeBody ? `${header} = ${expressionToString(def.expr)}` : header
     }
     case 'var':
-      return `var ${def.name}${typeAnnotation}`
+      return `var ${def.name}: ${typeToString(def.typeAnnotation)}`
     case 'const':
-      return `const ${def.name}${typeAnnotation}`
+      return `const ${def.name}: ${typeToString(def.typeAnnotation)}`
     case 'assume':
       return `assume ${def.name} = ${expressionToString(def.assumption)}`
     case 'typedef':
