@@ -138,11 +138,11 @@ quint typecheck ./testFixture/TrivialTypeError.qnt 2> >(sed "s:$(pwd):.:" >&2)
 
 <!-- !test err typecheck failure gives non-zero exit -->
 ```
-./testFixture/TrivialTypeError.qnt:2:3 - error: [QNT000] Couldn't unify str and int
+./testFixture/TrivialTypeError.qnt:2:17 - error: [QNT000] Couldn't unify str and int
 Trying to unify str and int
 
 2:   val x : int = "not an int"
-     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+                   ^^^^^^^^^^^^
 
 error: typechecking failed
 ```
@@ -1032,11 +1032,11 @@ quint typecheck ./testFixture/typechecking/ImportFileWithError.qnt 2>&1 | sed 's
 
 <!-- !test out error for file -->
 ```
-HOME/testFixture/typechecking/FileWithError.qnt:2:3 - error: [QNT000] Couldn't unify bool and int
+HOME/testFixture/typechecking/FileWithError.qnt:2:16 - error: [QNT000] Couldn't unify bool and int
 Trying to unify bool and int
 
 2:   val a: int = true
-     ^^^^^^^^^^^^^^^^^
+                  ^^^^
 
 error: typechecking failed
 ```
