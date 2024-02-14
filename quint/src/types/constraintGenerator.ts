@@ -23,13 +23,13 @@ import {
   QuintInstance,
   QuintInt,
   QuintLambda,
+  QuintLambdaParameter,
   QuintLet,
   QuintName,
   QuintOpDef,
   QuintStr,
   QuintVar,
   isAnnotated,
-  QuintLambdaParameter,
 } from '../ir/quintIr'
 import { QuintType, QuintVarType, rowNames, typeNames } from '../ir/quintTypes'
 import { expressionToString, rowToString, typeToString } from '../ir/IRprinting'
@@ -50,7 +50,7 @@ import {
   withConstraints,
 } from './specialConstraints'
 import { FreshVarGenerator } from '../FreshVarGenerator'
-import { forEach, zip } from 'lodash'
+import { zip } from 'lodash'
 
 export type SolvingFunctionType = (
   _table: LookupTable,
