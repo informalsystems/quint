@@ -97,12 +97,9 @@ export function applySubstitution(table: LookupTable, subs: Substitutions, t: Qu
           // start as one, and applying substitions cannot result in a wider type
           fields: applySubstitutionToRow(table, subs, t.fields) as ConcreteFixedRow,
         }
-      case 'abs':
-        return { ...t, body: applySubstitution(table, subs, t.body) }
       case 'app':
         return {
           ...t,
-          ctor: applySubstitution(table, subs, t.ctor),
           args: t.args.map(a => applySubstitution(table, subs, a)),
         }
 
