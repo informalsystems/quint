@@ -6,7 +6,7 @@ import { QuintType, typeToString } from '../../src'
 
 const typeOfStr = (s: string) => parseType(s).unwrap()
 
-// A complex, nested type used in all the tests
+// A complex, nested type used in many of the tests
 const type = typeOfStr('{} => {a: int, b: str, c: List[str], d: (int, Set[List[bool]])}')
 
 describe('foldType', () => {
@@ -52,5 +52,16 @@ describe('mapType', () => {
       0n,
       'mapType should set all IDs to zero'
     )
+  })
+
+  it('can rename type variables', () => {
+    const appendUnderscoreToTypeVariable: (_: QuintType) => QuintType = t =>
+      t.kind === 'var' ? { ...t, name: t.name + '_' } : t
+
+    const originalType = '((a) => b, List[a]) => List[b]'
+    const actualType = typeToString(mapType(appendUnderscoreToTypeVariable, typeOfStr(originalType)))
+    const expectedType = '((a_) => b_, List[a_]) => List[b_]'
+
+    assert.deepEqual(actualType, expectedType)
   })
 })
