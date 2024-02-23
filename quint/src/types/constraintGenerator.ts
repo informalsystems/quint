@@ -387,7 +387,9 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
       })
   }
 
-  private typeForName(name: string, nameId: bigint, arity: number): Either<ErrorTree, QuintType> {
+  // If there is a builtin called `name`, compute a new instance of its type scheme,
+  // otherwise, compute a new instance of the scheme previously computed for `id`
+  private typeForName(name: string, id: bigint, arity: number): Either<ErrorTree, QuintType> {
     // Assumes a valid number of arguments
 
     if (this.builtinSignatures.has(name)) {
@@ -395,21 +397,31 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
       const signature = signatureFunction(arity)
       return right(this.newInstance(signature))
     } else {
-      const def = this.table.get(nameId)
-
-      // FIXME: We have to check if the annotation is too general for var and consts as well
-      // https://github.com/informalsystems/quint/issues/691
-      if (def?.typeAnnotation) {
-        return right(def.typeAnnotation)
-      }
-
-      const id = def?.id
-      if (!def || !id) {
-        return left(buildErrorLeaf(this.location, `Signature not found for name: ${name}`))
-      }
-
-      return this.fetchResult(id).map(t => this.newInstance(t))
+      return this.typeForId(id).mapLeft(
+        (child: ErrorTree): ErrorTree => ({
+          location: `looking up type for ${name}`,
+          children: [child],
+        })
+      )
     }
+  }
+
+  // Compute a new instance of the scheme previously computed for `id`
+  private typeForId(id: bigint): Either<ErrorTree, QuintType> {
+    const def = this.table.get(id)
+
+    // FIXME: We have to check if the annotation is too general for var and consts as well
+    // https://github.com/informalsystems/quint/issues/691
+    if (def?.typeAnnotation) {
+      return right(def.typeAnnotation)
+    }
+
+    const defId = def?.id
+    if (!def || !defId) {
+      return left(buildErrorLeaf(this.location, `signature not found`))
+    }
+
+    return this.fetchResult(defId).map(t => this.newInstance(t))
   }
 
   private newInstance(t: TypeScheme): QuintType {
