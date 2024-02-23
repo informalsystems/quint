@@ -48,9 +48,16 @@ export function rowTypes(row: Row): QuintType[] {
   return foldRow(f, [], row)
 }
 
-// TODO
-// This is a "right fold" thru the IR tree, meaning we do a left-biased, breadth-first traversal
-// This will visit the nodes in the same order as the parser takes when it constructs them.
+/** `foldType(f, init, t)` folds the function `f` over the quint type `t` starting
+ * with the initial value `init`
+ *
+ * @param f the function to fold with, where `acc` is the accumulator and `x` the type applied to
+ * @param init the initial value for the accumulator
+ * @param x the quint type over which to apply the fold
+ *
+ * This is a "right fold" thru the IR tree, meaning we do a depth-first, post-order traversal.
+ * This should visit the nodes in the same order as the parser takes when it constructs them.
+ */
 export function foldType<T>(f: (acc: T, x: QuintType) => T, init: T, q: QuintType): T {
   switch (q.kind) {
     case 'bool':
@@ -97,6 +104,9 @@ const mapConcreteRowTypes = (f: (_: QuintType) => QuintType, r: ConcreteRow): Co
   fields: r.fields.map(field => ({ ...field, fieldType: mapType(f, field.fieldType) })),
 })
 
+/** `mapType(f, q)` maps the function `f` over `q`
+ *
+ * This is away of transforming the type and all its sub-expression according to `f` */
 export function mapType(f: (_: QuintType) => QuintType, q: QuintType): QuintType {
   switch (q.kind) {
     case 'bool':
