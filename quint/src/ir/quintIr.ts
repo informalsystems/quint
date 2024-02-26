@@ -24,7 +24,7 @@ export interface WithId {
  * Quint expressions and declarations carry an optional type tag.
  * If a type tag is missing, it means that the type has not been computed yet.
  */
-interface WithOptionalTypeAnnotation {
+export interface WithOptionalTypeAnnotation {
   typeAnnotation?: QuintType
 }
 
