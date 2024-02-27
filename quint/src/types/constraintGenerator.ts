@@ -12,7 +12,7 @@
  * @module
  */
 
-import { IRVisitor, walkType } from '../ir/IRVisitor'
+import { IRVisitor } from '../ir/IRVisitor'
 import {
   QuintApp,
   QuintAssume,
@@ -30,8 +30,6 @@ import {
   QuintVar,
   isAnnotatedDef,
   QuintTypeAlias,
-  WithOptionalTypeAnnotation,
-  WithId,
 } from '../ir/quintIr'
 import { QuintAppType, QuintType, QuintVarType, Row, rowNames, typeNames } from '../ir/quintTypes'
 import { expressionToString, rowToString, typeToString } from '../ir/IRprinting'
@@ -53,7 +51,7 @@ import {
 } from './specialConstraints'
 import { FreshVarGenerator } from '../FreshVarGenerator'
 import { IRTransformer, transformType } from '../ir/IRTransformer'
-import assert, { fail } from 'assert'
+import { fail } from 'assert'
 import { zip } from '../util'
 
 export type SolvingFunctionType = (
@@ -276,7 +274,9 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
       paramNames.typeVariables.add(varName)
       const paramTypeVar: QuintVarType = { kind: 'var', name: varName }
       this.addToResults(p.id, right(toScheme(paramTypeVar)))
-      this.constrainToAnnotation(paramTypeVar, p)
+      if (p.typeAnnotation) {
+        this.addTypeEqConstraint(paramTypeVar, p.typeAnnotation, p.id)
+      }
     })
 
     this.freeNames.push(paramNames)
@@ -328,7 +328,9 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
 
     this.fetchResult(e.expr.id).map(t => {
       this.addToResults(e.id, right(this.quantify(t.type)))
-      this.constrainToAnnotation(t.type, e)
+      if (e.typeAnnotation) {
+        this.addTypeEqConstraint(t.type, e.typeAnnotation, e.id)
+      }
     })
   }
 
@@ -421,26 +423,21 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
     // https://github.com/informalsystems/quint/issues/691
     return this.fetchResult(def.id).map(t => {
       const inferredType = this.newInstance(t)
-      this.constrainToAnnotation(inferredType, def)
+      if (def.typeAnnotation) {
+        this.addTypeEqConstraint(inferredType, def.typeAnnotation, def.id)
+      }
       return inferredType
     })
   }
 
-  // Pushes a constraint that the type `t` is equal to the (optional) annotation on `def`
-  private constrainToAnnotation(t: QuintType, def: WithOptionalTypeAnnotation & WithId) {
-    if (def?.typeAnnotation) {
-      if (def.typeAnnotation.kind === 'app') {
-        // TODO: Need to check for absent IDs?
-        const resolvedType = this.resolveTypeApp(def.typeAnnotation)
-        this.constraints.push({ kind: 'eq', types: [t, resolvedType], sourceId: def.id })
-      } else {
-        this.constraints.push({
-          kind: 'eq',
-          types: [t, def.typeAnnotation],
-          sourceId: def.id,
-        })
-      }
-    }
+  private addTypeEqConstraint(t1: QuintType, t2: QuintType, sourceId: bigint) {
+    const t1Resolved = t1.kind === 'app' ? this.resolveTypeApp(t1) : t1
+    const t2Resolved = t2.kind === 'app' ? this.resolveTypeApp(t2) : t2
+    this.constraints.push({
+      kind: 'eq',
+      types: [t1Resolved, t2Resolved],
+      sourceId,
+    })
   }
 
   private resolveTypeApp(t: QuintAppType): QuintType {
