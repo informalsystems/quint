@@ -30,8 +30,10 @@ import {
   QuintVar,
   isAnnotatedDef,
   QuintTypeAlias,
+  WithOptionalTypeAnnotation,
+  WithId,
 } from '../ir/quintIr'
-import { QuintType, QuintVarType, Row, rowNames, typeNames } from '../ir/quintTypes'
+import { QuintAppType, QuintType, QuintVarType, Row, rowNames, typeNames } from '../ir/quintTypes'
 import { expressionToString, rowToString, typeToString } from '../ir/IRprinting'
 import { Either, left, mergeInMany, right } from '@sweet-monads/either'
 import { Error, ErrorTree, buildErrorLeaf, buildErrorTree, errorTreeToString } from '../errorTree'
@@ -51,6 +53,8 @@ import {
 } from './specialConstraints'
 import { FreshVarGenerator } from '../FreshVarGenerator'
 import { IRTransformer, transformType } from '../ir/IRTransformer'
+import assert, { fail } from 'assert'
+import { zip } from '../util'
 
 export type SolvingFunctionType = (
   _table: LookupTable,
@@ -272,9 +276,7 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
       paramNames.typeVariables.add(varName)
       const paramTypeVar: QuintVarType = { kind: 'var', name: varName }
       this.addToResults(p.id, right(toScheme(paramTypeVar)))
-      if (p.typeAnnotation) {
-        this.constraints.push({ kind: 'eq', types: [paramTypeVar, p.typeAnnotation], sourceId: p.id })
-      }
+      this.constrainToAnnotation(paramTypeVar, p)
     })
 
     this.freeNames.push(paramNames)
@@ -326,9 +328,7 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
 
     this.fetchResult(e.expr.id).map(t => {
       this.addToResults(e.id, right(this.quantify(t.type)))
-      if (e.typeAnnotation) {
-        this.constraints.push({ kind: 'eq', types: [t.type, e.typeAnnotation], sourceId: e.id })
-      }
+      this.constrainToAnnotation(t.type, e)
     })
   }
 
@@ -370,7 +370,7 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
     return this.solvingFunction(this.table, constraint)
       .mapLeft(errors => errors.forEach((err, id) => this.errors.set(id, err)))
       .map(subs => {
-        // For every free name we are binding in the substitutions, the names occuring in the value of the substitution
+        // For every free name we are binding in the substitutions, the names occurring in the value of the substitution
         // have to become free as well.
         this.addBindingsToFreeNames(subs)
 
@@ -406,22 +406,57 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
     }
   }
 
-  // Compute a new instance of the scheme previously computed for `id`
+  // Fetch a new instance of the scheme previously computed for `id`
   private typeForId(id: bigint): Either<ErrorTree, QuintType> {
     const def = this.table.get(id)
 
+    if (!def) {
+      return left(buildErrorLeaf(this.location, `no entry for id ${id} in lookup table`))
+    }
+    if (!def.id) {
+      return left(buildErrorLeaf(this.location, `no id for lookup table entry for  ${id}`))
+    }
+
     // FIXME: We have to check if the annotation is too general for var and consts as well
     // https://github.com/informalsystems/quint/issues/691
+    return this.fetchResult(def.id).map(t => {
+      const inferredType = this.newInstance(t)
+      this.constrainToAnnotation(inferredType, def)
+      return inferredType
+    })
+  }
+
+  // Pushes a constraint that the type `t` is equal to the (optional) annotation on `def`
+  private constrainToAnnotation(t: QuintType, def: WithOptionalTypeAnnotation & WithId) {
     if (def?.typeAnnotation) {
-      return right(def.typeAnnotation)
+      if (def.typeAnnotation.kind === 'app') {
+        // TODO: Need to check for absent IDs?
+        const resolvedType = this.resolveTypeApp(def.typeAnnotation)
+        this.constraints.push({ kind: 'eq', types: [t, resolvedType], sourceId: def.id })
+      } else {
+        this.constraints.push({
+          kind: 'eq',
+          types: [t, def.typeAnnotation],
+          sourceId: def.id,
+        })
+      }
     }
+  }
 
-    const defId = def?.id
-    if (!def || !defId) {
-      return left(buildErrorLeaf(this.location, `signature not found`))
+  private resolveTypeApp(t: QuintAppType): QuintType {
+    const typeDef = this.table.get(t.ctor.id!)! // TODO
+    if (typeDef.kind !== 'typedef' || !typeDef.type) {
+      fail(`invalid kind looked up for constructor of type application with id ${t.ctor.id} `)
     }
-
-    return this.fetchResult(defId).map(t => this.newInstance(t))
+    const { params, scheme } = this.quantifyTypeDef(typeDef as QuintTypeAlias)
+    zip(params, t.args).forEach(([param, arg]) =>
+      this.constraints.push({
+        kind: 'eq',
+        types: [param, arg],
+        sourceId: arg.id!,
+      })
+    )
+    return scheme.type
   }
 
   private newInstance(t: TypeScheme): QuintType {
@@ -463,7 +498,7 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
   //   { params: [fresh_ok, fresh_err],
   //     scheme: ∀(fresh_ok,fresh_err). Ok(fresh_ok) | Err(fresh_err)
   //   }
-  private quantifyTypeDef(typeDef: QuintTypeAlias): { params: string[]; scheme: TypeScheme } {
+  private quantifyTypeDef(typeDef: QuintTypeAlias): { params: QuintVarType[]; scheme: TypeScheme } {
     if (!typeDef.params || typeDef.params.length === 0) {
       return { params: [], scheme: this.quantify(typeDef.type) }
     }
@@ -475,8 +510,9 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
 
     // Parsing guarantees that every variable in a type def is in the params
     const typeWithFreshVars = mapTypeVarNames(n => varsMap.get(n)!, typeDef.type)
+    const params: QuintVarType[] = [...varsMap.values()].map(name => ({ kind: 'var', name }))
 
-    return { scheme: this.quantify(typeWithFreshVars), params: [...varsMap.values()] }
+    return { scheme: this.quantify(typeWithFreshVars), params }
   }
 
   private quantify(type: QuintType): TypeScheme {
