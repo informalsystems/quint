@@ -8,6 +8,10 @@ import { constraintToString } from '../../src/types/printing'
 import { ErrorTree } from '../../src/errorTree'
 import { LookupTable } from '../../src/names/base'
 import { parseMockedModule } from '../util'
+import { parseType } from '../../src/types/parser'
+import { deepEqual } from 'assert'
+import { QuintTypeDef, typeToString } from '../../src'
+import { toJSONString } from '../../src/serialization'
 
 describe('ConstraintGeneratorVisitor', () => {
   const baseDefs = ['var s: str', 'var y: int', 'const N: int']
@@ -192,5 +196,21 @@ describe('ConstraintGeneratorVisitor', () => {
       'Checking arity for application of matchVariant',
       'Operator expects odd number of arguments but was given 2'
     )
+  })
+
+  it('can resolve type applications recursively', () => {
+    const text = `module m {
+  type Result[ok, err] = | Ok(ok) | Err(err)
+  type Foo[a] = | F(a)
+  type Compound = | B(Foo[Result[int, str]])
+}`
+    const { table } = parseMockedModule(text)
+    console.log(JSON.stringify(JSON.parse(toJSONString(table)), null, 4))
+
+    const visitor = new ConstraintGeneratorVisitor((_a, _b) => right([]), table)
+    const type = (table.get(36n)! as QuintTypeDef).type!
+    console.log(`>>> ${typeToString(type)}`)
+    const reslovedType = visitor.resolveTypeApplications(type)
+    assert.deepEqual(typeToString(reslovedType), '')
   })
 })
