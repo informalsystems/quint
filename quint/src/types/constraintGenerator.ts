@@ -431,8 +431,8 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
   }
 
   private addTypeEqConstraint(t1: QuintType, t2: QuintType, sourceId: bigint) {
-    const t1Resolved = t1.kind === 'app' ? this.resolveTypeApp(t1) : t1
-    const t2Resolved = t2.kind === 'app' ? this.resolveTypeApp(t2) : t2
+    const t1Resolved = this.resolveTypeApps(t1)
+    const t2Resolved = this.resolveTypeApps(t2)
     this.constraints.push({
       kind: 'eq',
       types: [t1Resolved, t2Resolved],
@@ -440,7 +440,7 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
     })
   }
 
-  private resolveTypeApp(t: QuintAppType): QuintType {
+  resolveTypeApp(t: QuintAppType): QuintType {
     const typeDef = this.table.get(t.ctor.id!)! // TODO
     if (typeDef.kind !== 'typedef' || !typeDef.type) {
       fail(`invalid kind looked up for constructor of type application with id ${t.ctor.id} `)
@@ -455,6 +455,12 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
     )
     return scheme.type
   }
+
+  private resolveTypeApps(t: QuintType): QuintType {
+    const transformer = new TypeAppResolver(this)
+    return transformType(transformer, t)
+  }
+
 
   private newInstance(t: TypeScheme): QuintType {
     const typeNames = Array.from(t.typeVariables)
@@ -580,6 +586,7 @@ function mapTypeVarNames(f: (_: string) => string, t: QuintType): QuintType {
   return transformType(transformer, t)
 }
 
+
 class TypeVariableNameMapper implements IRTransformer {
   private mapper: (_: string) => string
 
@@ -593,5 +600,22 @@ class TypeVariableNameMapper implements IRTransformer {
 
   exitRow(r: Row): Row {
     return r.kind === 'var' ? { ...r, name: this.mapper(r.name) } : r
+  }
+}
+
+
+
+class TypeAppResolver implements IRTransformer {
+  private fixme: ConstraintGeneratorVisitor
+
+  constructor(fixme:  ConstraintGeneratorVisitor) {
+    this.fixme = fixme
+  }
+
+  exitType(t: QuintType): QuintType {
+    if (t.kind === 'app') {
+      return this.fixme.resolveTypeApp(t)
+    }
+    return t
   }
 }

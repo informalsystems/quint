@@ -415,6 +415,21 @@ module B {
     )
   })
 
+  it('fails when polymorphic types are not unifiable', () => {
+    const defs = [
+      'type Result[ok, err] = Ok(ok) | Err(err)',
+      `def result_map(r: Result[bool, e]): Result[int, e] =
+          match r {
+          | Ok(x)  => Ok(x)
+          | Err(_) => r
+          }`,
+    ]
+
+    const [errors] = inferTypesForDefs(defs)
+    assert.isNotEmpty([...errors.entries()])
+  })
+
+
   it('fails when types are not unifiable', () => {
     const defs = ['def a = 1.map(p => p + 10)']
 
