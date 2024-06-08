@@ -69,7 +69,17 @@ export interface WithOptionalDoc {
  * TLA+ level of an expression. So we optimize specifications for the reader
  * by requiring an explicit qualifier.
  */
-export type OpQualifier = 'pureval' | 'puredef' | 'val' | 'def' | 'nondet' | 'action' | 'run' | 'temporal'
+export type OpQualifier =
+  | 'pureval'
+  | 'puredef'
+  | 'val'
+  | 'def'
+  | 'nondet'
+  | 'action'
+  | 'run'
+  | 'temporal'
+  | 'invariant'
+  | 'witness'
 
 export interface QuintName extends WithId {
   /** Expressions kind ('name' -- name reference) */

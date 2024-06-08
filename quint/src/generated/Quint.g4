@@ -79,6 +79,8 @@ qualifier : 'val'
           | 'run'
           | 'temporal'
           | 'nondet'
+          | 'invariant'
+          | 'witness'
           ;
 
 importMod : 'import' name '.' identOrStar ('from' fromSource)?

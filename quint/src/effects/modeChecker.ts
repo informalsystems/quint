@@ -123,6 +123,8 @@ function modeConstraint(mode: OpQualifier, expectedMode: OpQualifier): string {
     case 'puredef':
       return 'may not interact with state variables'
     case 'val':
+    case 'invariant':
+    case 'witness':
       if (expectedMode === 'def') {
         return 'may not have parameters'
       } else {
@@ -156,6 +158,7 @@ const modesForConcrete = new Map<ComponentKind, OpQualifier>([
   ['update', 'action'],
   ['read', 'val'],
 ])
+const valLevelModes = new Set<OpQualifier>(['val', 'invariant', 'witness'])
 
 function modeForEffect(scheme: EffectScheme, annotatedMode: OpQualifier): [OpQualifier, string] {
   const effect = scheme.effect
@@ -216,7 +219,7 @@ function modeForEffect(scheme: EffectScheme, annotatedMode: OpQualifier): [OpQua
         return nonFreeEntities && nonFreeEntities.length > 0
       })
 
-      if (annotatedMode === 'val' && (!kind || kind === 'read')) {
+      if (valLevelModes.has(annotatedMode) && (!kind || kind === 'read')) {
         return ['def', parametersMessage]
       }
 
@@ -309,7 +312,7 @@ function concatEntity(list: Entity[], entity: Entity): Entity[] {
   }
 }
 
-const modeOrder = ['pureval', 'val', 'puredef', 'def', 'nondet', 'action', 'temporal', 'run']
+const modeOrder = ['pureval', 'val', 'invariant', 'witness', 'puredef', 'def', 'nondet', 'action', 'temporal', 'run']
 
 function isMoreGeneral(m1: OpQualifier, m2: OpQualifier): boolean {
   const p1 = modeOrder.findIndex(elem => elem === m1)
