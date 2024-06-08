@@ -28,7 +28,8 @@ import assert from 'assert'
 export interface SimulatorOptions {
   init: string
   step: string
-  invariant: string
+  invariants: string[]
+  witnesses: string[]
   maxSamples: number
   maxSteps: number
   rng: Rng
@@ -98,7 +99,7 @@ export function compileAndRun(
     `def q::test(q::nrunsArg, q::nstepsArg, q::initArg, q::nextArg, q::invArg) = false`,
     `action q::init = { ${o.init} }`,
     `action q::step = { ${o.step} }`,
-    `val q::inv = { ${o.invariant} }`,
+    `val q::inv = and { ${o.invariants.join(',')}, not(or { ${o.witnesses.join(',')} }) }`,
     `val q::runResult = q::test(${o.maxSamples}, ${o.maxSteps}, q::init, q::step, q::inv)`,
   ]
 

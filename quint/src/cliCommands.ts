@@ -538,17 +538,6 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
   }
   const rng = rngOrError.unwrap()
 
-  const options: SimulatorOptions = {
-    init: prev.args.init,
-    step: prev.args.step,
-    invariant: prev.args.invariant,
-    maxSamples: prev.args.maxSamples,
-    maxSteps: prev.args.maxSteps,
-    rng,
-    verbosity: verbosityLevel,
-    storeMetadata: prev.args.mbt,
-  }
-
   const startMs = Date.now()
 
   const mainText = prev.sourceCode.get(prev.path)!
@@ -560,6 +549,29 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
   const mainId = mainModule.id
   const mainStart = prev.sourceMap.get(mainId)!.start.index
   const mainEnd = prev.sourceMap.get(mainId)!.end!.index
+
+  const invariants = prev.args.invariant
+    ? [prev.args.invariant]
+    : mainModule.declarations
+        .filter(d => d.kind === 'def' && d.qualifier === 'invariant')
+        .map(d => (d as QuintOpDef).name)
+
+  const witnesses =
+    // prev.args.witness ? [prev.args.witness] :
+    mainModule.declarations.filter(d => d.kind === 'def' && d.qualifier === 'witness').map(d => (d as QuintOpDef).name)
+
+  const options: SimulatorOptions = {
+    init: prev.args.init,
+    step: prev.args.step,
+    invariants,
+    witnesses,
+    maxSamples: prev.args.maxSamples,
+    maxSteps: prev.args.maxSteps,
+    rng,
+    verbosity: verbosityLevel,
+    storeMetadata: prev.args.mbt,
+  }
+
   const result = compileAndRun(newIdGenerator(), mainText, mainStart, mainEnd, mainName, mainPath, options)
 
   const elapsedMs = Date.now() - startMs
