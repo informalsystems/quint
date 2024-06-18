@@ -1,5 +1,5 @@
 /**
- * Define the commands for QuintC
+ * The commands for the quint CLI
  *
  * See the description at:
  * https://github.com/informalsystems/quint/blob/main/doc/quint.md
@@ -25,10 +25,11 @@ import {
 import { ErrorMessage } from './ErrorMessage'
 
 import { Either, left, right } from '@sweet-monads/either'
+import { fail } from 'assert'
 import { EffectScheme } from './effects/base'
 import { LookupTable, UnusedDefinitions } from './names/base'
 import { ReplOptions, quintRepl } from './repl'
-import { OpQualifier, QuintEx, QuintModule, QuintOpDef, qualifier } from './ir/quintIr'
+import { FlatModule, OpQualifier, QuintEx, QuintModule, QuintOpDef, qualifier } from './ir/quintIr'
 import { TypeScheme } from './types/base'
 import { createFinders, formatError } from './errorReporter'
 import { DocumentationEntry, produceDocs, toMarkdown } from './docs'
@@ -43,12 +44,21 @@ import { Rng, newRng } from './rng'
 import { fileSourceResolver } from './parsing/sourceResolver'
 import { verify } from './quintVerifier'
 import { flattenModules } from './flattening/fullFlattener'
-import { analyzeInc, analyzeModules } from './quintAnalyzer'
+import { AnalysisOutput, analyzeInc, analyzeModules } from './quintAnalyzer'
 import { ExecutionFrame } from './runtime/trace'
 import { flow, isEqual, uniqWith } from 'lodash'
 import { Maybe, just, none } from '@sweet-monads/maybe'
+import { compileToTlaplus } from './compileToTlaplus'
 
-export type stage = 'loading' | 'parsing' | 'typechecking' | 'testing' | 'running' | 'documentation'
+export type stage =
+  | 'loading'
+  | 'parsing'
+  | 'typechecking'
+  | 'testing'
+  | 'running'
+  | 'compiling'
+  | 'outputting target'
+  | 'documentation'
 
 /** The data from a ProcedureStage that may be output to --out */
 interface OutputStage {
@@ -65,8 +75,8 @@ interface OutputStage {
   passed?: string[]
   failed?: string[]
   ignored?: string[]
-  // Test names output produced by 'run'
-  status?: 'ok' | 'violation' | 'failure'
+  // Possible results from 'run'
+  status?: 'ok' | 'violation' | 'failure' | 'error'
   trace?: QuintEx[]
   /* Docstrings by definition name by module name */
   documentation?: Map<string, Map<string, DocumentationEntry>>
@@ -136,6 +146,10 @@ interface TypecheckedStage extends ParsedStage {
   modes: Map<bigint, OpQualifier>
 }
 
+interface CompiledStage extends TypecheckedStage, AnalysisOutput {
+  mainModule: FlatModule
+}
+
 interface TestedStage extends LoadedStage {
   // the names of the passed tests
   passed: string[]
@@ -145,13 +159,8 @@ interface TestedStage extends LoadedStage {
   ignored: string[]
 }
 
-interface SimulatorStage extends LoadedStage {
-  status: 'ok' | 'violation' | 'failure'
-  trace?: QuintEx[]
-}
-
-interface VerifiedStage extends LoadedStage {
-  status: 'ok' | 'violation' | 'failure'
+// Data resulting from stages that can produce a trace
+interface TracingStage extends LoadedStage {
   trace?: QuintEx[]
 }
 
@@ -260,12 +269,12 @@ export function mkErrorMessage(sourceMap: SourceMap): (_: QuintError) => ErrorMe
  */
 export async function typecheck(parsed: ParsedStage): Promise<CLIProcedure<TypecheckedStage>> {
   const { table, modules, sourceMap } = parsed
-  const typechecking = { ...parsed, stage: 'typechecking' as stage }
 
   const [errorMap, result] = analyzeModules(table, modules)
 
+  const typechecking = { ...parsed, ...result, stage: 'typechecking' as stage }
   if (errorMap.length === 0) {
-    return right({ ...typechecking, ...result })
+    return right(typechecking)
   } else {
     const errors = errorMap.map(mkErrorMessage(sourceMap))
     return cliErr('typechecking failed', { ...typechecking, errors })
@@ -301,30 +310,15 @@ export async function runRepl(_argv: any) {
  * @param typedStage the procedure stage produced by `typecheck`
  */
 export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<TestedStage>> {
-  const verbosityLevel = !prev.args.out ? prev.args.verbosity : 0
-  const out = console.log
-  const columns = !prev.args.out ? terminalWidth() : 80
-
   const testing = { ...prev, stage: 'testing' as stage }
+  const verbosityLevel = deriveVerbosity(prev.args)
   const mainName = guessMainModule(prev)
-
-  const outputTemplate = testing.args.output
 
   const rngOrError = mkRng(prev.args.seed)
   if (rngOrError.isLeft()) {
     return cliErr(rngOrError.value, { ...testing, errors: [] })
   }
   const rng = rngOrError.unwrap()
-
-  let passed: string[] = []
-  let failed: string[] = []
-  let ignored: string[] = []
-  let namedErrors: [string, ErrorMessage, TestResult][] = []
-
-  const startMs = Date.now()
-  if (verbosity.hasResults(verbosityLevel)) {
-    out(`\n  ${mainName}`)
-  }
 
   const matchFun = (n: string): boolean => isMatchingTest(testing.args.match, n)
   const options: TestOptions = {
@@ -346,12 +340,26 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
     },
   }
 
+  const out = console.log
+
+  const outputTemplate = testing.args.output
+
+  // Start the Timer and being running the tests
+  const startMs = Date.now()
+
+  if (verbosity.hasResults(verbosityLevel)) {
+    out(`\n  ${mainName}`)
+  }
+
+  // TODO: This block is a workaround for the fact that flattening removes any defs
+  // not refernced in the main module. We'd instead like way to just instruct it
+  // to keep some defs.
+  //
   // Find tests that are not used in the main module. We need to add references to them in the main module so flattening
   // doesn't drop the definitions.
   const unusedTests = [...testing.unusedDefinitions(mainName)].filter(
     d => d.kind === 'def' && options.testMatch(d.name)
   )
-
   // Define name expressions referencing each test that is not referenced elsewhere, adding the references to the lookup
   // table
   const args: QuintEx[] = unusedTests.map(defToAdd => {
@@ -362,7 +370,6 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
 
     return { kind: 'name', id, name }
   })
-
   // Wrap all expressions in a single declaration
   const testDeclaration: QuintOpDef = {
     id: testing.idGen.nextId(),
@@ -371,11 +378,11 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
     qualifier: 'run',
     expr: { kind: 'app', opcode: 'actionAll', args, id: testing.idGen.nextId() },
   }
-
   // Add the declaration to the main module
   const main = testing.modules.find(m => m.name === mainName)
   main?.declarations.push(testDeclaration)
 
+  // TODO The following block should all be moved into compileAndTest
   const analysisOutput = { types: testing.types, effects: testing.effects, modes: testing.modes }
   const { flattenedModules, flattenedTable, flattenedAnalysis } = flattenModules(
     testing.modules,
@@ -392,94 +399,115 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
     idGen: testing.idGen,
     sourceCode: testing.sourceCode,
   }
-  const testOut = compileAndTest(compilationState, mainName, flattenedTable, options)
 
-  if (testOut.isLeft()) {
-    return cliErr('Tests failed', { ...testing, errors: testOut.value.map(mkErrorMessage(testing.sourceMap)) })
-  } else if (testOut.isRight()) {
-    const elapsedMs = Date.now() - startMs
-    const results = testOut.unwrap()
-    // output the status for every test
-    if (verbosity.hasResults(verbosityLevel)) {
-      results.forEach(res => {
-        if (res.status === 'passed') {
-          out(`    ${chalk.green('ok')} ${res.name} passed ${res.nsamples} test(s)`)
-        }
-        if (res.status === 'failed') {
-          const errNo = chalk.red(namedErrors.length + 1)
-          out(`    ${errNo}) ${res.name} failed after ${res.nsamples} test(s)`)
+  const testResult = compileAndTest(compilationState, mainName, flattenedTable, options)
 
-          res.errors.forEach(e => namedErrors.push([res.name, mkErrorMessage(testing.sourceMap)(e), res]))
-        }
-      })
-    }
+  // We have a compilation failure, so early exit without reporting test results
+  if (testResult.isLeft()) {
+    return cliErr('Tests could not be run due to an error during compilation', {
+      ...testing,
+      errors: testResult.value.map(mkErrorMessage(testing.sourceMap)),
+    })
+  }
 
-    passed = results.filter(r => r.status === 'passed').map(r => r.name)
-    failed = results.filter(r => r.status === 'failed').map(r => r.name)
-    ignored = results.filter(r => r.status === 'ignored').map(r => r.name)
+  // We're finished running the tests
+  const elapsedMs = Date.now() - startMs
+  // So we can analyze the results now
+  const results = testResult.value
 
-    // output the statistics banner
-    if (verbosity.hasResults(verbosityLevel)) {
-      out('')
-      if (passed.length > 0) {
-        out(chalk.green(`  ${passed.length} passing`) + chalk.gray(` (${elapsedMs}ms)`))
+  // output the status for every test
+  let nFailures = 1
+  if (verbosity.hasResults(verbosityLevel)) {
+    results.forEach(res => {
+      if (res.status === 'passed') {
+        out(`    ${chalk.green('ok')} ${res.name} passed ${res.nsamples} test(s)`)
       }
-      if (failed.length > 0) {
-        out(chalk.red(`  ${failed.length} failed`))
+      if (res.status === 'failed') {
+        const errNo = chalk.red(nFailures)
+        out(`    ${errNo}) ${res.name} failed after ${res.nsamples} test(s)`)
+        nFailures++
       }
-      if (ignored.length > 0) {
-        out(chalk.gray(`  ${ignored.length} ignored`))
-      }
+    })
+  }
+
+  const passed = results.filter(r => r.status === 'passed')
+  const failed = results.filter(r => r.status === 'failed')
+  const ignored = results.filter(r => r.status === 'ignored')
+  const namedErrors: [TestResult, ErrorMessage][] = failed.reduce(
+    (acc: [TestResult, ErrorMessage][], failure) =>
+      acc.concat(failure.errors.map(e => [failure, mkErrorMessage(testing.sourceMap)(e)])),
+    []
+  )
+
+  // output the statistics banner
+  if (verbosity.hasResults(verbosityLevel)) {
+    out('')
+    if (passed.length > 0) {
+      out(chalk.green(`  ${passed.length} passing`) + chalk.gray(` (${elapsedMs}ms)`))
     }
-
-    // output errors, if there are any
-    if (verbosity.hasTestDetails(verbosityLevel) && namedErrors.length > 0) {
-      const code = prev.sourceCode!
-      const finders = createFinders(code)
-      out('')
-      namedErrors.forEach(([name, err, testResult], index) => {
-        const details = formatError(code, finders, err)
-        // output the header
-        out(`  ${index + 1}) ${name}:`)
-        const lines = details.split('\n')
-        // output the first two lines in red
-        lines.slice(0, 2).forEach(l => out(chalk.red('      ' + l)))
-
-        if (verbosity.hasActionTracking(verbosityLevel)) {
-          out('')
-          testResult.frames.forEach((f, index) => {
-            out(`[${chalk.bold('Frame ' + index)}]`)
-            const console = {
-              width: columns,
-              out: (s: string) => process.stdout.write(s),
-            }
-            printExecutionFrameRec(console, f, [])
-            out('')
-          })
-
-          if (testResult.frames.length == 0) {
-            out('    [No execution]')
-          }
-        }
-        // output the seed
-        out(chalk.gray(`    Use --seed=0x${testResult.seed.toString(16)} --match=${testResult.name} to repeat.`))
-      })
-      out('')
+    if (failed.length > 0) {
+      out(chalk.red(`  ${failed.length} failed`))
     }
-
-    if (failed.length > 0 && verbosity.hasHints(options.verbosity) && !verbosity.hasActionTracking(options.verbosity)) {
-      out(chalk.gray(`\n  Use --verbosity=3 to show executions.`))
-      out(chalk.gray(`  Further debug with: quint --verbosity=3 ${prev.args.input}`))
+    if (ignored.length > 0) {
+      out(chalk.gray(`  ${ignored.length} ignored`))
     }
   }
 
-  const errors = namedErrors.map(([_, e]) => e)
-  const stage = { ...testing, passed, failed, ignored, errors }
-  if (errors.length == 0 && failed.length == 0) {
+  const stage = {
+    ...testing,
+    passed: passed.map(r => r.name),
+    failed: failed.map(r => r.name),
+    ignored: ignored.map(r => r.name),
+    errors: namedErrors.map(([_, e]) => e),
+  }
+
+  // Nothing failed, so we are OK, and can exit early
+  if (failed.length === 0) {
     return right(stage)
-  } else {
-    return cliErr('Tests failed', stage)
   }
+
+  // We know that there are errors, so report as required by the verbosity configuration
+  if (verbosity.hasTestDetails(verbosityLevel)) {
+    const code = prev.sourceCode!
+    const finders = createFinders(code)
+    const columns = !prev.args.out ? terminalWidth() : 80
+    out('')
+    namedErrors.forEach(([testResult, err], index) => {
+      const details = formatError(code, finders, err)
+      // output the header
+      out(`  ${index + 1}) ${testResult.name}:`)
+      const lines = details.split('\n')
+      // output the first two lines in red
+      lines.slice(0, 2).forEach(l => out(chalk.red('      ' + l)))
+
+      if (verbosity.hasActionTracking(verbosityLevel)) {
+        out('')
+        testResult.frames.forEach((f, index) => {
+          out(`[${chalk.bold('Frame ' + index)}]`)
+          const console = {
+            width: columns,
+            out: (s: string) => process.stdout.write(s),
+          }
+          printExecutionFrameRec(console, f, [])
+          out('')
+        })
+
+        if (testResult.frames.length == 0) {
+          out('    [No execution]')
+        }
+      }
+      // output the seed
+      out(chalk.gray(`    Use --seed=0x${testResult.seed.toString(16)} --match=${testResult.name} to repeat.`))
+    })
+    out('')
+  }
+
+  if (verbosity.hasHints(options.verbosity) && !verbosity.hasActionTracking(options.verbosity)) {
+    out(chalk.gray(`\n  Use --verbosity=3 to show executions.`))
+    out(chalk.gray(`  Further debug with: quint --verbosity=3 ${prev.args.input}`))
+  }
+
+  return cliErr('Tests failed', stage)
 }
 
 // Print a counterexample if the appropriate verbosity is set
@@ -499,15 +527,17 @@ function maybePrintCounterExample(verbosityLevel: number, states: QuintEx[], fra
  *
  * @param prev the procedure stage produced by `typecheck`
  */
-export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure<SimulatorStage>> {
+export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure<TracingStage>> {
   const simulator = { ...prev, stage: 'running' as stage }
+  const verbosityLevel = deriveVerbosity(prev.args)
   const mainName = guessMainModule(prev)
-  const verbosityLevel = !prev.args.out && !prev.args.outItf ? prev.args.verbosity : 0
+
   const rngOrError = mkRng(prev.args.seed)
   if (rngOrError.isLeft()) {
     return cliErr(rngOrError.value, { ...simulator, errors: [] })
   }
   const rng = rngOrError.unwrap()
+
   const options: SimulatorOptions = {
     init: prev.args.init,
     step: prev.args.step,
@@ -516,7 +546,23 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
     maxSteps: prev.args.maxSteps,
     rng,
     verbosity: verbosityLevel,
+    storeMetadata: prev.args.mbt,
+    numberOfTraces: prev.args.nTraces,
+    onTrace: (index: number, status: string, vars: string[], states: QuintEx[]) => {
+      const itfFile: string | undefined = prev.args.outItf
+      if (itfFile) {
+        const filename = prev.args.nTraces > 1 ? itfFile.replaceAll('.itf.json', `${index}.itf.json`) : itfFile
+        const trace = toItf(vars, states)
+        if (trace.isRight()) {
+          const jsonObj = addItfHeader(prev.args.input, status, trace.value)
+          writeToJson(filename, jsonObj)
+        } else {
+          console.error(`ITF conversion failed on ${index}: ${trace.value}`)
+        }
+      }
+    },
   }
+
   const startMs = Date.now()
 
   const mainText = prev.sourceCode.get(prev.path)!
@@ -530,57 +576,145 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
   const mainEnd = prev.sourceMap.get(mainId)!.end!.index
   const result = compileAndRun(newIdGenerator(), mainText, mainStart, mainEnd, mainName, mainPath, options)
 
-  if (result.status === 'error') {
-    const newErrors = result.errors.map(mkErrorMessage(prev.sourceMap))
-    const errors = prev.errors ? prev.errors.concat(newErrors) : newErrors
-    return cliErr('run failed', { ...simulator, errors })
-  } else {
-    if (verbosity.hasResults(verbosityLevel)) {
-      const elapsedMs = Date.now() - startMs
+  const elapsedMs = Date.now() - startMs
+
+  switch (result.outcome.status) {
+    case 'error':
+      return cliErr('Runtime error', {
+        ...simulator,
+        status: result.outcome.status,
+        trace: result.states,
+        errors: result.outcome.errors.map(mkErrorMessage(prev.sourceMap)),
+      })
+
+    case 'ok':
       maybePrintCounterExample(verbosityLevel, result.states, result.frames)
-      if (result.status === 'ok') {
+      if (verbosity.hasResults(verbosityLevel)) {
         console.log(chalk.green('[ok]') + ' No violation found ' + chalk.gray(`(${elapsedMs}ms).`))
         console.log(chalk.gray(`Use --seed=0x${result.seed.toString(16)} to reproduce.`))
-        if (verbosity.hasHints(options.verbosity)) {
+        if (verbosity.hasHints(verbosityLevel)) {
           console.log(chalk.gray('You may increase --max-samples and --max-steps.'))
           console.log(chalk.gray('Use --verbosity to produce more (or less) output.'))
         }
-      } else {
-        console.log(chalk.red(`[${result.status}]`) + ' Found an issue ' + chalk.gray(`(${elapsedMs}ms).`))
+      }
+
+      return right({
+        ...simulator,
+        status: result.outcome.status,
+        trace: result.states,
+      })
+
+    case 'violation':
+      maybePrintCounterExample(verbosityLevel, result.states, result.frames)
+      if (verbosity.hasResults(verbosityLevel)) {
+        console.log(chalk.red(`[violation]`) + ' Found an issue ' + chalk.gray(`(${elapsedMs}ms).`))
         console.log(chalk.gray(`Use --seed=0x${result.seed.toString(16)} to reproduce.`))
 
-        if (verbosity.hasHints(options.verbosity)) {
+        if (verbosity.hasHints(verbosityLevel)) {
           console.log(chalk.gray('Use --verbosity=3 to show executions.'))
         }
       }
-    }
 
-    if (prev.args.outItf) {
-      const trace = toItf(result.vars, result.states)
-      if (trace.isRight()) {
-        const jsonObj = addItfHeader(prev.args.input, result.status, trace.value)
-        writeToJson(prev.args.outItf, jsonObj)
-      } else {
-        const newStage = { ...simulator, errors: result.errors.map(mkErrorMessage(prev.sourceMap)) }
-        return cliErr(`ITF conversion failed: ${trace.value}`, newStage)
-      }
-    }
+      return cliErr('Invariant violated', {
+        ...simulator,
+        status: result.outcome.status,
+        trace: result.states,
+        errors: [],
+      })
+  }
+}
 
-    if (result.status === 'ok') {
-      return right({
-        ...simulator,
-        status: result.status,
-        trace: result.states,
-      })
-    } else {
-      const msg = result.status === 'violation' ? 'Invariant violated' : 'Runtime error'
-      return cliErr(msg, {
-        ...simulator,
-        status: result.status,
-        trace: result.states,
-        errors: result.errors.map(mkErrorMessage(prev.sourceMap)),
-      })
+/**  Compile to a flattened module, that includes the special q::* declarations
+ *
+ * @param typechecked the output of a preceding type checking stage
+ */
+export async function compile(typechecked: TypecheckedStage): Promise<CLIProcedure<CompiledStage>> {
+  const args = typechecked.args
+  const mainName = guessMainModule(typechecked)
+  const main = typechecked.modules.find(m => m.name === mainName)
+  if (!main) {
+    return cliErr(`module ${mainName} does not exist`, { ...typechecked, errors: [], sourceCode: new Map() })
+  }
+
+  // Wrap init, step, invariant and temporal properties in other definitions,
+  // to make sure they are not considered unused in the main module and,
+  // therefore, ignored by the flattener
+  const extraDefsAsText = [`action q::init = ${args.init}`, `action q::step = ${args.step}`]
+
+  if (args.invariant) {
+    extraDefsAsText.push(`val q::inv = and(${args.invariant})`)
+  }
+  if (args.temporal) {
+    extraDefsAsText.push(`temporal q::temporalProps = and(${args.temporal})`)
+  }
+
+  const extraDefs = extraDefsAsText.map(d => parseDefOrThrow(d, typechecked.idGen, new Map()))
+  main.declarations.push(...extraDefs)
+
+  // We have to update the lookup table and analysis result with the new definitions. This is not ideal, and the problem
+  // is that is hard to add this definitions in the proper stage, in our current setup. We should try to tackle this
+  // while solving #1052.
+  const resolutionResult = parsePhase3importAndNameResolution({ ...typechecked, errors: [] })
+  if (resolutionResult.errors.length > 0) {
+    const errors = resolutionResult.errors.map(mkErrorMessage(typechecked.sourceMap))
+    return cliErr('name resolution failed', { ...typechecked, errors })
+  }
+
+  typechecked.table = resolutionResult.table
+  analyzeInc(typechecked, typechecked.table, extraDefs)
+
+  // Flatten modules, replacing instances, imports and exports with their definitions
+  const { flattenedModules, flattenedTable, flattenedAnalysis } = flattenModules(
+    typechecked.modules,
+    typechecked.table,
+    typechecked.idGen,
+    typechecked.sourceMap,
+    typechecked
+  )
+
+  // Pick the main module
+  const flatMain = flattenedModules.find(m => m.name === mainName)!
+
+  return right({
+    ...typechecked,
+    ...flattenedAnalysis,
+    mainModule: flatMain,
+    table: flattenedTable,
+    stage: 'compiling',
+  })
+}
+
+/** output a compiled spec in the format specified in the `compiled.args.target` to stdout
+ *
+ * @param compiled The result of a preceding compile stage
+ */
+export async function outputCompilationTarget(compiled: CompiledStage): Promise<CLIProcedure<CompiledStage>> {
+  const stage: stage = 'outputting target'
+  const args = compiled.args
+  const verbosityLevel = deriveVerbosity(args)
+
+  const parsedSpecJson = jsonStringOfOutputStage(pickOutputStage({ ...compiled, modules: [compiled.mainModule] }))
+  switch ((compiled.args.target as string).toLowerCase()) {
+    case 'json':
+      process.stdout.write(parsedSpecJson)
+      return right(compiled)
+    case 'tlaplus': {
+      const toTlaResult = await compileToTlaplus(args.serverEndpoint, parsedSpecJson, verbosityLevel)
+      return toTlaResult
+        .mapRight(tla => {
+          process.stdout.write(tla) // Write out, since all went right
+          return compiled
+        })
+        .mapLeft(err => {
+          return {
+            msg: err.explanation,
+            stage: { ...compiled, stage, status: 'error', errors: err.errors },
+          }
+        })
     }
+    default:
+      // This is validated in the arg parsing
+      fail(`Invalid option for --target`)
   }
 }
 
@@ -589,9 +723,11 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
  *
  * @param prev the procedure stage produced by `typecheck`
  */
-export async function verifySpec(prev: TypecheckedStage): Promise<CLIProcedure<VerifiedStage>> {
+export async function verifySpec(prev: CompiledStage): Promise<CLIProcedure<TracingStage>> {
   const verifying = { ...prev, stage: 'verifying' as stage }
   const args = verifying.args
+  const verbosityLevel = deriveVerbosity(args)
+
   let loadedConfig: any = {}
   try {
     if (args.apalacheConfig) {
@@ -601,52 +737,7 @@ export async function verifySpec(prev: TypecheckedStage): Promise<CLIProcedure<V
     return cliErr(`failed to read Apalache config: ${err.message}`, { ...verifying, errors: [], sourceCode: new Map() })
   }
 
-  const mainArg = prev.args.main
-  const mainName = mainArg ? mainArg : basename(prev.args.input, '.qnt')
-  const main = verifying.modules.find(m => m.name === mainName)
-  if (!main) {
-    return cliErr(`module ${mainName} does not exist`, { ...verifying, errors: [], sourceCode: new Map() })
-  }
-
-  // Wrap init, step, invariant and temporal properties in other definitions,
-  // to make sure they are not considered unused in the main module and,
-  // therefore, ignored by the flattener
-  const extraDefsAsText = [`action q::init = ${args.init}`, `action q::step = ${args.step}`]
-  if (args.invariant) {
-    extraDefsAsText.push(`val q::inv = and(${args.invariant.join(',')})`)
-  }
-  if (args.temporal) {
-    extraDefsAsText.push(`temporal q::temporalProps = and(${args.temporal.join(',')})`)
-  }
-
-  const extraDefs = extraDefsAsText.map(d => parseDefOrThrow(d, verifying.idGen, new Map()))
-  main.declarations.push(...extraDefs)
-
-  // We have to update the lookup table and analysis result with the new definitions. This is not ideal, and the problem
-  // is that is hard to add this definitions in the proper stage, in our current setup. We should try to tackle this
-  // while solving #1052.
-  const resolutionResult = parsePhase3importAndNameResolution({ ...prev, errors: [] })
-  if (resolutionResult.errors.length > 0) {
-    const errors = resolutionResult.errors.map(mkErrorMessage(prev.sourceMap))
-    return cliErr('name resolution failed', { ...verifying, errors })
-  }
-
-  verifying.table = resolutionResult.table
-  analyzeInc(verifying, verifying.table, extraDefs)
-
-  // Flatten modules, replacing instances, imports and exports with their definitions
-  const { flattenedModules, flattenedTable, flattenedAnalysis } = flattenModules(
-    verifying.modules,
-    verifying.table,
-    verifying.idGen,
-    verifying.sourceMap,
-    verifying
-  )
-
-  // Pick main module, we only pass this on to Apalache
-  const flatMain = flattenedModules.find(m => m.name === mainName)!
-
-  const veryfiyingFlat = { ...verifying, ...flattenedAnalysis, modules: [flatMain], table: flattenedTable }
+  const veryfiyingFlat = { ...prev, modules: [prev.mainModule] }
   const parsedSpec = jsonStringOfOutputStage(pickOutputStage(veryfiyingFlat))
 
   // We need to insert the data form CLI args into their appropriate locations
@@ -677,8 +768,7 @@ export async function verifySpec(prev: TypecheckedStage): Promise<CLIProcedure<V
 
   const startMs = Date.now()
 
-  const verbosityLevel = !prev.args.out && !prev.args.outItf ? prev.args.verbosity : 0
-  return verify(config, verbosityLevel).then(res => {
+  return verify(args.serverEndpoint, config, verbosityLevel).then(res => {
     const elapsedMs = Date.now() - startMs
     return res
       .map(_ => {
@@ -689,7 +779,7 @@ export async function verifySpec(prev: TypecheckedStage): Promise<CLIProcedure<V
             console.log(chalk.gray('Use --verbosity to produce more (or less) output.'))
           }
         }
-        return { ...verifying, status: 'ok', errors: [] } as VerifiedStage
+        return { ...verifying, status: 'ok', errors: [] } as TracingStage
       })
       .mapLeft(err => {
         const trace: QuintEx[] | undefined = err.traces ? ofItf(err.traces[0]) : undefined
@@ -817,7 +907,7 @@ function addItfHeader(source: string, status: string, traceInJson: any): any {
 
 // Preprocess troublesome types so they are represented in JSON.
 //
-// We need it particularly because, by default, serialization of Map
+// We need it particularly because, by default, serialization of Map and Set
 // objects just produces an empty object
 // (see https://stackoverflow.com/questions/46634449/json-stringify-of-object-of-map-return-empty)
 //
@@ -826,6 +916,9 @@ function replacer(_key: String, value: any): any {
   if (value instanceof Map) {
     // Represent Maps as JSON objects
     return Object.fromEntries(value)
+  } else if (value instanceof Set) {
+    // Represent Sets as JSON arrays
+    return Array.from(value)
   } else {
     return value
   }
@@ -861,4 +954,9 @@ function isMatchingTest(match: string | undefined, name: string) {
   } else {
     return name.endsWith('Test')
   }
+}
+
+// Derive the verbosity for simulation and verification routines
+function deriveVerbosity(args: { out: string | undefined; outItf: string | undefined; verbosity: number }): number {
+  return !args.out && !args.outItf ? args.verbosity : 0
 }

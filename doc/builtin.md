@@ -239,15 +239,25 @@ assert(Set(Set(1, 2), Set(3, 4)).flatten() == Set(1, 2, 3, 4))
 
 ## `pure def allLists: (Set[a]) => Set[List[a]]`
 
-`s.allLists()` is the set of all lists containing all the elements in `s`.
+`s.allLists()` is the set of all lists containing elements in `s`.
+This is an infinite set unless `s` is the empty set.
+
+Like other inifite sets, this is not supported in any execution/verification form.
 
 ### Examples
 
 ```
-assert(Set(1, 2).allLists() == Set(
-  List(1, 2),
-  List(2, 1),
-))
+assert(Set(1, 2).allLists().contains([]))
+assert(Set(1, 2).allLists().contains([1, 1, 1, 1, 2, 1]))
+```
+
+## `pure def allListsUpTo: (Set[a], int) => Set[List[a]]`
+
+`s.allListsUpTo(l)` is the set of all lists of elements in `s` with length <= `l`
+
+```
+assert(Set(1, 2).allListsUpTo(1) == Set([], [1], [2]))
+assert(Set(1).allListsUpTo(2) == Set([], [1], [1, 1]))
 ```
 
 ## `pure def chooseSome: (Set[a]) => a`
@@ -851,13 +861,35 @@ run test = (x' = 0).then(a).then(assert(x == 3))
 
 `a` is true for a step from `s1` to `t` and `b` is true for a step from `t` to `s2`.
 
-This is the action composition operator.
+This is the action composition operator. If `a` evaluates to `false`, then
+`a.then(b)` reports an error. If `b` evaluates to `false` after `a`, then
+`a.then(b)` returns `false`.
 
 ### Examples
 
 ```
 var x: int
 run test = (x' = 1).then(x' = 2).then(x' = 3).then(assert(x == 3))
+```
+
+## `action expect: (bool, bool) => bool`
+
+`a.expect(b)` is true for a step from `s1` to `s2` if
+
+ - `a` is true for a step from `s1` to `s2`, and
+ - `b` holds true in `s2`.
+
+If `a` evaluates to `false`, evaluation of `a.expect(b)`
+fails with an error message. If `b` evaluates to `false`,
+evaluation of `a.expect(b)` fails with an error message.
+
+### Examples
+
+```
+var n: int
+run expectConditionOkTest = (n' = 0).then(n' = 3).expect(n == 3)
+run expectConditionFailsTest = (n' = 0).then(n' = 3).expect(n == 4)
+run expectRunFailsTest = (n' = 0).then(all { n == 2, n' = 3 }).expect(n == 4)
 ```
 
 ## `action reps: (int, (int) => bool) => bool`
@@ -897,7 +929,7 @@ It does not change the state.
 
 ```
 var x: int
-run test = (x' = 0).then(3.times(x' = x + 1)).then(assert(x == 3))
+run test = (x' = 0).then(3.reps(x' = x + 1)).then(assert(x == 3))
 ```
 
 ```
@@ -906,4 +938,23 @@ action Init = x' = 0
 action Next = x' = x + 1
 
 run test = Init.then(all { Next, assert(x > 0) })
+```
+
+## `pure def q::debug: (str, a) => a`
+
+`q::debug(msg, value)` prints the given message and value to the console,
+separated by a space.
+
+It also returns the given value unchanged,
+so that it can be used directly within expressions.
+
+### Examples
+
+```
+var x: int
+>>> (x' = 0).then(3.reps(i => x' = q::debug("new x:", x + 1)))
+> new x: 1
+> new x: 2
+> new x: 3
+true
 ```

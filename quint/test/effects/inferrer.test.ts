@@ -207,6 +207,19 @@ describe('inferEffects', () => {
     assert.deepEqual(effectForDef(defs, effects, 'CoolAction'), expectedEffect)
   })
 
+  it('avoids invalid cyclical binding error (regression on #1356)', () => {
+    const defs = [
+      `pure def foo(s: int, g: int => int): int = {
+        val r = if (true) s else g(s)
+        g(r)
+      }`,
+    ]
+
+    const [errors, _] = inferEffectsForDefs(defs)
+
+    assert.isEmpty(errors, `Should find no errors, found: ${[...errors.values()].map(errorTreeToString)}`)
+  })
+
   it('returns error when operator signature is not unifiable with args', () => {
     const defs = [`def a = S.map(p => x' = p)`]
 
@@ -265,5 +278,29 @@ describe('inferEffects', () => {
       location: "Trying to unify entities ['x'] and []",
       message: 'Expected [x] and [] to be the same',
     })
+  })
+
+  it('differentiates variables from different instances', () => {
+    const baseDefs = ['const N: int', 'const S: Set[int]', 'var x: int']
+
+    const text = `
+      module base { ${baseDefs.join('\n')} }
+      module wrapper {
+       import base(N=1) as B1
+       import base(N=2) as B2
+       val a = B1::x + B2::x
+    }`
+    const { modules, table } = parseMockedModule(text)
+
+    const inferrer = new EffectInferrer(table)
+    inferrer.inferEffects(modules[0].declarations)
+    const [errors, effects] = inferrer.inferEffects(modules[1].declarations)
+    assert.isEmpty(errors, `Should find no errors, found: ${[...errors.values()].map(errorTreeToString)}`)
+
+    const def = modules[1].declarations.find(decl => isDef(decl) && decl.name === 'a')!
+
+    const expectedEffect = "Read['wrapper::B1::x', 'wrapper::B2::x']"
+
+    assert.deepEqual(effectSchemeToString(effects.get(def.id)!), expectedEffect)
   })
 })

@@ -97,8 +97,13 @@ export function applySubstitution(table: LookupTable, subs: Substitutions, t: Qu
           // start as one, and applying substitions cannot result in a wider type
           fields: applySubstitutionToRow(table, subs, t.fields) as ConcreteFixedRow,
         }
+      case 'app':
+        return {
+          ...t,
+          args: t.args.map(a => applySubstitution(table, subs, a)),
+        }
 
-      // The basic types have no variables, so cannot
+      // The basic types have no variables, so don't require substitution
       case 'int':
       case 'bool':
       case 'str':

@@ -10,14 +10,17 @@
 
 import { Either } from '@sweet-monads/either'
 
-import { compileFromCode, contextNameLookup, lastTraceName } from './runtime/compile'
+import { compileFromCode, contextNameLookup } from './runtime/compile'
 import { QuintEx } from './ir/quintIr'
 import { Computable } from './runtime/runtime'
-import { ExecutionFrame, newTraceRecorder } from './runtime/trace'
+import { ExecutionFrame, Trace, newTraceRecorder } from './runtime/trace'
 import { IdGenerator } from './idGenerator'
 import { Rng } from './rng'
 import { SourceLookupPath } from './parsing/sourceResolver'
 import { QuintError } from './quintError'
+import { mkErrorMessage } from './cliCommands'
+import { createFinders, formatError } from './errorReporter'
+import assert from 'assert'
 
 /**
  * Various settings that have to be passed to the simulator to run.
@@ -28,31 +31,37 @@ export interface SimulatorOptions {
   invariant: string
   maxSamples: number
   maxSteps: number
+  numberOfTraces: number
   rng: Rng
   verbosity: number
+  storeMetadata: boolean
+  onTrace(index: number, status: string, vars: string[], states: QuintEx[]): void
 }
 
-export type SimulatorResultStatus = 'ok' | 'violation' | 'failure' | 'error'
+/** The outcome of a simulation
+ */
+export type Outcome =
+  | { status: 'ok' } /** Simulation succeeded */
+  | { status: 'violation' } /** Simulation found an invariant violation */
+  | { status: 'error'; errors: QuintError[] } /** An error occurred during simulation  */
 
 /**
  * A result returned by the simulator.
  */
 export interface SimulatorResult {
-  status: SimulatorResultStatus
+  outcome: Outcome
   vars: string[]
   states: QuintEx[]
   frames: ExecutionFrame[]
-  errors: QuintError[]
   seed: bigint
 }
 
-function errSimulationResult(status: SimulatorResultStatus, errors: QuintError[]): SimulatorResult {
+function errSimulationResult(errors: QuintError[]): SimulatorResult {
   return {
-    status,
+    outcome: { status: 'error', errors },
     vars: [],
     states: [],
     frames: [],
-    errors: errors,
     seed: 0n,
   }
 }
@@ -88,54 +97,108 @@ export function compileAndRun(
   const o = options
   // Defs required by the simulator, to be added to the main module before compilation
   const extraDefs = [
-    `val ${lastTraceName} = [];`,
-    `def q::test(q::nrunsArg, q::nstepsArg, q::initArg, q::nextArg, q::invArg) = false`,
+    `def q::test(q::nrunsArg, q::nstepsArg, q::ntracesArg, q::initArg, q::nextArg, q::invArg) = false`,
     `action q::init = { ${o.init} }`,
     `action q::step = { ${o.step} }`,
     `val q::inv = { ${o.invariant} }`,
-    `val q::runResult = q::test(${o.maxSamples}, ${o.maxSteps}, q::init, q::step, q::inv)`,
+    `val q::runResult = q::test(${o.maxSamples}, ${o.maxSteps}, ${o.numberOfTraces}, q::init, q::step, q::inv)`,
   ]
 
   // Construct the modules' code, adding the extra definitions to the main module
-  const newMainModuleCode = code.slice(mainStart, mainEnd - 1) + extraDefs.join('\n')
+  const newMainModuleCode = code.slice(mainStart, mainEnd - 1) + '\n' + extraDefs.join('\n')
   const codeWithExtraDefs = code.slice(0, mainStart) + newMainModuleCode + code.slice(mainEnd)
 
   const recorder = newTraceRecorder(options.verbosity, options.rng)
-  const ctx = compileFromCode(idGen, codeWithExtraDefs, mainName, mainPath, recorder, options.rng.next)
+  const ctx = compileFromCode(
+    idGen,
+    codeWithExtraDefs,
+    mainName,
+    mainPath,
+    recorder,
+    options.rng.next,
+    options.storeMetadata
+  )
 
-  if (ctx.compileErrors.length > 0 || ctx.syntaxErrors.length > 0 || ctx.analysisErrors.length > 0) {
-    const errors = ctx.syntaxErrors.concat(ctx.analysisErrors).concat(ctx.compileErrors)
-    return errSimulationResult('error', errors)
+  const compilationErrors = ctx.syntaxErrors.concat(ctx.analysisErrors).concat(ctx.compileErrors)
+  if (compilationErrors.length > 0) {
+    return errSimulationResult(compilationErrors)
+  }
+
+  // evaluate q::runResult, which triggers the simulator
+  const evaluationState = ctx.evaluationState
+  const res: Either<string, Computable> = contextNameLookup(evaluationState.context, 'q::runResult', 'callable')
+  if (res.isLeft()) {
+    const errors = [{ code: 'QNT512', message: res.value }] as QuintError[]
+    return errSimulationResult(errors)
   } else {
-    // evaluate q::runResult, which triggers the simulator
-    const evaluationState = ctx.evaluationState
-    const res: Either<string, Computable> = contextNameLookup(evaluationState.context, 'q::runResult', 'callable')
-    if (res.isLeft()) {
-      const errors = [{ code: 'QNT512', message: res.value }] as QuintError[]
-      return errSimulationResult('error', errors)
-    } else {
-      const _ = res.value.eval()
-    }
+    res.value.eval()
+  }
 
-    const topFrame = recorder.getBestTrace()
-    let status: SimulatorResultStatus = 'failure'
-    if (topFrame.result.isJust()) {
-      const ex = topFrame.result.unwrap().toQuintEx(idGen)
-      if (ex.kind === 'bool') {
-        status = ex.value ? 'ok' : 'violation'
-      }
-    } else {
-      // This should not happen. But if it does, give a debugging hint.
-      console.error('No trace recorded')
-    }
+  const topTraces: Trace[] = recorder.getBestTraces(options.numberOfTraces)
+  const vars = evaluationState.vars.map(v => v.name)
 
+  topTraces.forEach((trace, index) => {
+    const maybeEvalResult = trace.frame.result
+    assert(maybeEvalResult.isJust(), 'invalid simulation failed to produce a result')
+    const quintExResult = maybeEvalResult.value.toQuintEx(idGen)
+    assert(quintExResult.kind === 'bool', 'invalid simulation produced non-boolean value ')
+    const simulationSucceeded = quintExResult.value
+    const status = simulationSucceeded ? 'ok' : 'violation'
+    const states = trace.frame.args.map(e => e.toQuintEx(idGen))
+
+    options.onTrace(index, status, vars, states)
+  })
+
+  const topFrame = topTraces[0].frame
+  const seed = topTraces[0].seed
+  // Validate required outcome of correct simulation
+  const maybeEvalResult = topFrame.result
+  assert(maybeEvalResult.isJust(), 'invalid simulation failed to produce a result')
+  const quintExResult = maybeEvalResult.value.toQuintEx(idGen)
+  assert(quintExResult.kind === 'bool', 'invalid simulation produced non-boolean value ')
+  const simulationSucceeded = quintExResult.value
+
+  const states = topFrame.args.map(e => e.toQuintEx(idGen))
+  const frames = topFrame.subframes
+
+  const runtimeErrors = ctx.getRuntimeErrors()
+  if (runtimeErrors.length > 0) {
+    // FIXME(#1052) we shouldn't need to do this if the error id was not some non-sense generated in `compileFromCode`
+    // The evaluated code source is not included in the context, so we crete a version with it for the error reporter
+    const code = new Map([...ctx.compilationState.sourceCode.entries(), [mainPath.normalizedPath, codeWithExtraDefs]])
+    const finders = createFinders(code)
+
+    const locatedErrors = runtimeErrors.map(error => ({
+      code: error.code,
+      // Include the location information (locs) in the error message - this
+      // is the hacky part, as it should only be included at the CLI level
+      message: formatError(code, finders, {
+        // This will create the `locs` attribute and an explanation
+        ...mkErrorMessage(ctx.compilationState.sourceMap)(error),
+        // We override the explanation to keep the original one to avoid
+        // duplication, since `mkErrorMessage` will be called again at the CLI
+        // level. `locs` won't be touched then because this error doesn't
+        // include a `reference` field
+        explanation: error.message,
+      }),
+    }))
+
+    // This should be kept after the hack is removed
     return {
-      status: status,
-      vars: evaluationState.vars.map(v => v.name),
-      states: topFrame.args.map(e => e.toQuintEx(idGen)),
-      frames: topFrame.subframes,
-      errors: ctx.getRuntimeErrors(),
-      seed: recorder.getBestTraceSeed(),
+      vars,
+      states,
+      frames,
+      seed,
+      outcome: { status: 'error', errors: locatedErrors },
+    }
+  } else {
+    const status = simulationSucceeded ? 'ok' : 'violation'
+    return {
+      vars,
+      states,
+      frames,
+      seed,
+      outcome: { status },
     }
   }
 }

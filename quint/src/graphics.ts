@@ -8,8 +8,8 @@
  * See LICENSE in the project root for license information.
  */
 
-import chalk from 'chalk'
 import { strict as assert } from 'assert'
+import chalk from 'chalk'
 import {
   Doc,
   braces,
@@ -108,8 +108,8 @@ export function prettyQuintEx(ex: QuintEx): Doc {
 
           const valueExpr = ex.args[1]
           const value =
-            valueExpr.kind === 'app' && valueExpr.opcode === 'Rec' && valueExpr.args.length === 0
-              ? [] // A payload with the empty record is shown as a bare label
+            valueExpr.kind === 'app' && valueExpr.opcode === 'Tup' && valueExpr.args.length === 0
+              ? [] // A payload with the empty tuple is shown as a bare label
               : [text('('), prettyQuintEx(valueExpr), text(')')]
 
           return group([label, ...value])
@@ -202,6 +202,10 @@ export function prettyQuintType(type: QuintType): Doc {
     }
     case 'sum': {
       return prettySumRow(type.fields)
+    }
+    case 'app': {
+      const args = type.args.map(prettyQuintType)
+      return group([prettyQuintType(type), text('['), ...args, text(']')])
     }
   }
 }

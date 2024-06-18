@@ -121,7 +121,8 @@ export function definitionToString(def: QuintDef, includeBody: boolean = true, t
       return `assume ${def.name} = ${expressionToString(def.assumption)}`
     case 'typedef':
       if (def.type) {
-        return `type ${def.name} = ${typeToString(def.type)}`
+        const params = def.params && def.params.length > 0 ? `[${def.params.join(', ')}]` : ''
+        return `type ${def.name}${params} = ${typeToString(def.type)}`
       } else {
         return `type ${def.name}`
       }
@@ -187,6 +188,11 @@ export function typeToString(type: QuintType): string {
     case 'sum': {
       return sumToString(type)
     }
+    case 'app': {
+      const abs = typeToString(type.ctor)
+      const args = type.args.map(typeToString).join(', ')
+      return `${abs}[${args}]`
+    }
   }
 }
 
@@ -214,16 +220,20 @@ export function sumToString(s: QuintSumType): string {
 }
 
 function sumFieldsToString(r: ConcreteRow): string {
-  return r.fields
-    .map((f: RowField) => {
-      if (isUnitType(f.fieldType)) {
-        return `${f.fieldName}`
-      } else {
-        return `${f.fieldName}(${typeToString(f.fieldType)})`
-      }
-    })
-    .concat(r.other.kind === 'row' ? [sumFieldsToString(r.other)] : [])
-    .join(' | ')
+  return (
+    r.fields
+      .map((f: RowField) => {
+        if (isUnitType(f.fieldType)) {
+          return `${f.fieldName}`
+        } else {
+          return `${f.fieldName}(${typeToString(f.fieldType)})`
+        }
+      })
+      // We are not exposing open rows in sum types currently
+      // So we do not show show row variables.
+      .concat(r.other.kind === 'row' ? [sumFieldsToString(r.other)] : [])
+      .join(' | ')
+  )
 }
 
 /**

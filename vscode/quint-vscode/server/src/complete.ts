@@ -219,6 +219,7 @@ function getSuggestedBuiltinsForType(type: QuintType): { name: string }[] {
     case 'oper': // no suggestions from here on
     case 'var':
     case 'sum':
+    case 'app':
       return []
   }
 }

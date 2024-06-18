@@ -143,6 +143,7 @@ export const setOperators = [
   { name: 'powerset', effect: standardPropagation(1) },
   { name: 'flatten', effect: standardPropagation(1) },
   { name: 'allLists', effect: standardPropagation(1) },
+  { name: 'allListsUpTo', effect: standardPropagation(2) },
   { name: 'chooseSome', effect: standardPropagation(1) },
   { name: 'oneOf', effect: standardPropagation(1) },
   { name: 'isFinite', effect: standardPropagation(1) },
@@ -219,9 +220,12 @@ const temporalOperators = [
 const otherOperators = [
   { name: 'assign', effect: parseAndQuantify('(Read[r1], Read[r2]) => Read[r2] & Update[r1]') },
   { name: 'then', effect: parseAndQuantify('(Read[r1] & Update[u], Read[r2] & Update[u]) => Read[r] & Update[u]') },
+  { name: 'expect', effect: parseAndQuantify('(Read[r1] & Update[u], Read[r2]) => Read[r1] & Update[u]') },
   { name: 'reps', effect: parseAndQuantify('(Pure, (Read[r1]) => Read[r2] & Update[u]) => Read[r1, r2] & Update[u]') },
   { name: 'fail', effect: propagateComponents(['read', 'update'])(1) },
   { name: 'assert', effect: propagateComponents(['read'])(1) },
+  { name: 'q::debug', effect: propagateComponents(['read'])(2) },
+  { name: 'q::lastTrace', effect: parseAndQuantify('Pure') }, // FIXME: Should be in run mode
   {
     name: 'ite',
     effect: parseAndQuantify('(Read[r1], Read[r2] & Update[u], Read[r3] & Update[u]) => Read[r1, r2, r3] & Update[u]'),

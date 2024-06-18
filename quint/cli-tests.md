@@ -99,6 +99,11 @@ This example was pointing to Paxos. Now it does not typecheck.
 <!-- !test check instances - Types & Effects -->
     quint typecheck ../examples/language-features/instances.qnt
 
+### OK on run instances
+
+<!-- !test check instances - Run -->
+    quint run ../examples/language-features/instances.qnt --invariant=inv
+
 ### OK on parse instancesFrom
 
 <!-- !test check instancesFrom -->
@@ -127,12 +132,12 @@ This example was pointing to Paxos. Now it does not typecheck.
 ### OK on parse TicTacToe
 
 <!-- !test check TicTacToe -->
-    quint parse ../examples/puzzles/tictactoe/tictactoe.qnt
+    quint parse ../examples/games/tictactoe/tictactoe.qnt
 
 ### OK on typecheck TicTacToe
 
 <!-- !test check TicTacToe - Types & Effects -->
-    quint typecheck ../examples/puzzles/tictactoe/tictactoe.qnt
+    quint typecheck ../examples/games/tictactoe/tictactoe.qnt
 
 ### OK on parse ics20 bank
 
@@ -322,7 +327,7 @@ fi
 <!-- !test check gradualPonzi - Run progressInv -->
     quint run --invariant=progressInv --main=gradualPonziTest \
       --max-samples=1000 --max-steps=50 \
-      --seed=0x8272b36d6a57f \
+      --seed=0xa7bf730b93981 \
       ../examples/solidity/GradualPonzi/gradualPonzi.qnt
 
 ### FAIL on run gradualPonzi::noLeftoversInv

@@ -1,42 +1,64 @@
 module option {
   // A demonstration of sum types, specifying an option type.
 
-  // An option type for int values.
-  // Polymorphic sum types are not yet supported: https://github.com/informalsystems/quint/issues/1073
-  type Vote_option =
+  // A polymorphic option type
+  type Option[a] =
+    | Some(a)
     | None
-    | Some(int)
 
-  var votes: List[Vote_option]
+  // `o.optionMap(f)` is `Some(f(v))` if `o = Some(v)` or `None` of `o = None`
+  def optionMap(o: Option[a], f: a => b): Option[b] =
+    match o {
+    | Some(x) => Some(f(x))
+    | None    => None
+    }
+
+  // `o.getOr(v)` is `x` or `Some(x) = o` or `v` if `o = None`
+  def getOr(o: Option[a], default: a): a =
+    match o {
+    | Some(x) => x
+    | None    => default
+    }
+
+  var votes: List[Option[int]]
   var outcome: int
 
-  action Init = all {
+  action init = all {
     votes' = [],
     outcome' = 0
   }
 
-  action Vote(v) = {
+  action vote(v) = {
     votes' = votes.append(Some(v))
   }
 
-  action Unvote(i) = all {
-    votes[i] != None,
+  action incrVote(i, n) = {
+    val vote0 = votes[i]
+    val vote1 = vote0.optionMap(x => x + n)
+    votes' = votes.replaceAt(i, vote1)
+  }
+
+  action unvote(i) = all {
     votes' = votes.replaceAt(i, None),
   }
 
-  val SumVotes =
-    votes.foldl(0, (sum, vote) => match vote {
-        | Some(v) => sum + v
-        | None    => sum
-      }
-    )
+  val sumVotes =
+    votes.foldl(0, (sum, v) => v.getOr(0) + sum)
 
-  action Next = all {
+  action step = all {
     any {
-      nondet v = oneOf(Int); Vote(v),
-      nondet i = oneOf(votes.indices()); Unvote(i),
+      nondet v = oneOf(0.to(5)); vote(v),
+      all {
+          votes.length() > 0,
+          nondet i = oneOf(votes.indices()); unvote(i),
+      },
+      all {
+          votes.length() > 0,
+          nondet i = oneOf(votes.indices()); nondet v = oneOf(0.to(5)) incrVote(i, v),
+      }
+
     },
-    outcome' = SumVotes
+    outcome' = sumVotes
   }
 
   run matchWithDefaultTest = {

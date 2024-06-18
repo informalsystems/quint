@@ -69,22 +69,22 @@ export interface QuintTupleType extends WithOptionalId {
   fields: Row
 }
 
-export interface QuintRecordType extends WithOptionalId {
-  kind: 'rec'
-  fields: Row
-}
-
 // A value of the unit type, i.e. an empty record
-export function unitType(id: bigint): QuintRecordType {
+export function unitType(id: bigint): QuintTupleType {
   return {
     id,
-    kind: 'rec',
+    kind: 'tup',
     fields: { kind: 'row', fields: [], other: { kind: 'empty' } },
   }
 }
 
 export function isUnitType(r: QuintType): Boolean {
-  return r.kind === 'rec' && r.fields.kind === 'row' && r.fields.fields.length === 0 && r.fields.other.kind === 'empty'
+  return r.kind === 'tup' && r.fields.kind === 'row' && r.fields.fields.length === 0 && r.fields.other.kind === 'empty'
+}
+
+export interface QuintRecordType extends WithOptionalId {
+  kind: 'rec'
+  fields: Row
 }
 
 export interface QuintSumType extends WithOptionalId {
@@ -96,6 +96,23 @@ export function sumType(labelTypePairs: [string, QuintType][], rowVar?: string, 
   const fields = labelTypePairs.map(([fieldName, fieldType]) => ({ fieldName, fieldType }))
   const other: Row = rowVar ? { kind: 'var', name: rowVar } : { kind: 'empty' }
   return { kind: 'sum', fields: { kind: 'row', fields, other }, id }
+}
+
+/**
+ * Type application
+ *
+ * E.g.,
+ *
+ * ```
+ * T[int, str]
+ * ```
+ *
+ * for a type constant `T`.
+ */
+export interface QuintAppType extends WithOptionalId {
+  kind: 'app'
+  ctor: QuintConstType /** The type constructor applied */
+  args: QuintType[] /** The arguments to which the constructor is applied */
 }
 
 /**
@@ -114,6 +131,7 @@ export type QuintType =
   | QuintTupleType
   | QuintRecordType
   | QuintSumType
+  | QuintAppType
 
 /**
  * Row types, used to express tuples and records.

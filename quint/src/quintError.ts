@@ -51,6 +51,8 @@ export type ErrorCode =
   | 'QNT012'
   /* QNT013: import ... from <source>: could not load */
   | 'QNT013'
+  /* QNT014: Type variables in a type declaration are not declared as parameters */
+  | 'QNT014'
   /* QNT098: Cyclic imports */
   | 'QNT098'
   /* QNT099: Found cyclic definitions */
@@ -65,6 +67,14 @@ export type ErrorCode =
   | 'QNT201'
   /* QNT202: Multiple updates of the same variable */
   | 'QNT202'
+  /* QNT203: 'oneOf' must be used inside a nondet definition */
+  | 'QNT203'
+  /* QNT204: 'oneOf' must be the outermost expression in a nondet definition */
+  | 'QNT204'
+  /* QNT205: nondet bindings can only be used with boolean expressions */
+  | 'QNT205'
+  /* QNT206: 'nondet' can only be used inside actions, not at the top level */
+  | 'QNT206'
   /* QNT404: Name '<name>' not found */
   | 'QNT404'
   /* QNT405: Module '<name>' not found */
@@ -73,7 +83,9 @@ export type ErrorCode =
   | 'QNT406'
   /* QNT407: Cannot import self */
   | 'QNT407'
-  /* QNT500: Unitialized constant */
+  /* QNT408: Case-sensitive filenames */
+  | 'QNT408'
+  /* QNT500: Uninitialized constant */
   | 'QNT500'
   /* QNT501: Internal compiler error */
   | 'QNT501'
@@ -99,6 +111,10 @@ export type ErrorCode =
   | 'QNT511'
   /* QNT512: Simulation failure */
   | 'QNT512'
+  /* QNT513: Cannot continue in 'then' */
+  | 'QNT513'
+  /* QNT514: Cardinality is infinite */
+  | 'QNT514'
 
 /* Additional data for a Quint error */
 export interface QuintErrorData {

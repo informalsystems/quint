@@ -16,15 +16,19 @@ import {
   QuintName,
   QuintOpDef,
   QuintStr,
+  isAnnotatedDef,
 } from '../ir/quintIr'
 import {
   ConcreteFixedRow,
+  QuintAppType,
   QuintConstType,
   QuintSumType,
   QuintType,
+  QuintVarType,
   Row,
   RowField,
   isUnitType,
+  typeNames,
   unitType,
 } from '../ir/quintTypes'
 import { SourceMap } from './quintParserFrontend'
@@ -34,8 +38,9 @@ import { TerminalNode } from 'antlr4ts/tree/TerminalNode'
 import { QuintTypeDef } from '../ir/quintIr'
 import { zip } from '../util'
 import { QuintError } from '../quintError'
-import { lowercaseTypeError, tooManySpreadsError } from './parseErrors'
+import { lowercaseTypeError, tooManySpreadsError, undeclaredTypeParamsError } from './parseErrors'
 import { Loc } from '../ErrorMessage'
+import assert, { fail } from 'assert'
 
 /**
  * An ANTLR4 listener that constructs QuintIr objects out of the abstract
@@ -81,8 +86,6 @@ export class ToIrListener implements QuintListener {
   protected exprStack: QuintEx[] = []
   // the stack of parameter lists
   protected paramStack: QuintLambdaParameter[] = []
-  // stack of names used as parameters and assumptions
-  protected identOrHoleStack: string[] = []
   // the stack for imported names
   protected identOrStarStack: string[] = []
   // the stack of rows for records
@@ -166,140 +169,80 @@ export class ToIrListener implements QuintListener {
     this.exprStack.push(letExpr)
   }
 
-  exitNondetOperDef(ctx: p.NondetOperDefContext) {
-    const name = ctx.qualId().text
-    let typeAnnotation: QuintType | undefined
-    if (ctx.type()) {
-      const maybeType = this.popType()
-      if (maybeType.isJust()) {
-        // the operator is tagged with a type
-        typeAnnotation = maybeType.value
-      }
-    }
-    const expr = this.exprStack.pop() ?? this.undefinedExpr(ctx)()
-
-    const id = this.getId(ctx)
-
-    const def: QuintDef = {
-      id,
-      kind: 'def',
-      name,
-      qualifier: 'nondet',
-      expr,
-      typeAnnotation,
-    }
-
-    this.declarationStack.push(def)
-  }
-
-  // special case for: nondet x = e1; e2
-  exitNondet(ctx: p.NondetContext) {
-    const def = this.declarationStack.pop() ?? this.undefinedDeclaration(ctx)()
-    const nested = this.exprStack.pop() ?? this.undefinedExpr(ctx)()
-
-    if (def.kind !== 'def') {
-      // only `QuintDef` is allowed in `nondet` expressions
-      console.debug(`[DEBUG] non-def found in nondet definition: ${ctx.text}`)
-      return
-    }
-
-    const id = this.getId(ctx)
-    const letExpr: QuintEx = {
-      id,
-      kind: 'let',
-      opdef: def,
-      expr: nested,
-    }
-    this.exprStack.push(letExpr)
-  }
-
   /** **************** translate operator definititons **********************/
 
   // translate a top-level or nested operator definition
-  exitOperDef(ctx: p.OperDefContext) {
+  exitAnnotatedOperDef(ctx: p.AnnotatedOperDefContext) {
     const name = ctx.normalCallName().text
-    const [params, typeTag] = this.processOpDefParams(ctx)
-    // get the definition body
+
+    const params = ctx._annotOperParam.map(_ => popOrFail(this.paramStack, 'annotated AnnotatedOperDef')).reverse()
+    const res = this.popType().unwrap(() => 'violated grammar of annotated params return type')
+    const args = params.map(p => {
+      assert(isAnnotatedDef(p), 'violated grammar of annotated param type')
+      return p.typeAnnotation
+    })
+    const typeAnnotation: QuintType = { kind: 'oper', args, res }
+
+    this.putDeclarationOnStack(ctx, name, params, just(typeAnnotation))
+  }
+
+  // TODO Mark as deprecated, then remove
+  //      See https://github.com/informalsystems/quint/issues/923
+  exitDeprecatedOperDef(ctx: p.DeprecatedOperDefContext) {
+    const name = ctx.normalCallName().text
+
+    // The deprecated annotation grammar
+    const typeAnnotation: Maybe<QuintType> = ctx._annotatedRetType ? this.popType() : none()
+    const params = ctx._operParam
+      .map(_ => popOrFail(this.paramStack, 'violated grammar of non-annotated params'))
+      .reverse()
+    // TODO Enable after builtins are fixed
+    // if (params.length > 0 && typeAnnotation.isJust()) {
+    //   console.warn(
+    //     'post-operator-head annotations are deprecated; see https://github.com/informalsystems/quint/issues/923'
+    //   )
+    // }
+    this.putDeclarationOnStack(ctx, name, params, typeAnnotation)
+  }
+
+  private putDeclarationOnStack(
+    ctx: p.DeprecatedOperDefContext | p.AnnotatedOperDefContext,
+    name: string,
+    params: QuintLambdaParameter[],
+    typeAnnotation: Maybe<QuintType>
+  ) {
     const expr: QuintEx = ctx.expr()
       ? this.exprStack.pop() ?? this.undefinedExpr(ctx)()
       : // This is only a definition header, use a default body since the IR
         // does not have a representation for this at the moment
         { id: this.getId(ctx), kind: 'bool', value: true }
 
-    // extract the qualifier
-    let qualifier: OpQualifier = 'def'
-    if (ctx.qualifier()) {
-      const qtext = ctx.qualifier().text
-      // case distinction to make the type checker happy
-      if (
-        qtext === 'pureval' ||
-        qtext === 'puredef' ||
-        qtext === 'val' ||
-        qtext === 'def' ||
-        qtext === 'action' ||
-        qtext === 'run' ||
-        qtext === 'temporal'
-      ) {
-        qualifier = qtext
-      }
-    }
+    // The grammar should guarantee we only parse valid OpQualifiers here
+    const qualifier: OpQualifier = ctx.qualifier().text as OpQualifier
 
-    let body = expr
-    const id = this.getId(ctx)
+    const body: QuintEx =
+      params.length === 0
+        ? expr
+        : // If the definition has parameters, introduce a lambda
+          { id: this.getId(ctx), kind: 'lambda', params, qualifier, expr }
 
-    if (params.length > 0) {
-      // if the definition has parameters, introduce a lambda
-      body = {
-        id,
-        kind: 'lambda',
-        params,
-        qualifier,
-        expr,
-      }
-    }
     const def: QuintOpDef = {
-      id,
+      id: this.getId(ctx),
       kind: 'def',
       name,
       qualifier,
       expr: body,
     }
-    if (typeTag.isJust()) {
-      def.typeAnnotation = typeTag.value
+    if (typeAnnotation.isJust()) {
+      def.typeAnnotation = typeAnnotation.value
     }
     this.declarationStack.push(def)
   }
 
-  // The definition parameters may be of two kinds: C-like and ML-like.
-  // Handle them here.
-  processOpDefParams(ctx: p.OperDefContext): [QuintLambdaParameter[], Maybe<QuintType>] {
-    const params = popMany(this.paramStack, ctx.parameter().length, this.undefinedParam(ctx))
-    // types of the parameters and of the result
-    const ntypes = ctx.type().length
-    if (ntypes === 0) {
-      return [params, none()]
-    } else if (ntypes > 1) {
-      // a C-like signature, combine it into an operator type
-      const types = popMany(this.typeStack, ntypes, this.undefinedType(ctx))
-      const id = this.getId(ctx)
-      const fullType: Maybe<QuintType> = just({
-        id,
-        kind: 'oper',
-        args: types.slice(0, -1),
-        res: types[types.length - 1],
-      })
-      return [params, fullType]
-    } else {
-      // the only type is on the stack
-      const fullType = this.popType()
-      return [params, fullType]
-    }
-  }
-
   // assume name = expr
-  exitAssume(ctx: any) {
+  exitAssume(ctx: p.AssumeContext) {
     const expr = this.exprStack.pop()!
-    const name = this.identOrHoleStack.pop()!
+    const name = ctx._assumeName.text
     const id = this.getId(ctx)
     const assume: QuintDef = {
       id,
@@ -364,41 +307,67 @@ export class ToIrListener implements QuintListener {
     this.declarationStack.push(def)
   }
 
-  // type Alias = set(int)
+  // E.g.,
+  //
+  // - type Alias = Set[int]
+  // - type Constr[a, b] = (Set[a], Set[b])
   exitTypeAliasDef(ctx: p.TypeAliasDefContext) {
-    const name = ctx.qualId()!.text
-    const type = this.popType().value
     const id = this.getId(ctx)
 
+    const defHead = ctx.typeDefHead()
+    const name = defHead._typeName.text
+    const type = this.popType().unwrap(() =>
+      fail('internal error: type alias declaration parsed with no right hand side')
+    )
     if (name[0].match('[a-z]')) {
       this.errors.push(lowercaseTypeError(id, name))
     }
 
-    const def: QuintTypeDef = {
-      id,
-      kind: 'typedef',
-      name,
-      type,
-    }
+    let defWithoutParams: QuintTypeDef = { id: id, kind: 'typedef', name, type }
+    const def: QuintTypeDef =
+      defHead._typeVars.length > 0
+        ? { ...defWithoutParams, params: defHead._typeVars.map(t => t.text!) }
+        : defWithoutParams
+
+    this.checkForUndeclaredTypeVariables(id, def)
 
     this.declarationStack.push(def)
   }
 
-  // type T = | A | B(t1) | C(t2)
+  // E.g.,
+  //
+  // - type T = | A | B(t1) | C(t2)
+  // - type Result[ok, err] = | Ok(ok) | Err(err)
   exitTypeSumDef(ctx: p.TypeSumDefContext) {
-    const name = ctx._typeName!.text!
     const id = this.getId(ctx)
+
+    const defHead = ctx.typeDefHead()
+    const name = defHead._typeName.text
 
     // Build the type declaraion
     const fields: RowField[] = popMany(this.variantStack, this.variantStack.length, this.undefinedVariant(ctx))
     const row: ConcreteFixedRow = { kind: 'row', fields, other: { kind: 'empty' } }
     const type: QuintSumType = { id, kind: 'sum', fields: row }
-    const typeName: QuintConstType = { id, kind: 'const', name }
-    const def: QuintTypeDef = {
-      id: id,
-      name,
-      kind: 'typedef',
-      type,
+
+    let defWithoutParams: QuintTypeDef = { id: id, kind: 'typedef', name, type }
+    const def: QuintTypeDef =
+      defHead._typeVars.length > 0
+        ? { ...defWithoutParams, params: defHead._typeVars.map(t => t.text!) }
+        : defWithoutParams
+
+    this.checkForUndeclaredTypeVariables(id, def)
+
+    // Used for annotations in the variant constructors
+    let constructorReturnType: QuintType
+    // The constant identifying the type definition. E.g. `Result`
+    const typeConst: QuintConstType = { id: this.getId(ctx), kind: 'const', name }
+    if (def.params) {
+      // The type takes parameters, so we need a type application as the return type. E.g., `Result[ok, err]`
+      const args: QuintVarType[] = def.params.map(name => ({ id: this.getId(ctx), kind: 'var', name }))
+      constructorReturnType = { id, kind: 'app', ctor: typeConst, args }
+    } else {
+      // The type takes no parameters, so we only need the constant name
+      constructorReturnType = typeConst
     }
 
     // Generate all the variant constructors implied by a variant type definition
@@ -414,8 +383,8 @@ export class ToIrListener implements QuintListener {
     // We will generate
     //
     // ```
-    // def A(__AParam) = variant("A", __AParam)
-    // val B = {}
+    // def A(__AParam: int) : T = variant("A", __AParam)
+    // val B : T = {}
     // ```
     //
     // Allowing users to write:
@@ -424,7 +393,7 @@ export class ToIrListener implements QuintListener {
     // val a: T = A(42)
     // val b: T = B
     // ```
-    const constructors: QuintOpDef[] = zip(fields, ctx.typeSumVariant()).map(
+    const constructors: QuintOpDef[] = zip(fields, ctx.sumTypeDefinition().typeSumVariant()).map(
       ([{ fieldName, fieldType }, variantCtx]) => {
         // Mangle the parameter name to avoid clashes
         // This shouldn't be visible to users
@@ -445,11 +414,11 @@ export class ToIrListener implements QuintListener {
           // ```
           qualifier = 'val'
 
-          // The nullary variant constructor is actualy
+          // The nullary variant constructor is actually
           // a variant pairing a label with the unit.
           const wrappedExpr = unitValue(this.getId(variantCtx._sumLabel))
 
-          typeAnnotation = typeName
+          typeAnnotation = constructorReturnType
           expr = {
             id: this.getId(variantCtx),
             kind: 'app',
@@ -475,7 +444,7 @@ export class ToIrListener implements QuintListener {
             args: [label, wrappedExpr],
           }
 
-          typeAnnotation = { kind: 'oper', args: [fieldType], res: typeName }
+          typeAnnotation = { kind: 'oper', args: [fieldType], res: constructorReturnType }
           expr = { id: this.getId(variantCtx), kind: 'lambda', params, qualifier, expr: variant }
         }
 
@@ -495,6 +464,22 @@ export class ToIrListener implements QuintListener {
     // I.e., we interpret a variant `A` as `A({})`.
     const fieldType: QuintType = poppedType ? poppedType : unitType(this.getId(ctx))
     this.variantStack.push({ fieldName, fieldType })
+  }
+
+  private checkForUndeclaredTypeVariables(id: bigint, typeDef: QuintTypeDef) {
+    if (!typeDef.type) {
+      return
+    }
+
+    const typeVars = typeNames(typeDef.type)
+    const undeclaredTypeVariables: string[] =
+      // We are just checking if the type variables appearing in `type` are a subset of the type params
+      // but our version of node has no sensible set operations?
+      [...typeVars.typeVariables, ...typeVars.rowVariables].filter(v => !(typeDef.params ?? []).includes(v))
+
+    if (undeclaredTypeVariables.length > 0) {
+      this.errors.push(undeclaredTypeParamsError(id, undeclaredTypeVariables))
+    }
   }
 
   // module Foo = Proto(x = a, y = b)
@@ -698,22 +683,20 @@ export class ToIrListener implements QuintListener {
     this.exprStack.push(untupledLambda)
   }
 
-  // a single parameter in a lambda expression: an identifier or '_'
-  exitIdentOrHole(ctx: p.IdentOrHoleContext) {
-    if (ctx.text === '_') {
-      // a hole '_'
-      this.identOrHoleStack.push('_')
-    } else {
-      // a variable name
-      this.identOrHoleStack.push(ctx.qualId()!.text)
-    }
-  }
-
   exitParameter(ctx: p.ParameterContext) {
-    const name = popMany(this.identOrHoleStack, 1, () => '_')[0]
-
+    const name = ctx._paramName.text
     const id = this.getId(ctx)
     this.paramStack.push({ id, name })
+  }
+
+  // TODO Consolidate with `exitParameter`, see https://github.com/informalsystems/quint/issues/923
+  exitAnnotatedParameter(ctx: p.AnnotatedParameterContext) {
+    const name = ctx._paramName.text
+    const id = this.getId(ctx)
+    const typeAnnotation = this.popType().unwrap(() =>
+      fail('internal error: the grammar guarantees a type should be on the stack')
+    )
+    this.paramStack.push({ id, name, typeAnnotation })
   }
 
   // an identifier or star '*' in import
@@ -732,6 +715,11 @@ export class ToIrListener implements QuintListener {
     const args = popMany(this.exprStack, ctx.expr().length, this.undefinedExpr(ctx))
 
     this.pushApplication(ctx, 'Tup', args)
+  }
+
+  // The unit, (), represented by the empty tuple
+  exitUnit(ctx: p.UnitContext) {
+    this.exprStack.push(unitValue(this.getId(ctx)))
   }
 
   // pair constructor, e.g., 2 -> 3
@@ -1035,19 +1023,36 @@ export class ToIrListener implements QuintListener {
     this.typeStack.push({ id, kind: 'str' })
   }
 
-  // a type variable, a type constant, or a reference to a type alias
-  exitTypeConstOrVar(ctx: p.TypeConstOrVarContext) {
-    const name = ctx.qualId().text
+  exitTypeVar(ctx: p.TypeVarContext) {
+    const name = ctx.LOW_ID().text
     const id = this.getId(ctx)
-    if (name[0].match('[a-z]')) {
-      // a type variable from: a, b, ... z
-      this.typeStack.push({ id, kind: 'var', name })
-    } else {
-      // a type constant, e.g., declared via typedef
-      this.typeStack.push({ id, kind: 'const', name })
-    }
+    this.typeStack.push({ id, kind: 'var', name })
   }
 
+  // a type variable, a type constant, or a reference to a type alias
+  exitTypeConst(ctx: p.TypeConstContext) {
+    const name = ctx.qualId().text
+    const id = this.getId(ctx)
+    this.typeStack.push({ id, kind: 'const', name })
+  }
+
+  // E.g., Result[int, str]
+  exitTypeApp(ctx: p.TypeAppContext) {
+    const id = this.getId(ctx)
+    const args: QuintType[] = ctx._typeArg
+      .map(_ =>
+        // We require that there is one parsed type for each typeArg recorded
+        this.popType().unwrap()
+      ) // The stack stores the arguments in reverse order
+      .reverse()
+    // The next type on the stack after the args should be the applied
+    // type constructor
+    const ctor: QuintConstType = { id: this.getId(ctx), kind: 'const', name: ctx._typeCtor.text }
+    const typeApp: QuintAppType = { id, kind: 'app', ctor, args }
+    this.typeStack.push(typeApp)
+  }
+
+  // TODO: replace with general type application
   // a set type, e.g., set(int)
   exitTypeSet(ctx: p.TypeSetContext) {
     const last = this.popType().unwrap()
@@ -1055,6 +1060,7 @@ export class ToIrListener implements QuintListener {
     this.typeStack.push({ id, kind: 'set', elem: last })
   }
 
+  // TODO: replace with general type application
   // a list type, e.g., list(int)
   exitTypeList(ctx: p.TypeListContext) {
     const top = this.popType().unwrap()
@@ -1068,6 +1074,17 @@ export class ToIrListener implements QuintListener {
     const arg = this.popType().unwrap()
     const id = this.getId(ctx)
     this.typeStack.push({ id, kind: 'fun', arg, res })
+  }
+
+  // The unit type
+  exitTypeUnit(ctx: p.TypeUnitContext) {
+    const id = this.getId(ctx)
+
+    this.typeStack.push({
+      id: id,
+      kind: 'tup',
+      fields: { kind: 'empty' },
+    })
   }
 
   // A tuple type, e.g., (int, bool)
@@ -1305,7 +1322,15 @@ function unitValue(id: bigint): QuintBuiltinApp {
   return {
     id,
     kind: 'app',
-    opcode: 'Rec',
+    opcode: 'Tup',
     args: [],
   }
+}
+
+function popOrFail<T>(stack: T[], msg: string): T {
+  const x = stack.pop()
+  if (typeof x === 'undefined') {
+    fail(`internal error: violated grammar guarantee ${msg}`)
+  }
+  return x
 }

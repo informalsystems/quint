@@ -37,7 +37,8 @@ import { Error, ErrorTree, buildErrorLeaf, buildErrorTree, errorTreeToString } f
 import { getSignatures, standardPropagation } from './builtinSignatures'
 import { FreshVarGenerator } from '../FreshVarGenerator'
 import { effectToString } from './printing'
-import { zip } from 'lodash'
+import { zip } from '../util'
+import { addNamespaces } from './namespaces'
 
 export type EffectInferenceResult = [Map<bigint, ErrorTree>, Map<bigint, EffectScheme>]
 
@@ -55,8 +56,9 @@ export class EffectInferrer implements IRVisitor {
   }
 
   /**
-   * Infers an effect for every expression in a module based on
-   * the definitions table for that module
+   * Infers an effect for every expression in a module based on the definitions
+   * table for that module. If there are missing effects in the effect map,
+   * there will be at least one error.
    *
    * @param declarations: the list of QuintDeclarations to infer effects for
    *
@@ -87,6 +89,8 @@ export class EffectInferrer implements IRVisitor {
   private freeNames: { effectVariables: Set<string>; entityVariables: Set<string> }[] = []
 
   // the current depth of operator definitions: top-level defs are depth 0
+  // FIXME(#1279): The walk* functions update this value, but they need to be
+  // initialized to -1 here for that to work on all scenarios.
   definitionDepth: number = -1
 
   enterExpr(e: QuintEx) {
@@ -182,11 +186,6 @@ export class EffectInferrer implements IRVisitor {
                 effects,
                 expr.args.map(a => a.id)
               ).forEach(([effect, id]) => {
-                if (!effect || !id) {
-                  // Impossible: effects and expr.args are the same length
-                  throw new Error(`Expected ${expr.args.length} effects, but got ${effects.length}`)
-                }
-
                 const r = applySubstitution(s, effect).map(toScheme)
                 this.addToResults(id, r)
               })
@@ -361,7 +360,18 @@ export class EffectInferrer implements IRVisitor {
       }
 
       return this.fetchResult(id).map(e => {
-        return this.newInstance(e)
+        const effect = this.newInstance(e)
+        if (def.importedFrom?.kind === 'instance') {
+          // Names imported from instances might have effects that refer to
+          // names that are shared between multiple instances. To properly infer
+          // effects refering to those state variables, they need to be
+          // namespaced in a way that makes them different between different
+          // instances. For that, we use the namespaces attribute from lookup
+          // table definition, which contains the proper namespaces to identify
+          // unique names while flattening.
+          return addNamespaces(effect, def.namespaces ?? [])
+        }
+        return effect
       })
     }
   }

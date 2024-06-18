@@ -23,7 +23,10 @@ import { unreachable } from '../util'
  */
 export interface IRVisitor {
   /* Keeps track of the depth of the current definition, to be updated by the
-   * walk* functions and used by implementations of the interface */
+   * walk* functions and used by implementations of the interface. Should be
+   * initialized to -1, so if `walkDefinition` is called from a different place
+   * than `walkDeclaration` (which does set this to -1), the increments and
+   * decrements work as expected. */
   definitionDepth?: number
 
   enterModule?: (_module: ir.QuintModule) => void
@@ -90,6 +93,8 @@ export interface IRVisitor {
   exitRecordType?: (_type: t.QuintRecordType) => void
   enterSumType?: (_type: t.QuintSumType) => void
   exitSumType?: (_type: t.QuintSumType) => void
+  enterAppType?: (_type: t.QuintAppType) => void
+  exitAppType?: (_type: t.QuintAppType) => void
 
   /** Row types */
   enterRow?: (_row: t.Row) => void
@@ -240,6 +245,13 @@ export function walkType(visitor: IRVisitor, type: t.QuintType): void {
       visitor.enterSumType?.(type)
       walkRow(visitor, type.fields)
       visitor.exitSumType?.(type)
+      break
+
+    case 'app':
+      visitor.enterAppType?.(type)
+      walkType(visitor, type.ctor)
+      type.args.map(t => walkType(visitor, t))
+      visitor.exitAppType?.(type)
       break
 
     default:
@@ -432,17 +444,30 @@ export function walkExpression(visitor: IRVisitor, expr: ir.QuintEx): void {
       break
     }
     case 'lambda':
+      if (visitor.definitionDepth !== undefined) {
+        visitor.definitionDepth++
+      }
       if (visitor.enterLambda) {
         visitor.enterLambda(expr)
       }
-
+      expr.params.forEach(p => {
+        if (p.typeAnnotation) {
+          walkType(visitor, p.typeAnnotation)
+        }
+      })
       walkExpression(visitor, expr.expr)
 
       if (visitor.exitLambda) {
         visitor.exitLambda(expr)
       }
+      if (visitor.definitionDepth !== undefined) {
+        visitor.definitionDepth--
+      }
       break
     case 'let':
+      if (visitor.definitionDepth !== undefined) {
+        visitor.definitionDepth++
+      }
       if (visitor.enterLet) {
         visitor.enterLet(expr)
       }
@@ -452,6 +477,9 @@ export function walkExpression(visitor: IRVisitor, expr: ir.QuintEx): void {
 
       if (visitor.exitLet) {
         visitor.exitLet(expr)
+      }
+      if (visitor.definitionDepth !== undefined) {
+        visitor.definitionDepth--
       }
       break
     default:

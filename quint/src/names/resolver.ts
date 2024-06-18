@@ -43,6 +43,10 @@ class NameResolver implements IRVisitor {
   collector: NameCollector
   errors: QuintError[] = []
   table: LookupTable = new Map()
+
+  // the current depth of operator definitions: top-level defs are depth 0
+  // FIXME(#1279): The walk* functions update this value, but they need to be
+  // initialized to -1 here for that to work on all scenarios.
   definitionDepth: number = -1
 
   constructor() {
@@ -54,8 +58,8 @@ class NameResolver implements IRVisitor {
   unusedDefinitions: UnusedDefinitions = moduleName => {
     const definitions: LookupDefinition[] = Array.from(
       this.collector.definitionsByModule.get(moduleName)?.values() || []
-    )
-    const usedDefinitions = [...this.table.values()]
+    ).flat()
+    const usedDefinitions = [...this.table.values()].flat()
 
     return new Set(difference(definitions, usedDefinitions))
   }
@@ -71,7 +75,11 @@ class NameResolver implements IRVisitor {
     // Top-level definitions were already collected, so we only need to collect
     // scoped definitions.
     if (this.definitionDepth > 0) {
-      this.collector.collectDefinition({ ...def, depth: this.definitionDepth })
+      const newDef = this.collector.collectDefinition({ ...def, depth: this.definitionDepth })
+      this.table.set(def.id, { ...newDef, depth: this.definitionDepth })
+    } else {
+      // Map the definition to itself so we can recover depth information from the table
+      this.table.set(def.id, { ...def, depth: this.definitionDepth })
     }
   }
 
@@ -84,7 +92,7 @@ class NameResolver implements IRVisitor {
   enterLambda(expr: QuintLambda): void {
     // Lambda parameters are scoped, so they are collected here
     expr.params.forEach(p => {
-      this.collector.collectDefinition({ ...p, kind: 'param' })
+      this.collector.collectDefinition({ ...p, kind: 'param', depth: this.definitionDepth })
     })
   }
 

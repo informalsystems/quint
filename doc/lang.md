@@ -2,7 +2,7 @@
 
 | Revision | Date       | Author                                                  |
 |:---------|:-----------|:--------------------------------------------------------|
-| 34       | 09.10.2023 | Igor Konnov, Shon Feder, Jure Kukovec, Gabriela Moreira, Thomas Pani |
+| 35       | 12.12.2023 | Igor Konnov, Shon Feder, Jure Kukovec, Gabriela Moreira, Thomas Pani |
 
 This document presents language constructs in the same order as the [summary of
 TLA+](https://lamport.azurewebsites.net/tla/summary.pdf).
@@ -64,6 +64,7 @@ Table of Contents
       * [Then](#then)
       * [Reps](#reps)
         * [Example](#example)
+      * [Expect](#expect)
       * [Fail](#fail)
     * [Temporal operators](#temporal-operators)
       * [Always](#always)
@@ -146,31 +147,34 @@ This is the same type system as in Apalache:
 
 A type is one of the following:
 
- - Basic type: `bool`, `int`, `str`.
+- Basic type: `bool`, `int`, `str`.
 
- - Uninterpreted type or type name: `IDENTIFIER_IN_CAPS`.
+- Uninterpreted type or type name: `IDENTIFIER_IN_CAPS`.
 
- - Type variable (parameter): `a`, ..., `z`.
+- Type variable (parameter): `a`, ..., `z`.
 
- - Set: `Set[T]` for a type `T`.
+- Set: `Set[T]` for a type `T`.
 
- - List: `List[T]` for a type `T`.
+- List: `List[T]` for a type `T`.
 
- - Tuple: `(T_1, T_2, ..., T_n)` for `n >= 2` types `T_1`, ..., `T_n`.
+- Tuple: `(T_1, T_2, ..., T_n)` for `n >= 2` types `T_1`, ..., `T_n`.
 
- - Record: `{ name_1: T_1, name_2: T_2, ..., name_n: T_n }`
-    for `n >= 1` types `T_1`, ..., `T_n`.
+- Record: `{ name_1: T_1, name_2: T_2, ..., name_n: T_n }`
+  for `n >= 1` types `T_1`, ..., `T_n`.
 
- - Function: `T1 -> T2` for types `T1` and `T2`.
+- Function: `T1 -> T2` for types `T1` and `T2`.
 
- - Operator: `(T_1, ..., T_n) => R` for `n >= 0` argument types `T_1, ..., T_n`
-   and result type `R`.
+- Operator: `(T_1, ..., T_n) => R` for `n >= 0` argument types `T_1, ..., T_n`
+  and result type `R`.
 
- - Sum Types: `type T = L_1(T_1) | ... | L_n(T_n) ` for `n >= 1`, argument types
-   `T_1`, ..., `T_n`, and a type alais `T`.
+- Sum Types: `type T = L_1(T_1) | ... | L_n(T_n) ` for `n >= 1`, argument types
+  `T_1`, ..., `T_n`, and a type alais `T`.
 
- - Type in parentheses: `(T)` for a type `T`.
+- Type in parentheses: `(T)` for a type `T`.
 
+- An instance of a defined polymorphic type `T[T_1, ..., T_n]` for a defined type
+  constructor with type parameters `T[p_1, ..., p_n]` and types `T_1, ...,
+  T_n`.
 
 It is often convenient to declare a type alias. You can use `type` to define
 an alias inside a module definition. For instance:
@@ -178,6 +182,18 @@ an alias inside a module definition. For instance:
 ```bluespec
 type Temperature = int
 ```
+
+A type alias specified with type parameters defines a polymorphic type
+constructor for instances of the defined type. For instance, given
+
+```bluespec
+type Option[a] =
+  | Some(a)
+  | None
+```
+
+You can then construct concrete types such as `Option[int]` or
+`Option[List[int]]`.
 
 A type identifier can also introduce an uninterpreted type by defining a type without any constructors for values of that type:
 
@@ -498,7 +514,7 @@ module Top {
 
 Note that in the above example, `Inner::x2` is treated as a qualified identifier, that is, it consists of the prefix `Inner` and the name `x2`.
 
-*No collisions.* There must be no name collisions between names.  Shadowing of a name is not allowed. For example:
+Shadowing names is allowed. For example:
 
 ```bluespec
 module OS {
@@ -508,13 +524,7 @@ module OS {
 }
 ```
 
-The Quint parser produces the following error message:
-
-```
-error: [QNT101] Conflicting definitions found for name 'clock' in module 'OS'
-4:   def increase(clock) = clock + 1
-                  ^^^^^
-```
+PS: Let us know if you are bothered by this. We are considering making it a togglable feature.
 
 *No order.* In contrast to TLA+, namespaces are not ordered. It is perfectly
 fine to write out-of-order definitions, like in many programming languages:
@@ -1181,9 +1191,12 @@ powerset(S)
 // UNION S
 S.flatten()
 flatten(S)
-// Seq(S): the set of all lists of elements in S
+// Seq(S): the set of all lists of elements in S.
+// Cannot be used in simulation or verification. See `allListsUpTo`
 S.allLists()
 allLists(S)
+// Limited version:
+S.allListsUpTo(2)
 // CHOOSE x \in S: TRUE
 // The operator name is deliberately made long, so it would not be the user's default choice.
 S.chooseSome()
@@ -1290,14 +1303,14 @@ sets of records: (1) It often confuses beginners, (2) It can be expressed with
 
 ### Tuples
 
-In contrast to TLA+, Quint tuples have length of at least 2.
-If you need lists, use lists.
-
 ```scala
 // Tuple constructor: << e_1, ..., e_n >>
-// Warning: n >= 2
 (e_1, ..., e_n)
 Tup(e_1, ..., e_n)
+// The empty tuple is also the canonical unit type
+// <<>>
+()
+Tup()
 // t[1], t[2], t[3], t[4], ... , t[50]
 t._1
 t._2
@@ -1657,13 +1670,19 @@ then(A, B)
 
 The semantics of this operator is as follows. When `A.then(B)` is applied to a
 state `s_1`, the operator computes a next state `s_2` of `s_1` by applying
-action `A`, if such a state exists. If `A` returns `true`, then the operator
-`A.then(B)` computes a next state `s_3` of `s_2` by applying action `B`, if
-such a state exists. If `B` returns true, then the operator `A.then(B)` returns
-`true`, the old state is equal to `s_1`, and the new state is equal to `s_3`.
-In all other cases, the operator returns `false`.
+action `A`, if such a state exists. Depending on the result of `A`, two scenarios
+are possible:
 
-This operator is equivalent to `A \cdot B` of TLA+.
+ - When `A` returns `true`, then the operator `A.then(B)` computes a next state
+ `s_3` of `s_2` by applying action `B`, if such a state exists.
+  If `B` returns true, then the operator `A.then(B)` returns
+  `true`, the old state is equal to `s_1`, and the new state is equal to `s_3`.
+  Otherwise, the operator `A.then(B)` returns `false`.
+ 
+ - If `A` returns `false`, then it is impossible to continue. A runtime error
+  should be reported.
+
+This operator is equivalent to `A \cdot B` of TLA+ (except for the runtime errors).
 
 **Example.** Consider the specification `counters`:
 
@@ -1751,6 +1770,40 @@ fail(A)
 This operator returns `true` if and only if action `A` returns `false`.
 The operator `fail` is useful for writing runs that expect an action
 to be disabled.
+
+*Mode:* Run.
+
+#### Expect
+
+The operator `expect` has the following syntax:
+
+```scala
+A.expect(P)
+expect(A, P)
+```
+
+The left-hand side `A` must be an action or a run. The right-hand side `P` must
+be a non-action Boolean expression.
+
+The semantics of this operator is as follows:
+
+- Evaluate action `A`:
+  - When `A`'s result is `false`, emit a runtime error.
+  - When `A`'s result is `true`:
+    - Commit the variable updates.
+    - Evaluate `P`:
+      - If `P` evaluates to `false`, emit a runtime error (similar to `assert`).
+      - If `P` evaluates to `true`, undo the updates back to the state where we
+        were after `A` was applied.
+
+##### Example
+
+```bluespec
+var n: int
+run expectConditionOkTest = (n' = 0).then(n' = 3).expect(n == 3)
+run expectConditionFailsTest = (n' = 0).then(n' = 3).expect(n == 4)
+run expectRunFailsTest = (n' = 0).then(all { n == 2, n' = 3 }).expect(n == 4)
+```
 
 *Mode:* Run.
 
