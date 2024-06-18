@@ -11,6 +11,7 @@
  * Igor Konnov, Informal Systems, 2023
  */
 module erc20 {
+    import basicSpells.* from "../../spells/basicSpells"
     // An address is simply is string. The particular format is not essential.
     type Address = str
     // the special zero address, which corresponds to the address 0 in EVM
@@ -30,51 +31,15 @@ module erc20 {
 
     // A state of an ERC20 contract/token
     type Erc20State = {
-        balanceOf: Address -> Uint,
+        balances: Address -> Uint,
         totalSupply: Uint,
         allowance: (Address, Address) -> Uint,
         owner: Address,
     }
 
-    // The result of executing an ERC20 method.
-    // If error != "", the the following holds true:
-    //  - the field error stores the error message,
-    //  - the field state stores the input state,
-    //  - the field returnedTrue is irrelevant.
-    //
-    // If error == "", then the following holds true:
-    //  - the field returnedTrue is true, if the method returned true,
-    //  - the field state stores the modified state.
-    //
-    // In the future, we should use ADTs:
-    // https://github.com/informalsystems/quint/issues/539
-    type Erc20Result = {
-        returnedTrue: bool,
-        error: str,
-        state: Erc20State
-    }
-
-    pure def returnError(msg: str, state: Erc20State): Erc20Result = {
-        { error: msg, state: state, returnedTrue: false }
-    }
-
-    pure def returnState(state: Erc20State, returnedTrue: bool): Erc20Result = {
-        { error: "", state: state, returnedTrue: returnedTrue }
-    }
-
-    // An auxilliary definition similar to Solidity's require
-    pure def require(cond: bool, msg: str): str = {
-        if (cond) "" else msg
-    }
-
-    // an easy way to chain require calls
-    pure def andRequire(prevErr: str, cond: bool, msg: str): str = {
-        if (prevErr != "") prevErr else require(cond, msg)
-    }
-
     // contract initialization
     pure def newErc20(sender: Address, initialSupply: Uint): Erc20State = {
-        balanceOf: AllAddresses.mapBy(a => if (a != sender) 0 else initialSupply),
+        balances: AllAddresses.mapBy(a => if (a != sender) 0 else initialSupply),
         totalSupply: initialSupply,
         allowance: tuples(AllAddresses, AllAddresses).mapBy(p => 0),
         owner: sender,
@@ -87,38 +52,41 @@ module erc20 {
         state.totalSupply
     }
 
-    /**
-     * Returns the amount of tokens owned by account.
-     */
-    pure def balanceOf(state: Erc20State, account: Address): Uint = {
-        state.balanceOf.get(account)
-    }
-
     // An internal implementation, similar to OpenZeppelin's
     // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/ca822213f2275a14c26167bd387ac3522da67fe9/contracts/token/ERC20/ERC20.sol#L222
-    pure def _transfer(state: Erc20State,
-            fromAddr: Address, toAddr: Address, amount: Uint): Erc20Result = {
-        val fromBalance = state.balanceOf.get(fromAddr)
-        val err = require(fromAddr != ZERO_ADDRESS, "ERC20: transfer from the zero address")
-            .andRequire(toAddr != ZERO_ADDRESS, "ERC20: transfer to the zero address")
-            .andRequire(fromBalance >= amount, "ERC20: transfer amount exceeds balance")
-        if (err != "") {
-            returnError(err, state)
+    pure def _transfer(state: Erc20State, fromAddr: Address, toAddr: Address, amount: Uint): Result[Erc20State, str] = {
+      if (fromAddr == ZERO_ADDRESS) {
+        Err("ERC20: transfer from the zero address")
+      } else if (toAddr == ZERO_ADDRESS) {
+        Err("ERC20: transfer to the zero address")
+      } else {
+        _update(state, fromAddr, toAddr, amount)
+      }
+    }
+
+     pure def _update(state: Erc20State, fromAddr: Address, toAddr: Address, amount: Uint): Result[Erc20State, str] = {
+      if (fromAddr == ZERO_ADDRESS and toAddr == ZERO_ADDRESS) {
+        // Nothing to do
+        Ok(state)
+      } else if (fromAddr == ZERO_ADDRESS) {
+        // Mint, increase total supply
+        Ok({ ...state, totalSupply: state.totalSupply + amount })
+      } else if (toAddr == ZERO_ADDRESS) {
+        // Burn, decrease total supply
+        Ok({ ...state, totalSupply: state.totalSupply - amount })
+      } else {
+        // A transfer between non-zero addresses
+        val fromBalance = state.balances.get(fromAddr)
+        if (fromBalance < amount) {
+          Err("ERC20: Insufficient balance")
         } else {
-            val newBalances =
-                if (fromAddr == toAddr) {
-                    state.balanceOf
-                } else {
-                    // Comment from ERC20.sol (see the above link): 
-                    // Overflow not possible: the sum of all balances is capped
-                    // by totalSupply, and the sum is preserved by
-                    // decrementing then incrementing.
-                    state.balanceOf
-                      .set(fromAddr, fromBalance - amount)
-                      .setBy(toAddr, old => old + amount)
-                }
-            returnState(state.with("balanceOf", newBalances), true)
+          Ok({
+            ...state,
+            balances: state.balances.setBy(fromAddr, balance => balance - amount)
+                                    .setBy(toAddr, balance => balance + amount)
+          })
         }
+      }
     }
 
     /**
@@ -129,9 +97,13 @@ module erc20 {
      * If the error != "", the new state should be applied.
      */
     pure def transfer(state: Erc20State, sender: Address,
-            toAddr: Address, amount: Uint): Erc20Result = {
-        // `transfer` always returns true, but we should check Erc20Result.error
+            toAddr: Address, amount: Uint): Result[Erc20State, str] = {
+        // `transfer` always returns true, but we should check Result[Erc20State, str].error
         _transfer(state, sender, toAddr, amount)
+    }
+
+    pure def approve(state: Erc20State, sender: Address, spender: Address, amount: Uint): Result[Erc20State, str] = {
+        _approve(state, sender, spender, amount)
     }
 
     /**
@@ -155,17 +127,16 @@ module erc20 {
      * Quint: also return an error code and the new state.
      * If the error != "", the new state should be applied.
      */
-    pure def approve(state: Erc20State, sender: Address,
-            spender: Address, amount: Uint): Erc20Result = {
-         val err = require(sender != ZERO_ADDRESS, "ERC20: transfer from the zero address")
-            .andRequire(spender != ZERO_ADDRESS, "ERC20: transfer to the zero address")
-        if (err != "") {
-            returnError(err, state)
-        } else {
-            // the case of sender == spender seems to be allowed
-            val newAllowance = state.allowance.set((sender, spender), amount)
-            returnState(state.with("allowance", newAllowance), true)
-        }
+    pure def _approve(state: Erc20State, owner: Address, spender: Address, amount: Uint): Result[Erc20State, str] = {
+      if (owner == ZERO_ADDRESS) {
+        Err("ERC20: Invalid approver")
+      } else if (spender == ZERO_ADDRESS) {
+        Err("ERC20: Invalid spender")
+      } else {
+        // the case of sender == spender seems to be allowed
+        val new_allowance = state.allowance.set((owner, spender), amount)
+        Ok({ ...state, allowance: new_allowance })
+      }
     }
 
     /**
@@ -178,30 +149,25 @@ module erc20 {
      * If the error != "", the new state should be applied.
      */
     pure def transferFrom(state: Erc20State, sender: Address,
-            fromAddr: Address, toAddr: Address, amount: Uint): Erc20Result = {
-        // _spendAllowance
-        val currentAllowance = state.allowance(fromAddr, sender)
-        val err =
-            require(currentAllowance >= amount, "ERC20: insufficient allowance")
-                .andRequire(fromAddr != ZERO_ADDRESS, "ERC20: approve from the zero address")
-                .andRequire(toAddr != ZERO_ADDRESS, "ERC20: approve to the zero address")
-        val updatedState =
-            if (currentAllowance == MAX_UINT) {
-                // allowance is not subtracted in this case
-                state
-            } else {
-                // update allowances
-                val newAllowance = state.allowance.setBy((fromAddr, sender), old => old - amount)
-                state.with("allowance", newAllowance)
-            }
-
-        if (err != "") {
-            returnError(err, state)
-        } else {
-            // do the transfer
-            _transfer(updatedState, fromAddr, toAddr, amount)
-        }
+            fromAddr: Address, toAddr: Address, amount: Uint): Result[Erc20State, str] = {
+         _spendAllowance(state, fromAddr, sender, amount)
+           .chainResult(s => _transfer(s, fromAddr, toAddr, amount))
     }
+
+  pure def _spendAllowance(state: Erc20State, owner: Address, spender: Address, amount: Uint): Result[Erc20State, str] = {
+    val current_allowance = state.allowance.getOrElse((owner, spender), 0)
+
+    if (current_allowance == MAX_UINT) {
+      // Does not update the allowance value in case of infinite allowance.
+      Ok(state)
+    } else {
+      if (current_allowance < amount) {
+        Err("ERC20: Insufficient Allowance")
+      } else {
+        _approve(state, owner, spender, current_allowance - amount)
+      }
+    }
+  }
 
     // Properties that do not belong to the original EIP20 spec,
     // but they should hold true.
@@ -213,24 +179,25 @@ module erc20 {
     // The total supply, as stored in the state,
     // is equal to the sum of amounts over all balances.
     pure def isTotalSupplyCorrect(state: Erc20State): bool = {
-      state.balanceOf.sumOverBalances() == state.totalSupply
+      state.balances.sumOverBalances() == state.totalSupply
     }
 
     // Zero address should not carry coins.
     pure def isZeroAddressEmpty(state: Erc20State): bool = {
-        state.balanceOf.get(ZERO_ADDRESS) == 0
+        state.balances.get(ZERO_ADDRESS) == 0
     }
 
-    // There are no overflows in totalSupply, balanceOf, and approve.
+    // There are no overflows in totalSupply, balances, and approve.
     pure def isNoOverflows(state: Erc20State): bool = and {
         isUint(state.totalSupply),
-        state.balanceOf.keys().forall(a => isUint(state.balanceOf.get(a))),
+        state.balances.keys().forall(a => isUint(state.balances.get(a))),
         state.allowance.keys().forall(a => isUint(state.allowance.get(a))),
     }
 }
 
 // A set of tests to check the contract
 module erc20Tests {
+    import basicSpells.* from "../../spells/basicSpells"
     // We are using this module to test the contract,
     // so we fix the set of addresses right away.
     pure val ADDR = Set("0", "alice", "bob", "eve")
@@ -242,6 +209,7 @@ module erc20Tests {
     pure val AMOUNTS = 0.to(100)
 
     var erc20State: Erc20State
+    var error: str
 
     action init = all {
         nondet sender = ADDR.exclude(Set(ZERO_ADDRESS)).oneOf()
@@ -250,9 +218,17 @@ module erc20Tests {
     }
 
     // a helper action that assigns to state, provided that there are no errors
-    action fromResult(result: Erc20Result): bool = all {
-        result.error == "",
-        erc20State' = result.state,
+    action assign_result(result: Result[Erc20State, str]): bool = all {
+      match result {
+          | Ok(s) => all {
+              erc20State' = s,
+              error' = "",
+            }
+          | Err(e) => all {
+              erc20State' = erc20State,
+              error' = e,
+            }
+      },
     }
 
     action step = {
@@ -262,14 +238,14 @@ module erc20Tests {
         any {
             // transfer
             nondet toAddr = oneOf(ADDR)
-            fromResult(erc20State.transfer(sender, toAddr, amount)),
+            assign_result(erc20State.transfer(sender, toAddr, amount)),
             // approve
             nondet spender = oneOf(ADDR)
-            fromResult(erc20State.approve(sender, spender, amount)),
+            assign_result(erc20State.approve(sender, spender, amount)),
             // transferFrom
             nondet fromAddr = oneOf(ADDR)
             nondet toAddr = oneOf(ADDR)
-            fromResult(erc20State.transferFrom(sender, fromAddr, toAddr, amount)),
+            assign_result(erc20State.transferFrom(sender, fromAddr, toAddr, amount)),
         }
     }
 
@@ -290,7 +266,7 @@ module erc20Tests {
         nondet balances = ADDR.setOfMaps(AMOUNTS).oneOf()
         nondet allowances = tuples(ADDR, ADDR).setOfMaps(AMOUNTS).oneOf()
         erc20State' = {
-            balanceOf: balances,
+            balances: balances,
             totalSupply: sumOverBalances(balances),
             allowance: allowances,
             owner: owner,
@@ -311,35 +287,34 @@ module erc20Tests {
         nondet amount = oneOf(AMOUNTS)
         nondet toAddr = oneOf(ADDR)
         initArbitrary.then(
-            val result = erc20State.transfer(sender, toAddr, amount)
-            val newState = result.state
-            val ob = erc20State.balanceOf
-            val nb = newState.balanceOf
-            all {
-                assert(or {
-                    // if we started in an invalid state, no guarantees
-                    not(isValid(erc20State)),
-                    // if there were errors or transfer returned false, no guarantees
-                    not(result.returnedTrue),
-                    result.error != "",
-                    // otherwise, the transfer should have happened
-                    if (sender != toAddr) and {
-                        nb.get(sender) == ob.get(sender) - amount,
-                        nb.get(toAddr) == ob.get(toAddr) + amount,
-                        ADDR.forall(a =>
-                            a == sender or a == toAddr or nb.get(a) == ob.get(a)
-                        ),
-                    } else {
-                        nb == ob
-                    },
-                }),
-                assert(newState.allowance == erc20State.allowance),
-                assert(newState.owner == erc20State.owner),
-                assert(newState.totalSupply == erc20State.totalSupply),
-                // the new state has to be valid only if the old one was valid
-                assert(newState.isValid() or not(erc20State.isValid())),
-                erc20State' = newState
+            match erc20State.transfer(sender, toAddr, amount) {
+              // if there were, no guarantees
+              | Err(err) => erc20State' = erc20State
+              | Ok(newState) =>
+                val ob = erc20State.balances
+                val nb = newState.balances
+                all {
+                    assert(or {
+                        // if we started in an invalid state, no guarantees
+                        not(isValid(erc20State)),
+                        if (sender != toAddr) and {
+                            nb.get(sender) == ob.get(sender) - amount,
+                            nb.get(toAddr) == ob.get(toAddr) + amount,
+                            ADDR.forall(a =>
+                                a == sender or a == toAddr or nb.get(a) == ob.get(a)
+                            ),
+                        } else {
+                            nb == ob
+                        },
+                    }),
+                    assert(newState.allowance == erc20State.allowance),
+                    assert(newState.owner == erc20State.owner),
+                    assert(newState.totalSupply == erc20State.totalSupply),
+                    // the new state has to be valid only if the old one was valid
+                    assert(newState.isValid() or not(erc20State.isValid())),
+                    erc20State' = newState
             }
+          }
         )
     }
 
@@ -348,6 +323,7 @@ module erc20Tests {
 
 // executing ERC20 transactions together with the mempool
 module mempool {
+    import basicSpells.* from "../../spells/basicSpells"
     // We are using this module to test the contract,
     // so we fix the set of addresses right away.
     pure val ADDR = Set("alice", "bob", "eve", "0")
@@ -356,39 +332,16 @@ module mempool {
 
     pure val AMOUNTS = 0.to(MAX_UINT)
 
+    type Status =
+      | Pending
+      | Success
+      | Failure(str)
+
     // What kind of transaction could be submitted to the mempool.
-    // Currently, we are using a record to represent all kinds of transactions.
-    // In the future, we should use ADTs:
-    // https://github.com/informalsystems/quint/issues/539
-    type Transaction = {
-        kind: str,
-        status: str,
-        sender: Address,
-        spender: Address,
-        fromAddr: Address,
-        toAddr: Address,
-        amount: Uint
-    }
-
-    pure val NoneTx: Transaction = {
-        kind: "none", status: "none", sender: ZERO_ADDRESS,
-        spender: ZERO_ADDRESS, fromAddr: ZERO_ADDRESS, toAddr: ZERO_ADDRESS, amount: 0
-    }
-
-    pure def TransferTx(sender: Address, toAddr: Address, amount: Uint): Transaction = {
-        kind: "transfer", status: "pending", sender: sender,
-        toAddr: toAddr, amount: amount, fromAddr: ZERO_ADDRESS, spender: ZERO_ADDRESS
-    }
-
-    pure def ApproveTx(sender: Address, spender: Address, amount: Uint): Transaction = {
-        kind: "approve", status: "pending", sender: sender, spender: spender,
-        fromAddr: ZERO_ADDRESS, toAddr: ZERO_ADDRESS, amount: amount
-    }
-
-    pure def TransferFromTx(sender: Address, fromAddr: Address, toAddr: Address, amount: Uint): Transaction = {
-        kind: "transferFrom", status: "pending", sender: sender,
-        fromAddr: fromAddr, toAddr: toAddr, amount: amount, spender: ZERO_ADDRESS
-    }
+    type Transaction =
+      | Transfer({status: Status, sender: Address, toAddr: Address, amount: Uint})
+      | Approve({status: Status, sender: Address, spender: Address, amount: Uint})
+      | TransferFrom({status: Status, sender: Address, fromAddr: Address, toAddr: Address, amount: Uint})
 
     // the state of the ERC20 contract (we have just one here)
     var erc20State: Erc20State
@@ -397,14 +350,20 @@ module mempool {
     // If we needed that, we could add an id field to a transaction.
     var mempool: Set[Transaction]
     // The last submitted or executed transaction
-    var lastTx: Transaction
+    var lastTx: Option[Transaction]
+
+    pure def withStatus(tx: Transaction, status: Status): Transaction = match tx {
+      | Transfer(t) => Transfer({ ...t, status: status })
+      | Approve(t) => Approve({ ...t, status: status })
+      | TransferFrom(t) => TransferFrom({ ...t, status: status })
+    }
 
     action init = all {
         nondet sender = oneOf(ADDR.exclude(Set(ZERO_ADDRESS)))
         nondet initialSupply = oneOf(AMOUNTS)
         erc20State' = newErc20(sender, initialSupply),
         mempool' = Set(),
-        lastTx' = NoneTx,
+        lastTx' = None,
     }
 
     // Submit a transaction to the memory pool.
@@ -412,33 +371,32 @@ module mempool {
     action submit(tx: Transaction): bool = all {
         mempool' = mempool.union(Set(tx)),
         erc20State' = erc20State,
-        lastTx' = tx,
+        lastTx' = Some(tx),
     }
 
     // an auxilliary action that assigns variables from a method execution result
-    action fromResult(tx: Transaction, r: Erc20Result): bool = all {
-        val status = if (r.error != "") r.error else "success"
-        lastTx' = tx.with("status", status),
-        erc20State' = r.state,
+    action assign_result(tx: Transaction, r: Result[Erc20State, str]): bool = all {
+        match r {
+          | Err(err) => all {
+            lastTx' = Some(tx.withStatus(Failure(err))),
+            erc20State' = erc20State,
+         }
+         | Ok(state) => all {
+            lastTx' = Some(tx.withStatus(Success)),
+            erc20State' = state,
+         }
+      }
     }
 
     // commit a transaction from the memory pool
     action commit(tx: Transaction): bool = all {
         mempool' = mempool.exclude(Set(tx)),
-        any {
-            all {
-                tx.kind == "transfer",
-                fromResult(tx, transfer(erc20State, tx.sender, tx.toAddr, tx.amount))
-            },
-            all {
-                tx.kind == "approve",
-                fromResult(tx, approve(erc20State, tx.sender, tx.spender, tx.amount))
-            },
-            all {
-                tx.kind == "transferFrom",
-                fromResult(tx, transferFrom(erc20State, tx.sender, tx.fromAddr, tx.toAddr, tx.amount))
-            },
+        val result = match tx {
+          | Transfer(t) => transfer(erc20State, t.sender, t.toAddr, t.amount)
+          | Approve(t) => approve(erc20State, t.sender, t.spender, t.amount)
+          | TransferFrom(t) => transferFrom(erc20State, t.sender, t.fromAddr, t.toAddr, t.amount)
         }
+        assign_result(tx, result)
     }
     // Possible behavior of the mempool and ERC20
     // (constrained by the above parameters)
@@ -450,14 +408,14 @@ module mempool {
             any {
                 // transfer
                 nondet toAddr = oneOf(ADDR)
-                submit(TransferTx(sender, toAddr, amount)),
+                submit(Transfer({status: Pending, sender: sender, toAddr: toAddr, amount: amount})),
                 // approve
                 nondet spender = oneOf(ADDR)
-                submit(ApproveTx(sender, spender, amount)),
+                submit(Approve({status: Pending, sender: sender, spender: spender, amount: amount})),
                 // transferFrom
                 nondet fromAddr = oneOf(ADDR)
                 nondet toAddr = oneOf(ADDR)
-                submit(TransferFromTx(sender, fromAddr, toAddr, amount)),
+                submit(TransferFrom({status: Pending, sender: sender, fromAddr: fromAddr, toAddr: toAddr, amount: amount})),
             },
             // commit one of the contract transactions
             all {
@@ -476,20 +434,27 @@ module mempool {
     * We can check this invariant with the Quint simulator:
     *
     * quint run --max-samples=1000000 --max-steps=6 \
-    *   --invariant=NoTransferFromWhileApproveInFlight --main=mempool erc20.qnt
+    *   --invariant=noTransferFromWhileApproveInFlight --main=mempool erc20.qnt
     */
     val noTransferFromWhileApproveInFlight = {
-        val badExample = all {
-            lastTx.kind == "transferFrom",
-            lastTx.amount > 0,
-            lastTx.status == "success",
-            mempool.exists(tx => all {
-                tx.kind == "approve",
-                tx.sender == lastTx.fromAddr,
-                tx.spender == lastTx.sender,
-                tx.amount < lastTx.amount,
-                tx.amount > 0,
-            })
+        val badExample = match lastTx {
+          | None => false
+          | Some(tx) => match tx {
+            | TransferFrom(t) => and {
+              t.amount > 0,
+              t.status == Success,
+              mempool.exists(tx => match tx {
+                | Approve(a) => all {
+                    a.sender == t.fromAddr,
+                    a.spender == t.sender,
+                    a.amount < t.amount,
+                    a.amount > 0,
+                  }
+                | _ => false
+              })
+            }
+            | _ => false
+          }
         }
         not(badExample)
     }
@@ -502,17 +467,18 @@ module mempool {
         all {
             erc20State' = newErc20("alice", 91),
             mempool' = Set(),
-            lastTx' = NoneTx,
+            lastTx' = None,
         }
         // alice set a high approval for bob
-        .then(submit(ApproveTx("alice", "bob", 92)))
+        .then(submit(Approve({ status: Pending, sender: "alice", spender: "bob", amount: 92 })))
         // bob immediately initiates his transferFrom transaction
-        .then(submit(TransferFromTx("bob", "alice", "eve", 54)))
+        .then(submit(TransferFrom({ status: Pending, sender: "bob", fromAddr: "alice", toAddr: "eve", amount: 54 })))
         // alice changes her mind and lowers her approval to bob
-        .then(submit(ApproveTx("alice", "bob", 9)))
+        .then(submit(Approve({ status: Pending, sender: "alice", spender: "bob", amount: 9 })))
         // but the previous approval arrives at the ledger
-        .then(commit(ApproveTx("alice", "bob", 92)))
+        .then(commit(Approve({ status: Pending, sender: "alice", spender: "bob", amount: 92 })))
         // ...and bob manages to transfer more than alice wanted to
-        .then(commit(TransferFromTx("bob", "alice", "eve", 54)))
+        .then(commit(TransferFrom({ status: Pending, sender: "bob", fromAddr: "alice", toAddr: "eve", amount: 54 })))
+        .then(all { step, assert(not(noTransferFromWhileApproveInFlight)) })
     }
 }
