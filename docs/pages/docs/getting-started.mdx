@@ -16,7 +16,7 @@ npm i @informalsystems/quint -g
 
 ### Setup your code editor
 
-For the best experience writting Quint, you should set up your code editor with the Quint tools. The VSCode setup is, by far, the easiest, so you might want to use it if you want a quick start.
+For the best experience writing Quint, you should set up your code editor with the Quint tools. The VSCode setup is, by far, the easiest, so you might want to use it if you want a quick start.
 
 <Tabs items={['VSCode', 'Emacs', 'Vim']}>
  <Tabs.Tab>
@@ -105,16 +105,16 @@ module bank {
 }
 ```
 
-Create a `bank.qnt` file and add the contents above to it. Then, let's try to check the invariant `no_negatives`. This invariant states that none of the balances should be less then zero, ever. An invariant is something that needs to be true for all reachable states. 
+Create a `bank.qnt` file and add the contents above. Then, let's try to check the invariant `no_negatives`. This invariant states that none of the balances should ever be less than zero. An invariant is something that needs to be true for all reachable states. 
 
 ### Find a violation
 
-To look for violations of this invariant, we can use the `run` subcommand, which will simulate a bunch of executions while checking the invariant. In a terminal, whilw on the directory of this file, execute:
+To look for violations of this invariant, we can use the `run` subcommand, which will simulate a bunch of executions while checking the invariant. In a terminal, while on the directory of this file, execute:
 ```sh
 quint run bank.qnt --invariant=no_negatives
 ```
 
-This should result in a violation. You can inspect the balances and find a negative value. If you want to understand better how we got to such state, try using the `--mbt` flag, which includes additional metadata on the violation trace (usually used for testing purposes. MBT stands for Model Based Testing):
+This should result in a violation. You can inspect the balances and find a negative value. If you want to understand better how we got to such a state, try using the `--mbt` flag, which includes additional metadata on the violation trace (usually used for testing purposes. MBT stands for Model Based Testing):
 ```sh
 quint run bank.qnt --invariant=no_negatives --mbt
 ```
