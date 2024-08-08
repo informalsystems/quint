@@ -1,0 +1,3 @@
+2024-08-08T09:10:57,731 [main] INFO  a.f.a.t.Tool$ - # APALACHE version: 0.44.11 | build: 5dee24e
+2024-08-08T09:10:57,800 [main] INFO  a.f.a.t.t.o.ServerCmd - Starting server on port 8822...
+2024-08-08T09:11:01,712 [zio-default-async-1] ERROR a.f.a.s.v.RpcServer - Error while starting Apalache server: Failed to bind to address 0.0.0.0/0.0.0.0:8822: Address already in use
