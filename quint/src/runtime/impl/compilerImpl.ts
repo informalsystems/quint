@@ -159,6 +159,30 @@ export class CompilerVisitor implements IRVisitor {
     return this.errorTracker.runtimeErrors
   }
 
+  exitAssume(assume: ir.QuintAssume) {
+    const comp = this.compStack.pop()
+    if (comp === undefined) {
+      this.errorTracker.addCompileError(assume.id, 'QNT501', `No expression for ${assume.name} on compStack`)
+      return
+    }
+
+    const result = comp.eval()
+    if (result.isLeft()) {
+      this.errorTracker.addRuntimeError(assume.id, result.value)
+      return
+    }
+
+    const value = result.value.toQuintEx(zerog)
+    if (value.kind !== 'bool') {
+      this.errorTracker.addRuntimeError(assume.id, { code: 'QNT509', message: 'Assume must be a boolean expression' })
+      return
+    }
+
+    if (!value.value) {
+      this.errorTracker.addRuntimeError(assume.id, { code: 'QNT510', message: 'Assumption failed' })
+    }
+  }
+
   exitOpDef(opdef: ir.QuintOpDef) {
     // Either a runtime value, or a def, action, etc.
     // All of them are compiled to callables, which may have zero parameters.
