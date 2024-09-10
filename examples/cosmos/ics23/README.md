@@ -29,8 +29,8 @@ $ quint test ics23test.qnt
 non-membership invariants with the random simulator:
 
 ```sh
-$ quint run --invariant=nonMemInv --max-samples=1000 ics23trees.qnt
-$ quint run --invariant=memInv --max-samples=1000 ics23trees.qnt
+$ quint run --invariant=nonMemInv --max-samples=1000 treeGen.qnt
+$ quint run --invariant=memInv --max-samples=1000 treeGen.qnt
 ```
 
 If the simulator finds a violation to the above invariants, please let us know,
