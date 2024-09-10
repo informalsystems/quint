@@ -2,7 +2,8 @@
 	"name": "quint-vscode",
 	"displayName": "Quint",
 	"description": "Language support for Quint specifications",
-	"version": "0.8.0",
+	"icon": "./icons/logo.png",
+	"version": "0.14.5",
 	"publisher": "informal",
 	"engines": {
 		"vscode": "^1.52.0"
@@ -32,7 +33,11 @@
 				"extensions": [
 					".qnt"
 				],
-				"configuration": "./language-configuration.json"
+				"configuration": "./language-configuration.json",
+				"icon": {
+					"light": "./icons/logo-dark.png",
+					"dark": "./icons/logo-light.png"
+				}
 			}
 		],
 		"grammars": [

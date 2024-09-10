@@ -5,9 +5,9 @@
  *
  * Igor Konnov, Gabriela Moreira, Shon Feder, 2021-2023
  *
- * Copyright (c) Informal Systems 2021-2023. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2021-2023 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  */
 
 import { QuintType } from './quintTypes'
@@ -18,14 +18,6 @@ import { QuintType } from './quintTypes'
  */
 export interface WithId {
   id: bigint
-}
-
-/**
- * An error message that needs a source map to resolve the actual sources.
- */
-export interface IrErrorMessage {
-  explanation: string
-  refs: bigint[]
 }
 
 /**
@@ -131,7 +123,7 @@ export function isQuintBuiltin(app: QuintApp): app is QuintBuiltinApp {
 }
 
 // This should be the source of truth for all builtin opcodes
-const builtinOpCodes = [
+export const builtinOpCodes = [
   'List',
   'Map',
   'Rec',
@@ -140,10 +132,12 @@ const builtinOpCodes = [
   'actionAll',
   'actionAny',
   'allLists',
+  'allListsUpTo',
   'always',
   'and',
   'append',
   'assert',
+  'expect',
   'assign',
   'chooseSome',
   'concat',
@@ -187,6 +181,7 @@ const builtinOpCodes = [
   'length',
   'map',
   'mapBy',
+  'matchVariant',
   'mustChange',
   'neq',
   'next',
@@ -199,6 +194,7 @@ const builtinOpCodes = [
   'put',
   'q::test',
   'q::testOnce',
+  'q::debug',
   'range',
   'replaceAt',
   'reps',
@@ -216,14 +212,14 @@ const builtinOpCodes = [
   'to',
   'tuples',
   'union',
-  'unionMatch',
+  'variant',
   'weakFair',
   'with',
 ] as const
 
 export type QuintBuiltinOpcode = (typeof builtinOpCodes)[number]
 
-export interface QuintLambdaParameter extends WithId {
+export interface QuintLambdaParameter extends WithId, WithOptionalTypeAnnotation {
   /** The name of the formal parameter */
   name: string
 }
@@ -294,16 +290,20 @@ export interface QuintAssume extends WithId {
   assumption: QuintEx
 }
 
-/** QuintTypeDefs represent both type aliases and abstract types
+/** QuintTypeDefs represent declared type constructors and abstract types
  *
  * - Abstract types do not have an associated `type`
- * - Type aliases always have an associated `type`
+ * - Type constructors aliases have an associated `type` and `n >= 0` type parameters
  */
 export interface QuintTypeDef extends WithId {
   /** definition kind ('typedef') */
   kind: 'typedef'
   /** name of a type alias */
   name: string
+  /** type variables
+   *
+   *  `typeof params === 'undefined'` is taken to mean the same as `params.length === 0` */
+  params?: string[]
   /** type to associate with the alias (none for uninterpreted type) */
   type?: QuintType
 }

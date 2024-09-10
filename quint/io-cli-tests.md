@@ -24,11 +24,15 @@ We want to ensure we do not throw uncaught exceptions when the input file is
 doesn't exist.
 
 <!-- !test in non-existent file -->
-    quint parse ../examples/non-existent.file
+```
+quint parse ../examples/non-existent.file
+```
 
 <!-- !test exit 1 -->
 <!-- !test err non-existent file -->
-    error: file ../examples/non-existent.file does not exist
+```
+error: file ../examples/non-existent.file does not exist
+```
 
 ### User error on parse with junk after modules
 
@@ -37,14 +41,18 @@ We want to ensure that the parser shows an error, when it detects junk in
 the end of file.
 
 <!-- !test in junk -->
-    quint parse ./testFixture/modulesAndJunk.qnt 2>&1 | sed 's#.*quint/\(testFixture\)#Q/\1#g'
+```
+quint parse ./testFixture/modulesAndJunk.qnt 2>&1 | sed 's#.*quint/\(testFixture\)#Q/\1#g'
+```
 
 <!-- !test out junk -->
-    Q/testFixture/modulesAndJunk.qnt:9:1 - error: extraneous input 'the' expecting {<EOF>, 'module', DOCCOMMENT}
-    9: the parser
-       ^^^
+```
+Q/testFixture/modulesAndJunk.qnt:9:1 - error: [QNT000] extraneous input 'the' expecting {<EOF>, 'module', DOCCOMMENT}
+9: the parser
+   ^^^
 
-    error: parsing failed
+error: parsing failed
+```
 
 ### User error on parse with invalid input
 
@@ -171,18 +179,52 @@ Trying to unify bool and int
 error: typechecking failed
 ```
 
+## The `compile` commaind
+
+### Reports in error for invalid `--target`
+
+We pipe stderr to `tail` here. Following https://stackoverflow.com/a/52575213/1187277
+This is a clean CLI interface error, but we don't want to put the entire output
+in the test, lest it require fiddling when unrelated things are updated.
+
+<!-- !test exit 1 -->
+<!-- !test in compile to invalid target -->
+```
+quint compile --target invalidTarget ../examples/language-features/booleans.qnt 2> >(tail -1 >&2)
+```
+
+<!-- !test err compile to invalid target -->
+```
+Invalid option for --target: invalidTarget. Valid options: tlaplus, json
+```
+
+
+### Can compile `booleans.qnt` to JSON
+
+<!-- !test in compile booleans.qnt to json -->
+```
+quint compile --target json ../examples/language-features/booleans.qnt  | jq '.modules[0].name'
+```
+
+<!-- !test out compile booleans.qnt to json -->
+```
+"booleans"
+```
+
 ## Use of `repl`, `test`, and `run`
 
 ### Repl loads a file with -r
 
 <!-- !test in repl loads a file -->
 ```
-echo "import counters.*" | quint -r ../examples/language-features/counters.qnt 2>&1 | tail -n +3
+echo -e "import counters.* \n init \n n" | quint -r ../examples/language-features/counters.qnt 2>&1 | tail -n +3
 ```
 
 <!-- !test out repl loads a file -->
 ```
 >>> 
+>>> true
+>>> 1
 >>> 
 ```
 
@@ -265,6 +307,19 @@ echo -e "init\nMyF::ExportedBasics::double(2)" | quint -r ../examples/language-f
 >>> 
 ```
 
+### Repl reports proper errors for malformed expressions 
+
+<!-- !test in repl malformed expressions -->
+```
+echo -e "1 +" | quint | grep -o 'syntax error: error: \[QNT000\]'
+```
+
+<!-- !test out repl malformed expressions -->
+```
+syntax error: error: [QNT000]
+```
+
+
 ### Tests works as expected
 
 The command `test` finds failing tests and prints error messages.
@@ -287,13 +342,41 @@ exit $exit_code
   1 failed
 
   1) failingTest:
-      HOME/failingTestCounters.qnt:45:10 - error: Assertion failed
+      HOME/failingTestCounters.qnt:45:10 - error: [QNT508] Assertion failed
       45:          assert(n == 0),
     Use --seed=0x1 --match=failingTest to repeat.
 
 
   Use --verbosity=3 to show executions.
       HOME/failingTestCounters.qnt
+```
+
+### Tests are found even if they are imported in the main module
+
+<!-- !test exit 0 -->
+<!-- !test in tests are found -->
+```
+output=$(quint test --max-samples=10 --main TendermintModels ../examples/cosmos/tendermint/TendermintModels.qnt)
+exit_code=$?
+echo "$output" | sed -e 's/([0-9]*ms)/(duration)/g'
+exit $exit_code
+```
+
+<!-- !test out tests are found -->
+```
+
+  TendermintModels
+    ok TendermintModels::n4_f1::decisionTest passed 10 test(s)
+    ok TendermintModels::n4_f1::noProposeTwiceTest passed 10 test(s)
+    ok TendermintModels::n4_f1::timeoutProposeTest passed 10 test(s)
+    ok TendermintModels::n4_f2::decisionTest passed 10 test(s)
+    ok TendermintModels::n4_f2::noProposeTwiceTest passed 10 test(s)
+    ok TendermintModels::n4_f2::timeoutProposeTest passed 10 test(s)
+    ok TendermintModels::n5_f2::decisionTest passed 10 test(s)
+    ok TendermintModels::n5_f2::noProposeTwiceTest passed 10 test(s)
+    ok TendermintModels::n5_f2::timeoutProposeTest passed 10 test(s)
+
+  9 passing (duration)
 ```
 
 ### test counters produces no execution
@@ -319,11 +402,14 @@ exit $exit_code
   1 failed
 
   1) failingTest:
-      HOME/failingTestCounters.qnt:45:10 - error: Assertion failed
+      HOME/failingTestCounters.qnt:45:10 - error: [QNT508] Assertion failed
       45:          assert(n == 0),
 
 [Frame 0]
-init() => true
+init => true
+
+[Frame 1]
+_ => none
 
     Use --seed=0x1 --match=failingTest to repeat.
 ```
@@ -362,6 +448,40 @@ Use --verbosity=3 to show executions.
 error: Invariant violated
 ```
 
+### Run finds an invariant violation with metadata
+
+The command `run` finds an invariant violation and outputs metadata for MBT, when given the `--mbt` flag.
+
+<!-- !test in run finds violation with metadata -->
+```
+output=$(quint run --seed=0x308623f2a48e7 --mbt --max-steps=4 \
+  --invariant='n < 10' ../examples/language-features/counters.qnt 2>&1)
+exit_code=$?
+echo "$output" | sed -e 's/([0-9]*ms)/(duration)/g' -e 's#^.*counters.qnt#      HOME/counters.qnt#g'
+exit $exit_code
+```
+
+<!-- !test exit 1 -->
+<!-- !test out run finds violation with metadata -->
+```
+An example execution:
+
+[State 0] { action_taken: "init", n: 1, nondet_picks: {  } }
+
+[State 1] { action_taken: "OnPositive", n: 2, nondet_picks: {  } }
+
+[State 2] { action_taken: "OnPositive", n: 3, nondet_picks: {  } }
+
+[State 3] { action_taken: "OnDivByThree", n: 6, nondet_picks: {  } }
+
+[State 4] { action_taken: "OnDivByThree", n: 12, nondet_picks: {  } }
+
+[violation] Found an issue (duration).
+Use --seed=0x308623f2a48e7 to reproduce.
+Use --verbosity=3 to show executions.
+error: Invariant violated
+```
+
 ### Run finds an example
 
 The command `run` finds an example.
@@ -388,6 +508,7 @@ An example execution:
 [State 4] { n: 12 }
 
 [ok] No violation found (duration).
+Use --seed=0x11 to reproduce.
 You may increase --max-samples and --max-steps.
 Use --verbosity to produce more (or less) output.
 ```
@@ -399,7 +520,7 @@ This is a regression test for #648.
 <!-- !test in repl evaluates coin -->
 ```
 cat <<EOF \
-  | quint -r ../examples/solidity/Coin/coin.qnt::coin 2>&1 \
+  | quint -r ../examples/tutorials/coin.qnt::coin 2>&1 \
   | tail -n +3
 init
 balances
@@ -420,7 +541,7 @@ The command `run` finds an overflow in Coin.
 <!-- !test in run finds overflow -->
 ```
 output=$(quint run --max-steps=5 --seed=0x1e352e160ffa12 --invariant=totalSupplyDoesNotOverflowInv \
-  ../examples/solidity/Coin/coin.qnt 2>&1)
+  ../examples/tutorials/coin.qnt 2>&1)
 exit_code=$?
 echo "$output" | sed -e 's/([0-9]*ms)/(duration)/g' -e 's#^.*coin.qnt#      HOME/coin.qnt#g'
 exit $exit_code
@@ -444,10 +565,10 @@ An example execution:
     Map(
       "alice" -> 0,
       "bob" -> 0,
-      "charlie" ->
-        44102953916667308628507282398473780107575312859495896164716387801811669677303,
+      "charlie" -> 0,
       "eve" -> 0,
-      "null" -> 0
+      "null" ->
+        47468303772350480796754932551497789850659553878128630540503207933116325625281
     ),
   minter: "alice"
 }
@@ -458,17 +579,17 @@ An example execution:
     Map(
       "alice" -> 0,
       "bob" -> 0,
-      "charlie" ->
-        44102953916667308628507282398473780107575312859495896164716387801811669677303,
-      "eve" -> 0,
+      "charlie" -> 0,
+      "eve" ->
+        86701019854146491074035808072771270690110858489697827845755906419340818387504,
       "null" ->
-        106908608291568456374887716989928730685737039774957994870160634616776887554850
+        47468303772350480796754932551497789850659553878128630540503207933116325625281
     ),
   minter: "alice"
 }
 
 [violation] Found an issue (duration).
-Use --seed=0x1e352e160ffa12 to reproduce.
+Use --seed=0x1e352e160ffbb3 to reproduce.
 Use --verbosity=3 to show executions.
 error: Invariant violated
 ```
@@ -482,7 +603,7 @@ The command `run` finds an overflow in Coin and shows the operator calls.
 output=$(quint run --max-steps=5 --seed=0x1786e678d45fe0 \
   --invariant=totalSupplyDoesNotOverflowInv \
   --verbosity=3 \
-  ../examples/solidity/Coin/coin.qnt 2>&1)
+  ../examples/tutorials/coin.qnt 2>&1)
 exit_code=$?
 echo "$output" | sed -e 's/([0-9]*ms)/(duration)/g' -e 's#^.*coin.qnt#      HOME/coin.qnt#g'
 exit $exit_code
@@ -494,34 +615,32 @@ exit $exit_code
 An example execution:
 
 [Frame 0]
-q::initAndInvariant() => true
-├─ q::init() => true
-│  └─ init() => true
+q::initAndInvariant => true
+├─ init => true
 └─ isUInt(0) => true
 
 [State 0]
 {
   balances:
     Map("alice" -> 0, "bob" -> 0, "charlie" -> 0, "eve" -> 0, "null" -> 0),
-  minter: "bob"
+  minter: "alice"
 }
 
 [Frame 1]
-q::stepAndInvariant() => true
-├─ q::step() => true
-│  └─ step() => true
-│     └─ mint(
-│          "bob",
-│          "null",
-│          65338262739825284111745959589547129900185534924167607765304796328491174113858
-│        ) => true
-│        ├─ require(true) => true
-│        └─ require(true) => true
-│           └─ isUInt(
-│                65338262739825284111745959589547129900185534924167607765304796328491174113858
-│              ) => true
+q::stepAndInvariant => true
+├─ step => true
+│  └─ mint(
+│       "alice",
+│       "eve",
+│       33944027745092921485394061592130395256199599638916782090017603421409072478812
+│     ) => true
+│     ├─ require(true) => true
+│     └─ require(true) => true
+│        └─ isUInt(
+│             33944027745092921485394061592130395256199599638916782090017603421409072478812
+│           ) => true
 └─ isUInt(
-     65338262739825284111745959589547129900185534924167607765304796328491174113858
+     33944027745092921485394061592130395256199599638916782090017603421409072478812
    ) => true
 
 [State 1]
@@ -531,33 +650,28 @@ q::stepAndInvariant() => true
       "alice" -> 0,
       "bob" -> 0,
       "charlie" -> 0,
-      "eve" -> 0,
-      "null" ->
-        65338262739825284111745959589547129900185534924167607765304796328491174113858
+      "eve" ->
+        33944027745092921485394061592130395256199599638916782090017603421409072478812,
+      "null" -> 0
     ),
-  minter: "bob"
+  minter: "alice"
 }
 
 [Frame 2]
-q::stepAndInvariant() => true
-├─ q::step() => true
-│  └─ step() => true
-│     └─ send(
-│          "null",
-│          "charlie",
-│          27846403266649766800055905337678576473819522457314621838114493230792952096574
-│        ) => true
-│        ├─ require(true) => true
-│        ├─ require(true) => true
-│        │  └─ isUInt(
-│        │       37491859473175517311690054251868553426366012466852985927190303097698222017284
-│        │     ) => true
-│        └─ require(true) => true
-│           └─ isUInt(
-│                27846403266649766800055905337678576473819522457314621838114493230792952096574
-│              ) => true
+q::stepAndInvariant => true
+├─ step => true
+│  └─ mint(
+│       "alice",
+│       "eve",
+│       37478542505835205046968520025158070945751003972871720238447843997511300995974
+│     ) => true
+│     ├─ require(true) => true
+│     └─ require(true) => true
+│        └─ isUInt(
+│             71422570250928126532362581617288466201950603611788502328465447418920373474786
+│           ) => true
 └─ isUInt(
-     65338262739825284111745959589547129900185534924167607765304796328491174113858
+     71422570250928126532362581617288466201950603611788502328465447418920373474786
    ) => true
 
 [State 2]
@@ -566,31 +680,29 @@ q::stepAndInvariant() => true
     Map(
       "alice" -> 0,
       "bob" -> 0,
-      "charlie" ->
-        27846403266649766800055905337678576473819522457314621838114493230792952096574,
-      "eve" -> 0,
-      "null" ->
-        37491859473175517311690054251868553426366012466852985927190303097698222017284
+      "charlie" -> 0,
+      "eve" ->
+        71422570250928126532362581617288466201950603611788502328465447418920373474786,
+      "null" -> 0
     ),
-  minter: "bob"
+  minter: "alice"
 }
 
 [Frame 3]
-q::stepAndInvariant() => true
-├─ q::step() => true
-│  └─ step() => true
-│     └─ mint(
-│          "bob",
-│          "bob",
-│          78309058398957644239556030729021834730669174305685174769880015395650570612692
-│        ) => true
-│        ├─ require(true) => true
-│        └─ require(true) => true
-│           └─ isUInt(
-│                78309058398957644239556030729021834730669174305685174769880015395650570612692
-│              ) => true
+q::stepAndInvariant => false
+├─ step => true
+│  └─ mint(
+│       "alice",
+│       "null",
+│       109067983118832076063755963802104322727953985633488183463930115464609414175363
+│     ) => true
+│     ├─ require(true) => true
+│     └─ require(true) => true
+│        └─ isUInt(
+│             109067983118832076063755963802104322727953985633488183463930115464609414175363
+│           ) => true
 └─ isUInt(
-     143647321138782928351301990318568964630854709229852782535184811724141744726550
+     180490553369760202596118545419392788929904589245276685792395562883529787650149
    ) => false
 
 [State 3]
@@ -598,19 +710,18 @@ q::stepAndInvariant() => true
   balances:
     Map(
       "alice" -> 0,
-      "bob" ->
-        78309058398957644239556030729021834730669174305685174769880015395650570612692,
-      "charlie" ->
-        27846403266649766800055905337678576473819522457314621838114493230792952096574,
-      "eve" -> 0,
+      "bob" -> 0,
+      "charlie" -> 0,
+      "eve" ->
+        71422570250928126532362581617288466201950603611788502328465447418920373474786,
       "null" ->
-        37491859473175517311690054251868553426366012466852985927190303097698222017284
+        109067983118832076063755963802104322727953985633488183463930115464609414175363
     ),
-  minter: "bob"
+  minter: "alice"
 }
 
 [violation] Found an issue (duration).
-Use --seed=0x1786e678d45fe0 to reproduce.
+Use --seed=0x1786e678d460fe to reproduce.
 Use --verbosity=3 to show executions.
 error: Invariant violated
 ```
@@ -621,7 +732,7 @@ error: Invariant violated
 ```
 quint run --out-itf=out-itf-example.itf.json --max-steps=5 --seed=123 \
   --invariant=totalSupplyDoesNotOverflowInv \
-  ../examples/solidity/Coin/coin.qnt
+  ../examples/tutorials/coin.qnt
 cat out-itf-example.itf.json | jq '.states[0]."balances"."#map"[0]'
 rm out-itf-example.itf.json
 ```
@@ -630,21 +741,145 @@ rm out-itf-example.itf.json
 ```
 [
   "alice",
-  0
+  {
+    "#bigint": "0"
+  }
 ]
+```
+
+### Run outputs ITF with metadata
+
+<!-- !test in run itf with metadata -->
+```
+quint run --out-itf=out-itf-mbt-example.itf.json --max-steps=5 --seed=123 \
+  --invariant=totalSupplyDoesNotOverflowInv --mbt\
+  ../examples/tutorials/coin.qnt
+cat out-itf-mbt-example.itf.json | jq '.states[1]'
+rm out-itf-mbt-example.itf.json
+```
+
+<!-- !test out run itf with metadata -->
+```
+{
+  "#meta": {
+    "index": 1
+  },
+  "action_taken": "mint",
+  "balances": {
+    "#map": [
+      [
+        "alice",
+        {
+          "#bigint": "0"
+        }
+      ],
+      [
+        "bob",
+        {
+          "#bigint": "0"
+        }
+      ],
+      [
+        "charlie",
+        {
+          "#bigint": "49617995555028370892926474303042238797407019137772330780016167115018841762373"
+        }
+      ],
+      [
+        "eve",
+        {
+          "#bigint": "0"
+        }
+      ],
+      [
+        "null",
+        {
+          "#bigint": "0"
+        }
+      ]
+    ]
+  },
+  "minter": "bob",
+  "nondet_picks": {
+    "amount": {
+      "tag": "Some",
+      "value": {
+        "#bigint": "49617995555028370892926474303042238797407019137772330780016167115018841762373"
+      }
+    },
+    "receiver": {
+      "tag": "Some",
+      "value": "charlie"
+    },
+    "sender": {
+      "tag": "Some",
+      "value": "bob"
+    }
+  }
+}
+```
+
+### Run without violation outputs ITF
+
+<!-- !test in successful run itf -->
+```
+quint run --out-itf=out-itf-example.itf.json --max-steps=5 --seed=123  ../examples/tutorials/coin.qnt
+cat out-itf-example.itf.json | jq '.states[0]."balances"."#map"[0]'
+rm out-itf-example.itf.json
+```
+
+<!-- !test out successful run itf -->
+```
+[
+  "alice",
+  {
+    "#bigint": "0"
+  }
+]
+```
+
+### Run to generate multiple ITF traces
+
+<!-- !test in run with n-traces itf -->
+```
+quint run --out-itf=out-itf-example.itf.json --n-traces=3 --max-steps=5 --seed=123  ../examples/tutorials/coin.qnt
+cat out-itf-example0.itf.json | jq '.["#meta"].status'
+rm out-itf-example*.itf.json
+```
+
+<!-- !test out run with n-traces itf -->
+```
+"ok"
+```
+
+### Run to generate multiple ITF traces with violation
+
+<!-- !test in run with n-traces itf violation -->
+```
+quint run --out-itf=out-itf-example.itf.json --n-traces=3 --max-steps=5 --seed=123  ../examples/tutorials/coin.qnt \
+   --invariant=totalSupplyDoesNotOverflowInv 
+cat out-itf-example0.itf.json | jq '.["#meta"].status'
+cat out-itf-example1.itf.json | jq '.["#meta"].status'
+cat out-itf-example2.itf.json | jq '.["#meta"].status'
+rm out-itf-example*.itf.json
+```
+
+<!-- !test out run with n-traces itf violation -->
+```
+"violation"
+"violation"
+"violation"
 ```
 
 ### Test outputs ITF
 
-TODO: output states after fix: https://github.com/informalsystems/quint/issues/288
-
 <!-- !test in test itf -->
 ```
-output=$(quint test --output='coin_{#}_{}.itf.json' \
-  ../examples/solidity/Coin/coin.qnt)
+output=$(quint test --out-itf='coin_{seq}_{test}.itf.json' \
+  ../examples/tutorials/coin.qnt)
 exit_code=$?
 echo "$output" | sed -e 's/([0-9]*ms)/(duration)/g' -e 's#^.*coin.qnt#      HOME/coin.qnt#g'
-cat coin_0_sendWithoutMintTest.itf.json | jq '.states'
+cat coin_0_sendWithoutMintTest.itf.json | jq '.states[0]."balances"."#map"'
 rm coin_0_sendWithoutMintTest.itf.json
 cat coin_1_mintSendTest.itf.json | jq '.states[0]."balances"."#map"'
 rm coin_1_mintSendTest.itf.json
@@ -659,30 +894,100 @@ exit $exit_code
     ok mintSendTest passed 10000 test(s)
 
   2 passing (duration)
-[]
 [
   [
     "alice",
-    0
+    {
+      "#bigint": "0"
+    }
   ],
   [
     "bob",
-    0
+    {
+      "#bigint": "0"
+    }
   ],
   [
     "charlie",
-    0
+    {
+      "#bigint": "0"
+    }
   ],
   [
     "eve",
-    0
+    {
+      "#bigint": "0"
+    }
   ],
   [
     "null",
-    0
+    {
+      "#bigint": "0"
+    }
+  ]
+]
+[
+  [
+    "alice",
+    {
+      "#bigint": "0"
+    }
+  ],
+  [
+    "bob",
+    {
+      "#bigint": "0"
+    }
+  ],
+  [
+    "charlie",
+    {
+      "#bigint": "0"
+    }
+  ],
+  [
+    "eve",
+    {
+      "#bigint": "0"
+    }
+  ],
+  [
+    "null",
+    {
+      "#bigint": "0"
+    }
   ]
 ]
 ```
+
+### Test does not skip assignments (#1133)
+
+See: https://github.com/informalsystems/quint/issues/1133
+
+FIXME: fix the traces found by the simulator once #1133 is resolved.
+
+<!-- !test in test1133 -->
+```
+output=$(quint test --match='(t1|t2)' --out-itf='out_{seq}_{test}.itf.json' \
+  ./testFixture/simulator/lastActionInRun.qnt)
+exit_code=$?
+echo "BEGIN"
+# This test should have 3 states (FIXME: it does not!)
+cat out_0_t1.itf.json | jq '.states' | grep "s" | wc -l | grep 3
+rm out_0_t1.itf.json
+# This test should have 4 states (FIXME: it does not!)
+cat out_1_t2.itf.json | jq '.states' | grep "s" | wc -l | grep 4
+rm out_1_t2.itf.json
+echo "END"
+exit $exit_code
+```
+
+<!-- !test out test1133 -->
+```
+BEGIN
+END
+```
+FIX THE TEST ABOVE: it should have 3 and 4
 
 ### OK REPL tutorial
 
@@ -690,9 +995,12 @@ The REPL tutorial is reproducible in REPL.
 
 <!-- !test check REPL tutorial -->
 ```
+cd ../examples/tutorials/repl/
+make
 quint -q -r \
-  ../tutorials/repl/kettle.qnt::kettle <../tutorials/repl/replTestIn.txt \
-    | diff - ../tutorials/repl/replTestOut.txt
+  kettle.qnt::kettle < replTestIn.txt \
+    | diff - replTestOut.txt
+cd - > /dev/null
 ```
 
 ### test --verbosity=3 outputs a trace
@@ -700,8 +1008,8 @@ quint -q -r \
 <!-- !test exit 1 -->
 <!-- !test in verbose test -->
 ```
-output=$(quint test --seed=0x1cce8452305113 --match=mintTwiceThenSendError \
-  --verbosity=3 ../examples/solidity/Coin/coin.qnt)
+output=$(quint test --seed=0x1286bf2e1dacb3 --match=mintTwiceThenSendError \
+  --verbosity=3 ../examples/tutorials/coin.qnt)
 exit_code=$?
 echo "$output" | sed -e 's/([0-9]*ms)/(duration)/g' -e 's#^.*coin.qnt#      HOME/coin.qnt#g'
 exit $exit_code
@@ -716,53 +1024,53 @@ exit $exit_code
   1 failed
 
   1) mintTwiceThenSendError:
-      HOME/coin.qnt:176:5 - error: mintTwiceThenSendError returns false
+      HOME/coin.qnt:176:5 - error: [QNT511] Test mintTwiceThenSendError returned false
       176:     run mintTwiceThenSendError = {
 
 [Frame 0]
-init() => true
+init => true
 
 [Frame 1]
 mint(
+  "bob",
   "eve",
-  "eve",
-  73435308175381280179895447726690458129319530672748326532002365461395069401291
+  74252675173190743514494160784973331842148624838292266741626378055869698233769
 ) => true
 ├─ require(true) => true
 └─ require(true) => true
    └─ isUInt(
-        73435308175381280179895447726690458129319530672748326532002365461395069401291
+        74252675173190743514494160784973331842148624838292266741626378055869698233769
       ) => true
 
 [Frame 2]
 mint(
-  "eve",
   "bob",
-  99734648034668586428235027805035599638068011144525474004474309631475456844332
+  "bob",
+  97700478479458321253548605902971263977055085704583752584562220159652816914987
 ) => true
 ├─ require(true) => true
 └─ require(true) => true
    └─ isUInt(
-        99734648034668586428235027805035599638068011144525474004474309631475456844332
+        97700478479458321253548605902971263977055085704583752584562220159652816914987
       ) => true
 
 [Frame 3]
 send(
   "eve",
   "bob",
-  31114836464924134533662521748469381767604427020159348918484988427058728862690
+  47769583726968424739901588588333904197787985995488944788698867328177315688645
 ) => false
 ├─ require(true) => true
 ├─ require(true) => true
 │  └─ isUInt(
-│       42320471710457145646232925978221076361715103652588977613517377034336340538601
+│       26483091446222318774592572196639427644360638842803321952927510727692382545124
 │     ) => true
 └─ require(false) => false
    └─ isUInt(
-        130849484499592720961897549553504981405672438164684822922959298058534185707022
+        145470062206426745993450194491305168174843071700072697373261087487830132603632
       ) => false
 
-    Use --seed=0x1cce8452305113 --match=mintTwiceThenSendError to repeat.
+    Use --seed=0x1286bf2e1dacb3 --match=mintTwiceThenSendError to repeat.
 ```
 
 ### test fails on invalid seed
@@ -770,7 +1078,7 @@ send(
 <!-- !test exit 1 -->
 <!-- !test in test invalid seed -->
 ```
-output=$(quint test --seed=NotANumber ../examples/solidity/Coin/coin.qnt)
+output=$(quint test --seed=NotANumber ../examples/tutorials/coin.qnt)
 exit_code=$?
 echo "$output" | sed -e 's/([0-9]*ms)/(duration)/g' -e 's#^.*coin.qnt#      HOME/coin.qnt#g'
 exit $exit_code
@@ -786,7 +1094,7 @@ error: --seed must be a big integer, found: NotANumber
 <!-- !test exit 1 -->
 <!-- !test in run invalid seed -->
 ```
-output=$(quint run --seed=NotANumber ../examples/solidity/Coin/coin.qnt)
+output=$(quint run --seed=NotANumber ../examples/tutorials/coin.qnt)
 exit_code=$?
 echo "$output" | sed -e 's/([0-9]*ms)/(duration)/g' -e 's#^.*coin.qnt#      HOME/coin.qnt#g'
 exit $exit_code
@@ -828,9 +1136,9 @@ echo -e "A1::f(1)\nA2::f(1)" | quint -r ../examples/language-features/instances.
 
 <!-- !test in test compile error -->
 ```
-output=$(quint test testFixture/_1040compileError.qnt 2>&1)
+output=$(quint test testFixture/_1040compileError.qnt --seed=1 2>&1)
 exit_code=$?
-echo "$output" | sed -e 's#^.*_1040compileError.qnt#      HOME/_1040compileError.qnt#g'
+echo "$output" | sed -E 's#(/[^ ]*/)_1040compileError.qnt#HOME/_1040compileError.qnt#g'
 exit $exit_code
 ```
 
@@ -839,14 +1147,18 @@ exit $exit_code
 ```
 
   _1040compileError
-      HOME/_1040compileError.qnt:2:3 - error: QNT500: Uninitialized const n. Use: import <moduleName>(n=<value>).*
-2:   const n: int
-     ^^^^^^^^^^^^
+    1) myTest failed after 1 test(s)
 
-      HOME/_1040compileError.qnt:5:12 - error: Name n not found
-5:     assert(n > 0)
-              ^
+  1 failed
 
+  1) myTest:
+      HOME/_1040compileError.qnt:5:12 - error: [QNT500] Uninitialized const n. Use: import <moduleName>(n=<value>).*
+      5:     assert(n > 0)
+    Use --seed=0x1 --match=myTest to repeat.
+
+
+  Use --verbosity=3 to show executions.
+  Further debug with: quint test --verbosity=3 testFixture/_1040compileError.qnt
 error: Tests failed
 ```
 
@@ -857,20 +1169,240 @@ error: Tests failed
 output=$(quint run testFixture/_1041compileConst.qnt 2>&1)
 exit_code=$?
 echo "$output" | sed -e 's/([0-9]*ms)/(duration)/g' \
-  -e 's#^.*_1041compileConst.qnt#      HOME/_1041compileConst.qnt#g'
+  -e 's#^.*_1041compileConst.qnt#HOME/_1041compileConst.qnt#g'
 exit $exit_code
 ```
 
 <!-- !test exit 1 -->
 <!-- !test out run uninitialized -->
 ```
-<module_input>:2:3 - error: QNT500: Uninitialized const N. Use: import <moduleName>(N=<value>).*
-2:   const N: int
-     ^^^^^^^^^^^^
-
-<module_input>:5:24 - error: Name N not found
+HOME/_1041compileConst.qnt:5:24 - error: [QNT500] Uninitialized const N. Use: import <moduleName>(N=<value>).*
 5:   action init = { x' = N }
                           ^
 
-error: run failed
+error: Runtime error
+```
+
+### Repl keeps right track of variables from instances
+
+Incremental evaluation from the REPL interacting with instance flattening leads to state variables having different IDs on separate evaluations. This test ensures this case is well handled during evaluation.
+
+<!-- !test in repl with instance vars -->
+
+```
+cd ../examples/cosmos/tendermint/
+output=$(echo -e "n4_f1::Init\nn4_f1::round" | quint -r TendermintModels.qnt::TendermintModels 2>&1 | tail -n +3)
+exit_code=$?
+cd - > /dev/null
+echo "$output"
+exit $exit_code
+```
+
+<!-- !test out repl with instance vars -->
+
+```
+>>> true
+>>> Map("p1" -> 0, "p2" -> 0, "p3" -> 0)
+>>> 
+```
+
+### Invoking `q::debug` in REPL prints values to stdout
+
+<!-- !test in repl debug prints value to stdout and returns value -->
+
+```
+echo 'q::debug("value:", { foo: 42, bar: "Hello, World!" })' | quint | tail -n +3
+```
+
+<!-- !test out repl debug prints value to stdout and returns value -->
+```
+>>> > value: { bar: "Hello, World!", foo: 42 }
+{ bar: "Hello, World!", foo: 42 }
+>>> 
+```
+
+### REPL continues to work after missing name errors
+
+<!-- !test in repl works after name error -->
+
+```
+echo -e 'inexisting_name\n1 + 1' | quint -q
+```
+
+<!-- !test out repl works after name error -->
+```
+static analysis error: error: [QNT404] Name 'inexisting_name' not found
+inexisting_name
+^^^^^^^^^^^^^^^
+
+2
+
+```
+
+### REPL continues to work after conflicting definitions
+
+Regression for https://github.com/informalsystems/quint/issues/434
+
+<!-- !test in repl works after conflict -->
+```
+echo -e 'def farenheit(celsius) = celsius * 9 / 5 + 32\ndef farenheit(celsius) = celsius * 9 / 5 + 32\nfarenheit(1)' | quint -q
+```
+
+<!-- !test out repl works after conflict -->
+```
+
+static analysis error: error: [QNT101] Conflicting definitions found for name 'farenheit' in module '__repl__'
+def farenheit(celsius) = celsius * 9 / 5 + 32
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+static analysis error: error: [QNT101] Conflicting definitions found for name 'farenheit' in module '__repl__'
+def farenheit(celsius) = celsius * 9 / 5 + 32
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+33
+
+```
+
+### REPL continues to work after type errors
+
+<!-- !test in repl works after type errors -->
+```
+echo -e 'def foo = 1 + "a"\nfoo\n1 + "a"\n1 + 1' | quint -q
+```
+
+<!-- !test out repl works after type errors -->
+```
+static analysis error: error: [QNT000] Couldn't unify int and str
+Trying to unify int and str
+Trying to unify (int, int) => int and (int, str) => _t0
+
+def foo = 1 + "a"
+          ^^^^^^^
+
+static analysis error: error: [QNT404] Name 'foo' not found
+foo
+^^^
+
+static analysis error: error: [QNT000] Couldn't unify int and str
+Trying to unify int and str
+Trying to unify (int, int) => int and (int, str) => _t0
+
+1 + "a"
+^^^^^^^
+
+2
+
+```
+
+
+
+### Errors are reported in the right file
+
+File `ImportFileWithError.qnt` has no error, but it imports a module from file `FileWithError.qnt`, which has a type error. The error should be reported only in `FileWithError.qnt`.
+
+<!-- !test in error for file -->
+```
+quint typecheck ./testFixture/typechecking/ImportFileWithError.qnt 2>&1 | sed 's#.*quint/\(testFixture\)#HOME/\1#g'
+```
+
+<!-- !test out error for file -->
+```
+HOME/testFixture/typechecking/FileWithError.qnt:2:3 - error: [QNT000] Couldn't unify bool and int
+Trying to unify bool and int
+
+2:   val a: int = true
+     ^^^^^^^^^^^^^^^^^
+
+error: typechecking failed
+```
+
+### run fails on invalid module
+
+<!-- !test exit 1 -->
+<!-- !test in run invalid module -->
+```
+quint run --main=invalid ./testFixture/_1050diffName.qnt
+```
+
+<!-- !test err run invalid module -->
+```
+error: [QNT405] Main module invalid not found
+error: Argument error
+```
+
+### test fails on invalid module
+
+<!-- !test exit 1 -->
+<!-- !test in test invalid module -->
+```
+quint test --main=invalid ./testFixture/_1050diffName.qnt
+```
+
+<!-- !test err test invalid module -->
+```
+error: [QNT405] Main module invalid not found
+error: Argument error
+```
+
+### Multiple tests output different json
+
+See [#1264](https://github.com/informalsystems/quint/pull/1264).
+
+<!-- !test in multiple jsons -->
+```
+quint test --out-itf {test}.itf.json ./testFixture/_1051manyTests.qnt >/dev/null
+cat firstTest.itf.json secondTest.itf.json | jq -c .states
+rm firstTest.itf.json secondTest.itf.json
+```
+
+<!-- !test out multiple jsons -->
+```
+[{"#meta":{"index":0},"x":{"#bigint":"0"}},{"#meta":{"index":1},"x":{"#bigint":"1"}}]
+[{"#meta":{"index":0},"x":{"#bigint":"0"}},{"#meta":{"index":1},"x":{"#bigint":"2"}}]
+```
+
+### Variants are supported in ITF
+
+See [#1281](https://github.com/informalsystems/quint/issues/1281)
+
+<!-- !test in variants in itf -->
+```
+quint test --out-itf {test}.itf.json ./testFixture/_1054sumTypesInItf.qnt >/dev/null
+cat xTest.itf.json | jq -c .states
+rm xTest.itf.json
+```
+
+<!-- !test out variants in itf -->
+```
+[{"#meta":{"index":0},"x":{"tag":"None","value":{"#tup":[]}}},{"#meta":{"index":1},"x":{"tag":"Some","value":{"#bigint":"1"}}},{"#meta":{"index":2},"x":{"tag":"Some","value":{"#bigint":"2"}}}]
+```
+
+### FAIL on parsing filenames with different casing
+
+<!-- !test exit 1 -->
+<!-- !test in parse case sensitive filenames -->
+```
+output=$(quint parse testFixture/_1060case.qnt 2>&1)
+exit_code=$?
+# assuming that our test setup does not introduce spaces in filenames
+echo "$output" | sed -e 's#[^ ]*/\([^/]*\).qnt#      HOME/\1.qnt#g'
+exit $exit_code
+```
+
+<!-- !test out parse case sensitive filenames -->
+```
+      HOME/_1060case.qnt:3:3 - error: [QNT408] Importing two files that only differ in case:       HOME/_1022importee2.qnt vs.       HOME/_1022IMPORTEE2.qnt. Choose one way.
+3:   import importee2 as I from "_1022IMPORTEE2"
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+      HOME/_1060case.qnt:2:3 - error: [QNT405] Module 'importee2' not found
+2:   import importee2 as i from "_1022importee2"
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+      HOME/_1060case.qnt:3:3 - error: [QNT405] Module 'importee2' not found
+3:   import importee2 as I from "_1022IMPORTEE2"
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: parsing failed
 ```

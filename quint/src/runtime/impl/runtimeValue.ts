@@ -53,25 +53,24 @@
  * whole new layer of abstraction. However, it is deeply rooted in the
  * semantics of Quint, which, similar to TLA+, heavily utilizes set operators.
  *
- * Igor Konnov, 2022
+ * Igor Konnov, Gabriela Moreira 2022-2024
  *
- * Copyright (c) Informal Systems 2022. All rights reserved. Licensed under
- * the Apache 2.0. See License.txt in the project root for license
- * information.
+ * Copyright 2022-2024 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  */
 
-import { List, Map, OrderedMap, Set, ValueObject, hash, is as immutableIs } from 'immutable'
+import { Map as ImmutableMap, List, OrderedMap, Set, ValueObject, hash, is as immutableIs } from 'immutable'
 import { Maybe, just, merge, none } from '@sweet-monads/maybe'
 import { strict as assert } from 'assert'
 
-import { IdGenerator } from '../../idGenerator'
+import { IdGenerator, zerog } from '../../idGenerator'
 import { expressionToString } from '../../ir/IRprinting'
-
-import { Callable, EvalResult } from '../runtime'
-import { QuintEx } from '../../ir/quintIr'
-
-/** The default entry point of this module */
-export default rv
+import { QuintEx, QuintLambdaParameter, QuintName } from '../../ir/quintIr'
+import { QuintError, quintErrorToString } from '../../quintError'
+import { Either, left, mergeInMany, right } from '@sweet-monads/either'
+import { EvalFunction } from './builder'
+import { Context, Register } from './Context'
 
 /**
  * A factory of runtime values that should be used to instantiate new values.
@@ -93,8 +92,8 @@ export const rv = {
    * @param value an integer value
    * @return a new runtime value that carries the integer value
    */
-  mkInt: (value: bigint): RuntimeValue => {
-    return new RuntimeValueInt(value)
+  mkInt: (value: bigint | number): RuntimeValue => {
+    return new RuntimeValueInt(BigInt(value))
   },
 
   /**
@@ -138,6 +137,16 @@ export const rv = {
   },
 
   /**
+   * Make a runtime value that represents a variant value of a sum type.
+   *
+   * @param label a string reperenting the variant's label
+   * @param value the value held by the variant
+   * @return a new runtime value that represents the variant
+   */
+  mkVariant: (label: string, value: RuntimeValue): RuntimeValue => {
+    return new RuntimeValueVariant(label, value)
+  },
+  /**
    * Make a runtime value that represents a map.
    *
    * @param value an iterable collection of pairs of runtime values
@@ -146,7 +155,7 @@ export const rv = {
   mkMap: (elems: Iterable<[RuntimeValue, RuntimeValue]>): RuntimeValue => {
     // convert the keys to the normal form, as they are hashed
     const arr: [RuntimeValue, RuntimeValue][] = Array.from(elems).map(([k, v]) => [k.normalForm(), v])
-    return new RuntimeValueMap(Map(arr))
+    return new RuntimeValueMap(ImmutableMap(arr))
   },
 
   /**
@@ -155,7 +164,7 @@ export const rv = {
    * @param value an iterable collection of pairs of runtime values
    * @return a new runtime value that carries the map
    */
-  fromMap: (map: Map<RuntimeValue, RuntimeValue>): RuntimeValue => {
+  fromMap: (map: ImmutableMap<RuntimeValue, RuntimeValue>): RuntimeValue => {
     // convert the keys to the normal form, as they are hashed
     return new RuntimeValueMap(map)
   },
@@ -198,8 +207,8 @@ export const rv = {
    * @param last the maximal poitn of the interval (inclusive)
    * @return a new runtime value that the interval
    */
-  mkInterval: (first: bigint, last: bigint): RuntimeValue => {
-    return new RuntimeValueInterval(first, last)
+  mkInterval: (first: bigint | number, last: bigint | number): RuntimeValue => {
+    return new RuntimeValueInterval(BigInt(first), BigInt(last))
   },
 
   /**
@@ -236,14 +245,51 @@ export const rv = {
   /**
    * Make a runtime value that represents a lambda.
    *
-   * @param nparams the number of lambda parameters
-   * @param callable a callable that evaluates the lambda
+   * @param params the lambda parameters
+   * @param body the lambda body expression
    * @returns a runtime value of lambda
    */
-  mkLambda: (nparams: number, callable: Callable) => {
-    return new RuntimeValueLambda(nparams, callable)
+  mkLambda: (params: QuintLambdaParameter[], body: EvalFunction, paramRegistry: Map<bigint, Register>) => {
+    const registers = params.map(param => {
+      const register = paramRegistry.get(param.id)!
+      if (!register) {
+        const reg: Register = { value: left({ code: 'QNT501', message: `Parameter ${param.name} not set` }) }
+        paramRegistry.set(param.id, reg)
+        return reg
+      }
+
+      return register
+    })
+
+    return new RuntimeValueLambda(body, registers)
+  },
+
+  /**
+   * Make a runtime value from a quint expression.
+   * @param ex - the Quint expression
+   * @returns a runtime value for the expression
+   */
+  fromQuintEx: (ex: QuintEx): RuntimeValue => {
+    const v = fromQuintEx(ex)
+    if (v.isJust()) {
+      return v.value
+    } else {
+      throw new Error(`Cannot convert ${expressionToString(ex)} to a runtime value`)
+    }
+  },
+
+  /**
+   * Convert a runtime value to a Quint expression.
+   * @param value - the runtime value to convert
+   * @returns a Quint expression for the runtime value
+   */
+  toQuintEx: (value: RuntimeValue): QuintEx => {
+    return value.toQuintEx(zerog)
   },
 }
+
+/** The default entry point of this module */
+export default rv
 
 /**
  * Get a ground expression, that is, an expression
@@ -302,10 +348,19 @@ export function fromQuintEx(ex: QuintEx): Maybe<RuntimeValue> {
           return just(rv.mkRecord(pairs))
         }
 
+        case 'variant': {
+          const label = (ex.args[0] as QuintName).name
+          return fromQuintEx(ex.args[1]).map(v => rv.mkVariant(label, v))
+        }
+
         default:
           // no other case should be possible
           return none()
       }
+
+    case 'lambda':
+      // We don't have enough information to convert lambdas directly
+      return none()
 
     default:
       // no other case should be possible
@@ -323,7 +378,7 @@ export function fromQuintEx(ex: QuintEx): Maybe<RuntimeValue> {
  * non-iterable ones. Of course, this may lead to ill-typed operations. Type
  * correctness of the input must be checked by the type checker.
  */
-export interface RuntimeValue extends EvalResult, ValueObject, Iterable<RuntimeValue> {
+export interface RuntimeValue extends ValueObject, Iterable<RuntimeValue> {
   /**
    * Can the runtime value behave like a set? Effectively, this means that the
    * value returns a sequence of elements, when it is iterated over.
@@ -364,7 +419,7 @@ export interface RuntimeValue extends EvalResult, ValueObject, Iterable<RuntimeV
    *
    * @return an immutable map of key-values
    */
-  toMap(): Map<RuntimeValue, RuntimeValue>
+  toMap(): ImmutableMap<RuntimeValue, RuntimeValue>
 
   /**
    * If the result is a record, transform it to a map of values.
@@ -396,6 +451,27 @@ export interface RuntimeValue extends EvalResult, ValueObject, Iterable<RuntimeV
   toStr(): string
 
   /**
+   * If the result is a 2-tuple, return it. Otherwise, throw an error.
+   *
+   * @return the stored 2-tuple value.
+   */
+  toTuple2(): [RuntimeValue, RuntimeValue]
+
+  /**
+   * If the result is a lambda, use the context to build an arrow function and return it. Otherwise, throw an error.
+   *
+   * @return the arrow function that represents the lambda.
+   */
+  toArrow(): (ctx: Context, args: RuntimeValue[]) => Either<QuintError, RuntimeValue>
+
+  /**
+   * If the result is a variant, return the label and the value.
+   *
+   * @return the label and the value of the variant.
+   */
+  toVariant(): [string, RuntimeValue]
+
+  /**
    * If the result is set-like, does it contain contain a value?
    * If the result is not set-like, return false.
    *
@@ -421,7 +497,7 @@ export interface RuntimeValue extends EvalResult, ValueObject, Iterable<RuntimeV
    * e.g., think of `Set(Set(2, 3, 4))`. Hence, the iterator is modified
    * by pick in place. Also, see #bounds().
    */
-  pick(positions: Iterator<bigint>): Maybe<RuntimeValue>
+  pick(positions: Iterator<bigint>): Either<QuintError, RuntimeValue>
 
   /**
    * If this runtime value is set-line, compute the bounds for all subsets,
@@ -444,7 +520,20 @@ export interface RuntimeValue extends EvalResult, ValueObject, Iterable<RuntimeV
    * or none(), if the set is infinite
    */
 
-  cardinality(): Maybe<bigint>
+  cardinality(): Either<QuintError, bigint>
+
+  /**
+   * Convert a runtime value to a Quint expression.
+   *
+   * This function always returns sets in the normalized representation,
+   * that is, in `set(elements)`, the elements are ordered according to their
+   * string representation. As sorting via strings may be slow, we do not
+   * recommend using `toQuintEx` in computation-intensive code.
+   *
+   * @param gen a generator that produces unique ids
+   * @return this evaluation result converted to Quint expression.
+   */
+  toQuintEx(gen: IdGenerator): QuintEx
 }
 
 /**
@@ -478,19 +567,23 @@ abstract class RuntimeValueBase implements RuntimeValue {
   }
 
   toSet(): Set<RuntimeValue> {
-    // the default transformation to a set is done via iteration
-    let set = Set.of<RuntimeValue>()
-    for (const e of this) {
-      set = set.add(e.normalForm())
+    if (this.isSetLike) {
+      // the default transformation to a set is done via iteration
+      let set = Set.of<RuntimeValue>()
+      for (const e of this) {
+        set = set.add(e.normalForm())
+      }
+      return set
+    } else {
+      throw new Error('Expected a set-like value')
     }
-    return set
   }
 
   toList(): List<RuntimeValue> {
     if (this instanceof RuntimeValueTupleOrList) {
       return this.list
     } else {
-      return List()
+      throw new Error('Expected a list value')
     }
   }
 
@@ -498,15 +591,15 @@ abstract class RuntimeValueBase implements RuntimeValue {
     if (this instanceof RuntimeValueRecord) {
       return this.map
     } else {
-      return OrderedMap()
+      throw new Error(`Expected a record value but got ${expressionToString(this.toQuintEx(zerog))}`)
     }
   }
 
-  toMap(): Map<RuntimeValue, RuntimeValue> {
+  toMap(): ImmutableMap<RuntimeValue, RuntimeValue> {
     if (this instanceof RuntimeValueMap) {
       return this.map
     } else {
-      return Map()
+      throw new Error('Expected a map value')
     }
   }
 
@@ -514,7 +607,7 @@ abstract class RuntimeValueBase implements RuntimeValue {
     if (this instanceof RuntimeValueBool) {
       return (this as RuntimeValueBool).value
     } else {
-      return false
+      throw new Error('Expected a Boolean value')
     }
   }
 
@@ -522,7 +615,7 @@ abstract class RuntimeValueBase implements RuntimeValue {
     if (this instanceof RuntimeValueInt) {
       return (this as RuntimeValueInt).value
     } else {
-      return 0n
+      throw new Error(`Expected an integer value, got ${expressionToString(this.toQuintEx(zerog))}`)
     }
   }
 
@@ -530,7 +623,50 @@ abstract class RuntimeValueBase implements RuntimeValue {
     if (this instanceof RuntimeValueStr) {
       return (this as RuntimeValueStr).value
     } else {
-      return ''
+      throw new Error('Expected a string value')
+    }
+  }
+
+  toTuple2(): [RuntimeValue, RuntimeValue] {
+    // This is specific for tuples of size 2, as they are expected in many builtins.
+    if (this instanceof RuntimeValueTupleOrList) {
+      const list = this.list
+
+      if (list.size === 2) {
+        return [list.get(0)!, list.get(1)!]
+      }
+    }
+    throw new Error('Expected a 2-tuple')
+  }
+
+  toArrow(): (ctx: Context, args: RuntimeValue[]) => Either<QuintError, RuntimeValue> {
+    if (!(this instanceof RuntimeValueLambda)) {
+      throw new Error('Expected a lambda value')
+    }
+
+    const lam = this as RuntimeValueLambda
+
+    return (ctx: Context, args: RuntimeValue[]) => {
+      if (lam.registers.length !== args.length) {
+        return left({
+          code: 'QNT506',
+          message: `Lambda expects ${lam.registers.length} arguments, but got ${args.length}`,
+        })
+      }
+
+      lam.registers.forEach((reg, i) => {
+        reg.value = right(args[i])
+      })
+
+      return lam.body(ctx)
+    }
+  }
+
+  toVariant(): [string, RuntimeValue] {
+    if (this instanceof RuntimeValueVariant) {
+      return [(this as RuntimeValueVariant).label, (this as RuntimeValueVariant).value]
+    } else {
+      throw new Error('Expected a variant value')
     }
   }
 
@@ -582,6 +718,10 @@ abstract class RuntimeValueBase implements RuntimeValue {
     if (this instanceof RuntimeValueRecord && other instanceof RuntimeValueRecord) {
       return this.map.equals(other.map)
     }
+    if (this instanceof RuntimeValueVariant && other instanceof RuntimeValueVariant) {
+      return this.label === other.label && this.value.equals(other.value)
+    }
+
     if (this instanceof RuntimeValueSet && other instanceof RuntimeValueSet) {
       return immutableIs(this.set, other.set)
     }
@@ -630,16 +770,16 @@ abstract class RuntimeValueBase implements RuntimeValue {
     return 0
   }
 
-  pick(_positions: Iterator<bigint>): Maybe<RuntimeValue> {
-    return none()
+  pick(_positions: Iterator<bigint>): Either<QuintError, RuntimeValue> {
+    return left({ code: 'QNT501', message: '.pick() not implemented' })
   }
 
   bounds(): Maybe<bigint>[] {
     return []
   }
 
-  cardinality() {
-    return just(0n)
+  cardinality(): Either<QuintError, bigint> {
+    return right(0n)
   }
 
   toQuintEx(gen: IdGenerator): QuintEx {
@@ -811,14 +951,37 @@ class RuntimeValueRecord extends RuntimeValueBase implements RuntimeValue {
   }
 }
 
+export class RuntimeValueVariant extends RuntimeValueBase implements RuntimeValue {
+  label: string
+  value: RuntimeValue
+
+  constructor(label: string, value: RuntimeValue) {
+    super(false) // Not a "set-like" value
+    this.label = label
+    this.value = value
+  }
+
+  hashCode() {
+    return hash(this.value) + this.value.hashCode()
+  }
+
+  toQuintEx(gen: IdGenerator): QuintEx {
+    return {
+      id: gen.nextId(),
+      kind: 'app',
+      opcode: 'variant',
+      args: [{ id: gen.nextId(), kind: 'str', value: this.label }, this.value.toQuintEx(gen)],
+    }
+  }
+}
 /**
  * A set of runtime values represented via an immutable Map.
  * This is an internal class.
  */
 class RuntimeValueMap extends RuntimeValueBase implements RuntimeValue {
-  map: Map<RuntimeValue, RuntimeValue>
+  map: ImmutableMap<RuntimeValue, RuntimeValue>
 
-  constructor(keyValues: Map<RuntimeValue, RuntimeValue>) {
+  constructor(keyValues: ImmutableMap<RuntimeValue, RuntimeValue>) {
     super(true)
     this.map = keyValues
   }
@@ -894,7 +1057,7 @@ class RuntimeValueSet extends RuntimeValueBase implements RuntimeValue {
     return this.set.includes(elem.normalForm())
   }
 
-  pick(positions: Iterator<bigint>): Maybe<RuntimeValue> {
+  pick(positions: Iterator<bigint>): Either<QuintError, RuntimeValue> {
     const next = positions.next()
     assert(!next.done, 'Internal error: too few positions. Report a bug.')
     let index = next.value
@@ -904,20 +1067,21 @@ class RuntimeValueSet extends RuntimeValueBase implements RuntimeValue {
     // without creating intermediate objects in memory.
     for (const e of this) {
       if (index <= 0) {
-        return just(e)
+        return right(e)
       }
       index -= 1n
     }
 
-    return none()
+    // Not sure if this can happen
+    return left({ code: 'QNT501', message: 'Index out of bounds' })
   }
 
   bounds(): Maybe<bigint>[] {
-    return [this.cardinality()]
+    return [toMaybe(this.cardinality())]
   }
 
   cardinality() {
-    return just(BigInt(this.set.size))
+    return right(BigInt(this.set.size))
   }
 
   toQuintEx(gen: IdGenerator): QuintEx {
@@ -1003,7 +1167,7 @@ class RuntimeValueInterval extends RuntimeValueBase implements RuntimeValue {
     }
   }
 
-  pick(positions: Iterator<bigint>): Maybe<RuntimeValue> {
+  pick(positions: Iterator<bigint>): Either<QuintError, RuntimeValue> {
     const next = positions.next()
     assert(!next.done, 'Internal error: too few positions. Report a bug.')
     const index = next.value
@@ -1012,18 +1176,18 @@ class RuntimeValueInterval extends RuntimeValueBase implements RuntimeValue {
       `Internal error: index ${index} is out of bounds [${this.first}, ${this.last}]. Report a bug.`
     )
     if (this.last < this.first) {
-      return none()
+      return left({ code: 'QNT501', message: 'Index out of bounds' })
     } else {
-      return just(new RuntimeValueInt(this.first + BigInt(index)))
+      return right(new RuntimeValueInt(this.first + BigInt(index)))
     }
   }
 
   bounds(): Maybe<bigint>[] {
-    return [this.cardinality()]
+    return [toMaybe(this.cardinality())]
   }
 
   cardinality() {
-    return just(BigInt(this.last - this.first) + 1n)
+    return right(BigInt(this.last - this.first) + 1n)
   }
 
   toQuintEx(gen: IdGenerator): QuintEx {
@@ -1147,18 +1311,26 @@ class RuntimeValueCrossProd extends RuntimeValueBase implements RuntimeValue {
     }
   }
 
-  cardinality(): Maybe<bigint> {
-    return merge(this.sets.map(s => s.cardinality())).map(cards => cards.reduce((n, card) => n * card, 1n))
+  cardinality(): Either<QuintError, bigint> {
+    return mergeInMany(this.sets.map(s => s.cardinality()))
+      .map(cards => cards.reduce((n, card) => n * card, 1n))
+      .mapLeft((errors): QuintError => {
+        return { code: 'QNT501', message: errors.map(quintErrorToString).join('\n') }
+      })
   }
 
-  pick(positions: Iterator<bigint>): Maybe<RuntimeValue> {
-    const elems: Maybe<RuntimeValue[]> = merge(this.sets.map(elemSet => elemSet.pick(positions)))
+  pick(positions: Iterator<bigint>): Either<QuintError, RuntimeValue> {
+    const elems: Either<QuintError, RuntimeValue[]> = mergeInMany(
+      this.sets.map(elemSet => elemSet.pick(positions))
+    ).mapLeft((errors): QuintError => {
+      return { code: 'QNT501', message: errors.map(quintErrorToString).join('\n') }
+    })
 
     return elems.map(es => new RuntimeValueTupleOrList('Tup', List.of(...es)))
   }
 
   bounds(): Maybe<bigint>[] {
-    return this.sets.map(elemSet => elemSet.cardinality())
+    return this.sets.map(elemSet => toMaybe(elemSet.cardinality()))
   }
 
   toQuintEx(gen: IdGenerator): QuintEx {
@@ -1232,18 +1404,18 @@ class RuntimeValuePowerset extends RuntimeValueBase implements RuntimeValue {
     }
   }
 
-  cardinality(): Maybe<bigint> {
+  cardinality(): Either<QuintError, bigint> {
     return this.baseSet.cardinality().map(c => 2n ** c)
   }
 
-  pick(positions: Iterator<bigint>): Maybe<RuntimeValue> {
+  pick(positions: Iterator<bigint>): Either<QuintError, RuntimeValue> {
     const next = positions.next()
     assert(!next.done, 'Internal error: too few positions. Report a bug.')
     return this.cardinality().map(_ => this.fromIndex(next.value))
   }
 
   bounds(): Maybe<bigint>[] {
-    return [this.cardinality()]
+    return [toMaybe(this.cardinality())]
   }
 
   toQuintEx(gen: IdGenerator): QuintEx {
@@ -1350,45 +1522,49 @@ class RuntimeValueMapSet extends RuntimeValueBase implements RuntimeValue {
     }
   }
 
-  cardinality(): Maybe<bigint> {
-    return merge([this.rangeSet.cardinality(), this.domainSet.cardinality()]).map(([rc, dc]) => rc ** dc)
+  cardinality(): Either<QuintError, bigint> {
+    return mergeInMany([this.rangeSet.cardinality(), this.domainSet.cardinality()])
+      .map(([rc, dc]) => rc ** dc)
+      .mapLeft((errors): QuintError => {
+        return { code: 'QNT501', message: errors.map(quintErrorToString).join('\n') }
+      })
   }
 
-  pick(positions: Iterator<bigint>): Maybe<RuntimeValue> {
-    const domainSizeOrNone = this.domainSet.cardinality()
-    const rangeSizeOrNone = this.rangeSet.cardinality()
-    if (domainSizeOrNone.isNone()) {
+  pick(positions: Iterator<bigint>): Either<QuintError, RuntimeValue> {
+    const domainSizeResult = this.domainSet.cardinality()
+    const rangeSizeResult = this.rangeSet.cardinality()
+    if (domainSizeResult.isLeft()) {
       // we cannot generate maps over infinite domains
-      return none()
+      return left(domainSizeResult.value)
     }
 
-    const domainSize = domainSizeOrNone.value
-    if (domainSize === 0n || (rangeSizeOrNone.isJust() && rangeSizeOrNone.value === 0n)) {
+    const domainSize = domainSizeResult.value
+    if (domainSize === 0n || (rangeSizeResult.isRight() && rangeSizeResult.value === 0n)) {
       // the set of maps is empty, no way to pick a value
-      return none()
+      return left({ code: 'QNT501', message: 'Empty set of maps' })
     }
 
     const keyValues: [RuntimeValue, RuntimeValue][] = []
     for (const key of this.domainSet) {
       const valueOrNone = this.rangeSet.pick(positions)
-      if (valueOrNone.isJust()) {
+      if (valueOrNone.isRight()) {
         keyValues.push([key, valueOrNone.value])
       } else {
-        return none()
+        return valueOrNone
       }
     }
 
-    return just(rv.mkMap(keyValues))
+    return right(rv.mkMap(keyValues))
   }
 
   bounds(): Maybe<bigint>[] {
-    const domainSizeOrNone = this.domainSet.cardinality()
+    const domainSizeOrNone = toMaybe(this.domainSet.cardinality())
     assert(
       domainSizeOrNone.isJust() && domainSizeOrNone.value <= Number.MAX_SAFE_INTEGER,
       `Domain size is over ${Number.MAX_SAFE_INTEGER}`
     )
     const sz = Number(domainSizeOrNone.value)
-    return Array(sz).fill(this.rangeSet.cardinality())
+    return Array(sz).fill(toMaybe(this.rangeSet.cardinality()))
   }
 
   toQuintEx(gen: IdGenerator): QuintEx {
@@ -1449,18 +1625,18 @@ class RuntimeValueInfSet extends RuntimeValueBase implements RuntimeValue {
     }
   }
 
-  pick(positions: Iterator<bigint>): Maybe<RuntimeValue> {
+  pick(positions: Iterator<bigint>): Either<QuintError, RuntimeValue> {
     // Simply return the position. The actual range is up to the caller,
     // as Int and Nat do not really care about the ranges.
     const next = positions.next()
     assert(!next.done, 'Internal error: too few positions. Report a bug.')
     if (this.kind === 'Int') {
       // Simply return the position. It's up to the caller to pick the position.
-      return just(rv.mkInt(next.value))
+      return right(rv.mkInt(next.value))
     } else {
       // Nat: return the absolute value of the position.
       const p = next.value
-      return just(rv.mkInt(p >= 0n ? p : -p))
+      return right(rv.mkInt(p >= 0n ? p : -p))
     }
   }
 
@@ -1469,8 +1645,8 @@ class RuntimeValueInfSet extends RuntimeValueBase implements RuntimeValue {
     return [none()]
   }
 
-  cardinality(): Maybe<bigint> {
-    return none()
+  cardinality(): Either<QuintError, bigint> {
+    return left({ code: 'QNT514', message: `Cardinality of ${this.kind} is infinite` })
   }
 
   toQuintEx(gen: IdGenerator): QuintEx {
@@ -1490,18 +1666,14 @@ class RuntimeValueInfSet extends RuntimeValueBase implements RuntimeValue {
  *
  * RuntimeValueLambda cannot be compared with other values.
  */
-class RuntimeValueLambda extends RuntimeValueBase implements RuntimeValue, Callable {
-  nparams: number
-  callable: Callable
+export class RuntimeValueLambda extends RuntimeValueBase implements RuntimeValue {
+  body: EvalFunction
+  registers: Register[]
 
-  constructor(nparams: number, callable: Callable) {
+  constructor(body: EvalFunction, registers: Register[]) {
     super(false)
-    this.nparams = nparams
-    this.callable = callable
-  }
-
-  eval(args?: any[]) {
-    return this.callable.eval(args)
+    this.body = body
+    this.registers = registers
   }
 
   toQuintEx(gen: IdGenerator): QuintEx {
@@ -1511,15 +1683,23 @@ class RuntimeValueLambda extends RuntimeValueBase implements RuntimeValue, Calla
     return {
       id: gen.nextId(),
       kind: 'lambda',
-      params: Array.from(Array(this.nparams).keys()).map(i => {
+      params: Array.from(this.registers.keys()).map(i => {
         return { id: gen.nextId(), name: `_a${i}` }
       }),
       qualifier: 'def',
       expr: {
         kind: 'str',
-        value: `lambda_${this.nparams}_params`,
+        value: `lambda_${this.registers.length}_params`,
         id: gen.nextId(),
       },
     }
+  }
+}
+
+function toMaybe<T>(r: Either<QuintError, T>): Maybe<T> {
+  if (r.isRight()) {
+    return just(r.value)
+  } else {
+    return none()
   }
 }

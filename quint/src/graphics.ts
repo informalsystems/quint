@@ -3,13 +3,13 @@
  *
  * Igor Konnov, 2023
  *
- * Copyright (c) Informal Systems 2023. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2023 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  */
 
-import chalk from 'chalk'
 import { strict as assert } from 'assert'
+import chalk from 'chalk'
 import {
   Doc,
   braces,
@@ -29,10 +29,11 @@ import {
 import { QuintDeclaration, QuintEx, isAnnotatedDef } from './ir/quintIr'
 import { ExecutionFrame } from './runtime/trace'
 import { zerog } from './idGenerator'
-import { ConcreteFixedRow, QuintType, Row } from './ir/quintTypes'
+import { ConcreteRow, QuintType, Row, isUnitType } from './ir/quintTypes'
 import { TypeScheme } from './types/base'
 import { canonicalTypeScheme } from './types/printing'
-import { declarationToString, flattenRow, qualifierToString, rowToString } from './ir/IRprinting'
+import { declarationToString, qualifierToString, rowToString } from './ir/IRprinting'
+import { simplifyRow } from './types/simplification'
 
 /**
  * An abstraction of a Console of bounded text width.
@@ -98,6 +99,20 @@ export function prettyQuintEx(ex: QuintEx): Doc {
             }
           }
           return nary(text('{'), kvs, text('}'), line())
+        }
+
+        case 'variant': {
+          const labelExpr = ex.args[0]
+          assert(labelExpr.kind === 'str', 'malformed variant operator')
+          const label = richtext(chalk.green, labelExpr.value)
+
+          const valueExpr = ex.args[1]
+          const value =
+            valueExpr.kind === 'app' && valueExpr.opcode === 'Tup' && valueExpr.args.length === 0
+              ? [] // A payload with the empty tuple is shown as a bare label
+              : [text('('), prettyQuintEx(valueExpr), text(')')]
+
+          return group([label, ...value])
         }
 
         default:
@@ -186,50 +201,48 @@ export function prettyQuintType(type: QuintType): Doc {
       return group([text('{ '), prettyRow(type.fields), text('}')])
     }
     case 'sum': {
-      return group([text('{ '), prettySumRow(type.fields), text('}')])
+      return prettySumRow(type.fields)
     }
-    case 'union': {
-      const records = type.records.map(rec => {
-        return group([
-          richtext(chalk.magenta, '|'),
-          text('{ '),
-          richtext(chalk.blue, type.tag),
-          text(': '),
-          richtext(chalk.green, `"${rec.tagValue}"`),
-          prettyRow(rec.fields),
-          text('}'),
-        ])
-      })
-      return group(records)
+    case 'app': {
+      const args = type.args.map(prettyQuintType)
+      return group([prettyQuintType(type), text('['), ...args, text(']')])
     }
   }
 }
 
-function prettyRow(row: Row, showFieldName = true): Doc {
-  const [fields, other] = flattenRow(row)
+function prettyRow(r: Row, showFieldName = true): Doc {
+  const row = simplifyRow(r)
+  const fields = row.kind === 'row' ? row.fields : []
+  const other = row.kind === 'row' ? row.other : undefined
 
   const fieldsDocs = fields.map(f => {
     const prefix = showFieldName ? `${f.fieldName}: ` : ''
     return group([text(prefix), prettyQuintType(f.fieldType)])
   })
-  const otherDoc = other.kind === 'var' ? [text(` | ${other.name}`)] : []
+  const otherDoc = other?.kind === 'var' ? [text(` | ${other.name}`)] : []
 
   return group([nest('  ', [linebreak, docJoin([text(','), line()], fieldsDocs)]), ...otherDoc, linebreak])
 }
 
-function prettySumRow(row: ConcreteFixedRow): Doc {
-  const [fields, other] = flattenRow(row)
+function prettySumRow(r: ConcreteRow): Doc {
+  const row = simplifyRow(r)
+  const fields = row.kind === 'row' ? row.fields : []
+  const other = row.kind === 'row' ? row.other : undefined
 
   const fieldsDocs = fields.map(f => {
-    if (other.kind === 'empty') {
+    if (other?.kind === 'empty') {
       return group(text(f.fieldName))
+    } else if (isUnitType(f.fieldType)) {
+      // Print the variant `Foo({})`
+      return group([text(`${f.fieldName}`)])
     } else {
       return group([text(`${f.fieldName}(`), prettyQuintType(f.fieldType), text(')')])
     }
   })
 
-  return group([nest('  ', [linebreak, docJoin([text(','), line()], fieldsDocs)]), linebreak])
+  return group([nest('  ', [linebreak, docJoin([text('|'), line()], fieldsDocs)]), linebreak])
 }
+
 /**
  * Print an execution frame and its children recursively.
  * Since this function is printing a tree, we need precise text alignment.
@@ -247,7 +260,7 @@ export function printExecutionFrameRec(box: ConsoleBox, frame: ExecutionFrame, i
     [text(','), line()],
     frame.args.map(a => prettyQuintEx(a.toQuintEx(zerog)))
   )
-  const r = frame.result.isNone() ? text('none') : prettyQuintEx(frame.result.value.toQuintEx(zerog))
+  const r = frame.result.isLeft() ? text('none') : prettyQuintEx(frame.result.value.toQuintEx(zerog))
   const depth = isLast.length
   // generate the tree ASCII graphics for this frame
   let treeArt = isLast
@@ -267,7 +280,8 @@ export function printExecutionFrameRec(box: ConsoleBox, frame: ExecutionFrame, i
   box.out(treeArt)
 
   // format the call with its arguments and place it right after the tree art
-  const argsDoc = group(textify(['(', nest('  ', [linebreak, group(args)]), linebreak, ')']))
+  let argsDoc =
+    frame.args.length === 0 ? text('') : group(textify(['(', nest('  ', [linebreak, group(args)]), linebreak, ')']))
   // draw proper branches in the indentation
   const indentTreeArt = isLast.map(il => (il ? '   ' : '│  ')).join('')
   // pretty print the arguments and the result

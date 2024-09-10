@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------------------
- * Copyright (c) Informal Systems 2022-2023. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2022-2023 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  * --------------------------------------------------------------------------------- */
 
 /**
@@ -12,8 +12,11 @@
  * @module
  */
 
+import { cloneDeep, compact } from 'lodash'
 import { QuintDef, QuintExport, QuintImport, QuintInstance, QuintLambdaParameter } from '../ir/quintIr'
 import { QuintType } from '../ir/quintTypes'
+import { QuintError } from '../quintError'
+import { NameResolver } from './resolver'
 
 /**
  * Possible kinds for definitions
@@ -41,14 +44,16 @@ export type LookupDefinition = (QuintDef | ({ kind: 'param' } & QuintLambdaParam
    * Some types in `QuintDef` already have a `typeAnnotation` field. This
    * ensures that this field is always accessible */
   typeAnnotation?: QuintType
-  /** optional depth of the definition, 0 if top-level. Only for `QuintOpDef`. */
+  /* optional depth of the definition, 0 if top-level. Only for `QuintOpDef`. */
   depth?: number
+  /* optional flag to tell if this is shadowing another def, therefore needing to be unshadowed during compilation */
+  shadowing?: boolean
 }
 
 /**
  * A module's definitions, indexed by name.
  */
-export type DefinitionsByName = Map<string, LookupDefinition & { hidden?: boolean }>
+export type DefinitionsByName = Map<string, LookupDefinition[]>
 
 /**
  * Definitions for each module
@@ -69,6 +74,25 @@ export type DefinitionsByModule = Map<string, DefinitionsByName>
 export type LookupTable = Map<bigint, LookupDefinition>
 
 /**
+ * A lazy mapping from module names to the definitions that are available but not used in that module.
+ */
+export type UnusedDefinitions = (moduleName: string) => Set<LookupDefinition>
+
+/**
+ * The result of name resolution, when successful.
+ */
+export type NameResolutionResult = {
+  table: LookupTable
+  unusedDefinitions: UnusedDefinitions
+  errors: QuintError[]
+  resolver: NameResolver
+}
+
+export function getTopLevelDef(defs: DefinitionsByName, name: string): LookupDefinition | undefined {
+  return defs.get(name)?.at(0)
+}
+
+/**
  * Copy the names of a definitions table to a new one, ignoring hidden
  * definitions, and optionally adding a namespace.
  *
@@ -85,11 +109,15 @@ export function copyNames(
 ): DefinitionsByName {
   const table = new Map()
 
-  originTable.forEach((def, identifier) => {
+  originTable.forEach((defs, identifier) => {
     const name = namespace ? [namespace, identifier].join('::') : identifier
-    if (!def.hidden || def.kind === 'const') {
-      table.set(name, copyAsHidden ? { ...def, hidden: copyAsHidden } : def)
-    }
+    const newDefs = defs.map(def => {
+      if (!def.hidden || def.kind === 'const') {
+        return cloneDeep(copyAsHidden ? { ...def, hidden: copyAsHidden } : def)
+      }
+    })
+
+    table.set(name, compact(newDefs))
   })
 
   return table
@@ -146,6 +174,7 @@ export const builtinNames = [
   'powerset',
   'flatten',
   'allLists',
+  'allListsUpTo',
   'chooseSome',
   'oneOf',
   'isFinite',
@@ -178,6 +207,7 @@ export const builtinNames = [
   'eventually',
   'next',
   'then',
+  'expect',
   'reps',
   'fail',
   'assert',
@@ -211,7 +241,6 @@ export const builtinNames = [
   'field',
   'fieldNames',
   'item',
-  'unionMatch',
   'assign',
   'of',
   'eq',
@@ -219,4 +248,10 @@ export const builtinNames = [
   'ite',
   'cross',
   'difference',
+  'matchVariant',
+  'variant',
+  'q::debug',
+  'q::lastTrace',
+  'q::test',
+  'q::testOnce',
 ]

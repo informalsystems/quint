@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------------------
- * Copyright (c) Informal Systems 2022-2023. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2022-2023 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  * --------------------------------------------------------------------------------- */
 
 /**
@@ -12,42 +12,65 @@
  * @module
  */
 
-import { Either, left, right } from '@sweet-monads/either'
 import { IRVisitor, walkModule } from '../ir/IRVisitor'
 import { QuintApp, QuintInstance, QuintLambda, QuintLet, QuintModule, QuintName, QuintOpDef } from '../ir/quintIr'
 import { QuintConstType } from '../ir/quintTypes'
-import { LookupTable, builtinNames } from './base'
+import { LookupDefinition, LookupTable, NameResolutionResult, UnusedDefinitions, builtinNames } from './base'
 import { QuintError } from '../quintError'
 import { NameCollector } from './collector'
+import { difference } from 'lodash'
 
 /**
  * Resolves all names in the given Quint modules and returns a lookup table of definitions.
  *
  * @param quintModules - The Quint modules to resolve names in.
- * @returns A lookup table of definitions if successful, otherwise a list of errors.
+ *
+ * @returns A lookup table of definitions and a mapping of unused definitions if successful, otherwise a list of errors.
  */
-export function resolveNames(quintModules: QuintModule[]): Either<QuintError[], LookupTable> {
+export function resolveNames(quintModules: QuintModule[]): NameResolutionResult {
   const visitor = new NameResolver()
   quintModules.forEach(module => {
     walkModule(visitor, module)
   })
-  return visitor.errors.length > 0 ? left(visitor.errors) : right(visitor.table)
+  return {
+    table: visitor.table,
+    unusedDefinitions: visitor.unusedDefinitions,
+    errors: visitor.errors,
+    resolver: visitor,
+  }
 }
 
 /**
  * `NameResolver` uses `NameCollector` to collect top-level definitions. Scoped
  * definitions are collected inside of `NameResolver` as it navigates the IR.
  */
-class NameResolver implements IRVisitor {
+export class NameResolver implements IRVisitor {
   collector: NameCollector
   errors: QuintError[] = []
   table: LookupTable = new Map()
-  private definitionDepth: number = 0
+
+  // the current depth of operator definitions: top-level defs are depth 0
+  // FIXME(#1279): The walk* functions update this value, but they need to be
+  // initialized to -1 here for that to work on all scenarios.
+  definitionDepth: number = -1
 
   constructor() {
     this.collector = new NameCollector()
     // bind the errors so they are aggregated in the same array
     this.collector.errors = this.errors
+  }
+
+  unusedDefinitions: UnusedDefinitions = moduleName => {
+    const definitions: LookupDefinition[] = Array.from(
+      this.collector.definitionsByModule.get(moduleName)?.values() || []
+    ).flat()
+    const usedDefinitions = [...this.table.values()].flat()
+
+    return new Set(difference(definitions, usedDefinitions))
+  }
+
+  switchToModule(moduleName: string): void {
+    this.collector.switchToModule(moduleName)
   }
 
   enterModule(module: QuintModule): void {
@@ -61,14 +84,12 @@ class NameResolver implements IRVisitor {
     // Top-level definitions were already collected, so we only need to collect
     // scoped definitions.
     if (this.definitionDepth > 0) {
-      this.collector.collectDefinition({ ...def, depth: this.definitionDepth })
+      const newDef = this.collector.collectDefinition({ ...def, depth: this.definitionDepth })
+      this.table.set(def.id, { ...newDef, depth: this.definitionDepth })
+    } else {
+      // Map the definition to itself so we can recover depth information from the table
+      this.table.set(def.id, { ...def, depth: this.definitionDepth })
     }
-
-    this.definitionDepth++
-  }
-
-  exitOpDef(_def: QuintOpDef): void {
-    this.definitionDepth--
   }
 
   exitLet(expr: QuintLet): void {
@@ -80,7 +101,7 @@ class NameResolver implements IRVisitor {
   enterLambda(expr: QuintLambda): void {
     // Lambda parameters are scoped, so they are collected here
     expr.params.forEach(p => {
-      this.collector.collectDefinition({ ...p, kind: 'param' })
+      this.collector.collectDefinition({ ...p, kind: 'param', depth: this.definitionDepth })
     })
   }
 

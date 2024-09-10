@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------------------
- * Copyright (c) Informal Systems 2021-2022. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2021-2022 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  * --------------------------------------------------------------------------------- */
 
 import { IRVisitor, walkType } from './IRVisitor'
@@ -69,36 +69,50 @@ export interface QuintTupleType extends WithOptionalId {
   fields: Row
 }
 
+// A value of the unit type, i.e. an empty record
+export function unitType(id: bigint): QuintTupleType {
+  return {
+    id,
+    kind: 'tup',
+    fields: { kind: 'row', fields: [], other: { kind: 'empty' } },
+  }
+}
+
+export function isUnitType(r: QuintType): Boolean {
+  return r.kind === 'tup' && r.fields.kind === 'row' && r.fields.fields.length === 0 && r.fields.other.kind === 'empty'
+}
+
 export interface QuintRecordType extends WithOptionalId {
   kind: 'rec'
   fields: Row
 }
 
-// A value of the unit type, i.e. an empty record
-export function unitValue(id: bigint): QuintRecordType {
-  return {
-    id,
-    kind: 'rec',
-    fields: { kind: 'row', fields: [], other: { kind: 'empty' } },
-  }
-}
-
-export function isTheUnit(r: QuintType): Boolean {
-  return r.kind === 'rec' && r.fields.kind === 'row' && r.fields.fields.length === 0 && r.fields.other.kind === 'empty'
-}
-
 export interface QuintSumType extends WithOptionalId {
   kind: 'sum'
-  fields: ConcreteFixedRow
+  fields: ConcreteRow
 }
 
-export interface QuintUnionType extends WithOptionalId {
-  kind: 'union'
-  tag: string
-  records: {
-    tagValue: string
-    fields: Row
-  }[]
+export function sumType(labelTypePairs: [string, QuintType][], rowVar?: string, id?: bigint): QuintSumType {
+  const fields = labelTypePairs.map(([fieldName, fieldType]) => ({ fieldName, fieldType }))
+  const other: Row = rowVar ? { kind: 'var', name: rowVar } : { kind: 'empty' }
+  return { kind: 'sum', fields: { kind: 'row', fields, other }, id }
+}
+
+/**
+ * Type application
+ *
+ * E.g.,
+ *
+ * ```
+ * T[int, str]
+ * ```
+ *
+ * for a type constant `T`.
+ */
+export interface QuintAppType extends WithOptionalId {
+  kind: 'app'
+  ctor: QuintConstType /** The type constructor applied */
+  args: QuintType[] /** The arguments to which the constructor is applied */
 }
 
 /**
@@ -117,7 +131,7 @@ export type QuintType =
   | QuintTupleType
   | QuintRecordType
   | QuintSumType
-  | QuintUnionType
+  | QuintAppType
 
 /**
  * Row types, used to express tuples and records.
@@ -137,6 +151,19 @@ export type VarRow = { kind: 'var'; name: string }
 export type EmptyRow = { kind: 'empty' }
 
 export type Row = ConcreteFixedRow | ConcreteRow | VarRow | EmptyRow
+
+/*
+ * Gives all of a row's field names
+ */
+export function rowFieldNames(r: Row): string[] {
+  switch (r.kind) {
+    case 'row':
+      return r.fields.map(f => f.fieldName).concat(rowFieldNames(r.other))
+    case 'var':
+    case 'empty':
+      return []
+  }
+}
 
 /*
  * Collects all type and row variable names from a given type

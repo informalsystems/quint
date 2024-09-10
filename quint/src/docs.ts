@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------------------
- * Copyright (c) Informal Systems 2023. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2023 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  * --------------------------------------------------------------------------------- */
 
 /**
@@ -20,8 +20,10 @@ import { QuintModule, isDef } from './ir/quintIr'
  * A documentation entry for a definition, compatible with LSP responses for signature help
  */
 export interface DocumentationEntry {
+  /* The definition's name */
+  name: string
   /* The mode and type signature of the definition */
-  label: string
+  signature: string
   /* The documentation string in markdown for the definition, if present */
   documentation?: string
 }
@@ -37,7 +39,8 @@ export function produceDocs(quintModule: QuintModule): Map<string, Documentation
     const entry: [string, DocumentationEntry] = [
       def.name,
       {
-        label: declarationToString(def, false),
+        name: def.name,
+        signature: declarationToString(def, false),
         documentation: def.doc,
       },
     ]
@@ -59,7 +62,8 @@ export function produceDocsById(quintModule: QuintModule): Map<bigint, Documenta
     const entry: [bigint, DocumentationEntry] = [
       def.id,
       {
-        label: declarationToString(def, false),
+        name: def.name,
+        signature: declarationToString(def, false),
         documentation: def.doc,
       },
     ]
@@ -77,5 +81,9 @@ export function produceDocsById(quintModule: QuintModule): Map<bigint, Documenta
  * @returns a string with the entry's label as header and documentation as body
  */
 export function toMarkdown(entry: DocumentationEntry): string {
-  return `## \`${entry.label}\`\n\n${entry.documentation || ''}`
+  return `## ${entry.name}
+
+Signature: \`${entry.signature}\`
+
+${entry.documentation || ''}`
 }

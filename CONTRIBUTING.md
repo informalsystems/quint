@@ -5,6 +5,24 @@
 This project is part of the [Apalache][] ecosystem.  Hence, we apply the
 same principles in Quint, see [Contributing to Apalache][].
 
+## Source code structure
+
+ - [quint](./quint) is the package for the `quint` transpiler
+ - [vscode](./vscode) vscode plugin
+
+## Developer docs
+
+ - [roadmap](./docs/roadmap.md)
+ - [ADR001: Transpiler architecture](./docs/pages/docs/architecture-decision-records/adr001-transpiler-architecture.md)
+ - [ADR002: Error codes](./docs/pages/docs/architecture-decision-records/adr002-errors.md)
+ - [ADR003: Interface to visit Internal Representation
+   components](./docs/pages/docs/architecture-decision-records/adr003-visiting-ir-components.md)
+ - [ADR004: An Effect System for Quint](./docs/pages/docs/architecture-decision-records/adr004-effect-system.md)
+ - [ADR005: A Type System for Quint](./docs/pages/docs/architecture-decision-records/adr005-type-system.md)
+ - [ADR006: Design of modules and lookup tables](./docs/pages/docs/architecture-decision-records/adr006-modules.lit.md)
+ - [ADR007: Flattening](./docs/pages/docs/architecture-decision-records/adr007-flattening.md)
+ - [ADR008: Obtaining and Launching Apalache from Quint](./docs/pages/docs/architecture-decision-records/adr008-managing-apalache.md) 
+
 ## Coordinating work
 
 Development on Quint is distributed. As with any distributed system, establishing
@@ -13,7 +31,7 @@ attention.
 
 ## Project structure
 
-Currently, the project consists of two npm packages (published locally):
+Currently, the project consists of two npm packages:
 
  - [quint](./quint) is the transpiler package, see the [quint manual][].
  - [vscode/quint](./vscode/quint) is the VSCode plugin for Quint, depends on `quint`.
@@ -30,6 +48,35 @@ Currently, the project consists of two npm packages (published locally):
 
 For setting up the local build, you would have to install TypeScript and npm.
 This is usually done via your local package manager.
+
+### Nix for development dependencies
+
+We provide a nix shell in case you want to use nix to manage your development
+environment and dependencies.
+
+Make sure you have `nix` installed, then build and enter the clean development shell with:
+
+```sh
+$ nix develop
+```
+
+If you want to use direnv to setup your environment with nix (instead of using a
+shell), you will need to add `use flake;` to your `.envrc`, and then
+running `direnv allow`:
+
+```sh
+$ echo "use flake;" >> .envrc && direnv allow
+```
+
+You can also add a `direnv` extension/package to your IDE of choice to have
+those dependencies set up for the IDE to use.
+
+#### Updating nix dependencies
+
+To update one of the flake inputs you can run: `nix flake lock --update-input <input-name>`
+
+To update all of the inputes you can run: `nix flake update`, it is recommended
+to update dependencies one by one though.
 
 ### Formatting
 
@@ -247,10 +294,10 @@ Between installing the plugin from different sources, you may end up with multip
 3. `rm $HOME/.vscode/extensions/.init-default-profile-extensions`.
 4. Restart VSCode **twice**. The first time it will recreate the `extensions.json` file, the second time it will install the extensions. Reloading won't work, you need to actually close and reopen VSCode.
 
-[Apalache]: https://github.com/informalsystems/apalache
-[Contributing to Apalache]: https://github.com/informalsystems/apalache/blob/unstable/CONTRIBUTING.md
+[Apalache]: https://github.com/apalache-mc/apalache
+[Contributing to Apalache]: https://github.com/apalache-mc/apalache/blob/main/CONTRIBUTING.md
 [eslint]: https://eslint.org/
-[quint manual]: ./doc/quint.md
+[quint manual]: ./docs/pages/docs/architecture-decision-records/quint.md
 [Installing quint]: https://github.com/informalsystems/quint/blob/main/quint/README.md#how-to-install
 [Language server protocol]: https://microsoft.github.io/language-server-protocol/
 [quint unit tests]: https://github.com/informalsystems/quint/blob/main/quint/README.md#unit-tests
@@ -304,3 +351,6 @@ executable and the VSCode plugin.
     - Navigate to
       https://marketplace.visualstudio.com/manage/publishers/informal, and click
       the `...` visible when hovering over `Quint` to upload the archive.
+- `cd` into the `server` folder and run `npm publish` for publication of the
+  [@informalsystems/quint-language-server](https://www.npmjs.com/package/@informalsystems/quint-language-server)
+  package (used in Emacs and Vim integrations).

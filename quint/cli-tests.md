@@ -60,11 +60,8 @@ bash -
 ### OK on typecheck EWD840
 
 This example was pointing to Paxos. Now it does not typecheck.
-See [#581](https://github.com/informalsystems/quint/issues/581).
 
-Temporarily disabled.
-
-<!-- test check EWD840 - Types & Effects -->
+<!-- !test check EWD840 - Types & Effects -->
     quint typecheck ../examples/classic/distributed/ewd840/ewd840.qnt
 
 ### OK on parse Tendermint
@@ -102,6 +99,11 @@ Temporarily disabled.
 <!-- !test check instances - Types & Effects -->
     quint typecheck ../examples/language-features/instances.qnt
 
+### OK on run instances
+
+<!-- !test check instances - Run -->
+    quint run ../examples/language-features/instances.qnt --invariant=inv
+
 ### OK on parse instancesFrom
 
 <!-- !test check instancesFrom -->
@@ -117,11 +119,6 @@ Temporarily disabled.
 <!-- !test check option -->
     quint parse ../examples/language-features/option.qnt
 
-### OK on typecheck option
-
-<!-- !test check option - Types & Effects -->
-    quint typecheck ../examples/language-features/option.qnt
-
 ### OK on parse BinSearch
 
 <!-- !test check BinSearch -->
@@ -135,12 +132,12 @@ Temporarily disabled.
 ### OK on parse TicTacToe
 
 <!-- !test check TicTacToe -->
-    quint parse ../examples/puzzles/tictactoe/tictactoe.qnt
+    quint parse ../examples/games/tictactoe/tictactoe.qnt
 
 ### OK on typecheck TicTacToe
 
 <!-- !test check TicTacToe - Types & Effects -->
-    quint typecheck ../examples/puzzles/tictactoe/tictactoe.qnt
+    quint typecheck ../examples/games/tictactoe/tictactoe.qnt
 
 ### OK on parse ics20 bank
 
@@ -185,7 +182,7 @@ Temporarily disabled.
 ### OK on typecheck coin
 
 <!-- !test check coin - Types & Effects-->
-    quint typecheck ../examples/solidity/Coin/coin.qnt
+    quint typecheck ../examples/tutorials/coin.qnt
 
 ### OK on test SimpleAuction.qnt
 
@@ -265,6 +262,11 @@ fi
 <!-- !test check rareSpells - Syntax/Types & Effects/Unit tests -->
     quint test ../examples/spells/rareSpells.qnt
 
+### OK on test BoundedUint8
+
+<!-- !test check BoundedUint8 - Syntax/Types & Effects/Unit tests -->
+    quint test --main=BoundedUInt8Test ../examples/spells/BoundedUInt.qnt
+
 ### OK on test bug843pureValCache
 
 <!-- !test check bug843pureValCache - Syntax/Types & Effects/Unit tests -->
@@ -319,17 +321,13 @@ fi
       --invariant=noNegativeInv --main=gradualPonziTest \
       ../examples/solidity/GradualPonzi/gradualPonzi.qnt
 
-### IGNORE on run gradualPonzi::progressInv
+### FAIL on run gradualPonzi::progressInv
 
-This test should fail. We know that from `quint verify`.
-However, `quint run` has hard time finding a counterexample.
-If you see this test failing, you are a lucky winner!
-Add the seed to the command below and change the exit code to 1.
-
-<!-- !test exit 0 -->
+<!-- !test exit 1 -->
 <!-- !test check gradualPonzi - Run progressInv -->
     quint run --invariant=progressInv --main=gradualPonziTest \
       --max-samples=1000 --max-steps=50 \
+      --seed=0xa7bf730b93981 \
       ../examples/solidity/GradualPonzi/gradualPonzi.qnt
 
 ### FAIL on run gradualPonzi::noLeftoversInv
@@ -360,3 +358,26 @@ Add the seed to the command below and change the exit code to 1.
 <!-- !test exit 0 -->
 <!-- !test check river - Run safety -->
     quint run --invariant=safety ../examples/puzzles/river/river.qnt
+
+### OK on run with the default module
+
+See [#1195](https://github.com/informalsystems/quint/issues/1195).
+
+<!-- !test exit 0 -->
+<!-- !test check run the default module -->
+    quint run ./testFixture/_1050diffName.qnt
+
+### OK on test with the default module
+
+See [#1195](https://github.com/informalsystems/quint/issues/1195).
+
+<!-- !test exit 0 -->
+<!-- !test check test the default module -->
+    quint test ./testFixture/_1050diffName.qnt
+
+### OK on parse 1108
+
+Regression test for [#1108](https://github.com/informalsystems/quint/issues/1108).
+
+<!-- !test check 1108 -->
+    quint parse testFixture/_1052one.qnt

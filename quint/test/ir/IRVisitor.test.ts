@@ -594,7 +594,6 @@ describe('walkModule', () => {
       'def i: (int, a) => bool = false',
       'var j: (int, List[bool], MY_CONST_TYPE)',
       'var k: { name: str, age: int }',
-      'var l: | { tag: "a", a: int } | { tag: "b", b: bool }',
     ])
 
     it('finds literal types', () => {
@@ -626,8 +625,6 @@ describe('walkModule', () => {
         'bool', // var j: (int, List[bool], MY_CONST_TYPE)
         'str', // var k: { name: str, age: int }
         'int', // var k: { name: str, age: int }
-        'int', // var l: | { tag: "a", a: int } | { tag: "b", b: bool }
-        'bool', // var l: | { tag: "a", a: int } | { tag: "b", b: bool }
       ]
 
       const exitedTypes = enteredTypes
@@ -859,30 +856,47 @@ describe('walkModule', () => {
       assert.deepEqual(visitor.exited.map(typeToString), exitedTypes)
     })
 
-    it('finds union types', () => {
+    it('finds type applications', () => {
+      const quintModule = buildModuleWithDecls(['val strMap: StrMap[int] = Map("a" -> 1, "b" -> 2)'])
       class TestVisitor implements IRVisitor {
         entered: QuintType[] = []
         exited: QuintType[] = []
 
-        enterUnionType(type: QuintType): void {
+        enterAppType(type: QuintType): void {
           this.entered.push(type)
         }
 
-        exitUnionType(type: QuintType): void {
+        exitAppType(type: QuintType): void {
           this.exited.push(type)
         }
       }
 
-      const enteredTypes = [
-        '| { tag: "a", a: int }\n| { tag: "b", b: bool }', // var l: | { tag: "a", a: int } | { tag: "b", b: bool }
-      ]
-
-      const exitedTypes = enteredTypes
+      const expectedTypes = ['StrMap[int]']
 
       const visitor = new TestVisitor()
       walkModule(visitor, quintModule)
-      assert.deepEqual(visitor.entered.map(typeToString), enteredTypes)
-      assert.deepEqual(visitor.exited.map(typeToString), exitedTypes)
+      assert.deepEqual(visitor.entered.map(typeToString), expectedTypes)
+      assert.deepEqual(visitor.exited.map(typeToString), expectedTypes)
+    })
+
+    it('finds paramater type annotations', () => {
+      class TestVisitor implements IRVisitor {
+        typesVisited: QuintType[] = []
+        exitType(t: QuintType) {
+          this.typesVisited.push(t)
+        }
+      }
+
+      const visitor = new TestVisitor()
+
+      const m = buildModuleWithDecls(['def foo(x: int, b: str): bool = true'])
+      walkModule(visitor, m)
+      const actualTypes = visitor.typesVisited.map(typeToString)
+      // `int` and `str` should each show up TWICE:
+      // - once from of the lambda type annotations
+      // - once from of the parameter type annotation
+      const expectedTypes = ['int', 'str', 'bool', '(int, str) => bool', 'int', 'str']
+      assert.deepEqual(actualTypes, expectedTypes)
     })
   })
 })

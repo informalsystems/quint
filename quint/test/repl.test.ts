@@ -142,13 +142,11 @@ describe('repl ok', () => {
       `>>> 1 + false
       |static analysis error: error: [QNT000] Couldn't unify int and bool
       |Trying to unify int and bool
-      |Trying to unify (int, int) => int and (int, bool) => t0
+      |Trying to unify (int, int) => int and (int, bool) => _t0
       |
       |1 + false
       |^^^^^^^^^
       |
-      |
-      |1
       |>>> `
     )
     await assertRepl(input, output)
@@ -211,14 +209,13 @@ describe('repl ok', () => {
       |>>> .clear
       |
       |>>> n * n
-      |syntax error: error: [QNT404] Name 'n' not found
+      |static analysis error: error: [QNT404] Name 'n' not found
       |n * n
       |^
       |
-      |syntax error: error: [QNT404] Name 'n' not found
+      |static analysis error: error: [QNT404] Name 'n' not found
       |n * n
       |    ^
-      |
       |
       |>>> `
     )
@@ -241,8 +238,7 @@ describe('repl ok', () => {
       |5
       |
       |[Frame 0]
-      |q::input() => 5
-      |└─ plus(2, 3) => 5
+      |plus(2, 3) => 5
       |
       |>>> `
     )
@@ -264,14 +260,12 @@ describe('repl ok', () => {
       |>>> div(2, 0)
       |
       |[Frame 0]
-      |q::input() => none
-      |└─ div(2, 0) => none
+      |div(2, 0) => none
       |
-      |runtime error: error: Division by zero
+      |runtime error: error: [QNT503] Division by zero
       |div(2, 0)
       |                     ^^^^^
       |
-      |<undefined value>
       |>>> `
     )
     await assertRepl(input, output)
@@ -298,10 +292,6 @@ describe('repl ok', () => {
       |.verbosity=4
       |>>> x' = 0
       |true
-      |
-      |[Frame 0]
-      |q::input() => true
-      |
       |>>> action step = x' = x + 1
       |
       |>>> action input1 = step
@@ -312,17 +302,15 @@ describe('repl ok', () => {
       |true
       |
       |[Frame 0]
-      |q::input() => true
-      |└─ input1() => true
-      |   └─ step() => true
+      |input1 => true
+      |└─ step => true
       |
       |>>> input2
       |true
       |
       |[Frame 0]
-      |q::input() => true
-      |└─ input2() => true
-      |   └─ step() => true
+      |input2 => true
+      |└─ step => true
       |
       |>>> `
     )
@@ -389,11 +377,10 @@ describe('repl ok', () => {
     )
     const output = dedent(
       `>>> Set(Int)
-      |runtime error: error: Infinite set Int is non-enumerable
+      |runtime error: error: [QNT501] Infinite set Int is non-enumerable
       |Set(Int)
       |^^^^^^^^
       |
-      |<undefined value>
       |>>> `
     )
     await assertRepl(input, output)
@@ -636,6 +623,41 @@ describe('repl ok', () => {
     await assertRepl(input, output)
   })
 
+  it('actions introduce their own frames', async () => {
+    const input = dedent(
+      `var n: int
+      |action init = n' = 0
+      |action step = n' = n + 1
+      |.verbosity=3
+      |init.then(step).then(step)
+      |`
+    )
+    const output = dedent(
+      `>>> var n: int
+      |
+      |>>> action init = n' = 0
+      |
+      |>>> action step = n' = n + 1
+      |
+      |>>> .verbosity=3
+      |.verbosity=3
+      |>>> init.then(step).then(step)
+      |true
+      |
+      |[Frame 0]
+      |init => true
+      |
+      |[Frame 1]
+      |step => true
+      |
+      |[Frame 2]
+      |step => true
+      |
+      |>>> `
+    )
+    await assertRepl(input, output)
+  })
+
   it('run q::test, q::testOnce, and q::lastTrace', async () => {
     const input = dedent(
       `
@@ -643,10 +665,10 @@ describe('repl ok', () => {
       |action Init = n' = 0
       |action Next = n' = n + 1
       |val Inv = n < 10
-      |q::testOnce(5, Init, Next, Inv)
-      |q::testOnce(10, Init, Next, Inv)
-      |q::test(5, 5, Init, Next, Inv)
-      |q::test(5, 10, Init, Next, Inv)
+      |q::testOnce(5, 1, Init, Next, Inv)
+      |q::testOnce(10, 1, Init, Next, Inv)
+      |q::test(5, 5, 1, Init, Next, Inv)
+      |q::test(5, 10, 1, Init, Next, Inv)
       |q::lastTrace.length()
       |q::lastTrace.nth(q::lastTrace.length() - 1)
       |`
@@ -661,13 +683,13 @@ describe('repl ok', () => {
       |
       |>>> val Inv = n < 10
       |
-      |>>> q::testOnce(5, Init, Next, Inv)
+      |>>> q::testOnce(5, 1, Init, Next, Inv)
       |true
-      |>>> q::testOnce(10, Init, Next, Inv)
+      |>>> q::testOnce(10, 1, Init, Next, Inv)
       |false
-      |>>> q::test(5, 5, Init, Next, Inv)
+      |>>> q::test(5, 5, 1, Init, Next, Inv)
       |true
-      |>>> q::test(5, 10, Init, Next, Inv)
+      |>>> q::test(5, 10, 1, Init, Next, Inv)
       |false
       |>>> q::lastTrace.length()
       |11

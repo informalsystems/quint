@@ -1,6 +1,6 @@
 {
   "name": "@informalsystems/quint",
-  "version": "0.14.1",
+  "version": "0.21.2",
   "description": "Core tool for the Quint specification language",
   "keywords": [
     "temporal",
@@ -20,7 +20,7 @@
     },
     {
       "name": "Igor Konnov",
-      "email": "igor@informal.systems"
+      "email": "igor@konnov.phd"
     },
     {
       "name": "Shon Feder",
@@ -41,29 +41,31 @@
     "test/**/*.ts"
   ],
   "engines": {
-    "node": ">=18"
+    "node": "18 - 20"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/informalsystems/quint"
   },
   "dependencies": {
-    "@grpc/grpc-js": "^1.8.14",
+    "@grpc/grpc-js": "^1.11.1",
     "@grpc/proto-loader": "^0.7.7",
     "@octokit/request": "^8.1.1",
     "@sweet-monads/either": "~3.2.0",
     "@sweet-monads/maybe": "~3.2.0",
     "@types/line-column": "^1.0.0",
+    "@types/lodash.clonedeep": "4.5.0",
     "@types/seedrandom": "^3.0.4",
     "antlr4ts": "^0.5.0-alpha.4",
     "chalk": "^4.1.2",
+    "cli-progress": "^3.12.0",
     "eol": "^0.9.1",
     "immutable": "^4.3.0",
     "json-bigint": "^1.0.0",
     "line-column": "^1.0.2",
     "lodash": "^4.17.21",
+    "lodash.clonedeep": "4.5.0",
     "lodash.isequal": "^4.5.0",
-    "node-fetch": "^2.6.13",
     "seedrandom": "^3.0.5",
     "tar": "^6.1.14",
     "yargs": "^17.2.1"
@@ -72,13 +74,15 @@
     "compile": "genversion -e src/version.ts && tsc && copyfiles -u 1 ./src/reflection.proto ./src/builtin.qnt ./dist/src/",
     "prepare": "rm -rf ./dist && npm run compile && chmod +x ./dist/src/cli.js",
     "test": "mocha --reporter-option maxDiffSize=0 -r ts-node/register test/*.test.ts test/**/*.test.ts",
+    "test-w": "while inotifywait -r -e close_write ./ ; do npm run test; done",
+    "test-f": "mocha --reporter-option maxDiffSize=0 -r ts-node/register",
     "coverage": "nyc npm run test",
     "integration": "txm cli-tests.md && txm io-cli-tests.md",
     "apalache-integration": "txm apalache-tests.md",
     "apalache-dist": "txm apalache-dist-tests.md",
     "generate": "npm run antlr && npm run compile && npm link && npm run api-docs && npm run update-fixtures",
     "antlr": "antlr4ts -visitor ./src/generated/Quint.g4 && antlr4ts -visitor ./src/generated/Effect.g4",
-    "api-docs": "quint docs ./src/builtin.qnt > ../doc/builtin.md",
+    "api-docs": "quint docs ./src/builtin.qnt > ../docs/pages/docs/builtin.md",
     "update-fixtures": "./scripts/update-fixtures.sh",
     "format-check": "npx prettier --check '**/*.ts' && npx eslint '**/*.ts'",
     "format": "npx prettier --write '**/*.ts' && npx eslint --fix '**/*.ts'",
@@ -86,6 +90,7 @@
   },
   "devDependencies": {
     "@types/chai": "^4.2.18",
+    "@types/cli-progress": "^3.11.6",
     "@types/json-bigint": "^1.0.1",
     "@types/lodash.isequal": "^4.5.6",
     "@types/mocha": "^8.2.3",

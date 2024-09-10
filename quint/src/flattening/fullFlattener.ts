@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------------------
- * Copyright (c) Informal Systems 2023. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2023 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  * --------------------------------------------------------------------------------- */
 
 /**
@@ -17,17 +17,13 @@ import { IdGenerator } from '../idGenerator'
 import { moduleToString } from '../ir/IRprinting'
 import { FlatModule, QuintModule, isDef } from '../ir/quintIr'
 import { LookupTable } from '../names/base'
-import {
-  Loc,
-  ParserPhase3,
-  ParserPhase4,
-  parsePhase3importAndNameResolution,
-  parsePhase4toposort,
-} from '../parsing/quintParserFrontend'
+import { ParserPhase3, SourceMap, parsePhase3importAndNameResolution } from '../parsing/quintParserFrontend'
 import { AnalysisOutput } from '../quintAnalyzer'
 import { inlineTypeAliases } from '../types/aliasInliner'
 import { flattenModule } from './flattener'
 import { flattenInstances } from './instanceFlattener'
+import { unshadowNames } from '../names/unshadower'
+import { quintErrorToString } from '../quintError'
 
 /**
  * Flatten an array of modules, replacing instances, imports and exports with
@@ -45,14 +41,17 @@ export function flattenModules(
   modules: QuintModule[],
   table: LookupTable,
   idGenerator: IdGenerator,
-  sourceMap: Map<bigint, Loc>,
+  sourceMap: SourceMap,
   analysisOutput: AnalysisOutput
 ): { flattenedModules: FlatModule[]; flattenedTable: LookupTable; flattenedAnalysis: AnalysisOutput } {
   // FIXME: use copies of parameters so the original objects are not mutated.
   // This is not a problem atm, but might be in the future.
 
+  // Use unique names when there is shadowing
+  const modulesWithUniqueNames = modules.map(m => unshadowNames(m, table))
+
   // Inline type aliases
-  const inlined = inlineTypeAliases(modules, table, analysisOutput)
+  const inlined = inlineTypeAliases(modulesWithUniqueNames, table, analysisOutput)
 
   const modulesByName = new Map(inlined.modules.map(m => [m.name, m]))
 
@@ -97,7 +96,7 @@ export function flattenModules(
     // modules that were flattened so far, plus the modules that still have to be flattened (queue). We need to do this
     // for the modules in the queue as well since they might also refer to definitions that had their ids changed by the
     // instance flattener.
-    const result = toposortOrThrow(flattenedModules.concat(modulesQueue), sourceMap)
+    const result = resolveNamesOrThrow(flattenedModules.concat(modulesQueue), sourceMap)
 
     flattenedModules = result.modules.slice(0, flattenedModules.length)
     flattenedTable = result.table
@@ -113,22 +112,12 @@ export function flattenModules(
   }
 }
 
-function resolveNamesOrThrow(modules: QuintModule[], sourceMap: Map<bigint, Loc>): ParserPhase3 {
-  const result = parsePhase3importAndNameResolution({ modules, sourceMap })
-  if (result.isLeft()) {
+function resolveNamesOrThrow(modules: QuintModule[], sourceMap: SourceMap): ParserPhase3 {
+  const result = parsePhase3importAndNameResolution({ modules, sourceMap, errors: [] })
+  if (result.errors.length > 0) {
     modules.forEach(m => console.log(moduleToString(m)))
-    throw new Error('Internal error while flattening' + result.value.map(e => e.explanation))
+    throw new Error('Internal error while flattening ' + result.errors.map(quintErrorToString))
   }
 
-  return result.unwrap()
-}
-
-function toposortOrThrow(modules: QuintModule[], sourceMap: Map<bigint, Loc>): ParserPhase4 {
-  const result = parsePhase3importAndNameResolution({ modules, sourceMap }).chain(parsePhase4toposort)
-  if (result.isLeft()) {
-    modules.forEach(m => console.log(moduleToString(m)))
-    throw new Error('Internal error while flattening' + result.value.map(e => e.explanation))
-  }
-
-  return result.unwrap()
+  return result
 }

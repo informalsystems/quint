@@ -4,6 +4,7 @@ import { describe } from 'mocha'
 import { dedent } from '../textUtils'
 import { newIdGenerator } from '../../src/idGenerator'
 import {
+  ParserPhase3,
   parsePhase1fromText,
   parsePhase2sourceResolution,
   parsePhase3importAndNameResolution,
@@ -12,6 +13,7 @@ import { SourceLookupPath, fileSourceResolver } from '../../src/parsing/sourceRe
 import { LookupTable, QuintDeclaration, QuintExport, QuintImport, QuintInstance, QuintModule } from '../../src'
 import { CallGraphVisitor, mkCallGraphContext } from '../../src/static/callgraph'
 import { walkModule } from '../../src/ir/IRVisitor'
+import { flow } from 'lodash'
 
 describe('compute call graph', () => {
   // Parse Quint code without, stopping after name resolution
@@ -25,15 +27,14 @@ describe('compute call graph', () => {
     // we are calling parse phases directly instead of `parse`,
     // as the call graph will be computed at parse phase 4
     const resolver = fileSourceResolver()
-    const parseResult = parsePhase1fromText(idGen, code, fakePath.normalizedPath)
-      .chain(phase1Data => parsePhase2sourceResolution(idGen, resolver, fakePath, phase1Data))
-      .chain(phase2Data => parsePhase3importAndNameResolution(phase2Data))
+    const { modules, table, errors }: ParserPhase3 = flow([
+      () => parsePhase1fromText(idGen, code, fakePath.normalizedPath),
+      phase1Data => parsePhase2sourceResolution(idGen, resolver, fakePath, phase1Data),
+      parsePhase3importAndNameResolution,
+    ])()
 
-    if (parseResult.isLeft()) {
-      const msgs = parseResult.value.map(e => e.explanation).join('; ')
-      assert.fail(`Failed to parse a mock module: ${msgs}`)
-    }
-    const { modules, table } = parseResult.unwrap()
+    assert.isEmpty(errors)
+
     return [modules, table]
   }
 
@@ -134,8 +135,8 @@ describe('compute call graph', () => {
     )
 
     const [modules, table] = parse3phases(code)
-
-    const [A, B, main] = modules
+    const findModule = (name: string) => modules.find(m => m.name === name)!
+    const [A, B, main] = ['A', 'B', 'main'].map(findModule)
     const visitor = new CallGraphVisitor(table, mkCallGraphContext(modules))
     walkModule(visitor, main)
     const graph = visitor.graph
