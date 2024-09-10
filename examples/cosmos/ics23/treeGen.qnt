@@ -9,8 +9,8 @@
 /// To execute advanced PBT-like tests for 1000 runs in the simulator,
 /// type the following:
 ///
-/// $ quint run --invariant=nonMemInv ics23trees.qnt
-/// $ quint run --invariant=memInv ics23trees.qnt
+/// $ quint run --invariant=nonMemInv treeGen.qnt
+/// $ quint run --invariant=memInv treeGen.qnt
 ///
 /// We expect these tests to always pass. If the simulator reports
 /// a counterexample, there must be an error somewhere.

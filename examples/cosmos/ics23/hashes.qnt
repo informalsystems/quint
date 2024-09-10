@@ -16,21 +16,21 @@
 /// we represent terms as maps that encode trees. For instance,
 /// the term h([ 1, 2 ] + h([ 3, 4 ])) + [ 5, 6 ] corresponds to the tree:
 ///
-///            *
-///          /   \
-///       "h"     [ 5, 6 ]
-///     /     \
-/// [ 1, 2 ]   "h"
-///          /
+///           *
+///         /   \
+///       Hash  [ 5, 6 ]
+///      /    \
+/// [ 1, 2 ]   Hash
+///           /
 ///      [ 3, 4 ]
 ///
 /// The above tree is represented as a map in Quint. Each key corresponds to a path in the tree; for example, the first root's child is [ 0 ], the second root's child is [ 1 ], the first child of [ 0 ] is [ 0, 0], etc.
 ///
-/// Map([ 0 ] -> { t: "h", b: [] },
-///     [ 0, 0 ] -> { t: "r", b: [ 1, 2 ] },
-///     [ 0, 1 ] -> { t: "h", b: [] } ),
-///     [ 0, 1, 0 ] -> { t: "r", b: [ 3, 4 ] },
-///     [ 1 ] -> { t: "r", b: [ 5, 6 ] })
+/// Map([ 0 ] -> Hash,
+///     [ 0, 0 ] -> Raw([1, 2]),
+///     [ 0, 1 ] -> Hash,
+///     [ 0, 1, 0 ] -> Raw([ 3, 4 ]),
+///     [ 1 ] -> Raw[ 5, 6 ])
 ///
 /// Igor Konnov, Informal Systems, 2022-2023
 module hashes {
@@ -60,12 +60,7 @@ module hashes {
   }
 
   /// A tree node that represents a fragment of a term
-  type TERM_NODE_T = {
-    // node type: either "h" (for hash), or "r" (for raw sequence)
-    t: str,
-    // the bytes when t = "r", and [] when t = "h"
-    b: Bytes_t
-  }
+  type TERM_NODE_T = Hash | Raw(Bytes_t)
 
   /// A word is a map from a path to the term node.
   /// The first root's child is [ 0 ], the second root's child is [ 1 ],
@@ -78,26 +73,29 @@ module hashes {
     // the roots' children
     pure val top =
       keys(term).filter(p => length(p) == 1).map(p => term.get(p))
-    top.fold(0, (s, t) => if (t.t == "h") s + 32 else s + length(t.b))
+    top.fold(0, (s, t) => match(t) {
+      | Hash => s + 32
+      | Raw(bytes) => s + length(bytes)
+    })
   }
 
   /// Construct the term that encodes a raw sequence of bytes
   pure def raw(bytes: Bytes_t): Term_t = {
-    Map([ 0 ] -> { t: "r", b: bytes })
+    Map([ 0 ] -> Raw(bytes))
   }
 
   /// Is the term representing a raw term?
   pure def isRaw(term: Term_t): bool = {
-    size(keys(term)) == 1 and term.get([0]).t == "r"
+    size(keys(term)) == 1 and term.get([0]) != Hash
   }
 
   /// Hash a term
   pure def termHash(term: Term_t): Term_t = {
-    // add "h" on top, which has the key [ 0 ], and attach term to it
+    // add Hash on top, which has the key [ 0 ], and attach term to it
     pure val paths = Set([ 0 ]).union(keys(term).map(p => [ 0 ].concat(p)))
     paths.mapBy(p =>
       if (p == [ 0 ]) {
-        { t: "h", b: [] }
+        Hash
       } else {
         term.get(p.slice(1, length(p)))
       }
@@ -107,18 +105,10 @@ module hashes {
   /// Concatenate two terms. Special attention is paid to the case when the
   /// both terms are raw sequences, which requires them to be merged.
   pure def termConcat(left: Term_t, right: Term_t): Term_t = {
-    pure val l = left.get([0])
-    pure val r = right.get([0])
-    pure val isLeftRaw = isRaw(left)
-    pure val isRightRaw = isRaw(right)
-    if (isLeftRaw and l.b == []) {
-      right
-    } else if (isRightRaw and r.b == []) {
-      left
-    } else if (isLeftRaw and isRightRaw) {
-      // both arguments are raw sequences, produce a single raw sequence
-      Map([0] -> { t: "r", b: l.b.concat(r.b) })
-    } else {
+    pure val l = if (isRaw(left)) left.get([0]) else Hash
+    pure val r = if (isRaw(right)) right.get([0]) else Hash
+
+    pure def mergeTerms(left: Term_t, right: Term_t): Term_t = {
       // Merge the arguments as trees representing terms.
       // The number of root's children in the left term:
       pure val lwidth = size(keys(left).filter(p => length(p) == 1))
@@ -136,6 +126,19 @@ module hashes {
         }
       )
     }
+
+    match(l) {
+      | Raw(lBytes) => match(r) {
+        | Raw(rBytes) =>
+          // both arguments are raw sequences, produce a single raw sequence
+          raw(lBytes.concat(rBytes))
+        | Hash => if (lBytes == []) right else mergeTerms(left, right)
+      }
+      | Hash => match(r) {
+        | Raw(rBytes) => if (rBytes == []) left else mergeTerms(left, right)
+        | Hash => mergeTerms(left, right)
+      }
+    }
   }
 
   // prepend the hash with the length marker
@@ -146,11 +149,14 @@ module hashes {
   /// Slice a raw sequence represented by a term.
   /// Non-raw sequences are returned unmodified.
   pure def termSlice(term: Term_t, start: int, end: int): Term_t = {
-    pure val first = term.get([ 0 ])
-    if (isRaw(term)) {
-      raw(first.b.slice(start, end))
-    } else {
+    if (size(keys(term)) != 1) {
       term
+    } else {
+      pure val first = term.get([ 0 ])
+      match(first) {
+        | Raw(bytes) => raw(bytes.slice(start, end))
+        | _ => term
+      }
     }
   }
 }
