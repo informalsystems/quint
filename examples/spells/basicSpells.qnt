@@ -166,4 +166,14 @@ module basicSpells {
     assert(empty(Set(1, 2)) == false),
     assert(empty(Set(Set())) == false),
   }
+
+  type Option[a] = Some(a) | None
+  type Result[ok, err] = Ok(ok) | Err(err)
+
+  pure def chainResult(r: Result[ok, err], op: (ok) => Result[ok, err]): Result[ok, err] = {
+    match r {
+     | Err(e) => Err(e)
+     | Ok(o) => op(o)
+    }
+  }
 }
