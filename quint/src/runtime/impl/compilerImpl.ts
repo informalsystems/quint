@@ -388,6 +388,10 @@ export class CompilerVisitor implements IRVisitor {
     }
   }
 
+  exitTuple(tup: ir.QuintTup){
+    this.applyFun(tup.id, tup.elements.length, (...values: RuntimeValue[]) => right(rv.mkTuple(values)))
+  }
+
   exitApp(app: ir.QuintApp) {
     if (!ir.isQuintBuiltin(app)) {
       this.applyUserDefined(app)

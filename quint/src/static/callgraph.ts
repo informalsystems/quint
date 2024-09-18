@@ -16,6 +16,7 @@ import { IRVisitor } from '../ir/IRVisitor'
 import { LookupTable } from '../names/base'
 import {
   QuintApp,
+  QuintTup,
   QuintDeclaration,
   QuintDef,
   QuintExport,
@@ -207,7 +208,14 @@ export class CallGraphVisitor implements IRVisitor {
     this.graphAddAll(decl.id, imports)
   }
 
-  // e.g., called for plus inside plus(x, y)
+  exitTuple(tup: QuintTup) {
+    const lookupDef = this.lookupTable.get(tup.id)
+    if (lookupDef) {
+      this.graphAddOne(lookupDef.id)
+      this.graphAddImports(lookupDef.id)
+    }
+  }
+
   exitApp(app: QuintApp) {
     const lookupDef = this.lookupTable.get(app.id)
     if (lookupDef) {

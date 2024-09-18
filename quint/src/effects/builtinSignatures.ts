@@ -241,9 +241,10 @@ const multipleAritySignatures: [QuintBuiltinOpcode, Signature][] = [
   ['Set', standardPropagation],
   ['Map', standardPropagation],
   ['Rec', standardPropagation],
-  ['Tup', standardPropagation],
+  // ['Tup', standardPropagation],
   ['tuples', standardPropagation],
   ['and', standardPropagation],
+  // ['tuple', standardPropagation],
   ['or', standardPropagation],
   [
     // A match operator that looks like
@@ -306,6 +307,7 @@ const fixedAritySignatures: [string, Signature][] = [
   booleanOperators,
   setOperators,
   mapOperators,
+  tupleOperators,
   recordOperators,
   tupleOperators,
   listOperators,
