@@ -236,15 +236,15 @@ const otherOperators = [
   },
 ]
 
-const multipleAritySignatures: [QuintBuiltinOpcode, Signature][] = [
+// const multipleAritySignatures: [QuintBuiltinOpcode, Signature][] = [
+const multipleAritySignatures: [string, Signature][] = [
   ['List', standardPropagation],
   ['Set', standardPropagation],
   ['Map', standardPropagation],
   ['Rec', standardPropagation],
-  // ['Tup', standardPropagation],
+  ['tuple', standardPropagation],
   ['tuples', standardPropagation],
   ['and', standardPropagation],
-  // ['tuple', standardPropagation],
   ['or', standardPropagation],
   [
     // A match operator that looks like

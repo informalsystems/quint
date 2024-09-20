@@ -519,11 +519,6 @@ export class CompilerVisitor implements IRVisitor {
           this.applyFun(app.id, 2, (p, q) => right(rv.mkBool(p.toInt() <= q.toInt())))
           break
 
-        case 'Tup':
-          // Construct a tuple from an array of values
-          this.applyFun(app.id, app.args.length, (...values: RuntimeValue[]) => right(rv.mkTuple(values)))
-          break
-
         case 'item':
           // Access a tuple: tuples are 1-indexed, that is, _1, _2, etc.
           this.applyFun(app.id, 2, (tuple, idx) => getListElem(tuple.toList(), Number(idx.toInt()) - 1))

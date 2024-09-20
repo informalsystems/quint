@@ -65,17 +65,6 @@ export interface QuintOperType extends WithOptionalId {
 }
 
 
-// const tupleType: QuintTupleType = {
-//   kind: 'tup',
-//   fields: {
-//     kind: 'row',
-//     fields: [
-//       { fieldName: '0', fieldType: { kind: 'int' } },
-//       { fieldName: '1', fieldType: { kind: 'bool' } }
-//     ],
-//     other: { kind: 'empty' }
-//   }
-// }
 export interface QuintTupleType extends WithOptionalId {
   kind: 'tup'
   fields: Row

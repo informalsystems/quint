@@ -710,10 +710,7 @@ export class ToIrListener implements QuintListener {
   }
 
   exitTuple(ctx: p.TupleContext) {
-    console.log("Tuple found, processing...");
     const args = popMany(this.exprStack, ctx.expr().length, this.undefinedExpr(ctx));
-
-    // Your tuple handling code
     this.exprStack.push({
         id: this.getId(ctx),
         kind: 'tuple',

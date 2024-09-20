@@ -108,14 +108,6 @@ export interface QuintApp extends WithId {
   args: QuintEx[]
 }
 
-// const tupleExpr: QuintTup = {
-//   id: 1,
-//   kind: 'tuple',
-//   elements: [
-//     { kind: 'int', value: 1 },
-//     { kind: 'bool', value: true }
-//   ]
-// }
 export interface QuintTup extends WithId {
   /** Expressions kind ('bool' -- a boolean literal) */
   kind: 'tuple'
@@ -144,8 +136,6 @@ export const builtinOpCodes = [
   'Map',
   'Rec',
   'Set',
-  'Tup',
-  // 'tuple',
   'actionAll',
   'actionAny',
   'allLists',
