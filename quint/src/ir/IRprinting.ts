@@ -151,6 +151,11 @@ export function expressionToString(expr: QuintEx): string {
       return `((${expr.params.map(p => p.name).join(', ')}) => ${expressionToString(expr.expr)})`
     case 'let':
       return `${declarationToString(expr.opdef)} { ${expressionToString(expr.expr)} }`
+    case 'tuple':
+    //   // todo: fix this
+      return `(${expr.elements.map(expressionToString).join(', ')})`
+    default:
+      throw new Error(`Unknown expression kind: ${(expr as any).kind}`);
   }
 }
 

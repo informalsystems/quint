@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@sweet-monads/either": "^3.3.1",
+    "lodash.clonedeep": "^4.5.0"
+  }
+}

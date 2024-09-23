@@ -64,6 +64,7 @@ export interface QuintOperType extends WithOptionalId {
   res: QuintType
 }
 
+
 export interface QuintTupleType extends WithOptionalId {
   kind: 'tup'
   fields: Row
