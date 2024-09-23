@@ -310,6 +310,9 @@ export function fromQuintEx(ex: QuintEx): Maybe<RuntimeValue> {
     case 'str':
       return just(rv.mkStr(ex.value))
 
+    case 'tuple':
+        return merge(ex.elements.map(fromQuintEx)).map(rv.mkTuple)
+
     case 'app':
       switch (ex.opcode) {
         case 'Set':
@@ -318,17 +321,13 @@ export function fromQuintEx(ex: QuintEx): Maybe<RuntimeValue> {
         case 'Map': {
           const pairs: Maybe<[RuntimeValue, RuntimeValue][]> = merge(
             ex.args.map(arg => {
-              assert(arg.kind === 'app', `Expected Tup(...), found: ${arg.kind}`)
-              assert(arg.opcode === 'Tup', `Expected Tup(...), found: ${arg.opcode}`)
-              assert(arg.args.length === 2, `Expected a 2-element Tup(...), found: ${arg.args.length} elements`)
-              return merge([fromQuintEx(arg.args[0]), fromQuintEx(arg.args[1])])
+              assert(arg.kind === 'tuple', `Expected Tup(...), found: ${arg.kind}`)
+              assert(arg.elements.length === 2, `Expected a 2-element Tup(...), found: ${arg.elements.length} elements`)
+              return merge([fromQuintEx(arg.elements[0]), fromQuintEx(arg.elements[1])])
             })
           )
           return pairs.map(rv.mkMap)
         }
-
-        case 'Tup':
-          return merge(ex.args.map(fromQuintEx)).map(rv.mkTuple)
 
         case 'List':
           return merge(ex.args.map(fromQuintEx)).map(rv.mkList)
