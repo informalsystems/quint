@@ -5,6 +5,7 @@ import { QuintListener } from '../generated/QuintListener'
 import {
   OpQualifier,
   QuintApp,
+  QuintTup,
   QuintBuiltinApp,
   QuintDeclaration,
   QuintDef,
@@ -23,6 +24,7 @@ import {
   QuintAppType,
   QuintConstType,
   QuintSumType,
+  QuintTupleType,
   QuintType,
   QuintVarType,
   Row,
@@ -707,12 +709,15 @@ export class ToIrListener implements QuintListener {
     }
   }
 
-  // tuple constructor, e.g., (1, 2, 3)
   exitTuple(ctx: p.TupleContext) {
-    const args = popMany(this.exprStack, ctx.expr().length, this.undefinedExpr(ctx))
-
-    this.pushApplication(ctx, 'Tup', args)
+    const args = popMany(this.exprStack, ctx.expr().length, this.undefinedExpr(ctx));
+    this.exprStack.push({
+        id: this.getId(ctx),
+        kind: 'tuple',
+        elements: args
+    } as QuintTup);
   }
+
 
   // The unit, (), represented by the empty tuple
   exitUnit(ctx: p.UnitContext) {
@@ -722,7 +727,11 @@ export class ToIrListener implements QuintListener {
   // pair constructor, e.g., 2 -> 3
   exitPair(ctx: p.PairContext) {
     const args = popMany(this.exprStack, ctx.expr().length, this.undefinedExpr(ctx))
-    this.pushApplication(ctx, 'Tup', args)
+    this.exprStack.push({
+      id: this.getId(ctx),
+      kind: 'tuple',
+      elements: args
+    } as QuintTup);
   }
 
   // list constructor, e.g., [1, 2, 3]
@@ -748,17 +757,15 @@ export class ToIrListener implements QuintListener {
       }
       this.exprStack.push({
         id: 0n,
-        kind: 'app',
-        opcode: 'Tup',
-        args: [nameEx, expr],
+        kind: 'tuple',
+        elements: [nameEx, expr],
       })
     } else {
       // ...expr
       this.exprStack.push({
         id: 0n,
-        kind: 'app',
-        opcode: 'Tup',
-        args: [expr],
+        kind: 'tuple',
+        elements: [expr],
       })
     }
   }
@@ -1324,12 +1331,14 @@ function getDocText(doc: TerminalNode[]): string {
 }
 
 // Helper to construct an empty record (the unit value)
-function unitValue(id: bigint): QuintBuiltinApp {
+// constructs an application that represents a tuple with no elements. 
+// This is useful for cases where a tuple is expected, 
+// but you need to represent the empty tuple (like () in some languages, which is a tuple of zero elements).
+function unitValue(id: bigint): QuintTup {
   return {
     id,
-    kind: 'app',
-    opcode: 'Tup',
-    args: [],
+    kind: 'tuple',
+    elements: [],
   }
 }
 
