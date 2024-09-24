@@ -24,7 +24,6 @@ import {
   QuintAppType,
   QuintConstType,
   QuintSumType,
-  QuintTupleType,
   QuintType,
   QuintVarType,
   Row,
@@ -786,8 +785,7 @@ export class ToIrListener implements QuintListener {
     } else {
       // { ...record, field1: value1, field2: value2 }
       // translate to record.with("field1", value1).with("field2", value2)
-      // console.log(`spreads is : ${(spreads[0] as QuintApp).args[0]}`)
-      let record: QuintEx = (spreads[0] as QuintApp)
+      let record: QuintEx = (spreads[0] as QuintTup).elements[0]
       for (const p of pairs) {
         const id = this.getId(ctx)
         record = {
