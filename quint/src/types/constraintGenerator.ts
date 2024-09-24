@@ -12,7 +12,7 @@
  * @module
  */
 
-import { IRVisitor } from '../ir/IRVisitor'
+import { IRVisitor, walkExpression } from '../ir/IRVisitor'
 import {
   QuintApp,
   QuintAssume,
@@ -168,16 +168,24 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
   }
 
   exitTuple(e: QuintTup) {
+    if (this.errors.size !== 0) {
+      return
+    }
     const a: QuintType = { kind: 'var', name: this.freshVarGenerator.freshVar('_t') }
   
-    // Fetch the types of the tuple's elements
+    // Walk through each element of the tuple to ensure all expressions are processed
+    e.elements.forEach(el => {
+      walkExpression(this, el) // Walk each element, which will handle 'app' or other expression kinds
+    })
+  
+    // Now fetch the types of the tuple's elements
     const elementsResult: Either<Error, [QuintEx, QuintType][]> = mergeInMany(
       e.elements.map(el => {
-        // For each element, fetch its type from the environment
         return this.fetchResult(el.id).map(r => [el, r.type])
       })
     )
   
+    // Create the tuple constructor constraints
     const result = elementsResult.chain(results => {
       return tupleConstructorConstraints(e.id, results, a)
     })
@@ -186,15 +194,14 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
       return toScheme(a)
     })
   
+    // Store the result in the types map
     this.addToResults(e.id, result)
   }
   
-
   //   op: q ∈ Γ   Γ ⊢  p0, ..., pn: (t0, c0), ..., (tn, cn)   a is fresh
   // ------------------------------------------------------------------------ (APP)
   //    Γ ⊢ op(p0, ..., pn): (a, q ~ (t0, ..., tn) => a ∧ c0 ∧ ... ∧ cn)
 
-  // todo: move tup to exitTuple
   exitApp(e: QuintApp) {
     if (this.errors.size !== 0) {
       return
@@ -227,6 +234,8 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
             )
           case 'with':
             return validateArity(e.opcode, results, l => l === 3, '3').chain(() => withConstraints(e.id, results, a))
+          // case 'Tup':
+          //   return tupleConstructorConstraints(e.id, results, a)
           case 'item':
             return validateArity(e.opcode, results, l => l === 2, '2').chain(() => itemConstraints(e.id, results, a))
           // Sum type operators
