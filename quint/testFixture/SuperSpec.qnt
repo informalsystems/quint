@@ -174,7 +174,8 @@ module withConsts {
 
   // Data structures
   val test_tuple = (1, 2, 3)
-  val test_tuple2 = Tup(1, 2, 3)
+  // Tup is not supported
+  // val test_tuple2 = Tup(1, 2, 3)
   val test_pair = 4 -> 5
   val test_list = [1, 2, 3]
   val test_list2 = List(1, 2, 3)
@@ -190,7 +191,7 @@ module withConsts {
     my_rec.a
 
   val tup_elem =
-    val my_tup = Tup("a", 3)
+    val my_tup = ("a", 3)
     my_tup._2
 
   def isEmpty(s) = s == []
