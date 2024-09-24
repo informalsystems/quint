@@ -403,7 +403,7 @@ export class ToIrListener implements QuintListener {
         let typeAnnotation: QuintType
 
         const label: QuintStr = { id: this.getId(variantCtx), kind: 'str', value: fieldName }
-        if ((fieldType)) {
+        if (isUnitType(fieldType)) {
           // Its a `val` cause it has no parameters
           //
           // E.g., for B we will produce
@@ -786,7 +786,8 @@ export class ToIrListener implements QuintListener {
     } else {
       // { ...record, field1: value1, field2: value2 }
       // translate to record.with("field1", value1).with("field2", value2)
-      let record: QuintEx = (spreads[0] as QuintApp).args[0]
+      // console.log(`spreads is : ${(spreads[0] as QuintApp).args[0]}`)
+      let record: QuintEx = (spreads[0] as QuintApp)
       for (const p of pairs) {
         const id = this.getId(ctx)
         record = {
