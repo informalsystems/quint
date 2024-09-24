@@ -403,7 +403,7 @@ export class ToIrListener implements QuintListener {
         let typeAnnotation: QuintType
 
         const label: QuintStr = { id: this.getId(variantCtx), kind: 'str', value: fieldName }
-        if (isUnitType(fieldType)) {
+        if ((fieldType)) {
           // Its a `val` cause it has no parameters
           //
           // E.g., for B we will produce
@@ -773,8 +773,8 @@ export class ToIrListener implements QuintListener {
   // record constructor, e.g., { name: "igor", year: 2021 }
   exitRecord(ctx: p.RecordContext) {
     const elems = popMany(this.exprStack, ctx.recElem().length, this.undefinedExpr(ctx))
-    const spreads = elems.filter(e => e.kind === 'app' && e.args.length === 1)
-    const pairs = elems.map(e => (e.kind === 'app' && e.args.length === 2 ? e.args : [])).filter(es => es.length > 0)
+    const spreads = elems.filter(e => e.kind === 'tuple' && e.elements.length === 1)
+    const pairs = elems.map(e => (e.kind === 'tuple' && e.elements.length === 2 ? e.elements : [])).filter(es => es.length > 0)
 
     if (spreads.length === 0) {
       // { field1: value1, field2: value2 }
