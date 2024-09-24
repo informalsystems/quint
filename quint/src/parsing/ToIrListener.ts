@@ -4,8 +4,6 @@ import { ParserRuleContext } from 'antlr4ts/ParserRuleContext'
 import { QuintListener } from '../generated/QuintListener'
 import {
   OpQualifier,
-  QuintApp,
-  QuintTup,
   QuintBuiltinApp,
   QuintDeclaration,
   QuintDef,
@@ -17,6 +15,7 @@ import {
   QuintName,
   QuintOpDef,
   QuintStr,
+  QuintTup,
   isAnnotatedDef,
 } from '../ir/quintIr'
 import {
@@ -709,14 +708,13 @@ export class ToIrListener implements QuintListener {
   }
 
   exitTuple(ctx: p.TupleContext) {
-    const args = popMany(this.exprStack, ctx.expr().length, this.undefinedExpr(ctx));
+    const args = popMany(this.exprStack, ctx.expr().length, this.undefinedExpr(ctx))
     this.exprStack.push({
-        id: this.getId(ctx),
-        kind: 'tuple',
-        elements: args
-    } as QuintTup);
+      id: this.getId(ctx),
+      kind: 'tuple',
+      elements: args,
+    } as QuintTup)
   }
-
 
   // The unit, (), represented by the empty tuple
   exitUnit(ctx: p.UnitContext) {
@@ -729,8 +727,8 @@ export class ToIrListener implements QuintListener {
     this.exprStack.push({
       id: this.getId(ctx),
       kind: 'tuple',
-      elements: args
-    } as QuintTup);
+      elements: args,
+    } as QuintTup)
   }
 
   // list constructor, e.g., [1, 2, 3]
@@ -773,7 +771,9 @@ export class ToIrListener implements QuintListener {
   exitRecord(ctx: p.RecordContext) {
     const elems = popMany(this.exprStack, ctx.recElem().length, this.undefinedExpr(ctx))
     const spreads = elems.filter(e => e.kind === 'tuple' && e.elements.length === 1)
-    const pairs = elems.map(e => (e.kind === 'tuple' && e.elements.length === 2 ? e.elements : [])).filter(es => es.length > 0)
+    const pairs = elems
+      .map(e => (e.kind === 'tuple' && e.elements.length === 2 ? e.elements : []))
+      .filter(es => es.length > 0)
 
     if (spreads.length === 0) {
       // { field1: value1, field2: value2 }
@@ -1330,8 +1330,8 @@ function getDocText(doc: TerminalNode[]): string {
 }
 
 // Helper to construct an empty record (the unit value)
-// constructs an application that represents a tuple with no elements. 
-// This is useful for cases where a tuple is expected, 
+// constructs an application that represents a tuple with no elements.
+// This is useful for cases where a tuple is expected,
 // but you need to represent the empty tuple (like () in some languages, which is a tuple of zero elements).
 function unitValue(id: bigint): QuintTup {
   return {

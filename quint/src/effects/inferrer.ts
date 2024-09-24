@@ -19,7 +19,6 @@ import { expressionToString } from '../ir/IRprinting'
 import { IRVisitor, walkDeclaration } from '../ir/IRVisitor'
 import {
   QuintApp,
-  QuintTup,
   QuintBool,
   QuintConst,
   QuintDeclaration,
@@ -30,6 +29,7 @@ import {
   QuintName,
   QuintOpDef,
   QuintStr,
+  QuintTup,
   QuintVar,
 } from '../ir/quintIr'
 import { Effect, EffectScheme, Signature, effectNames, entityNames, toScheme, unify } from './base'
@@ -143,7 +143,7 @@ export class EffectInferrer implements IRVisitor {
   exitTuple(expr: QuintTup): void {
     this.inferEffect(expr, expr.elements, expr.kind, expr.id, expr.elements.length)
   }
-  
+
   // { identifier: op, effect: E } ∈ Γ    Γ ⊢ p0:E0 ... Γ ⊢ pn:EN
   // Eres <- freshVar   S = unify(newInstance(E), (E0, ...,  EN) => Eres)
   // ------------------------------------------------------------------- (APP)
@@ -384,65 +384,63 @@ export class EffectInferrer implements IRVisitor {
 
   private inferEffect(expr: QuintEx, args: QuintEx[], name: string, id: bigint, arity: number): void {
     if (this.errors.size > 0) {
-      return; // Early exit if errors are present
+      return // Early exit if errors are present
     }
-  
-    this.location = `Trying to infer effect for operator application in ${expressionToString(expr)}`;
-  
-    const paramsResult = mergeInMany(
-      args.map((a: QuintEx) => this.fetchResult(a.id).map(e => this.newInstance(e)))
-    );
-  
+
+    this.location = `Trying to infer effect for operator application in ${expressionToString(expr)}`
+
+    const paramsResult = mergeInMany(args.map((a: QuintEx) => this.fetchResult(a.id).map(e => this.newInstance(e))))
+
     const resultEffect: Effect = { kind: 'variable', name: this.freshVarGenerator.freshVar('_e') }
     const arrowEffect = paramsResult
-    // paramsResult is an array.
-    // It iterates over each element in paramsResult, where each element is passed into the params parameter.
+      // paramsResult is an array.
+      // It iterates over each element in paramsResult, where each element is passed into the params parameter.
       .map(params => {
         const effect: Effect = {
           kind: 'arrow',
           params,
           result: resultEffect,
         }
-  
+
         return effect
       })
       .chain(e => applySubstitution(this.substitutions, e))
-  
+
     this.effectForName(name, id, arity)
-    .mapLeft(err => buildErrorTree(this.location, err))
-    .chain(signature => {
-      const substitution = arrowEffect.chain(effect =>
-        applySubstitution(this.substitutions, signature).chain(s => unify(s, effect))
-      )
+      .mapLeft(err => buildErrorTree(this.location, err))
+      .chain(signature => {
+        const substitution = arrowEffect.chain(effect =>
+          applySubstitution(this.substitutions, signature).chain(s => unify(s, effect))
+        )
 
-      const resultEffectWithSubs = substitution
-        .chain(s => compose(this.substitutions, s))
-        .chain(s => {
-          this.substitutions = s
+        const resultEffectWithSubs = substitution
+          .chain(s => compose(this.substitutions, s))
+          .chain(s => {
+            this.substitutions = s
 
-          paramsResult.map(effects =>
-            zip(
-              effects,
-              args.map(a => a.id)
-            ).forEach(([effect, id]) => {
-              const r = applySubstitution(s, effect).map(toScheme)
-              this.addToResults(id, r)
-            })
-          )
-          // For every free name we are binding in the substitutions, the names occuring in the value of the
-          // substitution have to become free as well.
-          this.addBindingsToFreeNames(s)
+            paramsResult.map(effects =>
+              zip(
+                effects,
+                args.map(a => a.id)
+              ).forEach(([effect, id]) => {
+                const r = applySubstitution(s, effect).map(toScheme)
+                this.addToResults(id, r)
+              })
+            )
+            // For every free name we are binding in the substitutions, the names occuring in the value of the
+            // substitution have to become free as well.
+            this.addBindingsToFreeNames(s)
 
-          return applySubstitution(s, resultEffect)
-        })
+            return applySubstitution(s, resultEffect)
+          })
 
-      return resultEffectWithSubs
-    })
-    .map(effect => {
-      this.addToResults(expr.id, right(toScheme(effect)))
-    })
-    .mapLeft(err => {
-      this.addToResults(expr.id, left(err))
-    })
+        return resultEffectWithSubs
+      })
+      .map(effect => {
+        this.addToResults(expr.id, right(toScheme(effect)))
+      })
+      .mapLeft(err => {
+        this.addToResults(expr.id, left(err))
+      })
   }
 }

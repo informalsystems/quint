@@ -75,13 +75,13 @@ class Namespacer implements IRTransformer {
       }
       // Otherwise, return the element as-is
       return element
-    });
-  
+    })
+
     // Return a new tuple with namespaced elements
     return {
       ...tup,
       elements: namespacedElements,
-    };
+    }
   }
 
   exitApp(expr: QuintApp): QuintApp {

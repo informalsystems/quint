@@ -520,6 +520,15 @@ describe('walkModule', () => {
         exitApp(expr: QuintEx): void {
           this.exited.push(expr)
         }
+
+        // change here?
+        enterTuple(expr: QuintEx): void {
+          this.entered.push(expr)
+        }
+
+        exitTuple(expr: QuintEx): void {
+          this.exited.push(expr)
+        }
       }
 
       const enteredExpressions = ['igt(N, 1)', 'filter(S, ((x) => iadd(x, 1)))', 'iadd(x, 1)']

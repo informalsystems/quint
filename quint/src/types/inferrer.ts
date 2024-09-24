@@ -44,6 +44,8 @@ export class TypeInferrer extends ConstraintGeneratorVisitor {
 
     // Resolve all type applications used in expressions in the lookup table
     declarations.forEach(decl => {
+      // makes the visitor visit every node of the tree
+      // this is where inferrer runs and gives us the types
       walkDeclaration(this, decl)
     })
 

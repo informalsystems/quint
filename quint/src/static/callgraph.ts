@@ -16,7 +16,6 @@ import { IRVisitor } from '../ir/IRVisitor'
 import { LookupTable } from '../names/base'
 import {
   QuintApp,
-  QuintTup,
   QuintDeclaration,
   QuintDef,
   QuintExport,
@@ -24,6 +23,7 @@ import {
   QuintInstance,
   QuintModule,
   QuintName,
+  QuintTup,
 } from '../ir/quintIr'
 import { QuintConstType } from '../ir/quintTypes'
 

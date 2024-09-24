@@ -172,32 +172,33 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
       return
     }
     const a: QuintType = { kind: 'var', name: this.freshVarGenerator.freshVar('_t') }
-  
+
     // Walk through each element of the tuple to ensure all expressions are processed
     e.elements.forEach(el => {
       walkExpression(this, el) // Walk each element, which will handle 'app' or other expression kinds
     })
-  
+
     // Now fetch the types of the tuple's elements
     const elementsResult: Either<Error, [QuintEx, QuintType][]> = mergeInMany(
       e.elements.map(el => {
         return this.fetchResult(el.id).map(r => [el, r.type])
       })
     )
-  
+
     // Create the tuple constructor constraints
-    const result = elementsResult.chain(results => {
-      return tupleConstructorConstraints(e.id, results, a)
-    })
-    .map(cs => {
-      this.constraints.push(...cs)
-      return toScheme(a)
-    })
-  
+    const result = elementsResult
+      .chain(results => {
+        return tupleConstructorConstraints(e.id, results, a)
+      })
+      .map(cs => {
+        this.constraints.push(...cs)
+        return toScheme(a)
+      })
+
     // Store the result in the types map
     this.addToResults(e.id, result)
   }
-  
+
   //   op: q ∈ Γ   Γ ⊢  p0, ..., pn: (t0, c0), ..., (tn, cn)   a is fresh
   // ------------------------------------------------------------------------ (APP)
   //    Γ ⊢ op(p0, ..., pn): (a, q ~ (t0, ..., tn) => a ∧ c0 ∧ ... ∧ cn)

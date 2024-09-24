@@ -74,7 +74,6 @@ export interface IRVisitor {
   enterTuple?: (_expr: ir.QuintTup) => void
   exitTuple?: (_expr: ir.QuintTup) => void
 
-
   /** Types */
   enterLiteralType?: (_type: t.QuintBoolType | t.QuintIntType | t.QuintStrType) => void
   exitLiteralType?: (_type: t.QuintBoolType | t.QuintIntType | t.QuintStrType) => void
@@ -435,6 +434,17 @@ export function walkExpression(visitor: IRVisitor, expr: ir.QuintEx): void {
         visitor.exitLiteral(expr)
       }
       break
+    case 'tuple': {
+      if (visitor.enterTuple) {
+        visitor.enterTuple(expr)
+      }
+      expr.elements.forEach(element => walkExpression(visitor, element))
+
+      if (visitor.exitTuple) {
+        visitor.exitTuple(expr)
+      }
+      break
+    }
     case 'app': {
       if (visitor.enterApp) {
         visitor.enterApp(expr)
@@ -486,18 +496,6 @@ export function walkExpression(visitor: IRVisitor, expr: ir.QuintEx): void {
       }
       break
 
-    case 'tuple': {
-        if (visitor.enterTuple) {
-          visitor.enterTuple(expr)
-        }
-        expr.elements.forEach(arg => walkExpression(visitor, arg))
-  
-        if (visitor.exitTuple) {
-          visitor.exitTuple(expr)
-        }
-        break
-      }
-      
     default:
       unreachable(expr)
   }

@@ -94,7 +94,7 @@
     "@types/json-bigint": "^1.0.1",
     "@types/lodash.isequal": "^4.5.6",
     "@types/mocha": "^8.2.3",
-    "@types/node": "^18.16.0",
+    "@types/node": "^18.19.50",
     "@types/node-fetch": "^2.6.4",
     "@types/tar": "^6.1.5",
     "@types/yargs": "^17.0.5",

@@ -115,7 +115,6 @@ export interface QuintTup extends WithId {
   elements: QuintEx[]
 }
 
-
 /** A subtype of `QuintApp` covering all quint builtin operators */
 export interface QuintBuiltinApp extends QuintApp {
   /** The name of the builtin being applied */

@@ -311,7 +311,7 @@ export function fromQuintEx(ex: QuintEx): Maybe<RuntimeValue> {
       return just(rv.mkStr(ex.value))
 
     case 'tuple':
-        return merge(ex.elements.map(fromQuintEx)).map(rv.mkTuple)
+      return merge(ex.elements.map(fromQuintEx)).map(rv.mkTuple)
 
     case 'app':
       switch (ex.opcode) {

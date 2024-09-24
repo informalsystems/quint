@@ -130,7 +130,11 @@ export function withConstraints(
   return right([c1, c2])
 }
 
-export function tupleConstructorConstraints(id: bigint, args: [QuintEx, QuintType][], resultTypeVar: QuintVarType): Either<Error, Constraint[]> {
+export function tupleConstructorConstraints(
+  id: bigint,
+  args: [QuintEx, QuintType][],
+  resultTypeVar: QuintVarType
+): Either<Error, Constraint[]> {
   const fields = args.map(([_, type], i) => {
     return { fieldName: `${i}`, fieldType: type }
   })
