@@ -66,7 +66,7 @@ import { strict as assert } from 'assert'
 
 import { IdGenerator, zerog } from '../../idGenerator'
 import { expressionToString } from '../../ir/IRprinting'
-import { QuintEx, QuintLambdaParameter, QuintName, QuintTup } from '../../ir/quintIr'
+import { QuintEx, QuintLambdaParameter, QuintName } from '../../ir/quintIr'
 import { QuintError, quintErrorToString } from '../../quintError'
 import { Either, left, mergeInMany, right } from '@sweet-monads/either'
 import { EvalFunction } from './builder'
@@ -159,10 +159,10 @@ export const rv = {
   // },
   mkMap: (elems: Iterable<[RuntimeValue, RuntimeValue]>): RuntimeValue => {
     const arr: [RuntimeValue, RuntimeValue][] = Array.from(elems).map(([k, v]) => {
-      return [k.normalForm(), v]; // Ensure normalForm works with tuples
-    });
-    return new RuntimeValueMap(ImmutableMap(arr));
-  },  
+      return [k.normalForm(), v] // Ensure normalForm works with tuples
+    })
+    return new RuntimeValueMap(ImmutableMap(arr))
+  },
 
   /**
    * Make a runtime value that represents a map, using a Map.
@@ -384,11 +384,6 @@ export function fromQuintEx(ex: QuintEx): Maybe<RuntimeValue> {
  * correctness of the input must be checked by the type checker.
  */
 
-interface TupleRuntimeValue extends RuntimeValue {
-  kind: 'tuple';
-  elements: RuntimeValue[];
-}
-
 export interface RuntimeValue extends ValueObject, Iterable<RuntimeValue> {
   /**
    * Can the runtime value behave like a set? Effectively, this means that the
@@ -593,13 +588,12 @@ abstract class RuntimeValueBase implements RuntimeValue {
   toList(): List<RuntimeValue> {
     if (this instanceof RuntimeValueList) {
       return this.list
-    }else if(this instanceof RuntimeValueTuple){
+    } else if (this instanceof RuntimeValueTuple) {
       return this.elements
     } else {
       throw new Error('Expected a list value')
     }
   }
-
 
   toOrderedMap(): OrderedMap<string, RuntimeValue> {
     if (this instanceof RuntimeValueRecord) {
@@ -645,7 +639,7 @@ abstract class RuntimeValueBase implements RuntimeValue {
   //   // This is specific for tuples of size 2, as they are expected in many built-ins.
   //   if (this instanceof RuntimeValueTuple) {
   //     const list = this.list;
-  
+
   //     if (list.size === 2) {
   //       return [list.get(0)!, list.get(1)!];
   //     }
@@ -653,17 +647,16 @@ abstract class RuntimeValueBase implements RuntimeValue {
   //   throw new Error('Expected a 2-tuple');
   // }
 
-
   toTuple2(): [RuntimeValue, RuntimeValue] {
     // This is specific for tuples of size 2, as they are expected in many built-ins.
     if (this instanceof RuntimeValueTuple) {
-      const elements = this.elements;
-  
+      const elements = this.elements
+
       if (elements.size === 2) {
-        return [elements.get(0)!, elements.get(1)!];
+        return [elements.get(0)!, elements.get(1)!]
       }
     }
-    throw new Error('Expected a 2-tuple');
+    throw new Error('Expected a 2-tuple')
   }
 
   toArrow(): (ctx: Context, args: RuntimeValue[]) => Either<QuintError, RuntimeValue> {
@@ -925,18 +918,17 @@ class RuntimeValueTuple extends RuntimeValueBase implements RuntimeValue {
 
   toQuintEx(gen: IdGenerator): QuintEx {
     // Collect elements for QuintEx representation
-    const elems: QuintEx[] = [];
+    const elems: QuintEx[] = []
     for (const e of this.elements) {
-      elems.push(e.toQuintEx(gen));
+      elems.push(e.toQuintEx(gen))
     }
     return {
       id: gen.nextId(),
       kind: 'tuple',
-      elements: elems,  // Adjusted to reflect the new tuple structure
+      elements: elems, // Adjusted to reflect the new tuple structure
     }
   }
 }
-
 
 /**
  * A set of runtime values represented via an immutable List.
@@ -968,9 +960,9 @@ class RuntimeValueList extends RuntimeValueBase implements RuntimeValue {
 
   toQuintEx(gen: IdGenerator): QuintEx {
     // Collect elements for QuintEx representation
-    const elems: QuintEx[] = [];
+    const elems: QuintEx[] = []
     for (const e of this.list) {
-      elems.push(e.toQuintEx(gen));
+      elems.push(e.toQuintEx(gen))
     }
 
     // If kind is 'List', handle it as a list
@@ -979,7 +971,7 @@ class RuntimeValueList extends RuntimeValueBase implements RuntimeValue {
       kind: 'app',
       opcode: 'List',
       args: elems,
-    };
+    }
   }
 }
 
@@ -1070,9 +1062,7 @@ class RuntimeValueMap extends RuntimeValueBase implements RuntimeValue {
 
   toQuintEx(gen: IdGenerator): QuintEx {
     // convert to a set of pairs and use its normal form
-    const pairs: RuntimeValueTuple[] = this.map
-      .toArray()
-      .map(([k, v]) => new RuntimeValueTuple(List([k, v])))
+    const pairs: RuntimeValueTuple[] = this.map.toArray().map(([k, v]) => new RuntimeValueTuple(List([k, v])))
     const set = new RuntimeValueSet(Set(pairs)).toQuintEx(gen)
     if (set.kind === 'app') {
       // return the expression Map(pairs)
@@ -1080,7 +1070,7 @@ class RuntimeValueMap extends RuntimeValueBase implements RuntimeValue {
         id: gen.nextId(),
         kind: 'app',
         opcode: 'Map',
-        args: set.args
+        args: set.args,
       }
     } else {
       throw new Error('Expected a set, found: ' + set.kind)
@@ -1344,24 +1334,24 @@ class RuntimeValueCrossProd extends RuntimeValueBase implements RuntimeValue {
   }
 
   contains(elem: RuntimeValue): boolean {
-    if (elem instanceof RuntimeValueTuple) {  // Change here
-        if (elem.elements.size !== this.sets.length) {
-            return false;
-        } else {
-            let i = 0;
-            for (const e of elem.elements) {
-                if (!this.sets[i].contains(e)) {
-                    return false;
-                }
-                i++;
-            }
-            return true;
+    if (elem instanceof RuntimeValueTuple) {
+      // Change here
+      if (elem.elements.size !== this.sets.length) {
+        return false
+      } else {
+        let i = 0
+        for (const e of elem.elements) {
+          if (!this.sets[i].contains(e)) {
+            return false
+          }
+          i++
         }
+        return true
+      }
     } else {
-        return false;
+      return false
     }
   }
-
 
   isSubset(superset: RuntimeValue): boolean {
     if (superset instanceof RuntimeValueCrossProd) {

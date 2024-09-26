@@ -12,7 +12,7 @@
  * @module
  */
 
-import { IRVisitor, walkExpression } from '../ir/IRVisitor'
+import { IRVisitor } from '../ir/IRVisitor'
 import {
   QuintApp,
   QuintAssume,

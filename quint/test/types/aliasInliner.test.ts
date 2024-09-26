@@ -77,8 +77,7 @@ describe('inlineAliases', () => {
       |  def Some: ((B | C)) => (Some((B | C)) | None) = ((__SomeParam) => variant("Some", __SomeParam))
       |  val None: (Some((B | C)) | None) = variant("None", ())
       |  var x: (Some((B | C)) | None)
-      |}`);
-
+      |}`)
 
     assert.deepEqual(moduleToString(modules[0]), expectedModule)
   })

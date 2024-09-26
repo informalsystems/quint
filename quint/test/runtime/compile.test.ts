@@ -634,7 +634,6 @@ describe('compiling specs to runtime values', () => {
     })
   })
 
-  
   describe('compile over tuples', () => {
     it('tuple constructors', () => {
       assertResultAsString('(1, 2, 3)', '(1, 2, 3)')
@@ -782,7 +781,6 @@ describe('compiling specs to runtime values', () => {
     })
   })
 
-
   describe('compile over records', () => {
     it('record constructors', () => {
       assertResultAsString('Rec("a", 2, "b", true)', 'Rec("a", 2, "b", true)')
@@ -858,18 +856,12 @@ describe('compiling specs to runtime values', () => {
     })
 
     it('map setBy', () => {
-      assertResultAsString(
-        '3.to(5).mapBy(i => 2 * i).setBy(4, old => old + 1)',
-        'Map((3, 6), (4, 9), (5, 10))'
-      )
+      assertResultAsString('3.to(5).mapBy(i => 2 * i).setBy(4, old => old + 1)', 'Map((3, 6), (4, 9), (5, 10))')
       assertResultAsString('3.to(5).mapBy(i => 2 * i).setBy(7, old => old + 1)', undefined)
     })
 
     it('map put', () => {
-      assertResultAsString(
-        '3.to(5).mapBy(i => 2 * i).put(10, 11)',
-        'Map((10, 11), (3, 6), (4, 8), (5, 10))'
-      )
+      assertResultAsString('3.to(5).mapBy(i => 2 * i).put(10, 11)', 'Map((10, 11), (3, 6), (4, 8), (5, 10))')
     })
 
     it('map keys', () => {
