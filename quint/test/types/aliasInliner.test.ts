@@ -70,14 +70,15 @@ describe('inlineAliases', () => {
     const { modules } = inlineModule(quintModule)
 
     const expectedModule = dedent(`module A {
-                                  |  type T1 = (B | C)
-                                  |  val C: (B | C) = variant("C", Tup())
-                                  |  type T2 = (Some((B | C)) | None)
-                                  |  val B: (B | C) = variant("B", Tup())
-                                  |  def Some: ((B | C)) => (Some((B | C)) | None) = ((__SomeParam) => variant("Some", __SomeParam))
-                                  |  val None: (Some((B | C)) | None) = variant("None", Tup())
-                                  |  var x: (Some((B | C)) | None)
-                                  |}`)
+      |  type T1 = (B | C)
+      |  val C: (B | C) = variant("C", ())
+      |  type T2 = (Some((B | C)) | None)
+      |  val B: (B | C) = variant("B", ())
+      |  def Some: ((B | C)) => (Some((B | C)) | None) = ((__SomeParam) => variant("Some", __SomeParam))
+      |  val None: (Some((B | C)) | None) = variant("None", ())
+      |  var x: (Some((B | C)) | None)
+      |}`);
+
 
     assert.deepEqual(moduleToString(modules[0]), expectedModule)
   })

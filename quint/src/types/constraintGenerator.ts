@@ -173,11 +173,6 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
     }
     const a: QuintType = { kind: 'var', name: this.freshVarGenerator.freshVar('_t') }
 
-    // Walk through each element of the tuple to ensure all expressions are processed
-    e.elements.forEach(el => {
-      walkExpression(this, el) // Walk each element, which will handle 'app' or other expression kinds
-    })
-
     // Now fetch the types of the tuple's elements
     const elementsResult: Either<Error, [QuintEx, QuintType][]> = mergeInMany(
       e.elements.map(el => {
@@ -235,8 +230,6 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
             )
           case 'with':
             return validateArity(e.opcode, results, l => l === 3, '3').chain(() => withConstraints(e.id, results, a))
-          // case 'Tup':
-          //   return tupleConstructorConstraints(e.id, results, a)
           case 'item':
             return validateArity(e.opcode, results, l => l === 2, '2').chain(() => itemConstraints(e.id, results, a))
           // Sum type operators

@@ -75,6 +75,8 @@ export function quintExAreEqual(a: QuintEx, b: QuintEx): boolean {
     return a.value === b.value
   } else if (a.kind === 'app' && b.kind === 'app') {
     return a.args.length === b.args.length && zip(a.args, b.args).every(([x, y]) => quintExAreEqual(x, y))
+  } else if (a.kind === 'tuple' && b.kind === 'tuple') {
+    return a.elements.length === b.elements.length && zip(a.elements, b.elements).every(([x, y]) => quintExAreEqual(x, y))
   } else if (a.kind === 'lambda' && b.kind === 'lambda') {
     return (
       a.qualifier === b.qualifier &&

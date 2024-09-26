@@ -529,7 +529,7 @@ describe('compiling specs to runtime values', () => {
     })
 
     it('unpacks tuples in filter', () => {
-      assertResultAsString('tuples(1.to(5), 2.to(3)).filter(((x, y)) => x < y)', 'Set(Tup(1, 2), Tup(1, 3), Tup(2, 3))')
+      assertResultAsString('tuples(1.to(5), 2.to(3)).filter(((x, y)) => x < y)', 'Set((1, 2), (1, 3), (2, 3))')
     })
 
     it('computes filter over intervals', () => {
@@ -634,17 +634,18 @@ describe('compiling specs to runtime values', () => {
     })
   })
 
+  
   describe('compile over tuples', () => {
     it('tuple constructors', () => {
-      assertResultAsString('Tup(1, 2, 3)', 'Tup(1, 2, 3)')
-      assertResultAsString('(1, 2, 3)', 'Tup(1, 2, 3)')
-      assertResultAsString('(1, 2, 3,)', 'Tup(1, 2, 3)')
+      assertResultAsString('(1, 2, 3)', '(1, 2, 3)')
+      assertResultAsString('(1, 2, 3)', '(1, 2, 3)')
+      assertResultAsString('(1, 2, 3,)', '(1, 2, 3)')
     })
 
     it('tuple access', () => {
-      assertResultAsString('Tup(4, 5, 6)._1', '4')
-      assertResultAsString('Tup(4, 5, 6)._2', '5')
-      assertResultAsString('Tup(4, 5, 6)._3', '6')
+      assertResultAsString('(4, 5, 6)._1', '4')
+      assertResultAsString('(4, 5, 6)._2', '5')
+      assertResultAsString('(4, 5, 6)._3', '6')
     })
 
     it('tuple equality', () => {
@@ -656,13 +657,13 @@ describe('compiling specs to runtime values', () => {
       assertResultAsString('tuples(Set(), Set(), Set())', 'Set()')
       assertResultAsString('tuples(Set(), 2.to(3))', 'Set()')
       assertResultAsString('tuples(2.to(3), Set(), 3.to(5))', 'Set()')
-      assertResultAsString('tuples(1.to(2), 2.to(3))', 'Set(Tup(1, 2), Tup(2, 2), Tup(1, 3), Tup(2, 3))')
-      assertResultAsString('tuples(1.to(1), 1.to(1), 1.to(1))', 'Set(Tup(1, 1, 1))')
+      assertResultAsString('tuples(1.to(2), 2.to(3))', 'Set((1, 2), (2, 2), (1, 3), (2, 3))')
+      assertResultAsString('tuples(1.to(1), 1.to(1), 1.to(1))', 'Set((1, 1, 1))')
       assertResultAsString('tuples(1.to(3), 2.to(4)) == tuples(1.to(3), 2.to(5 - 1))', 'true')
       assertResultAsString('tuples(1.to(3), 2.to(4)) == tuples(1.to(3), 2.to(5 + 1))', 'false')
       assertResultAsString('tuples(1.to(3), 2.to(4)).subseteq(tuples(1.to(3), 2.to(5 + 1)))', 'true')
       assertResultAsString('tuples(1.to(4), 2.to(4)).subseteq(tuples(1.to(3), 2.to(5)))', 'false')
-      assertResultAsString('Set(tuples(1.to(2), 2.to(3)))', 'Set(Set(Tup(1, 2), Tup(1, 3), Tup(2, 2), Tup(2, 3)))')
+      assertResultAsString('Set(tuples(1.to(2), 2.to(3)))', 'Set(Set((1, 2), (1, 3), (2, 2), (2, 3)))')
     })
 
     it('cardinality of cross products', () => {
@@ -781,6 +782,7 @@ describe('compiling specs to runtime values', () => {
     })
   })
 
+
   describe('compile over records', () => {
     it('record constructors', () => {
       assertResultAsString('Rec("a", 2, "b", true)', 'Rec("a", 2, "b", true)')
@@ -815,7 +817,7 @@ describe('compiling specs to runtime values', () => {
     it('can compile construction of sum type variants', () => {
       const context = 'type T = Some(int) | None'
       assertResultAsString('Some(40 + 2)', 'variant("Some", 42)', context)
-      assertResultAsString('None', 'variant("None", Tup())', context)
+      assertResultAsString('None', 'variant("None", ())', context)
     })
 
     it('can compile elimination of sum type variants via match', () => {
@@ -833,16 +835,16 @@ describe('compiling specs to runtime values', () => {
 
   describe('compile over maps', () => {
     it('mapBy constructor', () => {
-      assertResultAsString('3.to(5).mapBy(i => 2 * i)', 'Map(Tup(3, 6), Tup(4, 8), Tup(5, 10))')
-      assertResultAsString('Set(2.to(4)).mapBy(s => s.size())', 'Map(Tup(Set(2, 3, 4), 3))')
+      assertResultAsString('3.to(5).mapBy(i => 2 * i)', 'Map((3, 6), (4, 8), (5, 10))')
+      assertResultAsString('Set(2.to(4)).mapBy(s => s.size())', 'Map((Set(2, 3, 4), 3))')
     })
 
     it('setToMap constructor', () => {
-      assertResultAsString('setToMap(Set((3, 6), (4, 10 - 2), (5, 10)))', 'Map(Tup(3, 6), Tup(4, 8), Tup(5, 10))')
+      assertResultAsString('setToMap(Set((3, 6), (4, 10 - 2), (5, 10)))', 'Map((3, 6), (4, 8), (5, 10))')
     })
 
     it('mapOf constructor', () => {
-      assertResultAsString('Map(3 -> 6, 4 -> 10 - 2, 5 -> 10)', 'Map(Tup(3, 6), Tup(4, 8), Tup(5, 10))')
+      assertResultAsString('Map(3 -> 6, 4 -> 10 - 2, 5 -> 10)', 'Map((3, 6), (4, 8), (5, 10))')
     })
 
     it('map get', () => {
@@ -851,14 +853,14 @@ describe('compiling specs to runtime values', () => {
     })
 
     it('map update', () => {
-      assertResultAsString('3.to(5).mapBy(i => 2 * i).set(4, 20)', 'Map(Tup(3, 6), Tup(4, 20), Tup(5, 10))')
+      assertResultAsString('3.to(5).mapBy(i => 2 * i).set(4, 20)', 'Map((3, 6), (4, 20), (5, 10))')
       assertResultAsString('3.to(5).mapBy(i => 2 * i).set(7, 20)', undefined)
     })
 
     it('map setBy', () => {
       assertResultAsString(
         '3.to(5).mapBy(i => 2 * i).setBy(4, old => old + 1)',
-        'Map(Tup(3, 6), Tup(4, 9), Tup(5, 10))'
+        'Map((3, 6), (4, 9), (5, 10))'
       )
       assertResultAsString('3.to(5).mapBy(i => 2 * i).setBy(7, old => old + 1)', undefined)
     })
@@ -866,7 +868,7 @@ describe('compiling specs to runtime values', () => {
     it('map put', () => {
       assertResultAsString(
         '3.to(5).mapBy(i => 2 * i).put(10, 11)',
-        'Map(Tup(10, 11), Tup(3, 6), Tup(4, 8), Tup(5, 10))'
+        'Map((10, 11), (3, 6), (4, 8), (5, 10))'
       )
     })
 
@@ -882,7 +884,7 @@ describe('compiling specs to runtime values', () => {
     it('map setOfMaps', () => {
       assertResultAsString(
         '2.to(3).setOfMaps(5.to(6))',
-        'Set(Map(Tup(2, 5), Tup(3, 5)), Map(Tup(2, 6), Tup(3, 5)), Map(Tup(2, 5), Tup(3, 6)), Map(Tup(2, 6), Tup(3, 6)))'
+        'Set(Map((2, 5), (3, 5)), Map((2, 6), (3, 5)), Map((2, 5), (3, 6)), Map((2, 6), (3, 6)))'
       )
       assertResultAsString(
         `2.to(3).setOfMaps(5.to(6)) ==
@@ -892,8 +894,8 @@ describe('compiling specs to runtime values', () => {
               Map(2 -> 6, 3 -> 6))`,
         'true'
       )
-      assertResultAsString('Set(2).setOfMaps(5.to(6))', 'Set(Map(Tup(2, 5)), Map(Tup(2, 6)))')
-      assertResultAsString('2.to(3).setOfMaps(Set(5))', 'Set(Map(Tup(2, 5), Tup(3, 5)))')
+      assertResultAsString('Set(2).setOfMaps(5.to(6))', 'Set(Map((2, 5)), Map((2, 6)))')
+      assertResultAsString('2.to(3).setOfMaps(Set(5))', 'Set(Map((2, 5), (3, 5)))')
       assertResultAsString('2.to(4).setOfMaps(5.to(8)).size()', '64')
       assertResultAsString('2.to(4).setOfMaps(5.to(7)).subseteq(2.to(4).setOfMaps(4.to(8)))', 'true')
       assertResultAsString('2.to(4).setOfMaps(5.to(10)).subseteq(2.to(4).setOfMaps(4.to(8)))', 'false')

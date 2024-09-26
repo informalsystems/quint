@@ -160,7 +160,7 @@ export function buildExpr(builder: Builder, expr: QuintEx): EvalFunction {
   const wrappedEval: EvalFunction = ctx => {
     try {
       // This is where we add the reference to the error, if it is not already there.
-      // This way, we don't need to worry about references anywhere else :)
+      // This way, we don't need to worry about references anywhere else.
       return exprEval(ctx).mapLeft(err => (err.reference === undefined ? { ...err, reference: expr.id } : err))
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown error'
