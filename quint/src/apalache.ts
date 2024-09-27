@@ -365,9 +365,9 @@ async function fetchApalache(verbosityLevel: number): Promise<ApalacheResult<str
     return right(apalacheBinary)
   } else {
     fs.mkdirSync(apalacheDistDir(), { recursive: true })
-    process.stdout.write('Downloading Apalache distribution...')
+    // process.stdout.write('Downloading Apalache distribution...')
     const res = await downloadAndUnpackApalache()
-    process.stdout.write(' done.\n')
+    // process.stdout.write(' done.\n')
     return res.map(_ => apalacheBinary)
   }
 
