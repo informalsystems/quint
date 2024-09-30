@@ -29,6 +29,7 @@ import {
   QuintStr,
   QuintVar,
   isAnnotatedDef,
+  QuintTup
 } from '../ir/quintIr'
 import { QuintType, QuintVarType, rowNames, typeNames } from '../ir/quintTypes'
 import { expressionToString, rowToString, typeToString } from '../ir/IRprinting'
@@ -166,6 +167,33 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
     this.addToResults(e.id, right(toScheme({ kind: e.kind })))
   }
 
+  exitTuple(e: QuintTup) {
+    if (this.errors.size !== 0) {
+      return
+    }
+    const a: QuintType = { kind: 'var', name: this.freshVarGenerator.freshVar('_t') }
+
+    // Now fetch the types of the tuple's elements
+    const elementsResult: Either<Error, [QuintEx, QuintType][]> = mergeInMany(
+      e.elements.map(el => {
+        return this.fetchResult(el.id).map(r => [el, r.type])
+      })
+    )
+
+    // Create the tuple constructor constraints
+    const result = elementsResult
+      .chain(results => {
+        return tupleConstructorConstraints(e.id, results, a)
+      })
+      .map(cs => {
+        this.constraints.push(...cs)
+        return toScheme(a)
+      })
+
+    // Store the result in the types map
+    this.addToResults(e.id, result)
+  }
+
   //   op: q ∈ Γ   Γ ⊢  p0, ..., pn: (t0, c0), ..., (tn, cn)   a is fresh
   // ------------------------------------------------------------------------ (APP)
   //    Γ ⊢ op(p0, ..., pn): (a, q ~ (t0, ..., tn) => a ∧ c0 ∧ ... ∧ cn)
@@ -201,9 +229,6 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
             )
           case 'with':
             return validateArity(e.opcode, results, l => l === 3, '3').chain(() => withConstraints(e.id, results, a))
-          // Tuple operators
-          case 'Tup':
-            return tupleConstructorConstraints(e.id, results, a)
           case 'item':
             return validateArity(e.opcode, results, l => l === 2, '2').chain(() => itemConstraints(e.id, results, a))
           // Sum type operators

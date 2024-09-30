@@ -14,7 +14,7 @@
  */
 
 import { IRTransformer, transformDefinition } from './IRTransformer'
-import { QuintApp, QuintDef, QuintLambda, QuintName } from './quintIr'
+import { QuintApp, QuintDef, QuintLambda, QuintName, QuintTup } from './quintIr'
 import { QuintConstType } from './quintTypes'
 
 /**
@@ -63,6 +63,27 @@ class Namespacer implements IRTransformer {
     return expr
   }
 
+  exitTuple(tup: QuintTup): QuintTup {
+    // Process each element of the tuple
+    const namespacedElements = tup.elements.map(element => {
+      // If the element is a name, apply the namespace
+      if (element.kind === 'name' && typeof element.name === 'string') {
+        return {
+          ...element,
+          name: namespacedName(this.namespace, element.name), // Apply the namespace
+        }
+      }
+      // Otherwise, return the element as-is
+      return element
+    })
+
+    // Return a new tuple with namespaced elements
+    return {
+      ...tup,
+      elements: namespacedElements,
+    }
+  }
+  
   exitApp(expr: QuintApp): QuintApp {
     if (!this.namesToPreserve.has(expr.opcode)) {
       return { ...expr, opcode: namespacedName(this.namespace, expr.opcode) }

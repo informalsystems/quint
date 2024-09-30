@@ -30,6 +30,7 @@ import {
   QuintOpDef,
   QuintStr,
   QuintVar,
+  QuintTup
 } from '../ir/quintIr'
 import { Effect, EffectScheme, Signature, effectNames, entityNames, toScheme, unify } from './base'
 import { Substitutions, applySubstitution, compose } from './substitutions'
@@ -139,72 +140,16 @@ export class EffectInferrer implements IRVisitor {
     this.addToResults(expr.id, this.effectForName(expr.name, expr.id, 2).map(toScheme))
   }
 
+  exitTuple(expr: QuintTup): void {
+    this.inferEffect(expr, expr.elements, expr.kind, expr.id, expr.elements.length)
+  }
+
   // { identifier: op, effect: E } ∈ Γ    Γ ⊢ p0:E0 ... Γ ⊢ pn:EN
   // Eres <- freshVar   S = unify(newInstance(E), (E0, ...,  EN) => Eres)
   // ------------------------------------------------------------------- (APP)
   //           Γ ⊢ op(p0, ..., pn): S(Eres)
   exitApp(expr: QuintApp): void {
-    if (this.errors.size > 0) {
-      // Don't try to infer application if there are errors with the args
-      return
-    }
-
-    this.location = `Trying to infer effect for operator application in ${expressionToString(expr)}`
-    const paramsResult = mergeInMany(
-      expr.args.map((a: QuintEx) => {
-        return this.fetchResult(a.id).map(e => this.newInstance(e))
-      })
-    )
-
-    const resultEffect: Effect = { kind: 'variable', name: this.freshVarGenerator.freshVar('_e') }
-    const arrowEffect = paramsResult
-      .map(params => {
-        const effect: Effect = {
-          kind: 'arrow',
-          params,
-          result: resultEffect,
-        }
-
-        return effect
-      })
-      .chain(e => applySubstitution(this.substitutions, e))
-
-    this.effectForName(expr.opcode, expr.id, expr.args.length)
-      .mapLeft(err => buildErrorTree(this.location, err))
-      .chain(signature => {
-        const substitution = arrowEffect.chain(effect =>
-          applySubstitution(this.substitutions, signature).chain(s => unify(s, effect))
-        )
-
-        const resultEffectWithSubs = substitution
-          .chain(s => compose(this.substitutions, s))
-          .chain(s => {
-            this.substitutions = s
-
-            paramsResult.map(effects =>
-              zip(
-                effects,
-                expr.args.map(a => a.id)
-              ).forEach(([effect, id]) => {
-                const r = applySubstitution(s, effect).map(toScheme)
-                this.addToResults(id, r)
-              })
-            )
-            // For every free name we are binding in the substitutions, the names occuring in the value of the
-            // substitution have to become free as well.
-            this.addBindingsToFreeNames(s)
-
-            return applySubstitution(s, resultEffect)
-          })
-
-        return resultEffectWithSubs
-      })
-      .map(effect => {
-        this.addToResults(expr.id, right(toScheme(effect)))
-      })
-      .mapLeft(err => {
-        this.addToResults(expr.id, left(err))
-      })
+    this.inferEffect(expr, expr.args, expr.opcode, expr.id, expr.args.length)
   }
 
   // Literals are always Pure
@@ -435,5 +380,67 @@ export class EffectInferrer implements IRVisitor {
           return
       }
     })
+  }
+
+  private inferEffect(expr: QuintEx, args: QuintEx[], name: string, id: bigint, arity: number): void {
+    if (this.errors.size > 0) {
+      return // Early exit if errors are present
+    }
+
+    this.location = `Trying to infer effect for operator application in ${expressionToString(expr)}`
+
+    const paramsResult = mergeInMany(args.map((a: QuintEx) => this.fetchResult(a.id).map(e => this.newInstance(e))))
+
+    const resultEffect: Effect = { kind: 'variable', name: this.freshVarGenerator.freshVar('_e') }
+    const arrowEffect = paramsResult
+      // paramsResult is an array.
+      // It iterates over each element in paramsResult, where each element is passed into the params parameter.
+      .map(params => {
+        const effect: Effect = {
+          kind: 'arrow',
+          params,
+          result: resultEffect,
+        }
+
+        return effect
+      })
+      .chain(e => applySubstitution(this.substitutions, e))
+
+    this.effectForName(name, id, arity)
+      .mapLeft(err => buildErrorTree(this.location, err))
+      .chain(signature => {
+        const substitution = arrowEffect.chain(effect =>
+          applySubstitution(this.substitutions, signature).chain(s => unify(s, effect))
+        )
+
+        const resultEffectWithSubs = substitution
+          .chain(s => compose(this.substitutions, s))
+          .chain(s => {
+            this.substitutions = s
+
+            paramsResult.map(effects =>
+              zip(
+                effects,
+                args.map(a => a.id)
+              ).forEach(([effect, id]) => {
+                const r = applySubstitution(s, effect).map(toScheme)
+                this.addToResults(id, r)
+              })
+            )
+            // For every free name we are binding in the substitutions, the names occuring in the value of the
+            // substitution have to become free as well.
+            this.addBindingsToFreeNames(s)
+
+            return applySubstitution(s, resultEffect)
+          })
+
+        return resultEffectWithSubs
+      })
+      .map(effect => {
+        this.addToResults(expr.id, right(toScheme(effect)))
+      })
+      .mapLeft(err => {
+        this.addToResults(expr.id, left(err))
+      })
   }
 }

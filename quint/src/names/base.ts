@@ -222,7 +222,6 @@ export const builtinNames = [
   'Set',
   'Map',
   'List',
-  'Tup',
   'Rec',
   'range',
   'igt',

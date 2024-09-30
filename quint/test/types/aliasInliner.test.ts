@@ -71,11 +71,11 @@ describe('inlineAliases', () => {
 
     const expectedModule = dedent(`module A {
                                   |  type T1 = (B | C)
-                                  |  val C: (B | C) = variant("C", Tup())
+                                  |  val C: (B | C) = variant("C", ())
                                   |  type T2 = (Some((B | C)) | None)
-                                  |  val B: (B | C) = variant("B", Tup())
+                                  |  val B: (B | C) = variant("B", ())
                                   |  def Some: ((B | C)) => (Some((B | C)) | None) = ((__SomeParam) => variant("Some", __SomeParam))
-                                  |  val None: (Some((B | C)) | None) = variant("None", Tup())
+                                  |  val None: (Some((B | C)) | None) = variant("None", ())
                                   |  var x: (Some((B | C)) | None)
                                   |}`)
 

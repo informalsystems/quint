@@ -62,6 +62,8 @@ export class IRTransformer {
   exitLambda?: (expr: ir.QuintLambda) => ir.QuintLambda
   enterLet?: (expr: ir.QuintLet) => ir.QuintLet
   exitLet?: (expr: ir.QuintLet) => ir.QuintLet
+  enterTuple?: (expr: ir.QuintTup) => ir.QuintTup
+  exitTuple?: (expr: ir.QuintTup) => ir.QuintTup
 
   /** Types */
   enterLiteralType?: (
@@ -520,6 +522,16 @@ function transformExpression(transformer: IRTransformer, expr: ir.QuintEx): ir.Q
           newExpr = transformer.exitLet(newExpr)
         }
       }
+      break
+      
+      case 'tuple': // Add this case for tuple
+        if (transformer.enterTuple) {
+          newExpr = transformer.enterTuple(newExpr)
+        }
+        newExpr.elements = newExpr.elements.map(element => transformExpression(transformer, element))
+        if (transformer.exitTuple) {
+          newExpr = transformer.exitTuple(newExpr)
+        }
       break
 
     default:

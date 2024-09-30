@@ -113,7 +113,7 @@ export const rv = {
    * @return a new runtime value that carries the tuple
    */
   mkTuple: (elems: Iterable<RuntimeValue>): RuntimeValue => {
-    return new RuntimeValueTupleOrList('Tup', List(elems))
+    return new RuntimeValueTuple(List(elems))
   },
 
   /**
@@ -123,7 +123,7 @@ export const rv = {
    * @return a new runtime value that carries the list
    */
   mkList: (elems: Iterable<RuntimeValue>): RuntimeValue => {
-    return new RuntimeValueTupleOrList('List', List(elems))
+    return new RuntimeValueList(List(elems))
   },
 
   /**
@@ -154,7 +154,9 @@ export const rv = {
    */
   mkMap: (elems: Iterable<[RuntimeValue, RuntimeValue]>): RuntimeValue => {
     // convert the keys to the normal form, as they are hashed
-    const arr: [RuntimeValue, RuntimeValue][] = Array.from(elems).map(([k, v]) => [k.normalForm(), v])
+    const arr: [RuntimeValue, RuntimeValue][] = Array.from(elems).map(([k, v]) => {
+      return [k.normalForm(), v] // Ensure normalForm works with tuples
+    })
     return new RuntimeValueMap(ImmutableMap(arr))
   },
 
@@ -310,6 +312,9 @@ export function fromQuintEx(ex: QuintEx): Maybe<RuntimeValue> {
     case 'str':
       return just(rv.mkStr(ex.value))
 
+    case 'tuple':
+      return merge(ex.elements.map(fromQuintEx)).map(rv.mkTuple)
+
     case 'app':
       switch (ex.opcode) {
         case 'Set':
@@ -318,17 +323,13 @@ export function fromQuintEx(ex: QuintEx): Maybe<RuntimeValue> {
         case 'Map': {
           const pairs: Maybe<[RuntimeValue, RuntimeValue][]> = merge(
             ex.args.map(arg => {
-              assert(arg.kind === 'app', `Expected Tup(...), found: ${arg.kind}`)
-              assert(arg.opcode === 'Tup', `Expected Tup(...), found: ${arg.opcode}`)
-              assert(arg.args.length === 2, `Expected a 2-element Tup(...), found: ${arg.args.length} elements`)
-              return merge([fromQuintEx(arg.args[0]), fromQuintEx(arg.args[1])])
+              assert(arg.kind === 'tuple', `Expected tuple, found: ${arg.kind}`)
+              assert(arg.elements.length === 2, `Expected a 2-element tuple, found: ${arg.elements.length} elements`)
+              return merge([fromQuintEx(arg.elements[0]), fromQuintEx(arg.elements[1])])
             })
           )
           return pairs.map(rv.mkMap)
         }
-
-        case 'Tup':
-          return merge(ex.args.map(fromQuintEx)).map(rv.mkTuple)
 
         case 'List':
           return merge(ex.args.map(fromQuintEx)).map(rv.mkList)
@@ -580,8 +581,10 @@ abstract class RuntimeValueBase implements RuntimeValue {
   }
 
   toList(): List<RuntimeValue> {
-    if (this instanceof RuntimeValueTupleOrList) {
+    if (this instanceof RuntimeValueList) {
       return this.list
+    } else if (this instanceof RuntimeValueTuple) {
+      return this.elements
     } else {
       throw new Error('Expected a list value')
     }
@@ -629,11 +632,10 @@ abstract class RuntimeValueBase implements RuntimeValue {
 
   toTuple2(): [RuntimeValue, RuntimeValue] {
     // This is specific for tuples of size 2, as they are expected in many builtins.
-    if (this instanceof RuntimeValueTupleOrList) {
-      const list = this.list
-
-      if (list.size === 2) {
-        return [list.get(0)!, list.get(1)!]
+    if (this instanceof RuntimeValueTuple) {
+      const elements = this.elements
+      if (elements.size === 2) {
+        return [elements.get(0)!, elements.get(1)!]
       }
     }
     throw new Error('Expected a 2-tuple')
@@ -712,8 +714,14 @@ abstract class RuntimeValueBase implements RuntimeValue {
     if (this instanceof RuntimeValueStr && other instanceof RuntimeValueStr) {
       return this.value === other.value
     }
-    if (this instanceof RuntimeValueTupleOrList && other instanceof RuntimeValueTupleOrList) {
-      return this.kind === other.kind && this.list.equals(other.list)
+    if (this instanceof RuntimeValueList && other instanceof RuntimeValueTuple) {
+      return false
+    }
+    if (this instanceof RuntimeValueList && other instanceof RuntimeValueList) {
+      return this.list.equals(other.list)
+    }
+    if (this instanceof RuntimeValueTuple && other instanceof RuntimeValueTuple) {
+      return this.elements.equals(other.elements)
     }
     if (this instanceof RuntimeValueRecord && other instanceof RuntimeValueRecord) {
       return this.map.equals(other.map)
@@ -865,19 +873,53 @@ class RuntimeValueStr extends RuntimeValueBase implements ValueObject {
   }
 }
 
-type TupleOrList = 'Tup' | 'List'
+class RuntimeValueTuple extends RuntimeValueBase implements RuntimeValue {
+  elements: List<RuntimeValue>
+
+  constructor(values: List<RuntimeValue>) {
+    super(true)
+    this.elements = values
+  }
+
+  [Symbol.iterator]() {
+    return this.elements[Symbol.iterator]()
+  }
+
+  normalForm(): RuntimeValue {
+    const normalizedValues: RuntimeValue[] = []
+    for (const e of this.elements) {
+      normalizedValues.push(e.normalForm())
+    }
+    return new RuntimeValueTuple(List(normalizedValues))
+  }
+
+  hashCode(): number {
+    return this.elements.hashCode()
+  }
+
+  toQuintEx(gen: IdGenerator): QuintEx {
+    // Collect elements for QuintEx representation
+    const elems: QuintEx[] = []
+    for (const e of this.elements) {
+      elems.push(e.toQuintEx(gen))
+    }
+    return {
+      id: gen.nextId(),
+      kind: 'tuple',
+      elements: elems, // Adjusted to reflect the new tuple structure
+    }
+  }
+}
 
 /**
  * A set of runtime values represented via an immutable List.
  * This is an internal class.
  */
-class RuntimeValueTupleOrList extends RuntimeValueBase implements RuntimeValue {
-  kind: TupleOrList
+class RuntimeValueList extends RuntimeValueBase implements RuntimeValue {
   list: List<RuntimeValue>
 
-  constructor(kind: TupleOrList, values: List<RuntimeValue>) {
+  constructor(values: List<RuntimeValue>) {
     super(true)
-    this.kind = kind
     this.list = values
   }
 
@@ -890,8 +932,7 @@ class RuntimeValueTupleOrList extends RuntimeValueBase implements RuntimeValue {
     for (const e of this.list) {
       normalizedValues.push(e.normalForm())
     }
-    return new RuntimeValueTupleOrList(this.kind, List(normalizedValues))
-  }
+    return new RuntimeValueList(List(normalizedValues))  }
 
   hashCode(): number {
     return this.list.hashCode()
@@ -907,7 +948,7 @@ class RuntimeValueTupleOrList extends RuntimeValueBase implements RuntimeValue {
     return {
       id: gen.nextId(),
       kind: 'app',
-      opcode: this.kind,
+      opcode: 'List',
       args: elems,
     }
   }
@@ -1000,9 +1041,7 @@ class RuntimeValueMap extends RuntimeValueBase implements RuntimeValue {
 
   toQuintEx(gen: IdGenerator): QuintEx {
     // convert to a set of pairs and use its normal form
-    const pairs: RuntimeValueTupleOrList[] = this.map
-      .toArray()
-      .map(([k, v]) => new RuntimeValueTupleOrList('Tup', List([k, v])))
+    const pairs: RuntimeValueTuple[] = this.map.toArray().map(([k, v]) => new RuntimeValueTuple(List([k, v])))
     const set = new RuntimeValueSet(Set(pairs)).toQuintEx(gen)
     if (set.kind === 'app') {
       // return the expression Map(pairs)
@@ -1257,7 +1296,7 @@ class RuntimeValueCrossProd extends RuntimeValueBase implements RuntimeValue {
           for (let i = 0; i < nindices; i++) {
             nextElem.push(arrays[i][indices[i]])
           }
-          yield new RuntimeValueTupleOrList('Tup', List(nextElem))
+          yield new RuntimeValueTuple(List(nextElem))
         }
       }
     }
@@ -1274,12 +1313,12 @@ class RuntimeValueCrossProd extends RuntimeValueBase implements RuntimeValue {
   }
 
   contains(elem: RuntimeValue): boolean {
-    if (elem instanceof RuntimeValueTupleOrList) {
-      if (elem.list.size !== this.sets.length) {
+    if (elem instanceof RuntimeValueTuple) {
+      if (elem.elements.size !== this.sets.length) {
         return false
       } else {
         let i = 0
-        for (const e of elem.list) {
+        for (const e of elem.elements) {
           if (!this.sets[i].contains(e)) {
             return false
           }
@@ -1326,7 +1365,7 @@ class RuntimeValueCrossProd extends RuntimeValueBase implements RuntimeValue {
       return { code: 'QNT501', message: errors.map(quintErrorToString).join('\n') }
     })
 
-    return elems.map(es => new RuntimeValueTupleOrList('Tup', List.of(...es)))
+    return elems.map(es => new RuntimeValueTuple(List.of(...es)))
   }
 
   bounds(): Maybe<bigint>[] {

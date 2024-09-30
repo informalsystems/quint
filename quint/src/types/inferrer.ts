@@ -43,6 +43,8 @@ export class TypeInferrer extends ConstraintGeneratorVisitor {
     const typeIdsBefore = Array.from(this.types.keys())
 
     // Resolve all type applications used in expressions in the lookup table
+    // makes the visitor visit every node of the tree
+    // this is where inferrer runs and gives us the types
     declarations.forEach(decl => {
       walkDeclaration(this, decl)
     })

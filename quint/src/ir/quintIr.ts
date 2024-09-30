@@ -108,6 +108,13 @@ export interface QuintApp extends WithId {
   args: QuintEx[]
 }
 
+export interface QuintTup extends WithId {
+  /** Expressions kind ('bool' -- a boolean literal) */
+  kind: 'tuple'
+  /** A list of arguments to the operator */
+  elements: QuintEx[]
+}
+
 /** A subtype of `QuintApp` covering all quint builtin operators */
 export interface QuintBuiltinApp extends QuintApp {
   /** The name of the builtin being applied */
@@ -128,7 +135,6 @@ export const builtinOpCodes = [
   'Map',
   'Rec',
   'Set',
-  'Tup',
   'actionAll',
   'actionAny',
   'allLists',
@@ -247,7 +253,7 @@ export interface QuintLet extends WithId {
 /**
  * Discriminated union of Quint expressions.
  */
-export type QuintEx = QuintName | QuintBool | QuintInt | QuintStr | QuintApp | QuintLambda | QuintLet
+export type QuintEx = QuintName | QuintBool | QuintInt | QuintStr | QuintApp | QuintLambda | QuintLet | QuintTup
 
 /**
  * A user-defined operator that is defined via one of the qualifiers:

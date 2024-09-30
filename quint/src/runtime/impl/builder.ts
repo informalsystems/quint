@@ -437,6 +437,21 @@ function buildExprCore(builder: Builder, expr: QuintEx): EvalFunction {
       }
       return buildDef(builder, def)
     }
+    case 'tuple': {
+      const elementEvals = expr.elements.map(el => buildExpr(builder, el))
+      // Return a function that evaluates all elements in the tuple
+      return ctx => {
+        const evaluatedElements = []
+        for (const evalFn of elementEvals) {
+          const evaluated = evalFn(ctx)
+          if (evaluated.isLeft()) {
+            return evaluated
+          }
+          evaluatedElements.push(evaluated.unwrap())
+        }
+        return right(rv.mkTuple(evaluatedElements)) // Return the evaluated tuple as a right value
+      }
+    }
     case 'app': {
       if (expr.opcode === 'assign') {
         // Assign is too special, so we handle it separately.

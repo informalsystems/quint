@@ -23,6 +23,7 @@ import {
   QuintInstance,
   QuintModule,
   QuintName,
+  QuintTup
 } from '../ir/quintIr'
 import { QuintConstType } from '../ir/quintTypes'
 
@@ -202,6 +203,14 @@ export class CallGraphVisitor implements IRVisitor {
     const imports = this.context.importsByName.get(key) ?? Set()
     // the imports and instance of the same module must precede the export
     this.graphAddAll(decl.id, imports)
+  }
+
+  exitTuple(tup: QuintTup) {
+    const lookupDef = this.lookupTable.get(tup.id)
+    if (lookupDef) {
+      this.graphAddOne(lookupDef.id)
+      this.graphAddImports(lookupDef.id)
+    }
   }
 
   // e.g., called for plus inside plus(x, y)

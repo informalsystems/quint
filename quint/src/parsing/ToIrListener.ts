@@ -4,11 +4,11 @@ import { ParserRuleContext } from 'antlr4ts/ParserRuleContext'
 import { QuintListener } from '../generated/QuintListener'
 import {
   OpQualifier,
-  QuintApp,
   QuintBuiltinApp,
   QuintDeclaration,
   QuintDef,
   QuintEx,
+  QuintTup,
   QuintLambda,
   QuintLambdaParameter,
   QuintLet,
@@ -16,7 +16,7 @@ import {
   QuintName,
   QuintOpDef,
   QuintStr,
-  isAnnotatedDef,
+  isAnnotatedDef
 } from '../ir/quintIr'
 import {
   ConcreteFixedRow,
@@ -710,8 +710,11 @@ export class ToIrListener implements QuintListener {
   // tuple constructor, e.g., (1, 2, 3)
   exitTuple(ctx: p.TupleContext) {
     const args = popMany(this.exprStack, ctx.expr().length, this.undefinedExpr(ctx))
-
-    this.pushApplication(ctx, 'Tup', args)
+    this.exprStack.push({
+      id: this.getId(ctx),
+      kind: 'tuple',
+      elements: args,
+    } as QuintTup)
   }
 
   // The unit, (), represented by the empty tuple
@@ -722,7 +725,11 @@ export class ToIrListener implements QuintListener {
   // pair constructor, e.g., 2 -> 3
   exitPair(ctx: p.PairContext) {
     const args = popMany(this.exprStack, ctx.expr().length, this.undefinedExpr(ctx))
-    this.pushApplication(ctx, 'Tup', args)
+    this.exprStack.push({
+      id: this.getId(ctx),
+      kind: 'tuple',
+      elements: args,
+    } as QuintTup)
   }
 
   // list constructor, e.g., [1, 2, 3]
@@ -748,17 +755,15 @@ export class ToIrListener implements QuintListener {
       }
       this.exprStack.push({
         id: 0n,
-        kind: 'app',
-        opcode: 'Tup',
-        args: [nameEx, expr],
+        kind: 'tuple',
+        elements: [nameEx, expr],
       })
     } else {
       // ...expr
       this.exprStack.push({
         id: 0n,
-        kind: 'app',
-        opcode: 'Tup',
-        args: [expr],
+        kind: 'tuple',
+        elements: [expr],
       })
     }
   }
@@ -766,8 +771,9 @@ export class ToIrListener implements QuintListener {
   // record constructor, e.g., { name: "igor", year: 2021 }
   exitRecord(ctx: p.RecordContext) {
     const elems = popMany(this.exprStack, ctx.recElem().length, this.undefinedExpr(ctx))
-    const spreads = elems.filter(e => e.kind === 'app' && e.args.length === 1)
-    const pairs = elems.map(e => (e.kind === 'app' && e.args.length === 2 ? e.args : [])).filter(es => es.length > 0)
+    const spreads = elems.filter(e => e.kind === 'tuple' && e.elements.length === 1)
+    const pairs = elems.map(e => (e.kind === 'tuple' && e.elements.length === 2 ? e.elements : []))
+      .filter(es => es.length > 0)
 
     if (spreads.length === 0) {
       // { field1: value1, field2: value2 }
@@ -779,7 +785,7 @@ export class ToIrListener implements QuintListener {
     } else {
       // { ...record, field1: value1, field2: value2 }
       // translate to record.with("field1", value1).with("field2", value2)
-      let record: QuintEx = (spreads[0] as QuintApp).args[0]
+      let record: QuintEx = (spreads[0] as QuintTup).elements[0]
       for (const p of pairs) {
         const id = this.getId(ctx)
         record = {
@@ -1324,12 +1330,11 @@ function getDocText(doc: TerminalNode[]): string {
 }
 
 // Helper to construct an empty record (the unit value)
-function unitValue(id: bigint): QuintBuiltinApp {
+function unitValue(id: bigint): QuintTup {
   return {
     id,
-    kind: 'app',
-    opcode: 'Tup',
-    args: [],
+    kind: 'tuple',
+    elements: [],
   }
 }
 

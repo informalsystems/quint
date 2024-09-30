@@ -11,7 +11,7 @@
 
 import { Either, left, merge, right } from '@sweet-monads/either'
 import { chunk } from 'lodash'
-import { QuintApp, QuintStr } from './ir/quintIr'
+import { QuintTup, QuintStr } from './ir/quintIr'
 
 import { QuintEx } from './ir/quintIr'
 
@@ -97,6 +97,11 @@ export function toItf(vars: string[], states: QuintEx[]): Either<string, ItfTrac
       case 'bool':
         return right(ex.value)
 
+      case 'tuple':
+        return merge(ex.elements.map(exprToItf)).mapRight(es => {
+          return { '#tup': es }
+        })
+
       case 'app':
         switch (ex.opcode) {
           case 'List':
@@ -105,11 +110,6 @@ export function toItf(vars: string[], states: QuintEx[]): Either<string, ItfTrac
           case 'Set':
             return merge(ex.args.map(exprToItf)).mapRight(es => {
               return { '#set': es }
-            })
-
-          case 'Tup':
-            return merge(ex.args.map(exprToItf)).mapRight(es => {
-              return { '#tup': es }
             })
 
           case 'Rec': {
@@ -192,7 +192,7 @@ export function ofItf(itf: ItfTrace): QuintEx[] {
       if (value === 'U_OF_UNIT') {
         // Apalache converts empty tuples to its unit value, "U_OF_UNIT".
         // We need to convert it back to Quint's unit value, the empty tuple.
-        return { id, kind: 'app', opcode: 'Tup', args: [] }
+        return { id, kind: 'tuple', elements: [] }
       }
 
       return { id, kind: 'str', value }
@@ -207,7 +207,7 @@ export function ofItf(itf: ItfTrace): QuintEx[] {
     } else if (Array.isArray(value)) {
       return { id, kind: 'app', opcode: 'List', args: value.map(ofItfValue) }
     } else if (isTup(value)) {
-      return { id, kind: 'app', opcode: 'Tup', args: value['#tup'].map(ofItfValue) }
+      return { id, kind: 'tuple', elements: value['#tup'].map(ofItfValue) }
     } else if (isSet(value)) {
       return { id, kind: 'app', opcode: 'Set', args: value['#set'].map(ofItfValue) }
     } else if (isUnserializable(value)) {
@@ -216,7 +216,7 @@ export function ofItf(itf: ItfTrace): QuintEx[] {
       const args = value['#map'].map(([key, value]) => {
         const k = ofItfValue(key)
         const v = ofItfValue(value)
-        return { id: getId(), kind: 'app', opcode: 'Tup', args: [k, v] } as QuintApp
+        return { id: getId(), kind: 'tuple', elements: [k, v] } as QuintTup
       })
       return {
         id,
