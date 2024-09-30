@@ -523,15 +523,15 @@ function transformExpression(transformer: IRTransformer, expr: ir.QuintEx): ir.Q
         }
       }
       break
-      
-      case 'tuple': // Add this case for tuple
-        if (transformer.enterTuple) {
-          newExpr = transformer.enterTuple(newExpr)
-        }
-        newExpr.elements = newExpr.elements.map(element => transformExpression(transformer, element))
-        if (transformer.exitTuple) {
-          newExpr = transformer.exitTuple(newExpr)
-        }
+
+    case 'tuple': // Add this case for tuple
+      if (transformer.enterTuple) {
+        newExpr = transformer.enterTuple(newExpr)
+      }
+      newExpr.elements = newExpr.elements.map(element => transformExpression(transformer, element))
+      if (transformer.exitTuple) {
+        newExpr = transformer.exitTuple(newExpr)
+      }
       break
 
     default:

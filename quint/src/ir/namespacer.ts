@@ -83,7 +83,7 @@ class Namespacer implements IRTransformer {
       elements: namespacedElements,
     }
   }
-  
+
   exitApp(expr: QuintApp): QuintApp {
     if (!this.namesToPreserve.has(expr.opcode)) {
       return { ...expr, opcode: namespacedName(this.namespace, expr.opcode) }

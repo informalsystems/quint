@@ -8,7 +8,6 @@ import {
   QuintDeclaration,
   QuintDef,
   QuintEx,
-  QuintTup,
   QuintLambda,
   QuintLambdaParameter,
   QuintLet,
@@ -16,7 +15,8 @@ import {
   QuintName,
   QuintOpDef,
   QuintStr,
-  isAnnotatedDef
+  QuintTup,
+  isAnnotatedDef,
 } from '../ir/quintIr'
 import {
   ConcreteFixedRow,
@@ -772,7 +772,8 @@ export class ToIrListener implements QuintListener {
   exitRecord(ctx: p.RecordContext) {
     const elems = popMany(this.exprStack, ctx.recElem().length, this.undefinedExpr(ctx))
     const spreads = elems.filter(e => e.kind === 'tuple' && e.elements.length === 1)
-    const pairs = elems.map(e => (e.kind === 'tuple' && e.elements.length === 2 ? e.elements : []))
+    const pairs = elems
+      .map(e => (e.kind === 'tuple' && e.elements.length === 2 ? e.elements : []))
       .filter(es => es.length > 0)
 
     if (spreads.length === 0) {

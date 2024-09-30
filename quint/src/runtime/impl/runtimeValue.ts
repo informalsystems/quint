@@ -932,7 +932,8 @@ class RuntimeValueList extends RuntimeValueBase implements RuntimeValue {
     for (const e of this.list) {
       normalizedValues.push(e.normalForm())
     }
-    return new RuntimeValueList(List(normalizedValues))  }
+    return new RuntimeValueList(List(normalizedValues))
+  }
 
   hashCode(): number {
     return this.list.hashCode()

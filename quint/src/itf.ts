@@ -11,7 +11,7 @@
 
 import { Either, left, merge, right } from '@sweet-monads/either'
 import { chunk } from 'lodash'
-import { QuintTup, QuintStr } from './ir/quintIr'
+import { QuintStr, QuintTup } from './ir/quintIr'
 
 import { QuintEx } from './ir/quintIr'
 

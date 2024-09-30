@@ -23,7 +23,7 @@ import {
   QuintInstance,
   QuintModule,
   QuintName,
-  QuintTup
+  QuintTup,
 } from '../ir/quintIr'
 import { QuintConstType } from '../ir/quintTypes'
 

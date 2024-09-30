@@ -29,8 +29,8 @@ import {
   QuintName,
   QuintOpDef,
   QuintStr,
+  QuintTup,
   QuintVar,
-  QuintTup
 } from '../ir/quintIr'
 import { Effect, EffectScheme, Signature, effectNames, entityNames, toScheme, unify } from './base'
 import { Substitutions, applySubstitution, compose } from './substitutions'
