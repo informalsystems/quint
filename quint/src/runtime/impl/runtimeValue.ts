@@ -714,9 +714,6 @@ abstract class RuntimeValueBase implements RuntimeValue {
     if (this instanceof RuntimeValueStr && other instanceof RuntimeValueStr) {
       return this.value === other.value
     }
-    if (this instanceof RuntimeValueList && other instanceof RuntimeValueTuple) {
-      return false
-    }
     if (this instanceof RuntimeValueList && other instanceof RuntimeValueList) {
       return this.list.equals(other.list)
     }
