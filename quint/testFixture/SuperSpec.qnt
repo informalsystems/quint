@@ -174,8 +174,6 @@ module withConsts {
 
   // Data structures
   val test_tuple = (1, 2, 3)
-  // "Tup" is not supported anymore
-  // val test_tuple2 = Tup(1, 2, 3)
   val test_pair = 4 -> 5
   val test_list = [1, 2, 3]
   val test_list2 = List(1, 2, 3)
