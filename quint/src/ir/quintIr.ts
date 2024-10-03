@@ -109,9 +109,9 @@ export interface QuintApp extends WithId {
 }
 
 export interface QuintTup extends WithId {
-  /** Expressions kind ('bool' -- a boolean literal) */
+  /** Expressions kind ('tuple' -- a collection where elements can have different types) */
   kind: 'tuple'
-  /** A list of arguments to the operator */
+  /** A list of elements of the tuple */
   elements: QuintEx[]
 }
 
