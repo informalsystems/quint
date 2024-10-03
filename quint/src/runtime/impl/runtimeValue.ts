@@ -155,7 +155,7 @@ export const rv = {
   mkMap: (elems: Iterable<[RuntimeValue, RuntimeValue]>): RuntimeValue => {
     // convert the keys to the normal form, as they are hashed
     const arr: [RuntimeValue, RuntimeValue][] = Array.from(elems).map(([k, v]) => {
-      return [k.normalForm(), v] // Ensure normalForm works with tuples
+      return [k.normalForm(), v]
     })
     return new RuntimeValueMap(ImmutableMap(arr))
   },
