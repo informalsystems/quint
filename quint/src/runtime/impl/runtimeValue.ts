@@ -903,7 +903,7 @@ class RuntimeValueTuple extends RuntimeValueBase implements RuntimeValue {
     return {
       id: gen.nextId(),
       kind: 'tuple',
-      elements: elems, // Adjusted to reflect the new tuple structure
+      elements: elems,
     }
   }
 }
