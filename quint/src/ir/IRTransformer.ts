@@ -524,7 +524,7 @@ function transformExpression(transformer: IRTransformer, expr: ir.QuintEx): ir.Q
       }
       break
 
-    case 'tuple': // Add this case for tuple
+    case 'tuple':
       if (transformer.enterTuple) {
         newExpr = transformer.enterTuple(newExpr)
       }
