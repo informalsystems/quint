@@ -189,7 +189,6 @@ module withConsts {
     my_rec.a
 
   val tup_elem =
-    // val my_tup = Tup("a", 3)
     val my_tup = ("a", 3)
     my_tup._2
 
