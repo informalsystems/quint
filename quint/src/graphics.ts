@@ -65,6 +65,9 @@ export function prettyQuintEx(ex: QuintEx): Doc {
     case 'str':
       return richtext(chalk.green, `"${ex.value}"`)
 
+    case 'tuple':
+      return nary(text('('), ex.elements.map(prettyQuintEx), text(')'))
+
     case 'app':
       switch (ex.opcode) {
         case 'Set':
@@ -72,8 +75,8 @@ export function prettyQuintEx(ex: QuintEx): Doc {
 
         case 'Map': {
           const ps: Doc[] = ex.args.map(tup => {
-            if (tup.kind === 'app' && tup.opcode === 'Tup' && tup.args.length === 2) {
-              const [k, v] = tup.args
+            if (tup.kind === 'tuple' && tup.elements.length === 2) {
+              const [k, v] = tup.elements
               return group([prettyQuintEx(k), richtext(chalk.gray, ' ->'), nest('  ', [line(), prettyQuintEx(v)])])
             } else {
               return text('<expected-pair>')
@@ -81,9 +84,6 @@ export function prettyQuintEx(ex: QuintEx): Doc {
           })
           return group([richtext(chalk.green, 'Map'), nary(text('('), ps, text(')'))])
         }
-
-        case 'Tup':
-          return nary(text('('), ex.args.map(prettyQuintEx), text(')'))
 
         case 'List': {
           return nary(text('['), ex.args.map(prettyQuintEx), text(']'))
@@ -108,7 +108,7 @@ export function prettyQuintEx(ex: QuintEx): Doc {
 
           const valueExpr = ex.args[1]
           const value =
-            valueExpr.kind === 'app' && valueExpr.opcode === 'Tup' && valueExpr.args.length === 0
+            valueExpr.kind === 'tuple' && valueExpr.elements.length === 0
               ? [] // A payload with the empty tuple is shown as a bare label
               : [text('('), prettyQuintEx(valueExpr), text(')')]
 
