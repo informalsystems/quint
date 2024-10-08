@@ -176,6 +176,7 @@ export const builtinNames = [
   'allLists',
   'allListsUpTo',
   'chooseSome',
+  'generate',
   'oneOf',
   'isFinite',
   'size',
