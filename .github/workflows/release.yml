@@ -35,8 +35,58 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           body_path: ${{ github.workspace }}/release-notes.txt
+          # if this is changed, `gh release upload` argument needs to be updated.
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish
         # See https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages#publishing-packages-to-the-npm-registry
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+  compile:
+    needs: release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        config:
+          [
+            { target: "x86_64-unknown-linux-gnu", suffix: "linux-amd64" },
+            { target: "aarch64-apple-darwin", suffix: "darwin-arm64" },
+            { target: "x86_64-pc-windows-msvc", suffix: "pc-amd64.exe" },
+          ]
+    defaults:
+      run:
+        working-directory: ./quint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      # Deno can't compile local npm projects. Use the npm release from last step.
+      - name: Compile with Deno from NPM Release
+        run: |
+          deno compile \
+            --allow-all \
+            --target "${{ matrix.config.target }}" \
+            --output "quint-${{ matrix.config.suffix }}" \
+            "npm:@informalsystems/quint@${{ github.ref_name }}"
+
+      - name: Generate SHA256 Hash
+        run: |
+          sha256sum "quint-${{ matrix.config.suffix }}" > "quint-${{ matrix.config.suffix }}.sha256"
+
+      - name: Upload Assets to Release
+        env:
+          # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/using-github-cli-in-workflows
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.ref_name }}" \
+            "quint-${{ matrix.config.suffix }}" \
+            "quint-${{ matrix.config.suffix }}.sha256" \
+            --repo "${{ github.repository }}" \
+            --clobber
