@@ -57,6 +57,7 @@ listed without any additional command line arguments.
 | [classic/distributed/TeachingConcurrency/teachingConcurrency.qnt](./classic/distributed/TeachingConcurrency/teachingConcurrency.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | [classic/distributed/TwoPhaseCommit/two_phase_commit.qnt](./classic/distributed/TwoPhaseCommit/two_phase_commit.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | [classic/distributed/TwoPhaseCommit/two_phase_commit_modules.qnt](./classic/distributed/TwoPhaseCommit/two_phase_commit_modules.qnt) | :white_check_mark: | :white_check_mark: | :x:<sup>https://github.com/informalsystems/quint/issues/1299</sup> | :x:<sup>https://github.com/informalsystems/quint/issues/1299</sup> |
+| [classic/distributed/ConsensusAlgorithm/ConsensusAlg.qnt](./classic/distributed/ConsensusAlgorithm/ConsensusAlg.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | [classic/sequential/BinSearch/BinSearch.qnt](./classic/sequential/BinSearch/BinSearch.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | [cosmos/bank/bank.qnt](./cosmos/bank/bank.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | N/A[^nostatemachine] |
 | [cosmos/bank/bankTest.qnt](./cosmos/bank/bankTest.qnt) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
