@@ -372,9 +372,6 @@ export function builtinLambda(op: string): (ctx: Context, args: RuntimeValue[]) 
     case 'List':
       // Constructs a list from the given arguments.
       return (_, args) => right(rv.mkList(List(args)))
-    case 'Tup':
-      // Constructs a tuple from the given arguments.
-      return (_, args) => right(rv.mkTuple(List(args)))
     case 'Map':
       // Constructs a map from the given arguments. Arguments are lists like [[key1, value1], [key2, value2], ...]
       return (_, args) => right(rv.mkMap(args.map(kv => kv.toTuple2())))
