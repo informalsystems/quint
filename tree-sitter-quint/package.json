@@ -25,6 +25,9 @@
       "file-types": [
         "qnt"
       ],
+      "highlights": [
+        "queries/highlights.scm"
+      ],
       "injection-regex": "quint"
     }
   ],

@@ -8,7 +8,7 @@ function commaSep(rule) {
 
 module.exports = grammar({
     name: "quint",
-    conflicts: $ => [[$._qualifiedName, $._identifierOrUnderscore], [$.typeTuple], [$.name, $.opcode]],
+    conflicts: $ => [[$._qualifiedName, $._identifierOrUnderscore], [$.typeTuple], [$.name, $.opcode], [$.type, $.typeSumVariant]],
     extras: $ => [$.LINE_COMMENT, $.COMMENT, $._WS],
     rules: {
         root: $ => repeat($.module),
@@ -26,6 +26,7 @@ module.exports = grammar({
 
         _decl: $ => seq(optional($.docComment), choice(
             $.opdefDecl,
+            $.typeDecl,
             $.constDecl,
             $.varDecl,
             $.assumeDecl,
@@ -41,8 +42,7 @@ module.exports = grammar({
             $.int,
             $.bool,
             $.string,
-            $.letIn,
-            $.nondet,
+            prec.left(1, $.letIn),
             seq("(", $.expression, ")"),
             seq("{", $.expression, "}"),
         )),
@@ -50,7 +50,7 @@ module.exports = grammar({
         app: $ => prec.left(choice(
             prec(6, choice(
                 // apply a built-in operator via the dot notation
-                prec.right(6, seq(field("selfArg", $.expression), '.', field("opcode", $.opcode), prec(7, field("args", optional(seq('(', $._argList, ')')))))),
+                prec.right(6, seq(field("selfArg", $.expression), '.', field("opcode", $.opcode), '(', prec(7, field("args", optional($._argList,))), ')')),
                 // Call a user-defined operator or a built-in operator.
                 // The operator has at least one argument (otherwise, it's a 'val').
                 prec.right(6, seq(field("opcode", $.opcode), '(', field("args", optional($._argList)), ')')),
@@ -63,6 +63,7 @@ module.exports = grammar({
             prec.left(4, seq($.expression, choice("*", "/", "%"), $.expression)),
             prec.left(3, seq($.expression, choice("+", "-"), $.expression)),
             prec.left(2, seq($.expression, choice(">", ">=", "<", "<=", "==", "!="), $.expression)),
+            prec.left(2, $.matchSumExpr),
             $._infixApp,
             $.assign,
             $.tuple,
@@ -78,13 +79,19 @@ module.exports = grammar({
             seq($.expression, field("opcode", "or"), $.expression),
             seq($.expression, field("opcode", "iff"), $.expression),
             seq($.expression, field("opcode", "implies"), $.expression),
-            seq($.expression, field("opcode", "match"), repeat1(seq("|", $.string, ":", $.parameter, "=>", $.expression))),
         )),
 
+        matchSumExpr: $ => prec.left(1, seq(field("opcode", "match"), $.expression, "{", optional("|"), $.matchSumCase, repeat(seq("|", $.matchSumCase)), "}")),
+        matchSumCase: $ => seq(choice(
+            seq($.name, optional(seq("(", $.name, ")"))),
+            $.wildcard,
+        ), "=>", $.expression),
+
+        wildcard: $ => "_",
         assign: $ => seq($.name, "'", "=", $._highPrecedenceExpression),
 
         expressionAggregator: $ => choice("and", "or", "any", "all"),
-        qualifier: $ => choice("val", "def", seq("pure", "val"), seq("pure", "def"), "action", "run", "temporal"),
+        qualifier: $ => choice("val", "def", seq("pure", "val"), seq("pure", "def"), "action", "run", "temporal", "nondet"),
 
         _argList: $ => prec.right(commaSep1($.expression)),
 
@@ -101,10 +108,8 @@ module.exports = grammar({
         record: $ => seq("{", $.recElem, repeat(seq(",", $.recElem)), optional(","), "}"),
         list: $ => seq("[", optional(seq($.expression, repeat(seq(",", $.expression)))), optional(","), "]"),
         ifElse: $ => seq("if", "(", $.expression, ")", $.expression, "else", $.expression),
-        letIn: $ => seq($.opdefDecl, $.expression),
-        nondet: $ => prec.right(seq($.nondetOperDef, $.expression)),
+        letIn: $ => prec.left(1, seq($.opdefDecl, $.expression)),
 
-        nondetOperDef: $ => seq("nondet", $.name, optional(seq(":", $.type)), "=", prec.right(7, $.expression), optional(";")),
         recElem: $ => choice(seq($._identifier, ":", $.expression), seq("...", $.expression)),
 
         constDecl: $ => seq("const", field("name", $.name), ":", field("typeAnnotation", $.type)),
@@ -149,6 +154,14 @@ module.exports = grammar({
             field('expression', $._highPrecedenceExpression),
             optional(";")
         ),
+
+        typeDecl: $ => choice(
+            seq("type", field("typeName", $.name)),
+            seq("type", field("typeName", $.name), "=", $.type),
+            seq("type", field("typeName", $.name), "=", optional("|"), $.typeSumVariant, repeat(seq("|", $.typeSumVariant))),
+        ),
+
+        typeSumVariant: $ => seq($.name, optional(seq("(", commaSep1($.type), ")"))),
 
         type: $ => prec.left(choice(
             prec.right(seq($.type, "->", $.type)),

@@ -13,14 +13,6 @@
         "required": false,
         "types": [
           {
-            "type": "(",
-            "named": false
-          },
-          {
-            "type": ")",
-            "named": false
-          },
-          {
             "type": ",",
             "named": false
           },
@@ -58,10 +50,6 @@
           },
           {
             "type": "implies",
-            "named": false
-          },
-          {
-            "type": "match",
             "named": false
           },
           {
@@ -106,19 +94,15 @@
           "named": true
         },
         {
+          "type": "matchSumExpr",
+          "named": true
+        },
+        {
           "type": "pair",
           "named": true
         },
         {
-          "type": "parameter",
-          "named": true
-        },
-        {
           "type": "record",
-          "named": true
-        },
-        {
-          "type": "string",
           "named": true
         },
         {
@@ -262,10 +246,6 @@
         },
         {
           "type": "name",
-          "named": true
-        },
-        {
-          "type": "nondet",
           "named": true
         },
         {
@@ -471,6 +451,59 @@
     }
   },
   {
+    "type": "matchSumCase",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "expression",
+          "named": true
+        },
+        {
+          "type": "name",
+          "named": true
+        },
+        {
+          "type": "wildcard",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "matchSumExpr",
+    "named": true,
+    "fields": {
+      "opcode": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "match",
+            "named": false
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "expression",
+          "named": true
+        },
+        {
+          "type": "matchSumCase",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "module",
     "named": true,
     "fields": {
@@ -504,6 +537,10 @@
           },
           {
             "type": "opdefDecl",
+            "named": true
+          },
+          {
+            "type": "typeDecl",
             "named": true
           },
           {
@@ -565,48 +602,6 @@
     "type": "name",
     "named": true,
     "fields": {}
-  },
-  {
-    "type": "nondet",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "expression",
-          "named": true
-        },
-        {
-          "type": "nondetOperDef",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
-    "type": "nondetOperDef",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "expression",
-          "named": true
-        },
-        {
-          "type": "name",
-          "named": true
-        },
-        {
-          "type": "type",
-          "named": true
-        }
-      ]
-    }
   },
   {
     "type": "opcode",
@@ -813,6 +808,36 @@
     }
   },
   {
+    "type": "typeDecl",
+    "named": true,
+    "fields": {
+      "typeName": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "name",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "type",
+          "named": true
+        },
+        {
+          "type": "typeSumVariant",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "typeOper",
     "named": true,
     "fields": {},
@@ -820,6 +845,25 @@
       "multiple": true,
       "required": true,
       "types": [
+        {
+          "type": "type",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "typeSumVariant",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "name",
+          "named": true
+        },
         {
           "type": "type",
           "named": true
@@ -890,6 +934,11 @@
         ]
       }
     }
+  },
+  {
+    "type": "wildcard",
+    "named": true,
+    "fields": {}
   },
   {
     "type": "!=",
@@ -1093,11 +1142,11 @@
   },
   {
     "type": "int",
-    "named": false
+    "named": true
   },
   {
     "type": "int",
-    "named": true
+    "named": false
   },
   {
     "type": "match",
@@ -1138,6 +1187,10 @@
   {
     "type": "tupleIndex",
     "named": true
+  },
+  {
+    "type": "type",
+    "named": false
   },
   {
     "type": "val",
