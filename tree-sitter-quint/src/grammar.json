@@ -396,7 +396,7 @@
                       "name": "index",
                       "content": {
                         "type": "SYMBOL",
-                        "name": "_tupleIndex"
+                        "name": "tupleIndex"
                       }
                     }
                   ]
@@ -2334,7 +2334,7 @@
       "type": "SYMBOL",
       "name": "_identifier"
     },
-    "_tupleIndex": {
+    "tupleIndex": {
       "type": "PATTERN",
       "value": "_[1-9][0-9]?"
     },
@@ -2455,4 +2455,3 @@
   "inline": [],
   "supertypes": []
 }
-

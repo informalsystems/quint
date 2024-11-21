@@ -57,7 +57,7 @@ module.exports = grammar({
                 // list access via index
                 seq($.expression, '[', $.expression, ']'),
                 // tuple access via index
-                seq($.expression, '.', field("index", $._tupleIndex)),
+                seq($.expression, '.', field("index", $.tupleIndex)),
             )),
             prec.right(5, seq($.expression, "^", $.expression)),
             prec.left(4, seq($.expression, choice("*", "/", "%"), $.expression)),
@@ -178,7 +178,7 @@ module.exports = grammar({
             seq("|", field("rowVar", $._identifier))
         )),
         rowLabel: $ => $._identifier,
-        _tupleIndex: $ => /_[1-9][0-9]?/,
+        tupleIndex: $ => /_[1-9][0-9]?/,
 
         string: $ => seq("\"", repeat(choice(/[^"\\]/, /\\./)), "\""),
         bool: $ => choice('false', 'true'),
