@@ -1,6 +1,7 @@
 import { describe, it } from 'mocha'
 import { assert } from 'chai'
-import { quintExAreEqual, zip } from './util'
+import { quintExAreEqual } from './util'
+import { zip } from '../src/util'
 
 import { buildExpression } from './builders/ir'
 import { ItfTrace, ofItf, toItf } from '../src/itf'
@@ -46,6 +47,7 @@ describe('toItf', () => {
   g: Map(1 -> "a", 2 -> "b", 3 -> "c"),
   h: Map(),
   i: Map(1 -> "a"),
+  j: variant("A", 2)
 }
 `
     const trace = [buildExpression(text)]
@@ -73,6 +75,7 @@ describe('toItf', () => {
           },
           h: { '#map': [] },
           i: { '#map': [[{ '#bigint': '1' }, 'a']] },
+          j: { tag: 'A', value: { '#bigint': '2' } },
         },
       ],
     }
@@ -80,6 +83,30 @@ describe('toItf', () => {
     assert.deepEqual(itfTrace.unwrap(), expected)
 
     const roundTripTrace = ofItf(itfTrace.unwrap())
+    assert(
+      zip(roundTripTrace, trace).every(([a, b]) => quintExAreEqual(a, b)),
+      `round trip conversion of trace failed`
+    )
+  })
+
+  it('converts unit type from Apalache', () => {
+    const text = '{ a: () }'
+
+    const trace = [buildExpression(text)]
+    const vars = ['a']
+    const itfTrace = {
+      vars: vars,
+      states: [
+        {
+          '#meta': {
+            index: 0,
+          },
+          a: 'U_OF_UNIT',
+        },
+      ],
+    }
+
+    const roundTripTrace = ofItf(itfTrace)
     assert(
       zip(roundTripTrace, trace).every(([a, b]) => quintExAreEqual(a, b)),
       `round trip conversion of trace failed`

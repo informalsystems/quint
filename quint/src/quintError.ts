@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------------------
- * Copyright (c) Informal Systems 2023. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2023 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  * --------------------------------------------------------------------------------- */
 
 /**
@@ -45,6 +45,16 @@ export type ErrorCode =
   | 'QNT007'
   /* QNT008: Simple identifiers cannot be qualified (i.e. contain `::`) */
   | 'QNT008'
+  /* QNT009: Missing arguments or parameters. You should omit the parentheses */
+  | 'QNT009'
+  /* QNT012: '...' may be used once in '{ ...record, <fields> }' */
+  | 'QNT012'
+  /* QNT013: import ... from <source>: could not load */
+  | 'QNT013'
+  /* QNT014: Type variables in a type declaration are not declared as parameters */
+  | 'QNT014'
+  /* QNT098: Cyclic imports */
+  | 'QNT098'
   /* QNT099: Found cyclic definitions */
   | 'QNT099'
   /* QNT101: Conflicting definitions for '<name>' */
@@ -57,6 +67,14 @@ export type ErrorCode =
   | 'QNT201'
   /* QNT202: Multiple updates of the same variable */
   | 'QNT202'
+  /* QNT203: 'oneOf' must be used inside a nondet definition */
+  | 'QNT203'
+  /* QNT204: 'oneOf' must be the outermost expression in a nondet definition */
+  | 'QNT204'
+  /* QNT205: nondet bindings can only be used with boolean expressions */
+  | 'QNT205'
+  /* QNT206: 'nondet' can only be used inside actions, not at the top level */
+  | 'QNT206'
   /* QNT404: Name '<name>' not found */
   | 'QNT404'
   /* QNT405: Module '<name>' not found */
@@ -65,8 +83,38 @@ export type ErrorCode =
   | 'QNT406'
   /* QNT407: Cannot import self */
   | 'QNT407'
-  /* QNT500: Unitialized constant */
+  /* QNT408: Case-sensitive filenames */
+  | 'QNT408'
+  /* QNT500: Uninitialized constant */
   | 'QNT500'
+  /* QNT501: Internal compiler error */
+  | 'QNT501'
+  /* QNT502: Variable not set */
+  | 'QNT502'
+  /* QNT503: Invalid arithmetics */
+  | 'QNT503'
+  /* QNT504: Range out of bounds */
+  | 'QNT504'
+  /* QNT505: Tail on empty list */
+  | 'QNT505'
+  /* QNT506: Invalid slice */
+  | 'QNT506'
+  /* QNT507: Missing map key */
+  | 'QNT507'
+  /* QNT508: Assertion failed */
+  | 'QNT508'
+  /* QNT509: Called oneOf() in an empty set */
+  | 'QNT509'
+  /* QNT510: Array acces out of bounds */
+  | 'QNT510'
+  /* QNT511: Test returned false */
+  | 'QNT511'
+  /* QNT512: Simulation failure */
+  | 'QNT512'
+  /* QNT513: Cannot continue in 'then' */
+  | 'QNT513'
+  /* QNT514: Cardinality is infinite */
+  | 'QNT514'
 
 /* Additional data for a Quint error */
 export interface QuintErrorData {

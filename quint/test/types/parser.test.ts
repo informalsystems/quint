@@ -46,6 +46,17 @@ describe('parseType', () => {
     )
   })
 
+  // Regression test for https://github.com/informalsystems/quint/issues/1336
+  it('parses qualified type constants', () => {
+    const type = parseType('modname::TypeConstructor')
+
+    assert.isTrue(type.isRight())
+    type.map(value => {
+      assert(value.kind === 'const')
+      assert.deepEqual(value.name, 'modname::TypeConstructor')
+    })
+  })
+
   it('parses function of const types', () => {
     const type = parseType('T1 -> (T2 -> T1)')
 
@@ -85,51 +96,29 @@ describe('parseType', () => {
     )
   })
 
-  it('parses discriminated unions', () => {
-    const type = parseType('| { tag: "a", a: int }\n| { tag: "b", b: bool }')
+  it('parses type application', () => {
+    const type = parseType('Foo[int, bool, str]')
 
     assert.isTrue(type.isRight())
     type.map(value =>
       assert.deepEqual(value, {
-        kind: 'union',
-        tag: 'tag',
-        records: [
-          {
-            tagValue: 'a',
-            fields: {
-              kind: 'row',
-              fields: [{ fieldName: 'a', fieldType: { kind: 'int', id: 1n } }],
-              other: { kind: 'empty' },
-            },
-          },
-          {
-            tagValue: 'b',
-            fields: {
-              kind: 'row',
-              fields: [{ fieldName: 'b', fieldType: { kind: 'bool', id: 2n } }],
-              other: { kind: 'empty' },
-            },
-          },
+        kind: 'app',
+        ctor: { kind: 'const', name: 'Foo', id: 5n },
+        args: [
+          { kind: 'int', id: 1n },
+          { kind: 'bool', id: 2n },
+          { kind: 'str', id: 3n },
         ],
-        id: 3n,
+        id: 4n,
       })
     )
   })
 
   it('throws error when type is invalid', () => {
-    const type = parseType('Set[bool, int]')
+    const type = parseType('Set(int)')
 
     assert.isTrue(type.isLeft())
-    type.mapLeft(error =>
-      assert.sameDeepMembers(error, [
-        {
-          // TODO We should not expect a '=>' here,
-          // but do because of https://github.com/informalsystems/quint/issues/456
-          explanation: "mismatched input ',' expecting {'->', '=>', ']'}",
-          locs: [{ start: { line: 0, col: 8, index: 8 }, end: { line: 0, col: 8, index: 8 } }],
-        },
-      ])
-    )
+    type.mapLeft(error => assert.deepEqual(error[0].explanation, "missing '[' at '('"))
   })
 
   it('throws error when row separators are invalid', () => {
@@ -141,7 +130,7 @@ describe('parseType', () => {
         {
           // TODO We should not expect a '=>' here,
           // but do because of https://github.com/informalsystems/quint/issues/456
-          explanation: "mismatched input '|' expecting {',', '->', '=>'}",
+          explanation: "mismatched input '|' expecting '}'",
           locs: [{ start: { line: 0, col: 11, index: 11 }, end: { line: 0, col: 11, index: 11 } }],
         },
       ])

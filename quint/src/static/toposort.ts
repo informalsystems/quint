@@ -6,17 +6,16 @@
  * This code is a port of the Scala code from Apalache:
  *
  * ${@link
- * https://github.com/informalsystems/apalache/blob/dd5fff8dbfe707fb450afd2319cf50ebeb568e18/tlair/src/main/scala/at/forsyte/apalache/tla/lir/transformations/impl/StableTopologicalSort.scala
+ * https://github.com/apalache-mc/apalache/blob/dd5fff8dbfe707fb450afd2319cf50ebeb568e18/tlair/src/main/scala/at/forsyte/apalache/tla/lir/transformations/impl/StableTopologicalSort.scala
  * }
  *
  * @author Igor Konnov, Informal Systems, 2023
  *
- * Copyright (c) Informal Systems 2022-2023. All rights reserved.  Licensed
- * under the Apache 2.0.  See License.txt in the project root for license
- * information.
+ * Copyright 2022-2023 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  */
 
-import { Either, left, right } from '@sweet-monads/either'
 import { Map } from 'immutable'
 import { Set } from 'immutable'
 import { WithId } from '../ir/quintIr'
@@ -38,7 +37,7 @@ type Edges = Map<bigint, Set<bigint>>
  * @returns either `Right(sorted)` that contains the correctly sorted nodes,
  *   or `Left(nodes)` that contains a subgraph with a cycle inside.
  */
-export function toposort<T extends WithId>(inEdges: Edges, unsorted: T[]): Either<Set<bigint>, T[]> {
+export function toposort<T extends WithId>(inEdges: Edges, unsorted: T[]): { cycles: Set<bigint>; sorted: T[] } {
   // map sorted ids to nodes
   const idToNode: Map<bigint, T> = unsorted.reduce((map, node) => map.set(node.id, node), Map<bigint, T>())
 
@@ -83,13 +82,8 @@ export function toposort<T extends WithId>(inEdges: Edges, unsorted: T[]): Eithe
     updateSinksAndEdges()
   }
 
-  if (!edges.isEmpty()) {
-    // we have found a cycle, report an error
-    return left(Set(edges.keys()))
-  } else {
-    if (sorted.length != unsorted.length) {
-      console.error(`sorted.length == ${sorted.length}, whereas unsorted.length == ${unsorted.length}`)
-    }
-    return right(sorted.map(id => idToNode.get(id)!))
+  return {
+    sorted: sorted.map(id => idToNode.get(id)!),
+    cycles: Set(edges.keys()),
   }
 }

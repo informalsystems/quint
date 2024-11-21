@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------------------
- * Copyright (c) Informal Systems 2022. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2022 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  * --------------------------------------------------------------------------------- */
 
 /**
@@ -22,6 +22,13 @@ import { unreachable } from '../util'
  * Optionally defines functions for each IR component.
  */
 export interface IRVisitor {
+  /* Keeps track of the depth of the current definition, to be updated by the
+   * walk* functions and used by implementations of the interface. Should be
+   * initialized to -1, so if `walkDefinition` is called from a different place
+   * than `walkDeclaration` (which does set this to -1), the increments and
+   * decrements work as expected. */
+  definitionDepth?: number
+
   enterModule?: (_module: ir.QuintModule) => void
   exitModule?: (_module: ir.QuintModule) => void
 
@@ -86,8 +93,8 @@ export interface IRVisitor {
   exitRecordType?: (_type: t.QuintRecordType) => void
   enterSumType?: (_type: t.QuintSumType) => void
   exitSumType?: (_type: t.QuintSumType) => void
-  enterUnionType?: (_type: t.QuintUnionType) => void
-  exitUnionType?: (_type: t.QuintUnionType) => void
+  enterAppType?: (_type: t.QuintAppType) => void
+  exitAppType?: (_type: t.QuintAppType) => void
 
   /** Row types */
   enterRow?: (_row: t.Row) => void
@@ -234,23 +241,17 @@ export function walkType(visitor: IRVisitor, type: t.QuintType): void {
       }
       break
 
-    case 'union':
-      if (visitor.enterUnionType) {
-        visitor.enterUnionType(type)
-      }
-      // Variants, walk all fields for all records
-      type.records.forEach(record => {
-        walkRow(visitor, record.fields)
-      })
-
-      if (visitor.exitUnionType) {
-        visitor.exitUnionType(type)
-      }
-      break
-
     case 'sum':
       visitor.enterSumType?.(type)
+      walkRow(visitor, type.fields)
       visitor.exitSumType?.(type)
+      break
+
+    case 'app':
+      visitor.enterAppType?.(type)
+      walkType(visitor, type.ctor)
+      type.args.map(t => walkType(visitor, t))
+      visitor.exitAppType?.(type)
       break
 
     default:
@@ -276,12 +277,21 @@ export function walkDeclaration(visitor: IRVisitor, decl: ir.QuintDeclaration): 
     visitor.enterDecl(decl)
   }
 
+  // The standard depth starts at 0, so definitions inside delclarations (i.e.
+  // assume and instance overrides) are not considered top-level
+  visitor.definitionDepth = 0
+
   switch (decl.kind) {
     case 'const':
     case 'var':
-    case 'def':
     case 'typedef':
     case 'assume':
+      walkDefinition(visitor, decl)
+      break
+    case 'def':
+      // depth will be increased inside `walkDefinition`, so we set it to -1 in
+      // order for it to be 0 there
+      visitor.definitionDepth = -1
       walkDefinition(visitor, decl)
       break
     case 'instance':
@@ -327,9 +337,14 @@ export function walkDeclaration(visitor: IRVisitor, decl: ir.QuintDeclaration): 
  * @returns nothing, any collected information has to be a state inside the IRVisitor instance.
  */
 export function walkDefinition(visitor: IRVisitor, def: ir.QuintDef): void {
+  if (visitor.definitionDepth !== undefined) {
+    visitor.definitionDepth++
+  }
+
   if (visitor.enterDef) {
     visitor.enterDef(def)
   }
+
   if (ir.isAnnotatedDef(def)) {
     walkType(visitor, def.typeAnnotation)
   } else if (ir.isTypeAlias(def)) {
@@ -387,6 +402,10 @@ export function walkDefinition(visitor: IRVisitor, def: ir.QuintDef): void {
   if (visitor.exitDef) {
     visitor.exitDef(def)
   }
+
+  if (visitor.definitionDepth !== undefined) {
+    visitor.definitionDepth--
+  }
 }
 
 export function walkExpression(visitor: IRVisitor, expr: ir.QuintEx): void {
@@ -425,17 +444,30 @@ export function walkExpression(visitor: IRVisitor, expr: ir.QuintEx): void {
       break
     }
     case 'lambda':
+      if (visitor.definitionDepth !== undefined) {
+        visitor.definitionDepth++
+      }
       if (visitor.enterLambda) {
         visitor.enterLambda(expr)
       }
-
+      expr.params.forEach(p => {
+        if (p.typeAnnotation) {
+          walkType(visitor, p.typeAnnotation)
+        }
+      })
       walkExpression(visitor, expr.expr)
 
       if (visitor.exitLambda) {
         visitor.exitLambda(expr)
       }
+      if (visitor.definitionDepth !== undefined) {
+        visitor.definitionDepth--
+      }
       break
     case 'let':
+      if (visitor.definitionDepth !== undefined) {
+        visitor.definitionDepth++
+      }
       if (visitor.enterLet) {
         visitor.enterLet(expr)
       }
@@ -445,6 +477,9 @@ export function walkExpression(visitor: IRVisitor, expr: ir.QuintEx): void {
 
       if (visitor.exitLet) {
         visitor.exitLet(expr)
+      }
+      if (visitor.definitionDepth !== undefined) {
+        visitor.definitionDepth--
       }
       break
     default:

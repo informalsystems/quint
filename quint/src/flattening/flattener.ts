@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------------------
- * Copyright (c) Informal Systems 2023. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2023 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  * --------------------------------------------------------------------------------- */
 
 /**
@@ -207,9 +207,9 @@ class Flattener implements IRVisitor {
 }
 
 export function getNamespaceForDef(def: LookupDefinition): string | undefined {
-  if (!def.namespaces) {
+  if (!def.namespaces || def.namespaces.length === 0) {
     return
   }
 
-  return [...def.namespaces].reverse().join('::')
+  return def.namespaces.reduce((a, b) => `${b}::${a}`)
 }

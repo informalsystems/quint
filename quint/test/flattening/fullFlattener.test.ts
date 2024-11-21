@@ -10,38 +10,30 @@ describe('flattenModules', () => {
   function assertFlattenedModule(text: string) {
     const idGenerator = newIdGenerator()
     const fake_path: SourceLookupPath = { normalizedPath: 'fake_path', toSourceName: () => 'fake_path' }
-    parse(idGenerator, 'test_location', fake_path, text)
-      .map(({ modules, table, sourceMap }) => {
-        const [analysisErrors, analysisOutput] = analyzeModules(table, modules)
+    const { modules, table, sourceMap, errors } = parse(idGenerator, 'fake_location', fake_path, text)
 
-        const { flattenedModules, flattenedTable } = flattenModules(
-          modules,
-          table,
-          idGenerator,
-          sourceMap,
-          analysisOutput
-        )
+    const [analysisErrors, analysisOutput] = analyzeModules(table, modules)
 
-        it('has proper names in flattened modules', () => {
-          const result = parsePhase3importAndNameResolution({ modules: flattenedModules, sourceMap })
-          assert.isTrue(result.isRight())
-          result.map(({ table }) =>
-            assert.sameDeepMembers(
-              [...flattenedTable.entries()].map(([id, def]) => [id, def.id]),
-              [...table.entries()].map(([id, def]) => [id, def.id])
-            )
-          )
-        })
+    const { flattenedModules, flattenedTable } = flattenModules(modules, table, idGenerator, sourceMap, analysisOutput)
 
-        it('has proper analysis output in flattened modules', () => {
-          assert.isEmpty(analysisErrors)
-        })
+    it('has proper names in flattened modules', () => {
+      const { table, errors: err } = parsePhase3importAndNameResolution({
+        modules: flattenedModules,
+        sourceMap,
+        errors,
       })
-      .mapLeft(err => {
-        it('has no erros', () => {
-          assert.fail(`Expected no error, but got ${err.map(e => e.explanation)}`)
-        })
-      })
+
+      assert.isEmpty(err, 'Failed to parse mocked up module')
+
+      assert.sameDeepMembers(
+        [...flattenedTable.entries()].map(([id, def]) => [id, def.id]),
+        [...table.entries()].map(([id, def]) => [id, def.id])
+      )
+    })
+
+    it('has proper analysis output in flattened modules', () => {
+      assert.isEmpty(analysisErrors)
+    })
   }
 
   describe('flattenning simple imports', () => {
@@ -239,6 +231,21 @@ describe('flattenModules', () => {
     module B {
       import A.*
       val b = f(1)
+    }`
+
+    assertFlattenedModule(text)
+  })
+
+  // Regression test for https://github.com/informalsystems/quint/issues/1391
+  describe('can flatten with polymorphic types between different modules (#802)', () => {
+    const text = `module A {
+      type Foo[a] = F(a)
+      def mapFoo(x: Foo[a], f: a => b): Foo[b] = match x { F(v) => F(f(v)) }
+    }
+
+    module B {
+      import A.*
+      val b: Foo[int] = F("one").mapFoo(_ => 1)
     }`
 
     assertFlattenedModule(text)

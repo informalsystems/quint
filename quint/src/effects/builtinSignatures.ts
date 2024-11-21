@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------------------
- * Copyright (c) Informal Systems 2022. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2022 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  * --------------------------------------------------------------------------------- */
 
 /**
@@ -143,6 +143,8 @@ export const setOperators = [
   { name: 'powerset', effect: standardPropagation(1) },
   { name: 'flatten', effect: standardPropagation(1) },
   { name: 'allLists', effect: standardPropagation(1) },
+  { name: 'allListsUpTo', effect: standardPropagation(2) },
+  { name: 'getOnlyElement', effect: standardPropagation(1) },
   { name: 'chooseSome', effect: standardPropagation(1) },
   { name: 'oneOf', effect: standardPropagation(1) },
   { name: 'isFinite', effect: standardPropagation(1) },
@@ -219,12 +221,30 @@ const temporalOperators = [
 const otherOperators = [
   { name: 'assign', effect: parseAndQuantify('(Read[r1], Read[r2]) => Read[r2] & Update[r1]') },
   { name: 'then', effect: parseAndQuantify('(Read[r1] & Update[u], Read[r2] & Update[u]) => Read[r] & Update[u]') },
+  { name: 'expect', effect: parseAndQuantify('(Read[r1] & Update[u], Read[r2]) => Read[r1] & Update[u]') },
   { name: 'reps', effect: parseAndQuantify('(Pure, (Read[r1]) => Read[r2] & Update[u]) => Read[r1, r2] & Update[u]') },
   { name: 'fail', effect: propagateComponents(['read', 'update'])(1) },
   { name: 'assert', effect: propagateComponents(['read'])(1) },
+  { name: 'q::debug', effect: propagateComponents(['read'])(2) },
+  // FIXME: The following should produce run mode
+  { name: 'q::lastTrace', effect: parseAndQuantify('Pure') },
+  {
+    name: 'q::test',
+    effect: parseAndQuantify(
+      '(Pure, Pure, Pure, Update[u1], Read[r2] & Update[u2], Read[r3]) => Read[r2, r3] & Update[u2]'
+    ),
+  },
+  {
+    name: 'q::testOnce',
+    effect: parseAndQuantify('(Pure, Pure, Update[u1], Read[r2] & Update[u2], Read[r3]) => Read[r2, r3] & Update[u2]'),
+  },
   {
     name: 'ite',
     effect: parseAndQuantify('(Read[r1], Read[r2] & Update[u], Read[r3] & Update[u]) => Read[r1, r2, r3] & Update[u]'),
+  },
+  {
+    name: 'variant',
+    effect: parseAndQuantify('(Pure, Read[r] & Update[u]) => Read[r] & Update[u]'),
   },
 ]
 
@@ -238,11 +258,35 @@ const multipleAritySignatures: [QuintBuiltinOpcode, Signature][] = [
   ['and', standardPropagation],
   ['or', standardPropagation],
   [
-    'unionMatch',
+    // A match operator that looks like
+    //
+    // matchVariant(expr: s_i, label0: string, elim0: (s_0) => t, ..., labeln: string, elimn: (s_n) => t))
+    //   : t
+    // {where 0 <= i <= n}
+    //
+    // has an effect signature matching the scheme
+    //
+    // (a, Pure, (a) => Read[r0] & Update[u], ..., (a) => Read[rn] & Update[u])
+    //   => Read[r0,...,rn] & Update[u]
+    //
+    // Because:
+    //
+    // - Assuming `expr` has effect `a`, each eliminator must take a parameter with effect `a`.
+    // - Each label is a string literal, which must be `Pure`.
+    // - The result of applying the operator may have the effect of the body of any of the eliminators:
+    //   the union of effect variables here corresponding to the disjunctive structure of the sum-type eliminator.
+    // - All eliminators must have the same update effect.
+    'matchVariant',
     (arity: number) => {
-      const readVars = times((arity - 1) / 2, i => `r${i}`)
-      const args = readVars.map(r => `Pure, (Pure) => Read[${r}]`)
-      return parseAndQuantify(`(Read[r], ${args.join(', ')}) => Read[${readVars.join(', ')}]`)
+      // We need indexes for each eliminator (i.e., lambdas), so that we can number
+      // the effect variables corresponding to body of each respective eliminator.
+      const eliminatorIdxs = range((arity - 1) / 2)
+      const readVars = eliminatorIdxs.map(i => `r${i}`)
+      const matchedExprEffect = 'a'
+      const eliminationCaseEffects = readVars.map(r => `Pure, (a) => Read[${r}] & Update[u]`)
+      const argumentEffects = [matchedExprEffect, ...eliminationCaseEffects].join(', ')
+      const resultEffect = `Read[${readVars.join(',')}] & Update[u]`
+      return parseAndQuantify(`(${argumentEffects}) => ${resultEffect}`)
     },
   ],
   [

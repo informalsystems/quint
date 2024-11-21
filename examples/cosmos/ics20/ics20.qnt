@@ -191,6 +191,7 @@ module ics20 {
 }
 
 module ics20Test {
+  import basicSpells.* from "../../spells/basicSpells"
   import base.* from "./base"
   import bank.getBalance from "./bank"
   import bank.getBalances from "./bank"
@@ -611,7 +612,7 @@ module ics20Test {
       // Check that there is a single incoming acknowledgement on chain A,
       // that indicates failure.
       assert(chainStates.get("B").inAcknowledgements.size() == 1),
-      val ack = chainStates.get("B").inAcknowledgements.oneOf()
+      nondet ack = chainStates.get("B").inAcknowledgements.oneOf()
       assert(ack.success == false and ack.errorMessage == "transfer coins failed"),
 
       // Process the acknowledgement on chain A; this triggers step 3.6 above.

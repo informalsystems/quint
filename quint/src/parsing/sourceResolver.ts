@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------------------
- * Copyright (c) Informal Systems 2023. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2023 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  * --------------------------------------------------------------------------------- */
 
 /**
@@ -13,9 +13,8 @@
  * @module
  */
 import { Either, left, right } from '@sweet-monads/either'
-import { dirname } from 'path'
+import { dirname, join, normalize, posix } from 'path'
 import { readFileSync } from 'fs'
-import { posix } from 'path'
 import { lf } from 'eol'
 
 /**
@@ -76,16 +75,21 @@ export interface SourceResolver {
 
 /**
  * Read the source code in UTF-8 from the filesystem via NodeJS API.
+ * @param sourceCode an optional map of paths to source code,
+ *        to be updated when reading new files
  * @param replacer an optional path replacement function,
  *        which is used to produce a source name
  * @returns A filesystem resolver. For each path, it returns
  *          either `left(errorMessage)`, or `right(fileContents)`.
  */
-export const fileSourceResolver = (replacer: (path: string) => string = path => path): SourceResolver => {
+export function fileSourceResolver(
+  sourceCode: Map<string, string> = new Map(),
+  replacer: (path: string) => string = path => path
+): SourceResolver {
   return {
     lookupPath: (basepath: string, importPath: string) => {
       return {
-        normalizedPath: posix.join(basepath, importPath),
+        normalizedPath: normalize(join(basepath, importPath)),
         toSourceName: () => {
           return replacer(posix.join(basepath, importPath))
         },
@@ -94,41 +98,12 @@ export const fileSourceResolver = (replacer: (path: string) => string = path => 
 
     load: (lookupPath: SourceLookupPath): Either<string, string> => {
       try {
-        return right(lf(readFileSync(lookupPath.normalizedPath, 'utf8')))
+        const code = lf(readFileSync(lookupPath.normalizedPath, 'utf8'))
+        sourceCode.set(lookupPath.normalizedPath, code)
+        return right(code)
       } catch (err: any) {
         return left(err.message)
       }
-    },
-
-    stempath: (lookupPath: SourceLookupPath): string => {
-      return dirname(lookupPath.normalizedPath)
-    },
-  }
-}
-
-/**
- * Read the source code from a map of strings. This resolver is especially
- * useful for tests.
- * @param sources a map of paths mapped to text
- * @returns a static resolver that uses the map to read the contents.
- */
-export const stringSourceResolver = (sources: Map<string, string>): SourceResolver => {
-  return {
-    lookupPath: (stempath: string, importPath: string) => {
-      return {
-        normalizedPath: posix.join(stempath, importPath),
-        toSourceName: () => {
-          return posix.join(stempath, importPath)
-        },
-      }
-    },
-
-    load: (lookupPath: SourceLookupPath): Either<string, string> => {
-      // We are using nodejs path.join here.
-      // If we have to decouple this resolver from nodejs in the future,
-      // we would have to write our own version of join.
-      const contents = sources.get(lookupPath.normalizedPath)
-      return contents ? right(contents) : left(`Source not found: '${lookupPath.normalizedPath}'`)
     },
 
     stempath: (lookupPath: SourceLookupPath): string => {

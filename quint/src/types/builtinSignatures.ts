@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------------------
- * Copyright (c) Informal Systems 2022. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2022 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  * --------------------------------------------------------------------------------- */
 
 /**
@@ -22,9 +22,13 @@ export function getSignatures(): Map<string, Signature> {
   return new Map<string, Signature>(fixedAritySignatures.concat(multipleAritySignatures))
 }
 
-// Signatures for record and tuple related operators cannot be precisely
-// defined with this syntax. Their types are handled directly with constraints
-// in the specialConstraints.ts file
+// NOTE: Signatures operations over products (records and tuples) and sums
+// (enums/disjoint unions/variants) cannot be precisely defined with this
+// syntax, because they are "exotic", in the sense that they represent basic
+// language constructions that cannot be represented in the type system of the
+// language itself.
+//
+// Their types are handled directly with constraints in specialConstraints.ts.
 
 const literals = [
   { name: 'Nat', type: 'Set[int]' },
@@ -55,6 +59,8 @@ const setOperators = [
   { name: 'powerset', type: '(Set[a]) => Set[Set[a]]' },
   { name: 'flatten', type: '(Set[Set[a]]) => Set[a]' },
   { name: 'allLists', type: '(Set[a]) => Set[List[a]]' },
+  { name: 'allListsUpTo', type: '(Set[a], int) => Set[List[a]]' },
+  { name: 'getOnlyElement', type: '(Set[a]) => a' },
   { name: 'chooseSome', type: '(Set[a]) => a' },
   { name: 'oneOf', type: '(Set[a]) => a' },
   { name: 'isFinite', type: '(Set[a]) => bool' },
@@ -118,9 +124,14 @@ const otherOperators = [
   { name: 'assign', type: '(a, a) => bool' },
   { name: 'ite', type: '(bool, a, a) => a' },
   { name: 'then', type: '(bool, bool) => bool' },
+  { name: 'expect', type: '(bool, bool) => bool' },
   { name: 'reps', type: '(int, int => bool) => bool' },
   { name: 'fail', type: '(bool) => bool' },
   { name: 'assert', type: '(bool) => bool' },
+  { name: 'q::debug', type: '(str, a) => a' },
+  { name: 'q::lastTrace', type: 'List[a]' },
+  { name: 'q::test', type: '(int, int, int, bool, bool, bool) => bool' },
+  { name: 'q::testOnce', type: '(int, int, bool, bool, bool) => bool' },
 ]
 
 function uniformArgsWithResult(argsType: string, resultType: string): Signature {
@@ -130,7 +141,6 @@ function uniformArgsWithResult(argsType: string, resultType: string): Signature 
   }
 }
 
-// TODO: check arity conditions, see issue https://github.com/informalsystems/quint/issues/169
 const multipleAritySignatures: [QuintBuiltinOpcode, Signature][] = [
   ['List', uniformArgsWithResult('a', 'List[a]')],
   ['Set', uniformArgsWithResult('a', 'Set[a]')],
@@ -140,7 +150,7 @@ const multipleAritySignatures: [QuintBuiltinOpcode, Signature][] = [
   ['or', uniformArgsWithResult('bool', 'bool')],
   ['actionAny', uniformArgsWithResult('bool', 'bool')],
   [
-    'unionMatch',
+    'matchVariant',
     (arity: number) => {
       const args = times((arity - 1) / 2, () => 'str, (a) => b')
       return parseAndQuantify(`(a, ${args.join(', ')}) => b`)

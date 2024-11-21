@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------------------
- * Copyright (c) Informal Systems 2022. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2022 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  * --------------------------------------------------------------------------------- */
 
 /**
@@ -13,7 +13,7 @@
  */
 
 import { OpQualifier, QuintDeclaration, QuintDef, QuintEx, QuintModule, isAnnotatedDef } from './quintIr'
-import { QuintSumType, QuintType, Row, RowField, isTheUnit } from './quintTypes'
+import { ConcreteRow, QuintSumType, QuintType, Row, RowField, isUnitType } from './quintTypes'
 import { TypeScheme } from '../types/base'
 import { typeSchemeToString } from '../types/printing'
 
@@ -121,7 +121,8 @@ export function definitionToString(def: QuintDef, includeBody: boolean = true, t
       return `assume ${def.name} = ${expressionToString(def.assumption)}`
     case 'typedef':
       if (def.type) {
-        return `type ${def.name} = ${typeToString(def.type)}`
+        const params = def.params && def.params.length > 0 ? `[${def.params.join(', ')}]` : ''
+        return `type ${def.name}${params} = ${typeToString(def.type)}`
       } else {
         return `type ${def.name}`
       }
@@ -187,11 +188,10 @@ export function typeToString(type: QuintType): string {
     case 'sum': {
       return sumToString(type)
     }
-    case 'union': {
-      const records = type.records.map(rec => {
-        return `| { ${type.tag}: "${rec.tagValue}", ${rowFieldsToString(rec.fields)} }`
-      })
-      return records.join('\n')
+    case 'app': {
+      const abs = typeToString(type.ctor)
+      const args = type.args.map(typeToString).join(', ')
+      return `${abs}[${args}]`
     }
   }
 }
@@ -216,15 +216,24 @@ export function rowToString(r: Row): string {
  * @returns a string with the pretty printed sum
  */
 export function sumToString(s: QuintSumType): string {
-  return s.fields.fields
-    .map((f: RowField) => {
-      if (isTheUnit(f.fieldType)) {
-        return `| ${f.fieldName}`
-      } else {
-        return `| ${f.fieldName}(${typeToString(f.fieldType)})`
-      }
-    })
-    .join('\n')
+  return '(' + sumFieldsToString(s.fields) + ')'
+}
+
+function sumFieldsToString(r: ConcreteRow): string {
+  return (
+    r.fields
+      .map((f: RowField) => {
+        if (isUnitType(f.fieldType)) {
+          return `${f.fieldName}`
+        } else {
+          return `${f.fieldName}(${typeToString(f.fieldType)})`
+        }
+      })
+      // We are not exposing open rows in sum types currently
+      // So we do not show show row variables.
+      .concat(r.other.kind === 'row' ? [sumFieldsToString(r.other)] : [])
+      .join(' | ')
+  )
 }
 
 /**

@@ -21,11 +21,10 @@ describe('flattenModule', () => {
       '\n'
     )} } module C { ${thirdModuleDecls.join('\n')} }`
 
-    const parseResult = parse(idGenerator, 'fake_location', fake_path, quintModules)
-    if (parseResult.isLeft()) {
-      assert.fail('Failed to parse mocked up module')
-    }
-    const { modules, table } = parseResult.unwrap()
+    const { modules, table, errors } = parse(idGenerator, 'fake_location', fake_path, quintModules)
+
+    assert.isEmpty(errors, 'Failed to parse mocked up module')
+
     const modulesByName: Map<string, QuintModule> = new Map(modules.map(m => [m.name, m]))
 
     modules.forEach(m => {
@@ -144,7 +143,7 @@ describe('flattenModule', () => {
 
     const thirdModuleDecls = ['import B.*', 'val a = f(1)']
 
-    const expectedDecls = ['import A(N = 1) as A1', 'def f = ((x) => iadd(x, 1))']
+    const expectedDecls = ['import A(N = 1) as A1', 'def f = ((x) => iadd(x, 1))', 'const N: int']
 
     const flattenedDecls = getFlatennedDecls(baseDecls, decls, thirdModuleDecls)
     assert.deepEqual(flattenedDecls, expectedDecls)

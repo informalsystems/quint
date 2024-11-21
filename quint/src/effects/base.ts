@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------------------
- * Copyright (c) Informal Systems 2022. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2022 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  * --------------------------------------------------------------------------------- */
 
 /**
@@ -18,6 +18,7 @@ import { Substitutions, applySubstitution, applySubstitutionToEntity, compose } 
 import { Error, ErrorTree, buildErrorLeaf, buildErrorTree } from '../errorTree'
 import { flattenUnions, simplify } from './simplification'
 import isEqual from 'lodash.isequal'
+import { differenceWith, intersectionWith } from 'lodash'
 
 /* Kinds for concrete effect components */
 export type ComponentKind = 'read' | 'update' | 'temporal'
@@ -80,11 +81,11 @@ export interface StateVariable {
  * entity variable or a combination of other entities.
  */
 export type Entity =
-  /* A list of state variables */
+  /* A set of state variables, represented as a list */
   | { kind: 'concrete'; stateVariables: StateVariable[] }
-  /* A variable representing some entity */
+  /* A variable representing some set of entities */
   | { kind: 'variable'; name: string; reference?: bigint }
-  /* A combination of entities */
+  /* The union of sets of entities, represented as a list */
   | { kind: 'union'; entities: Entity[] }
 
 /*
@@ -176,11 +177,36 @@ function bindEffect(name: string, effect: Effect): Either<string, Substitutions>
   }
 }
 
-function bindEntity(name: string, entity: Entity): Either<string, Substitutions> {
-  if (entityNames(entity).includes(name)) {
-    return left(`Can't bind ${name} to ${entityToString(entity)}: cyclical binding`)
-  } else {
-    return right([{ kind: 'entity', name, value: entity }])
+function bindEntity(name: string, entity: Entity): Substitutions {
+  switch (entity.kind) {
+    case 'concrete':
+    case 'variable':
+      return [{ kind: 'entity', name, value: entity }]
+    case 'union':
+      if (entityNames(entity).includes(name)) {
+        // An entity variable (which always stands for a set of state variables)
+        // unifies with the union of n sets of entities that may include itself,
+        // iff it unifies with each set.
+        //
+        // I.e.:
+        //
+        //   (v1 =.= v1 ∪ ... ∪ vn) <=> (v1 =.= ... =.= vn)
+        //
+        // We call this function recursively because, in the general case,
+        // occurrences of `v1` may be nested, as in:
+        //
+        //    v1 =.= v1 ∪ (v2 ∪ (v3 ∪ v1)) ∪ v4
+        //
+        // In practice, we are flattening unions before we call this function,
+        // but solving the general case ensures we preserve correct behavior
+        // even if this function is used on its own, without incurring any
+        // notable overhead when `entities` is already flat.
+        return entity.entities.flatMap(e => bindEntity(name, e))
+      } else {
+        // Otherwise, the variable may be bound to the union of the entities
+        // without qualification.
+        return [{ kind: 'entity', name, value: entity }]
+      }
   }
 }
 
@@ -227,7 +253,7 @@ function unifyArrows(location: string, e1: ArrowEffect, e2: ArrowEffect): Either
       if (p1.length === p2.length) {
         return right([p1, p2, [] as Substitutions])
       } else {
-        return tryToUnpack(location, p1, p2)
+        return left(buildErrorLeaf(location, `Expected ${p1.length} arguments, got ${p2.length}`))
       }
     })
     .chain(([p1, p2, unpackingSubs]) => {
@@ -320,22 +346,25 @@ export function unifyEntities(va: Entity, vb: Entity): Either<ErrorTree, Substit
   } else if (v1.kind === 'variable' && v2.kind === 'variable' && v1.name === v2.name) {
     return right([])
   } else if (v1.kind === 'variable') {
-    return bindEntity(v1.name, v2).mapLeft(msg => buildErrorLeaf(location, msg))
+    return right(bindEntity(v1.name, v2))
   } else if (v2.kind === 'variable') {
-    return bindEntity(v2.name, v1).mapLeft(msg => buildErrorLeaf(location, msg))
-  } else {
-    if (isEqual(v1, v2)) {
-      return right([])
-    }
+    return right(bindEntity(v2.name, v1))
+  } else if (isEqual(v1, v2)) {
+    return right([])
+  } else if (v1.kind === 'union' && v2.kind === 'concrete') {
+    return mergeInMany(v1.entities.map(v => unifyEntities(v, v2)))
+      .map(subs => subs.flat())
+      .mapLeft(err => buildErrorTree(location, err))
+  } else if (v1.kind === 'concrete' && v2.kind === 'union') {
+    return unifyEntities(v2, v1)
+  } else if (v1.kind === 'union' && v2.kind === 'union') {
+    const intersection = intersectionWith(v1.entities, v2.entities, isEqual)
+    if (intersection.length > 0) {
+      const s1 = { ...v1, entities: differenceWith(v1.entities, intersection, isEqual) }
+      const s2 = { ...v2, entities: differenceWith(v2.entities, intersection, isEqual) }
 
-    if (v1.kind === 'union' && v2.kind === 'concrete') {
-      return mergeInMany(v1.entities.map(v => unifyEntities(v, v2)))
-        .map(subs => subs.flat())
-        .mapLeft(err => buildErrorTree(location, err))
-    }
-
-    if (v1.kind === 'concrete' && v2.kind === 'union') {
-      return unifyEntities(v2, v1)
+      // There was an intersection, try to unify the remaining entities
+      return unifyEntities(s1, s2)
     }
 
     // At least one of the entities is a union
@@ -346,6 +375,8 @@ export function unifyEntities(va: Entity, vb: Entity): Either<ErrorTree, Substit
       message: 'Unification for unions of entities is not implemented',
       children: [],
     })
+  } else {
+    throw new Error(`Impossible: all cases should be covered`)
   }
 }
 
@@ -372,78 +403,6 @@ function applySubstitutionsAndUnify(subs: Substitutions, e1: Effect, e2: Effect)
   return mergeInMany([applySubstitution(subs, e1), applySubstitution(subs, e2)])
     .chain(effectsWithSubstitutions => unify(...effectsWithSubstitutions))
     .chain(newSubstitutions => compose(newSubstitutions, subs))
-}
-
-function tryToUnpack(
-  location: string,
-  effects1: Effect[],
-  effects2: Effect[]
-): Either<ErrorTree, [Effect[], Effect[], Substitutions]> {
-  // Ensure that effects1 is always the smallest
-  if (effects2.length < effects1.length) {
-    return tryToUnpack(location, effects2, effects1)
-  }
-
-  // We only handle unpacking 1 tuple into N args
-  if (effects1.length !== 1) {
-    return left(buildErrorLeaf(location, `Expected ${effects2.length} arguments, got ${effects1.length}`))
-  }
-
-  const entitiesByComponentKind: Map<ComponentKind, Entity[]> = new Map()
-
-  // Combine the other effects into a single effect, to be unified with the unpacked effect
-
-  // If all the effects are concrete, we combine them into a single concrete
-  // effect by combining the entities of each component of the same kind
-  if (effects2.every(e => e.kind === 'concrete')) {
-    effects2.forEach(e => {
-      if (e.kind === 'concrete') {
-        e.components.forEach(c => {
-          const entities = entitiesByComponentKind.get(c.kind) ?? []
-          entities.push(c.entity)
-          entitiesByComponentKind.set(c.kind, entities)
-        })
-      }
-    })
-
-    const unpacked: ConcreteEffect = {
-      kind: 'concrete',
-      components: [...entitiesByComponentKind.entries()].map(([kind, entities]) => {
-        return { kind, entity: { kind: 'union', entities: entities } }
-      }),
-    }
-
-    const result = simplify(unpacked)
-    return right([effects1, [result], []])
-  }
-
-  // If all the effects are variable like e0, ..., en, we combine them into a
-  // single variable effect called e0#...#en. See simplifyArrowEffect for a
-  // similar process description
-  if (effects2.every(e => e.kind === 'variable')) {
-    const names = effects2.map(e => (e.kind === 'variable' ? e.name : ''))
-
-    const unpacked: Effect = {
-      kind: 'variable',
-      name: names.join('#'),
-    }
-
-    const subs: Substitutions = names.map(name => ({
-      kind: 'effect',
-      name,
-      value: unpacked,
-    }))
-    const result = simplify(unpacked)
-
-    return right([effects1, [result], subs])
-  }
-
-  return left(
-    buildErrorLeaf(
-      `Trying to unpack effects: ${effects1.map(effectToString)} and ${effects2.map(effectToString)}`,
-      'Can only unpack effects if they are all concrete or all variable'
-    )
-  )
 }
 
 /**

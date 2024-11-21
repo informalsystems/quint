@@ -3,19 +3,20 @@
  *
  * Igor Konnov, 2023
  *
- * Copyright (c) Informal Systems 2022-2023. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2022-2023 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  */
 
-import { Maybe, just, none } from '@sweet-monads/maybe'
 import { strict as assert } from 'assert'
 
 import { QuintApp } from '../ir/quintIr'
-import { EvalResult } from './runtime'
 import { verbosity } from './../verbosity'
 import { Rng } from './../rng'
-import { rv } from './impl/runtimeValue'
+import { Either, left, right } from '@sweet-monads/either'
+import { QuintError } from '../quintError'
+import { RuntimeValue, rv } from './impl/runtimeValue'
+import { insertSorted } from './../util'
 
 /**
  * A snapshot of how a single operator (e.g., an action) was executed.
@@ -39,16 +40,23 @@ export interface ExecutionFrame {
   /**
    * The actual runtime values that were used in the call.
    */
-  args: EvalResult[]
+  args: RuntimeValue[]
   /**
    * An optional result of the execution.
    */
-  result: Maybe<EvalResult>
+  result: Either<QuintError, RuntimeValue>
   /**
    * The frames of the operators that were called by this operator.
    */
   subframes: ExecutionFrame[]
 }
+
+export interface Trace {
+  frame: ExecutionFrame
+  seed: bigint
+}
+
+const emptyFrameError: QuintError = { code: 'QNT501', message: 'empty frame' }
 
 /**
  * A listener that receives events in the course of Quint evaluation.
@@ -71,7 +79,7 @@ export interface ExecutionListener {
    * @param args the actual arguments obtained in evaluation
    * @param result optional result of the evaluation
    */
-  onUserOperatorReturn(app: QuintApp, args: EvalResult[], result: Maybe<EvalResult>): void
+  onUserOperatorReturn(app: QuintApp, args: RuntimeValue[], result: Either<QuintError, RuntimeValue>): void
 
   /**
    * This callback is called *before* one of the arguments of `any {...}`
@@ -110,7 +118,7 @@ export interface ExecutionListener {
    * @param oldState the old state that is about to be discarded
    * @param newState the new state, from which the execution continues
    */
-  onNextState(oldState: EvalResult, newState: EvalResult): void
+  onNextState(oldState: RuntimeValue, newState: RuntimeValue): void
 
   /**
    * This callback is called when a new run is executed,
@@ -127,7 +135,7 @@ export interface ExecutionListener {
    *        - finished after finding a violation, `just(mkBool(false))`
    * @param trace the array of produced states (each state is a record)
    */
-  onRunReturn(outcome: Maybe<EvalResult>, trace: EvalResult[]): void
+  onRunReturn(outcome: Either<QuintError, RuntimeValue>, trace: RuntimeValue[]): void
 }
 
 /**
@@ -135,13 +143,13 @@ export interface ExecutionListener {
  */
 export const noExecutionListener: ExecutionListener = {
   onUserOperatorCall: (_app: QuintApp) => {},
-  onUserOperatorReturn: (_app: QuintApp, _args: EvalResult[], _result: Maybe<EvalResult>) => {},
+  onUserOperatorReturn: (_app: QuintApp, _args: RuntimeValue[], _result: Either<QuintError, RuntimeValue>) => {},
   onAnyOptionCall: (_anyExpr: QuintApp, _position: number) => {},
   onAnyOptionReturn: (_anyExpr: QuintApp, _position: number) => {},
   onAnyReturn: (_noptions: number, _choice: number) => {},
-  onNextState: (_oldState: EvalResult, _newState: EvalResult) => {},
+  onNextState: (_oldState: RuntimeValue, _newState: RuntimeValue) => {},
   onRunCall: () => {},
-  onRunReturn: (_outcome: Maybe<EvalResult>, _trace: EvalResult[]) => {},
+  onRunReturn: (_outcome: Either<QuintError, RuntimeValue>, _trace: RuntimeValue[]) => {},
 }
 
 /**
@@ -158,36 +166,35 @@ export interface TraceRecorder extends ExecutionListener {
   rng: Rng
 
   /**
+   * The current frame that is being recorded.
+   */
+  currentFrame: ExecutionFrame
+
+  /**
    * Clear the recorded trace
    */
   clear: () => void
 
   /**
-   * Get the best recorded trace.
-   * @returns the best recorded trace.
+   * The best recorded traces.
    */
-  getBestTrace: () => ExecutionFrame
-
-  /**
-   * Get the seed of the best recorded trace.
-   * @returns the seed that was used to generate the best trace.
-   */
-  getBestTraceSeed: () => bigint
+  bestTraces: Trace[]
 }
 
 // a trace recording listener
-export const newTraceRecorder = (verbosityLevel: number, rng: Rng): TraceRecorder => {
-  return new TraceRecorderImpl(verbosityLevel, rng)
+export const newTraceRecorder = (verbosityLevel: number, rng: Rng, tracesToRecord: number = 1): TraceRecorder => {
+  return new TraceRecorderImpl(verbosityLevel, rng, tracesToRecord)
 }
 
 // a private implementation of a trace recorder
 class TraceRecorderImpl implements TraceRecorder {
   verbosityLevel: number
   rng: Rng
-  // the best trace is stored here
-  private bestTrace: ExecutionFrame
-  // the seed value for the best trace is stored here
-  private bestTraceSeed: bigint
+  currentFrame: ExecutionFrame
+  // how many traces to store
+  private tracesToStore: number
+  // best traces are stored here with their respective seeds
+  bestTraces: Trace[]
   // whenever a run is entered, we store its seed here
   private runSeed: bigint
   // During simulation, a trace is built here.
@@ -197,35 +204,34 @@ class TraceRecorderImpl implements TraceRecorder {
   // a tree of calls.
   private frameStack: ExecutionFrame[]
 
-  constructor(verbosityLevel: number, rng: Rng) {
+  constructor(verbosityLevel: number, rng: Rng, tracesToStore: number) {
     this.verbosityLevel = verbosityLevel
     this.rng = rng
     const bottom = this.newBottomFrame()
-    this.bestTrace = bottom
-    this.bestTraceSeed = rng.getState()
-    this.runSeed = this.bestTraceSeed
+    this.tracesToStore = tracesToStore
+    this.bestTraces = []
+    this.runSeed = this.rng.getState()
+    this.currentFrame = bottom
     this.frameStack = [bottom]
   }
 
   clear() {
+    this.bestTraces = []
     const bottom = this.newBottomFrame()
-    this.bestTrace = bottom
+    this.currentFrame = bottom
     this.frameStack = [bottom]
-  }
-
-  getBestTrace(): ExecutionFrame {
-    return this.bestTrace
-  }
-
-  getBestTraceSeed(): bigint {
-    return this.bestTraceSeed
   }
 
   onUserOperatorCall(app: QuintApp) {
     // For now, we cannot tell apart actions from other user definitions.
     // https://github.com/informalsystems/quint/issues/747
     if (verbosity.hasUserOpTracking(this.verbosityLevel)) {
-      const newFrame = { app: app, args: [], result: none(), subframes: [] }
+      const newFrame: ExecutionFrame = {
+        app: app,
+        args: [],
+        result: left(emptyFrameError),
+        subframes: [],
+      }
       if (this.frameStack.length == 0) {
         // this should not happen, as there is always bottomFrame,
         // but we do not throw here, as trace collection is not the primary
@@ -236,7 +242,7 @@ class TraceRecorderImpl implements TraceRecorder {
         const frame = this.frameStack[1]
         frame.app = app
         frame.args = []
-        frame.result = none()
+        frame.result = left(emptyFrameError)
         frame.subframes = []
       } else {
         // connect the new frame to the previous frame
@@ -247,7 +253,7 @@ class TraceRecorderImpl implements TraceRecorder {
     }
   }
 
-  onUserOperatorReturn(_app: QuintApp, args: EvalResult[], result: Maybe<EvalResult>) {
+  onUserOperatorReturn(_app: QuintApp, args: RuntimeValue[], result: Either<QuintError, RuntimeValue>) {
     if (verbosity.hasUserOpTracking(this.verbosityLevel)) {
       const top = this.frameStack.pop()
       if (top) {
@@ -266,7 +272,7 @@ class TraceRecorderImpl implements TraceRecorder {
       const newFrame = {
         app: anyExpr,
         args: [],
-        result: none(),
+        result: left(emptyFrameError),
         subframes: [],
       }
       if (this.frameStack.length > 0) {
@@ -305,11 +311,11 @@ class TraceRecorderImpl implements TraceRecorder {
     }
   }
 
-  onNextState(_oldState: EvalResult, _newState: EvalResult) {
+  onNextState(_oldState: RuntimeValue, _newState: RuntimeValue) {
     // introduce a new frame that is labelled with a dummy operator
     if (verbosity.hasUserOpTracking(this.verbosityLevel)) {
       const dummy: QuintApp = { id: 0n, kind: 'app', opcode: '_', args: [] }
-      const newFrame = { app: dummy, args: [], result: none(), subframes: [] }
+      const newFrame = { app: dummy, args: [], result: left(emptyFrameError), subframes: [] }
       // forget the frames, except the bottom one, and push the new one
       this.frameStack = [this.frameStack[0], newFrame]
       // connect the new frame to the topmost frame, which effects in a new step
@@ -323,36 +329,27 @@ class TraceRecorderImpl implements TraceRecorder {
     this.runSeed = this.rng.getState()
   }
 
-  onRunReturn(outcome: Maybe<EvalResult>, trace: EvalResult[]) {
+  onRunReturn(outcome: Either<QuintError, RuntimeValue>, trace: RuntimeValue[]) {
     assert(this.frameStack.length > 0)
-    const bottom = this.frameStack[0]
+    const traceToSave = this.frameStack[0]
+    traceToSave.result = outcome
+    traceToSave.args = trace
 
-    const fromResult = (r: Maybe<EvalResult>) => {
-      if (r.isNone()) {
-        return true
-      } else {
-        const rex = r.value.toQuintEx({ nextId: () => 0n })
-        return rex.kind === 'bool' && !rex.value
-      }
+    const traceWithSeed = { frame: traceToSave, seed: this.runSeed }
+
+    // Insert the trace into the list of best traces,
+    // keeping the list sorted by descending quality.
+    this.insertTraceSortedByQuality(traceWithSeed)
+
+    // If there are more traces than needed, remove the worst trace,
+    // ie. the last one, since the traces are sorted by descending quality.
+    if (this.bestTraces.length > this.tracesToStore) {
+      this.bestTraces.pop()
     }
+  }
 
-    const notOk = fromResult(outcome)
-    const prevNotOk = fromResult(this.bestTrace.result)
-
-    // Prefer short traces for error, and longer traces for non error.
-    // Therefore, override the best trace only if:
-    //  - there is an error, the new trace is shorter, or the old trace is non-error;
-    //  - there is no error, the new trace is longer, and there was no error before.
-    const override = notOk
-      ? this.bestTrace.args.length === 0 || !prevNotOk || this.bestTrace.args.length >= bottom.args.length
-      : !prevNotOk && this.bestTrace.args.length <= bottom.args.length
-
-    if (override) {
-      this.bestTrace = bottom
-      this.bestTraceSeed = this.runSeed
-      this.bestTrace.result = outcome
-      this.bestTrace.args = trace
-    }
+  private insertTraceSortedByQuality(trace: Trace) {
+    insertSorted(this.bestTraces, trace, compareTracesByQuality)
   }
 
   // create a bottom frame, which encodes the whole trace
@@ -363,9 +360,43 @@ class TraceRecorderImpl implements TraceRecorder {
       // we will store the sequence of states here
       args: [],
       // the result of the trace evaluation
-      result: just(rv.mkBool(true)),
+      result: right(rv.mkBool(true)),
       // and here we store the subframes for the top-level actions
       subframes: [],
+    }
+  }
+}
+
+// Compare two traces by quality.
+//
+// Prefer short traces for error, and longer traces for non error.
+// Therefore, trace a is better than trace b iff
+//  - when a has an error: a is shorter or b has no error;
+//  - when a has no error: a is longer and b has no error.
+function compareTracesByQuality(a: Trace, b: Trace): number {
+  const fromResult = (r: Either<QuintError, RuntimeValue>) => {
+    if (r.isLeft()) {
+      return true
+    } else {
+      const rex = r.value.toQuintEx({ nextId: () => 0n })
+      return rex.kind === 'bool' && !rex.value
+    }
+  }
+
+  const aNotOk = fromResult(a.frame.result)
+  const bNotOk = fromResult(b.frame.result)
+  if (aNotOk) {
+    if (bNotOk) {
+      return a.frame.args.length - b.frame.args.length
+    } else {
+      return -1
+    }
+  } else {
+    // a is ok
+    if (bNotOk) {
+      return 1
+    } else {
+      return b.frame.args.length - a.frame.args.length
     }
   }
 }

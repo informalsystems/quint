@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 /* ----------------------------------------------------------------------------------
- * Copyright (c) Informal Systems 2021. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2021 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  * --------------------------------------------------------------------------------- */
 import {
   CodeAction,
@@ -15,7 +15,6 @@ import {
   Connection,
   DefinitionLink,
   DefinitionParams,
-  Diagnostic,
   DocumentSymbol,
   DocumentSymbolParams,
   HandlerResult,
@@ -40,7 +39,7 @@ import { URI } from 'vscode-uri'
 import {
   AnalysisOutput,
   DocumentationEntry,
-  ParserPhase3,
+  ParserPhase4,
   QuintErrorData,
   analyzeModules,
   builtinDocs,
@@ -63,7 +62,7 @@ export class QuintLanguageServer {
   private idGenerator = newIdGenerator()
 
   // Store auxiliary information by document
-  private parsedDataByDocument: Map<DocumentUri, ParserPhase3> = new Map()
+  private parsedDataByDocument: Map<DocumentUri, ParserPhase4> = new Map()
   private analysisOutputByDocument: Map<DocumentUri, AnalysisOutput> = new Map()
 
   // Documentation entries by id, by document
@@ -73,7 +72,7 @@ export class QuintLanguageServer {
   private analysisTimeout: NodeJS.Timeout = setTimeout(() => {}, 0)
 
   constructor(private readonly connection: Connection, private readonly documents: TextDocuments<TextDocument>) {
-    const loadedBuiltInDocs = builtinDocs(this.idGenerator).unwrap()
+    const loadedBuiltInDocs = builtinDocs(this.idGenerator)
 
     connection.onInitialize((_params: InitializeParams) => {
       const result: InitializeResult = {
@@ -104,11 +103,20 @@ export class QuintLanguageServer {
       parseDocument(this.idGenerator, change.document)
         .then(result => {
           this.parsedDataByDocument.set(change.document.uri, result)
-          this.scheduleAnalysis(change.document)
-        })
-        .catch(diagnostics => {
+
+          const diagnosticsByFile = diagnosticsFromErrors(result.errors, result.sourceMap)
+
+          const sourceFile = URI.parse(change.document.uri).path
+          const diagnostics = diagnosticsByFile.get(sourceFile) ?? []
           this.connection.sendDiagnostics({ uri: change.document.uri, diagnostics })
-          this.scheduleAnalysis(change.document, diagnostics)
+
+          if (diagnosticsByFile.size === 0) {
+            // For now, only run analysis if there are no parsing errors
+            this.scheduleAnalysis(change.document)
+          }
+        })
+        .catch(err => {
+          this.connection.console.error(`Error during parsing: ${err}`)
         })
     })
 
@@ -148,8 +156,12 @@ export class QuintLanguageServer {
       }
 
       const signatureWithMarkupKind = signature?.documentation
-        ? { ...signature, documentation: { kind: 'markdown', value: signature.documentation } as MarkupContent }
-        : signature
+        ? {
+            name: signature.name,
+            label: signature.signature,
+            documentation: { kind: 'markdown', value: signature.documentation } as MarkupContent,
+          }
+        : { name: signature.name, label: signature.signature }
 
       return {
         signatures: [signatureWithMarkupKind],
@@ -206,6 +218,10 @@ export class QuintLanguageServer {
     connection.onCodeAction((params: CodeActionParams): HandlerResult<CodeAction[], void> => {
       return params.context.diagnostics.reduce((actions, diagnostic) => {
         const data = diagnostic.data as QuintErrorData
+        if (!data) {
+          return actions
+        }
+
         const fix = data.fix
 
         switch (fix?.kind) {
@@ -423,37 +439,43 @@ export class QuintLanguageServer {
     this.analysisOutputByDocument.delete(uri)
   }
 
-  private triggerAnalysis(document: TextDocument, previousDiagnostics: Diagnostic[] = []) {
+  private triggerAnalysis(document: TextDocument) {
     clearTimeout(this.analysisTimeout)
     this.connection.console.info(`Triggering analysis`)
-    this.analyze(document, previousDiagnostics)
+    this.analyze(document)
   }
 
-  private scheduleAnalysis(document: TextDocument, previousDiagnostics: Diagnostic[] = []) {
+  private scheduleAnalysis(document: TextDocument) {
     clearTimeout(this.analysisTimeout)
     const timeoutMillis = 1000
     this.connection.console.info(`Scheduling analysis in ${timeoutMillis} ms`)
     this.analysisTimeout = setTimeout(() => {
-      this.analyze(document, previousDiagnostics)
+      this.analyze(document)
     }, timeoutMillis)
   }
 
-  private analyze(document: TextDocument, previousDiagnostics: Diagnostic[] = []) {
-    const parsedData = this.parsedDataByDocument.get(document.uri)
-    if (!parsedData) {
-      return
+  private analyze(document: TextDocument) {
+    try {
+      const parsedData = this.parsedDataByDocument.get(document.uri)
+      if (!parsedData) {
+        return
+      }
+
+      const { modules, sourceMap, table } = parsedData
+
+      this.docsByDocument.set(document.uri, new Map(modules.flatMap(m => [...produceDocsById(m).entries()])))
+
+      const [errors, analysisOutput] = analyzeModules(table, modules)
+
+      this.analysisOutputByDocument.set(document.uri, analysisOutput)
+
+      const sourceFile = URI.parse(document.uri).path
+      const diagnosticsByFile = diagnosticsFromErrors(errors, sourceMap)
+      const diagnostics = diagnosticsByFile.get(sourceFile) ?? []
+      this.connection.sendDiagnostics({ uri: document.uri, diagnostics })
+    } catch (e) {
+      this.connection.console.error(`Error during analysis: ${e}`)
     }
-
-    const { modules, sourceMap, table } = parsedData
-
-    this.docsByDocument.set(document.uri, new Map(modules.flatMap(m => [...produceDocsById(m).entries()])))
-
-    const [errors, analysisOutput] = analyzeModules(table, modules)
-
-    this.analysisOutputByDocument.set(document.uri, analysisOutput)
-
-    const diagnostics = diagnosticsFromErrors(errors, sourceMap)
-    this.connection.sendDiagnostics({ uri: document.uri, diagnostics: previousDiagnostics.concat(diagnostics) })
   }
 }
 

@@ -1,3 +1,5 @@
+#!/usr/bin/env -S quint typecheck
+
 module M1 {
   val foo = 4
 }
@@ -28,16 +30,16 @@ module withConsts {
   // just a normal record, without any variation in the fields
   const MyRecord: { i: int, b: bool, s: str }
   const MyRecordWithComma: { i: int, b: bool, s: str, }
-  // a disjoint union is a common pattern in TLA+
-  const MyUnion:
-      | { tag: "circle", radius: int }
-      | { tag: "rectangle", width: int, height: int }
-      | { tag: "dog", name: str }
 
-  const MyUnionWithComma:
-      | { tag: "circle", radius: int, }
-      | { tag: "rectangle", width: int, height: int, }
-      | { tag: "dog", name: str, }
+  // A type prefixed with a namespace
+  type some::namespace::MyType = int
+
+  // a disjoint union is a common pattern in TLA+
+  type MyUnionType =
+      | Circle(int)
+      | Rectangle({width: int, height: int })
+      | Dog(str)
+  const MyUnion: MyUnionType
 
   // Vars
   // We don't do extensive testing of types,
@@ -94,7 +96,8 @@ module withConsts {
   action asgn = k' = 3
 
   // C-like definition signatures
-  pure def min(x: int, y: int): int = {
+  // Updated to allow optional trailing commas in parameter lists.
+  pure def min(x: int, y: int,): int = {
     if (x < y)
     x
     else y
@@ -106,9 +109,9 @@ module withConsts {
   val test_or = false or true
   val test_implies = false implies true
   def F(x) = x
-  val G(x) = F(x) and not(x)
-  val test_and_arg(x) = F(x) and not(x)
-  val test_or_arg(x) = F(x) or not(x)
+  def G(x) = F(x) and not(x)
+  def test_and_arg(x) = F(x) and not(x)
+  def test_or_arg(x) = F(x) or not(x)
 
   val test_block_and = and {
       false,
@@ -152,6 +155,8 @@ module withConsts {
   // Pass a lambda operator as a second argument of filter.
   // Here we are using the dot notation.
   val oper_app_dot1 = S.filter(x => x > 10)
+  // Tuple unpackig in lambda
+  val tuple_sum = tuples(S, MySet).map( ((s, mys)) => s + mys )
   // Use unknown
   action oper_nondet = {
     nondet x = oneOf(S)
@@ -198,6 +203,9 @@ module withConsts {
   val subseteq_empty = Set().subseteq(Set())
   val powersets = Set(1).in(powerset(Set(1,2,3)))
 
+  // Builting list operators
+  val lists = Set(1, 2).allListsUpTo(3)
+
   // a named assumption
   assume positive = N > 0
   // an anonymous assumption
@@ -220,18 +228,9 @@ module withConsts {
   // import Proto(N = N, x = x) as Inst1
 
   // variables are not supported yet, define only constants for now:
-  import Proto(N = N) as Inst1
+  // Importing Proto with optional trailing comma for flexibility.
+  import Proto(N = N,) as Inst1
 
   // create an instance of Proto by using '*'
   // import Proto(*) as Inst2
-
-  // Match
-  type ENTRY_TYPE =
-      | { tag: "Cat", name: str, year: int }
-      | { tag: "Date", day: int, month: int, year: int }
-
-  def isValid(entry) =
-    entry match
-       | "Cat": cat => cat.name != ""
-       | "Date": date => date.year > 0
 }

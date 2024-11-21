@@ -199,7 +199,7 @@ module Lightclient {
             // Record that one more probe has been done (for complexity and model checking)
             nprobes' = nprobes + 1,
             // Verify the current block
-            nondet verdict = API::ValidAndVerified(latestVerified, current, true)
+            val verdict = API::ValidAndVerified(latestVerified, current, true)
             all {
                 MonitorTransition(latestVerified, current, API::localClock, verdict),
                 // Decide whether/how to continue
@@ -358,7 +358,7 @@ module Lightclient {
     def StoredHeadersAreVerifiedInv: bool =
         state == "finishedSuccess" implies {
             val dom = fetchedLightBlocks.keys()
-            tuples(dom,dom).forall( (lh, rh) =>  or { // for every pair of different stored headers
+            tuples(dom,dom).forall( ((lh, rh)) =>  or { // for every pair of different stored headers
                 lh >= rh,
                 // either there is a header between them
                 dom.exists(mh => lh < mh and mh < rh),
@@ -381,7 +381,7 @@ module Lightclient {
     def StoredHeadersAreVerifiedOrNotTrustedInv: bool =
         state == "finishedSuccess" implies {
             val dom = fetchedLightBlocks.keys()
-            tuples(dom,dom).forall( (lh, rh) =>  or { // for every pair of different stored headers
+            tuples(dom,dom).forall( ((lh, rh)) =>  or { // for every pair of different stored headers
                 lh >= rh,
                 // either there is a header between them
                 dom.exists(mh => lh < mh and mh < rh),
@@ -404,7 +404,7 @@ module Lightclient {
     def ProofOfChainOfTrustInv: bool =
         state == "finishedSuccess" implies {
             val dom = fetchedLightBlocks.keys()
-            tuples(dom,dom).forall( (lh, rh) => or { // for every pair of stored headers that have been verified
+            tuples(dom,dom).forall( ((lh, rh)) => or { // for every pair of stored headers that have been verified
                 lh >= rh,
                 lightBlockStatus.get(lh) == "StateUnverified",
                 lightBlockStatus.get(rh) == "StateUnverified",

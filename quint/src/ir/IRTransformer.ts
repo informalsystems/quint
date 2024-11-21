@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------------------
- * Copyright (c) Informal Systems 2023. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2023 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  * --------------------------------------------------------------------------------- */
 
 /**
@@ -16,6 +16,8 @@
 import * as ir from './quintIr'
 import * as t from './quintTypes'
 import { unreachable } from '../util'
+import { LookupDefinition } from '../names/base'
+import cloneDeep from 'lodash.clonedeep'
 
 export class IRTransformer {
   enterModule?: (module: ir.QuintModule) => ir.QuintModule
@@ -86,8 +88,8 @@ export class IRTransformer {
   exitRecordType?: (type: t.QuintRecordType) => t.QuintRecordType
   enterSumType?: (type: t.QuintSumType) => t.QuintSumType
   exitSumType?: (type: t.QuintSumType) => t.QuintSumType
-  enterUnionType?: (type: t.QuintUnionType) => t.QuintUnionType
-  exitUnionType?: (type: t.QuintUnionType) => t.QuintUnionType
+  enterAppType?: (type: t.QuintAppType) => t.QuintAppType
+  exitAppType?: (type: t.QuintAppType) => t.QuintAppType
 
   /** Row types */
   enterRow?: (row: t.Row) => t.Row
@@ -110,7 +112,7 @@ export class IRTransformer {
  * @returns the tranformed Quint module
  */
 export function transformModule(transformer: IRTransformer, quintModule: ir.QuintModule): ir.QuintModule {
-  let newModule = { ...quintModule }
+  let newModule = cloneDeep(quintModule)
 
   if (transformer.enterModule) {
     newModule = transformer.enterModule(newModule)
@@ -135,7 +137,7 @@ export function transformModule(transformer: IRTransformer, quintModule: ir.Quin
  * @returns the transformed Quint type
  */
 export function transformType(transformer: IRTransformer, type: t.QuintType): t.QuintType {
-  let newType = { ...type }
+  let newType = cloneDeep(type)
   if (transformer.enterType) {
     newType = transformer.enterType(newType)
   }
@@ -239,26 +241,35 @@ export function transformType(transformer: IRTransformer, type: t.QuintType): t.
       }
       break
 
-    case 'union':
-      if (transformer.enterUnionType) {
-        newType = transformer.enterUnionType(newType)
-      }
-      // Variants, transform all fields for all records
-      newType.records = newType.records.map(record => {
-        return { ...record, fields: transformRow(transformer, record.fields) }
-      })
+    case 'sum':
+      {
+        if (transformer.enterSumType) {
+          newType = transformer.enterSumType(newType)
+        }
+        // Sum types, transform all types
+        const newFields = transformRow(transformer, newType.fields)
+        if (newFields.kind !== 'row') {
+          throw new Error('Impossible: sum type fields transformed into non-row')
+        }
+        newType.fields = newFields
 
-      if (transformer.exitUnionType) {
-        newType = transformer.exitUnionType(newType)
+        if (transformer.exitSumType) {
+          newType = transformer.exitSumType(newType)
+        }
       }
       break
 
-    case 'sum':
-      if (transformer.enterSumType) {
-        newType = transformer.enterSumType(newType)
-      }
-      if (transformer.exitSumType) {
-        newType = transformer.exitSumType(newType)
+    case 'app':
+      {
+        if (transformer.enterAppType) {
+          newType = transformer.enterAppType(newType)
+        }
+
+        newType.args = newType.args.map(v => transformType(transformer, v))
+
+        if (transformer.exitAppType) {
+          newType = transformer.exitAppType(newType)
+        }
       }
       break
 
@@ -274,6 +285,30 @@ export function transformType(transformer: IRTransformer, type: t.QuintType): t.
 }
 
 /**
+ * Transforms a Quint LookupDefinition with a transformer
+ *
+ * This is just a thin wrapper to deal with the fact that LookupDefinitions are a slightly awkward union.
+ *
+ * @param transformer: the IRTransformer instance with the functions to be invoked
+ * @param lud: the Quint LookupDefinition to be transformed
+ *
+ * @returns the transformed LookupDefinition
+ */
+export function transformLookupDefinition(transformer: IRTransformer, lud: LookupDefinition): LookupDefinition {
+  switch (lud.kind) {
+    case 'const':
+    case 'def':
+    case 'var':
+    case 'assume':
+    case 'typedef':
+      return transformDefinition(transformer, lud)
+
+    case 'param':
+      return lud.typeAnnotation ? { ...lud, typeAnnotation: transformType(transformer, lud.typeAnnotation) } : lud
+  }
+}
+
+/**
  * Transforms a Quint declaration with a transformer, invoking the corresponding function for each
  * inner component.
  *
@@ -283,7 +318,7 @@ export function transformType(transformer: IRTransformer, type: t.QuintType): t.
  * @returns the transformed Quint definition
  */
 export function transformDeclaration(transformer: IRTransformer, decl: ir.QuintDeclaration): ir.QuintDeclaration {
-  let newDecl = { ...decl }
+  let newDecl = cloneDeep(decl)
   if (transformer.enterDecl) {
     newDecl = transformer.enterDecl(newDecl)
   }
@@ -341,7 +376,7 @@ export function transformDeclaration(transformer: IRTransformer, decl: ir.QuintD
  * @returns the transformed Quint definition
  */
 export function transformDefinition(transformer: IRTransformer, def: ir.QuintDef): ir.QuintDef {
-  let newDef = { ...def }
+  let newDef = cloneDeep(def)
   if (transformer.enterDef) {
     newDef = transformer.enterDef(newDef)
   }
@@ -416,7 +451,7 @@ export function transformDefinition(transformer: IRTransformer, def: ir.QuintDef
  * @returns the transformed Quint expression
  */
 function transformExpression(transformer: IRTransformer, expr: ir.QuintEx): ir.QuintEx {
-  let newExpr = { ...expr }
+  let newExpr = cloneDeep(expr)
   if (transformer.enterExpr) {
     newExpr = transformer.enterExpr(newExpr)
   }
@@ -456,6 +491,9 @@ function transformExpression(transformer: IRTransformer, expr: ir.QuintEx): ir.Q
         newExpr = transformer.enterLambda(newExpr)
       }
 
+      newExpr.params = newExpr.params.map(p =>
+        p.typeAnnotation ? { ...p, typeAnnotation: transformType(transformer, p.typeAnnotation) } : p
+      )
       newExpr.expr = transformExpression(transformer, newExpr.expr)
 
       if (transformer.exitLambda) {
@@ -505,7 +543,7 @@ function transformExpression(transformer: IRTransformer, expr: ir.QuintEx): ir.Q
  * @returns the transformed Quint row
  */
 export function transformRow(transformer: IRTransformer, row: t.Row): t.Row {
-  let newRow = row
+  let newRow = cloneDeep(row)
   if (transformer.enterRow) {
     newRow = transformer.enterRow(newRow)
   }

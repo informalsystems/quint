@@ -187,7 +187,7 @@ function builtinCompletionsWithDocs(
     return {
       label: op.name,
       kind: CompletionItemKind.Function,
-      detail: docs?.label,
+      detail: docs?.signature,
       documentation: md(docs?.documentation),
     }
   })
@@ -219,7 +219,7 @@ function getSuggestedBuiltinsForType(type: QuintType): { name: string }[] {
     case 'oper': // no suggestions from here on
     case 'var':
     case 'sum':
-    case 'union':
+    case 'app':
       return []
   }
 }

@@ -4,9 +4,9 @@
  *
  * Igor Konnov, Shon Feder, Informal Systems, 2023
  *
- * Copyright (c) Informal Systems 2021. All rights reserved.
- * Licensed under the Apache 2.0.
- * See License.txt in the project root for license information.
+ * Copyright 2021 Informal Systems
+ * Licensed under the Apache License, Version 2.0.
+ * See LICENSE in the project root for license information.
  */
 
 import { Either, left, merge, right } from '@sweet-monads/either'
@@ -16,7 +16,7 @@ import { QuintApp, QuintStr } from './ir/quintIr'
 import { QuintEx } from './ir/quintIr'
 
 /** The type of IFT traces.
- * See https://github.com/informalsystems/apalache/blob/main/docs/src/adr/015adr-trace.md */
+ * See https://github.com/apalache-mc/apalache/blob/main/docs/src/adr/015adr-trace.md */
 export type ItfTrace = {
   '#meta'?: any
   params?: string[]
@@ -42,6 +42,7 @@ export type ItfValue =
   | ItfMap
   | ItfUnserializable
   | ItfRecord
+  | ItfVariant
 
 type ItfBigint = { '#bigint': string }
 type ItfTup = { '#tup': ItfValue[] }
@@ -49,6 +50,7 @@ type ItfSet = { '#set': ItfValue[] }
 type ItfMap = { '#map': [ItfValue, ItfValue][] }
 type ItfUnserializable = { '#unserializable': string }
 type ItfRecord = { [index: string]: ItfValue }
+type ItfVariant = { tag: ItfValue; value: ItfValue }
 
 // Type predicates to help with type narrowing
 function isBigint(v: ItfValue): v is ItfBigint {
@@ -65,6 +67,10 @@ function isSet(v: ItfValue): v is ItfSet {
 
 function isMap(v: ItfValue): v is ItfMap {
   return (v as ItfMap)['#map'] !== undefined
+}
+
+function isVariant(v: ItfValue): v is ItfVariant {
+  return (v as ItfVariant)['tag'] !== undefined
 }
 
 function isUnserializable(v: ItfValue): v is ItfUnserializable {
@@ -140,6 +146,9 @@ export function toItf(vars: string[], states: QuintEx[]): Either<string, ItfTrac
               )
             )
 
+          case 'variant':
+            return merge(ex.args.map(exprToItf)).map(([label, value]) => ({ tag: label, value: value }))
+
           default:
             return left(`Unexpected operator type: ${ex.opcode}`)
         }
@@ -180,6 +189,12 @@ export function ofItf(itf: ItfTrace): QuintEx[] {
     if (typeof value === 'boolean') {
       return { id, kind: 'bool', value }
     } else if (typeof value === 'string') {
+      if (value === 'U_OF_UNIT') {
+        // Apalache converts empty tuples to its unit value, "U_OF_UNIT".
+        // We need to convert it back to Quint's unit value, the empty tuple.
+        return { id, kind: 'app', opcode: 'Tup', args: [] }
+      }
+
       return { id, kind: 'str', value }
     } else if (isBigint(value)) {
       // this is the standard way of encoding an integer in ITF.
@@ -209,6 +224,10 @@ export function ofItf(itf: ItfTrace): QuintEx[] {
         opcode: 'Map',
         args,
       }
+    } else if (isVariant(value)) {
+      const l = ofItfValue(value.tag)
+      const v = ofItfValue(value.value)
+      return { id, kind: 'app', opcode: 'variant', args: [l, v] }
     } else if (typeof value === 'object') {
       // Any other object must represent a record
       // For each key/value pair in the object, form the quint expressions representing
