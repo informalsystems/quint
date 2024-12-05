@@ -163,6 +163,10 @@ export class Evaluator {
     const invEval = buildExpr(this.builder, inv)
 
     for (let runNo = 0; errorsFound < ntraces && !failure && runNo < nruns; runNo++) {
+      if (runNo % 1000 === 0) {
+        console.log(`Checked ${runNo} samples`)
+      }
+
       progressBar.update(runNo)
 
       this.recorder.onRunCall()
@@ -266,6 +270,9 @@ export class Evaluator {
     let nsamples = 1
     // run up to maxSamples, stop on the first failure
     for (; nsamples <= maxSamples; nsamples++) {
+      if (nsamples % 1000 === 0) {
+        console.log(`Checked ${nsamples} samples for test ${name}`)
+      }
       progressBar.update(nsamples, { test: name })
       // record the seed value
       seed = this.rng.getState()
