@@ -16,8 +16,9 @@ grammar Quint;
 import { quintErrorToString } from '../quintError'
 
 }
+
 // entry point for the parser
-modules : module+ EOF;
+modules : HASHBANG_LINE? module+ EOF;
 
 module : DOCCOMMENT* 'module' qualId '{' documentedDeclaration* '}';
 documentedDeclaration : DOCCOMMENT* declaration;
@@ -37,7 +38,7 @@ declaration : 'const' qualId ':' type                     # const
 operDef
     : qualifier normalCallName
         // Fully-annotated parameter list with at least one parameter
-        '(' (annotOperParam+=annotatedParameter (',' annotOperParam+=annotatedParameter)*) ')'
+        '(' (annotOperParam+=annotatedParameter (',' annotOperParam+=annotatedParameter)*)','? ')'
         // Mandatory annotation for return type
         ':' type
         // We support header declaration with no implementation for documentation genaration
@@ -47,7 +48,7 @@ operDef
         # annotatedOperDef
     | qualifier normalCallName // TODO: Remove as per https://github.com/informalsystems/quint/issues/923
         // Unannotated parameter list
-        ('(' (operParam+=parameter (',' operParam+=parameter)*)? ')')?
+        ('(' (operParam+=parameter (',' operParam+=parameter)*','? )? ')')?
         // Optional type annotation using the deprecated format
         (':' annotatedRetType=type)?
         // We support header declaration with no implementation for documentation genaration
@@ -92,10 +93,10 @@ exportMod : 'export' name '.' identOrStar
 // an instance may have a special parameter '*',
 // which means that the missing parameters are identity, e.g., x = x, y = y
 instanceMod :   // creating an instance and importing all names introduced in the instance
-                'import' moduleName '(' (name '=' expr (',' name '=' expr)*) ')' '.' '*'
+                'import' moduleName '(' (name '=' expr (',' name '=' expr)*) ','? ')' '.' '*'
                   ('from' fromSource)?
                 // creating an instance and importing all names with a prefix
-            |   'import' moduleName '(' (name '=' expr (',' name '=' expr)*) ')' 'as' qualifiedName
+            |   'import' moduleName '(' (name '=' expr (',' name '=' expr)*) ','? ')' 'as' qualifiedName
                   ('from' fromSource)?
         ;
 
@@ -143,7 +144,7 @@ expr:           // apply a built-in operator via the dot notation
         |       lambda                                              # lambdaCons
                 // Call a user-defined operator or a built-in operator.
                 // The operator has at least one argument (otherwise, it's a 'val').
-        |       normalCallName '(' argList? ')'                     # operApp
+        |       normalCallName '(' argList? ','? ')'                     # operApp
                 // list access via index
         |       expr '[' expr ']'                                   # listApp
                 // power over integers
@@ -310,7 +311,9 @@ LOW_ID : ([a-z][a-zA-Z0-9_]*|[_][a-zA-Z0-9_]+) ;
 // An identifier starting with uppercase
 CAP_ID : ([A-Z][a-zA-Z0-9_]*|[_][a-zA-Z0-9_]+) ;
 
-DOCCOMMENT : '///' .*? '\n';
+// Unix script prefix, only valid as the first line of a file
+HASHBANG_LINE : '#!' .*? '\n';
+DOCCOMMENT    : '///' .*? '\n';
 
 // comments and whitespaces
 LINE_COMMENT    :   '//' .*? '\n'   -> skip ;
