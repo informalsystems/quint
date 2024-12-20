@@ -81,7 +81,7 @@ module treeGen {
           })
        } else {
           // an inner node, assuming that the children nodeHashes were computed
-          def hashOrEmpty(childMap) =
+          def hashOrZeroes(childMap) =
             if (childMap.keys().contains(key)) {
               hashMap.get(childMap.get(key))
             } else {
@@ -89,8 +89,8 @@ module treeGen {
             }
           // hash the prefix ([0]) and the hash of the children
           termHash(raw([0])
-            .termConcat(hashOrEmpty(t.left))
-            .termConcat(hashOrEmpty(t.right)))
+            .termConcat(hashOrZeroes(t.left))
+            .termConcat(hashOrZeroes(t.right)))
         }
       // store the hash
       hashMap.put(key, h)
@@ -112,12 +112,11 @@ module treeGen {
     val leafKeys = idx.filter(i => idx.forall(j => not(i.in(parents(j)))))
     // compute all parents
     val allParents = leafKeys.map(i => parents(i)).flatten()
+    val allNodes = allParents.union(leafKeys)
     // all intermediate nodes that have a left successor
-    val leftKeys = allParents.filter(i =>
-      allParents.union(leafKeys).exists(j => 2 * i == j))
+    val leftKeys = allParents.filter(i => allNodes.contains(2 * i))
     // all intermediate nodes that have a right successor
-    val rightKeys = allParents.filter(i =>
-      allParents.union(leafKeys).exists(j => 2 * i + 1 == j))
+    val rightKeys = allParents.filter(i => allNodes.contains(2 * i + 1))
     // left mapping
     val left = leftKeys.mapBy(i => 2 * i)
     // right mapping
@@ -134,7 +133,7 @@ module treeGen {
         tree' = t,
         nodeHashes' = computeHashes(t),
       },
-      // pick arbitrary left and right keys for non-membership proofs
+      // pick arbitrary left and right keys for proofs
       nondet i = leafKeys.oneOf()
       leftKey' = i,
       nondet i = leafKeys.oneOf()
@@ -156,7 +155,8 @@ module treeGen {
           p
         } else {
           val parent = key / (2^h)
-          def hashOrChild(childMap) =
+          val parentsChild = key / (2^(h - 1))
+          def hashOrZeroes(childMap) =
             if (childMap.keys().contains(parent)) {
               nodeHashes.get(childMap.get(parent))
             } else {
@@ -164,19 +164,21 @@ module treeGen {
             }
           // depending on whether the node is going to left or right,
           // push the hashes in the prefix and the suffix
-          if (key == 2 * parent) {
-            val right = hashOrChild(tree.right)
+          if (parentsChild % 2 == 0) {
+            // going to the left
+            val right = hashOrZeroes(tree.right)
             p.append({ prefix: raw([0]), suffix: right })
           } else {
-            val left = hashOrChild(tree.left)
-            p.append({ prefix: raw([0]).termConcat(left), suffix: raw([]) })
+            // going to the right
+            val left = hashOrZeroes(tree.left)
+            p.append({ prefix: raw([0]).termConcat(left), suffix: Map() })
           }
         }
     )
     // return the exists proof, where the key is the index itself
     {
       key: [key],
-      value: tree.leafs.get(key).value,
+      value: value,
       leaf: { prefix: raw([0]) },
       path: path,
     }
@@ -191,7 +193,7 @@ module treeGen {
     inputKey' = inputKey,
   }
 
-  /// make sure that the proofs are the same for all the leafs
+  /// make sure that the roots obtained from the proofs are the same for all the leafs
   val treeProofInv =
     and {
       leftKey.in(tree.leafs.keys()),
@@ -199,7 +201,11 @@ module treeGen {
     } implies {
       val lroot = existsCalculate(leafToExistsProof(leftKey))
       val rroot = existsCalculate(leafToExistsProof(rightKey))
-      lroot == rroot
+      val rootHash = nodeHashes.get(1)
+      and {
+        lroot == rootHash,
+        rroot == rootHash,
+      }
     }
 
   /// The invariant of membership verification:
@@ -296,4 +302,10 @@ module treeGen {
 
   /// check this property to produce an example of where NonMemInv is violated
   val nonMemExample = not(nonMemInv)
+
+  val allInvariants = all {
+    if (treeProofInv) true else q::debug("treeProofInv", false),
+    if (memInv) true else q::debug("memInv", false),
+    if (nonMemInv) true else q::debug("nonMemInv", false),
+  }
 }
