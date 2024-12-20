@@ -68,18 +68,22 @@ module ics23 {
     key: Bytes, left: Option[ExistenceProof], right: Option[ExistenceProof]
   }
 
+  pure def hashLeaf(key: Bytes, value: Bytes, prefix: Term): Term = {
+    termHash(prefix
+      // TODO: use encodeVarintProto
+      // https://github.com/cosmos/ics23/blob/d0edf8e9cd38f7fc1bfc4311b2814e5d2ea966e8/go/proof.go#L67
+      .termConcat(raw([length(key)]))
+      .termConcat(raw(key))
+      .termConcat(raw([32]))
+      .termConcat(termHash(raw(value))))
+
+  }
+
   /// calculate a hash from an exists proof
   def existsCalculate(p: ExistenceProof): Term = {
     // This is how the leaf hash is computed.
     // Notice that the key is not hashed.
-    val leafHash =
-      termHash(p.leaf.prefix
-        // TODO: use encodeVarintProto
-        // https://github.com/cosmos/ics23/blob/d0edf8e9cd38f7fc1bfc4311b2814e5d2ea966e8/go/proof.go#L67
-        .termConcat(raw([length(p.key)]))
-        .termConcat(raw(p.key))
-        .termConcat(raw([32]))
-        .termConcat(termHash(raw(p.value))))
+    val leafHash = hashLeaf(p.key, p.value, p.leaf.prefix)
 
     // the inner node nodeHashes are concatenated and hashed upwards
     p.path.foldl(leafHash,
@@ -109,13 +113,13 @@ module ics23 {
 
   /// checks if an op has the expected padding
   pure def hasPadding(op: InnerOp, pad: Padding): bool = and {
-    op.prefix.termLen() >= pad.minPrefix,
-    op.prefix.termLen() <= pad.maxPrefix,
+    q::debug("min ok", op.prefix.termLen() >= pad.minPrefix),
+    q::debug("max ok", op.prefix.termLen() <= pad.maxPrefix),
     // When inner turns left, suffixLen == child_size,
     // that is, we store the hash of the right child in the suffix.
     // When inner turns right, suffixLen == 0,
     // that is, we store the hash of the left child in the prefix.
-    op.suffix.termLen() == pad.suffix,
+    q::debug("ok", op.suffix.termLen() == pad.suffix),
   }
 
   pure def getPadding(spec: InnerSpec, branch: int): Option[Padding] = {
@@ -152,6 +156,7 @@ module ics23 {
     pure val idx = orderFromPadding(spec, op)
     pure val leftBranches = idx.unwrap()
     and {
+      idx != None,
       leftBranches != 0,
       op.prefix.termLen() >= leftBranches * spec.childSize,
       pure val actualPrefix = op.prefix.termLen() - leftBranches * spec.childSize
@@ -224,8 +229,8 @@ module ics23 {
   /// checks if left is exactly one slot to the left of right
   def isLeftStep(spec: InnerSpec, left: InnerOp, right: InnerOp): bool = {
     // 'left' turns left, and 'right' turns right
-    val lorder = orderFromPadding(spec, left)
-    val rorder = orderFromPadding(spec, right)
+    val lorder = q::debug("lorder", orderFromPadding(spec, q::debug("l op", left)))
+    val rorder = q::debug("rorder", orderFromPadding(spec, q::debug("r op", right)))
     and {
       lorder != None,
       rorder != None,
@@ -252,21 +257,21 @@ module ics23 {
         // dist == 0 holds for the root.
         val dist = length(lpath) - 1 - li
         // the prefixes and suffixes match just above the cut points
-        1.to(dist).forall(k =>
+        q::debug("path match", 1.to(dist).forall(k =>
           val lnode = lpath[li + k]
           val rnode = rpath[ri + k]
           and {
             lnode.prefix == rnode.prefix,
             lnode.suffix == rnode.suffix
           }
-        ),
+        )),
         // Now topleft and topright are the first divergent nodes
         // make sure they are left and right of each other.
         // Actually, lpath[li] and rpath[ri] are an abstraction
         // of the same tree node:
         //  the left one stores the hash of the right one, whereas
         //  the right one stores the hash of the left one.
-        isLeftStep(spec, lpath[li], rpath[ri]),
+        q::debug("isLeftStep", isLeftStep(spec, lpath[li], rpath[ri])),
         // left and right are remaining children below the split,
         // ensure left child is the rightmost path, and visa versa
         isRightMost(spec, lpath.slice(0, li)),
@@ -310,7 +315,7 @@ module ics23 {
     } else if (np.right == None) {
       isRightMost(spec, np.left.unwrap().path)
     } else {
-      isLeftNeighbor(spec, np.left.unwrap().path, np.right.unwrap().path)
+      q::debug("isLeftNeighbor", isLeftNeighbor(spec, np.left.unwrap().path, np.right.unwrap().path))
     }
   }
 }

@@ -74,11 +74,8 @@ module treeGen {
     def putNodeHash(hashMap: int -> Term, key: int): (int -> Term) = {
       val h =
         if (t.leafs.keys().contains(key)) {
-          // simply use existsCalculate on the leaf
           val leaf = t.leafs.get(key)
-          existsCalculate({
-            key: leaf.key, value: leaf.value, leaf: { prefix: raw([0]) }, path: []
-          })
+          hashLeaf(leaf.key, leaf.value, raw([0]))
        } else {
           // an inner node, assuming that the children nodeHashes were computed
           def hashOrZeroes(childMap) =
@@ -299,6 +296,31 @@ module treeGen {
       inputKey < rightKey and lproof != None,
       inputKey > leftKey and rproof != None,
     }
+
+  pure def maxOrNone(s: Set[int]): Option[int] = {
+    if (s == Set()) None else Some(s.fold(0, (a, b) => if (a > b) a else b))
+  }
+
+  pure def minOrNone(s: Set[int]): Option[int] = {
+    if (s == Set()) None else Some(s.fold(99999, (a, b) => if (a < b) a else b))
+  }
+
+  val verifyMembershipInv = {
+     2.to(2^height - 1).forall(key => {
+       if (tree.leafs.has(key)) {
+         // TODO
+         true
+       } else {
+          val left = q::debug("prev", tree.leafs.keys().filter(k => k < key).maxOrNone())
+          val right = q::debug("post", tree.leafs.keys().filter(k => k > key).minOrNone())
+          val lproof = if (left != None) Some(leafToExistsProof(left.unwrap())) else None
+          val rproof = if (right != None) Some(leafToExistsProof(right.unwrap())) else None
+          val nproof = { key: [key], left: lproof, right: rproof }
+          val rootHash = nodeHashes.get(1)
+          verifyNonMembership(rootHash, nproof, [q::debug("key", key)])
+       }
+     })
+  }
 
   /// check this property to produce an example of where NonMemInv is violated
   val nonMemExample = not(nonMemInv)
