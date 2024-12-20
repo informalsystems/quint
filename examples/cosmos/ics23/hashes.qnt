@@ -35,10 +35,12 @@
 /// Igor Konnov, Informal Systems, 2022-2023
 module hashes {
   /// A sequence of bytes is simply a list of integers
-  type Bytes_t = List[int]
+  type Bytes = List[int]
+  pure val Hash256_ZERO =
+    raw([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 
   /// compare two lists of integers (e.g., bytes) lexicographically
-  pure def lessThan(w1: Bytes_t, w2: Bytes_t): bool = {
+  pure def lessThan(w1: Bytes, w2: Bytes): bool = {
     pure val len1 = length(w1)
     pure val len2 = length(w2)
     or {
@@ -53,23 +55,17 @@ module hashes {
     }
   }
 
-  /// Returns true iff `w` is the nil value.
-  /// In our spec, nil is equivalent to the empty list.
-  pure def isNil(w: Bytes_t): bool = {
-    w == []
-  }
-
   /// A tree node that represents a fragment of a term
-  type TERM_NODE_T = Hash | Raw(Bytes_t)
+  type TERM_NODE_T = Hash | Raw(Bytes)
 
   /// A word is a map from a path to the term node.
   /// The first root's child is [ 0 ], the second root's child is [ 1 ],
   /// the first child of [ 0 ] is [ 0, 0], etc.
-  type Term_t = Bytes_t -> TERM_NODE_T
+  type Term = Bytes -> TERM_NODE_T
 
   /// Compute term length in bytes,
   /// assuming that a hash occupies 32 bytes (as SHA256 does)
-  pure def termLen(term: Term_t): int = {
+  pure def termLen(term: Term): int = {
     // the roots' children
     pure val top =
       keys(term).filter(p => length(p) == 1).map(p => term.get(p))
@@ -80,17 +76,17 @@ module hashes {
   }
 
   /// Construct the term that encodes a raw sequence of bytes
-  pure def raw(bytes: Bytes_t): Term_t = {
+  pure def raw(bytes: Bytes): Term = {
     Map([ 0 ] -> Raw(bytes))
   }
 
   /// Is the term representing a raw term?
-  pure def isRaw(term: Term_t): bool = {
+  pure def isRaw(term: Term): bool = {
     size(keys(term)) == 1 and term.get([0]) != Hash
   }
 
   /// Hash a term
-  pure def termHash(term: Term_t): Term_t = {
+  pure def termHash(term: Term): Term = {
     // add Hash on top, which has the key [ 0 ], and attach term to it
     pure val paths = Set([ 0 ]).union(keys(term).map(p => [ 0 ].concat(p)))
     paths.mapBy(p =>
@@ -104,11 +100,11 @@ module hashes {
 
   /// Concatenate two terms. Special attention is paid to the case when the
   /// both terms are raw sequences, which requires them to be merged.
-  pure def termConcat(left: Term_t, right: Term_t): Term_t = {
+  pure def termConcat(left: Term, right: Term): Term = {
     pure val l = if (isRaw(left)) left.get([0]) else Hash
     pure val r = if (isRaw(right)) right.get([0]) else Hash
 
-    pure def mergeTerms(left: Term_t, right: Term_t): Term_t = {
+    pure def mergeTerms(left: Term, right: Term): Term = {
       // Merge the arguments as trees representing terms.
       // The number of root's children in the left term:
       pure val lwidth = size(keys(left).filter(p => length(p) == 1))
@@ -141,14 +137,9 @@ module hashes {
     }
   }
 
-  // prepend the hash with the length marker
-  pure def termHashWithLen(term: Term_t): Term_t = {
-    raw([ 32 ]).termConcat(termHash(term))
-  }
-
   /// Slice a raw sequence represented by a term.
   /// Non-raw sequences are returned unmodified.
-  pure def termSlice(term: Term_t, start: int, end: int): Term_t = {
+  pure def termSlice(term: Term, start: int, end: int): Term = {
     if (size(keys(term)) != 1) {
       term
     } else {

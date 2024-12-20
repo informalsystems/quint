@@ -17,6 +17,7 @@
 ///
 /// Igor Konnov, Informal Systems, 2022-2023
 module treeGen {
+  import basicSpells.* from "../../spells/basicSpells"
   import hashes.* from "./hashes"
   import ics23.* from "./ics23"
 
@@ -27,18 +28,18 @@ module treeGen {
   /// that it actually defines a binary tree.
   /// This is in contrast to the typical data structures in
   /// programming languages.
-  type TREE_T = {
+  type Tree = {
     // every leaf has a key and value assigned
-    leafs: int -> { key: Bytes_t, value: Bytes_t },
+    leafs: int -> { key: Bytes, value: Bytes },
     // intermediate nodes have left and/or right children
     left: int -> int,
     right: int -> int
   }
 
   /// the tree generated so far
-  var tree: TREE_T
+  var tree: Tree
   /// the node hashes
-  var nodeHashes: int -> Term_t
+  var nodeHashes: int -> Term
   /// the keys to use for non-membership proofs
   var leftKey: int
   var rightKey: int
@@ -59,7 +60,7 @@ module treeGen {
   def parents(i) = 1.to(height).map(h => i / (2^h)).exclude(Set(0))
 
   /// is a given key a node (inner or leaf) of a tree
-  def isNode(t: TREE_T, key: int): bool = or {
+  def isNode(t: Tree, key: int): bool = or {
     key == 1, // the root
     t.leafs.keys().contains(key),
     t.left.keys().contains(key),
@@ -70,7 +71,7 @@ module treeGen {
   def computeHashes(t) = {
     // compute the hash of a single node, assuming that the children's
     // nodeHashes have been computed
-    def putNodeHash(hashMap: int -> Term_t, key: int): (int -> Term_t) = {
+    def putNodeHash(hashMap: int -> Term, key: int): (int -> Term) = {
       val h =
         if (t.leafs.keys().contains(key)) {
           // simply use existsCalculate on the leaf
@@ -84,7 +85,7 @@ module treeGen {
             if (childMap.keys().contains(key)) {
               hashMap.get(childMap.get(key))
             } else {
-              EmptyChild
+              Hash256_ZERO
             }
           // hash the prefix ([0]) and the hash of the children
           termHash(raw([0])
@@ -145,7 +146,7 @@ module treeGen {
   }
 
   /// convert a tree leaf to an exists proof
-  def leafToExistsProof(key: int): ExistsProof_t =
+  def leafToExistsProof(key: int): ExistenceProof =
     val value = tree.leafs.get(key).value
     // encode all intermediate nodes upwards
     val path = range(1, height + 1)
@@ -159,7 +160,7 @@ module treeGen {
             if (childMap.keys().contains(parent)) {
               nodeHashes.get(childMap.get(parent))
             } else {
-              EmptyChild
+              Hash256_ZERO
             }
           // depending on whether the node is going to left or right,
           // push the hashes in the prefix and the suffix
@@ -221,8 +222,8 @@ module treeGen {
     // if the input key belongs to the leafs,
     // we should not be able to disprove its membership
     inputKey.in(tree.leafs.keys()),
-    val nproof = { key: [inputKey], left: lproof, right: rproof }
-    val root = existsCalculate(lproof)
+    val nproof: NonExistenceProof = { key: [inputKey], left: lproof, right: rproof }
+    val root = if (lproof != None) existsCalculate(lproof.unwrap()) else existsCalculate(rproof.unwrap())
     not(verifyNonMembership(root, nproof, [inputKey]))
   }
 
@@ -231,7 +232,7 @@ module treeGen {
     // unless the choice of the keys is bad
     not(inputKey.in(tree.leafs.keys())),
     val nproof = { key: [inputKey], left: lproof, right: rproof }
-    val root = existsCalculate(lproof)
+    val root = if (lproof != None) existsCalculate(lproof.unwrap()) else existsCalculate(rproof.unwrap())
     val noKeyInTheMiddle = and {
       // there is no leaf between leftKey and rightKey
       tree.leafs.keys().forall(k => k <= leftKey or k >= rightKey),
@@ -244,14 +245,14 @@ module treeGen {
 
   def nonMemberLeft(lproof, rproof) = and {
     // the input key is to the left
-    isNil(lproof.key),
+    lproof == None,
     // non-membership is true when the right key is left-most
     and {
       tree.leafs.keys().forall(k => rightKey <= k),
       inputKey < rightKey,
     } iff and {
       // or there is a proof
-      val root = existsCalculate(rproof)
+      val root = existsCalculate(rproof.unwrap())
       val nproof = { key: [inputKey], left: lproof, right: rproof }
       verifyNonMembership(root, nproof, [inputKey])
     }
@@ -259,14 +260,14 @@ module treeGen {
 
   def nonMemberRight(lproof, rproof) = and {
     // the input key is to the right
-    isNil(rproof.key),
+    rproof == None,
     // non-membership is true when the left key is the right-most
     and {
       tree.leafs.keys().forall(k => (k <= leftKey)),
       inputKey > leftKey,
     } iff and {
       // or there is a proof
-      val root = existsCalculate(lproof)
+      val root = existsCalculate(lproof.unwrap())
       val nproof = { key: [inputKey], left: lproof, right: rproof }
       verifyNonMembership(root, nproof, [inputKey])
     }
@@ -277,9 +278,9 @@ module treeGen {
   val nonMemInv =
     def proofOrNil(key) = {
       if (tree.leafs.keys().contains(key))
-        leafToExistsProof(key)
+        Some(leafToExistsProof(key))
       else
-        { key: [], value: [], leaf: { prefix: raw([]) }, path: [] }
+        None
     }
     val lproof = proofOrNil(leftKey)
     val rproof = proofOrNil(rightKey)
@@ -289,8 +290,8 @@ module treeGen {
       nonMemberLeft(lproof, rproof),
       nonMemberRight(lproof, rproof),
       // trivial cases:
-      inputKey < rightKey and not(isNil(lproof.key)),
-      inputKey > leftKey and not(isNil(rproof.key)),
+      inputKey < rightKey and lproof != None,
+      inputKey > leftKey and rproof != None,
     }
 
   /// check this property to produce an example of where NonMemInv is violated
