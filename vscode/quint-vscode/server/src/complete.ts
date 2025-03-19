@@ -26,6 +26,9 @@ import {
   walkExpression,
 } from '@informalsystems/quint'
 import { findMatchingResults } from './reporting'
+import { logger, overrideConsole } from './logger'
+
+overrideConsole()
 
 export function completeIdentifier(
   identifier: string,
@@ -40,57 +43,82 @@ export function completeIdentifier(
   // Until we have incremental parsing, try to lookup `triggeringIdentifier` by name
   const declIds = findDeclByNameAtPos(identifier, position, sourceFile, parsedData)
 
-  // Lookup types for the found declarations
   const types = declIds.map(declId => {
-    const refId = table.get(declId)?.id ?? declId
-    return analysisOutput.types.get(refId)?.type
+    try {
+      const declBigInt = BigInt(declId)
+      const refId = table.get(declBigInt)?.id ?? declBigInt
+      const type = analysisOutput.types.get(refId)?.type
+
+      logger.info(`DeclId: ${declId} (BigInt: ${declBigInt.toString()}), RefId: ${refId.toString()}, Type: ${JSON.stringify(type, (_, val) => typeof val === 'bigint' ? val.toString() : val)}`)
+      return type
+    } catch (error) {
+      logger.error(`Error processing declId ${declId}: ${error}`)
+      return undefined
+    }
   })
+
   const properTypes = compact(
-    types.map(type => {
-      if (type?.kind === 'const') {
-        // Resolve constant type
-        const alias = type.id ? table.get(type.id) : undefined
-        if (alias?.kind !== 'typedef' || !alias.type) {
+      types.map(type => {
+        if (type?.kind === 'const') {
+          const alias = type.id ? table.get(type.id) : undefined
+          if (alias?.kind !== 'typedef' || !alias.type) {
+            logger.debug(`Skipping const type alias: ${JSON.stringify(alias)}`)
+            return undefined
+          }
+          logger.debug(`Resolved const alias: ${JSON.stringify(alias.type)}`)
+          return alias.type
+          // TODO(#693): Workaround for #693, filter overly general types
+        } else if (type?.kind === 'var') {
+          logger.debug("Skipping 'var' type...")
           return undefined
         }
-        return alias.type
-      } else if (type?.kind === 'var') {
-        // TODO(#693): Workaround for #693, filter overly general types
-        return undefined
-      }
-      return type
-    })
+        return type
+      })
   )
+
   if (properTypes.length === 0) {
+    logger.debug("No valid types found, returning empty list.")
     return []
   }
+
   const type = properTypes[0]
 
-  // Get completions for builtins of this type
-  const builtinCompletions = builtinCompletionsWithDocs(getSuggestedBuiltinsForType(type), builtinDocs)
-  // Get completions for field access
-  const fieldCompletions = getFieldCompletions(type)
-  // TODO: offer visible custom operators
 
-  return builtinCompletions.concat(fieldCompletions)
+  logger.debug("Fetching built-in completions...")
+  const builtinCompletions = builtinCompletionsWithDocs(getSuggestedBuiltinsForType(type), builtinDocs)
+  logger.debug(`Builtin completions: ${JSON.stringify(builtinCompletions)}`)
+
+  const fieldCompletions = getFieldCompletions(type)
+  logger.debug(`Field completions: ${JSON.stringify(fieldCompletions)}`)
+
+  let responseObject = builtinCompletions.concat(fieldCompletions)
+  logger.debug(`Raw response object before conversion: ${JSON.stringify(responseObject, (_, v) => typeof v === 'bigint' ? v.toString() : v)}`)
+
+  // Explicitly remove any lingering BigInt values
+  responseObject = JSON.parse(JSON.stringify(responseObject, (_, v) =>
+      typeof v === "bigint" ? v.toString() : v
+  ))
+  logger.info(`Returning safe completion response: ${JSON.stringify(responseObject)}`)
+
+  return responseObject
 }
 
 /**
  * Find a declaration of `name` by name inside `decl`.
  */
-function findDeclByNameInDecl(name: string, decl: QuintDeclaration): bigint[] {
+function findDeclByNameInDecl(name: string, decl: QuintDeclaration): string[] {
   const visitor = new DeclOfNameFinder(name)
   walkDeclaration(visitor, decl)
-  return visitor.namesFound
+  return visitor.namesFound.map(id => id.toString()) // Convert BigInt to string
 }
 
 /**
  * Find a declaration of `name` by name inside `expr`.
  */
-function findDeclByNameInExpr(name: string, expr: QuintEx): bigint[] {
+function findDeclByNameInExpr(name: string, expr: QuintEx): string[] {
   const visitor = new DeclOfNameFinder(name)
   walkExpression(visitor, expr)
-  return visitor.namesFound
+  return visitor.namesFound.map(id => id.toString()) // Convert BigInt to string
 }
 
 class DeclOfNameFinder implements IRVisitor {
@@ -132,20 +160,22 @@ class DeclOfNameFinder implements IRVisitor {
  *
  * @returns Array of IDs that declare `name`.
  */
-function findDeclByNameInsideScope(name: string, scopeId: bigint, modules: QuintModule[]): bigint[] {
-  const module = modules.find(module => module.id == scopeId)
+function findDeclByNameInsideScope(name: string, scopeId: string, modules: QuintModule[]): string[] {
+  const module = modules.find(module => module.id.toString() == scopeId)
   if (module) {
-    // scope is a module; return all variables with name `name`
-    return module.declarations.filter(decl => decl.kind == 'var' && decl.name == name).map(decl => decl.id)
+    // scope is a module return all variables with name `name`
+    return module.declarations
+        .filter(decl => decl.kind == 'var' && decl.name == name)
+        .map(decl => decl.id.toString()) // Convert BigInt to string
   }
-  const expr = findExpressionWithId(modules, scopeId)
+  const expr = findExpressionWithId(modules, BigInt(scopeId))
   if (expr) {
-    // scope is an expression; recursively search it for declarations of the name `name`
+    // scope is an expression recursively search it for declarations of the name `name`
     return findDeclByNameInExpr(name, expr)
   }
-  const def = findDefinitionWithId(modules, scopeId)
+  const def = findDefinitionWithId(modules, BigInt(scopeId))
   if (def) {
-    // scope is a declaration; recursively search it for declarations of the name `name`
+    // scope is a declaration recursively search it for declarations of the name `name`
     return findDeclByNameInDecl(name, def)
   }
   return []
@@ -156,14 +186,14 @@ function findDeclByNameInsideScope(name: string, scopeId: bigint, modules: Quint
  *
  * @returns Array of IDs that declare `name`.
  */
-function findDeclByNameAtPos(name: string, pos: Position, sourceFile: string, parsedData: ParserPhase3): bigint[] {
+function findDeclByNameAtPos(name: string, pos: Position, sourceFile: string, parsedData: ParserPhase3): string[] {
   // Compute effects that contain the triggering position, from the smallest to the largest.
   const { modules, sourceMap } = parsedData
   const results: [bigint, null][] = [...sourceMap.keys()].map(id => [id, null])
   const scopesContainingPos = findMatchingResults(sourceMap, results, pos, sourceFile)
 
   for (let { id } of scopesContainingPos) {
-    const names = findDeclByNameInsideScope(name, id, modules)
+    const names = findDeclByNameInsideScope(name, id.toString(), modules)
     if (names.length > 0) {
       return names
     }
@@ -194,32 +224,47 @@ function builtinCompletionsWithDocs(
 }
 
 function getSuggestedBuiltinsForType(type: QuintType): { name: string }[] {
+  logger.info(`🔍 Checking builtins for type: ${type}`)
+
   switch (type.kind) {
     case 'bool':
-      // only suggest non-infix operators
+      logger.trace('✅ Boolean type detected')
       return booleanOperators.filter(opCode => opCode.name == 'iff' || opCode.name == 'implies')
+
     case 'int':
-      // only suggest non-infix operators
+      logger.trace('✅ Integer type detected')
       return integerOperators.filter(opCode => !opCode.name.startsWith('i'))
+
     case 'set':
+      logger.trace('✅ Set type detected')
       return setOperators
+
     case 'list':
-      // don't suggest "nth"
+      logger.trace('✅ List type detected')
       return listOperators.filter(opCode => opCode.name != 'nth')
+
     case 'fun':
+      logger.trace('✅ Function type detected')
       return mapOperators
+
     case 'tup':
-      // don't suggest "item"
+      logger.trace('✅ Tuple type detected')
       return tupleOperators.filter(opCode => opCode.name != 'item')
+
     case 'rec':
-      // don't suggest "field"
+      logger.trace('✅ Record type detected')
       return recordOperators.filter(opCode => opCode.name != 'field')
-    case 'const': // should have been resolved
-    case 'str': // no builtins
-    case 'oper': // no suggestions from here on
+
+    case 'const':
+    case 'str':
+    case 'oper':
     case 'var':
     case 'sum':
     case 'app':
+      return []
+
+    default:
+      logger.warn(`⚠️ Unknown type encountered:`)
       return []
   }
 }
