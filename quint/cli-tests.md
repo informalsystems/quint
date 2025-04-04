@@ -379,6 +379,7 @@ See [#1195](https://github.com/informalsystems/quint/issues/1195).
 
 Regression test for [#1108](https://github.com/informalsystems/quint/issues/1108).
 
+<!-- !test exit 0 -->
 <!-- !test check 1108 -->
     quint parse testFixture/_1052one.qnt
 
@@ -393,3 +394,10 @@ if [ `uname -s` == 'Linux' -o `uname -s` == 'Darwin' ]; then
     ./testFixture/SuperSpec.qnt
 fi
 ```
+
+### OK on dowloading and running the rust simulator
+
+<!-- !test exit 0 -->
+<!-- !test check Rust -->
+    quint examples/language-features/counters.qnt --backend=rust
+
