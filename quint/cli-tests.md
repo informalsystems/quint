@@ -399,5 +399,5 @@ fi
 
 <!-- !test exit 0 -->
 <!-- !test check Rust -->
-    quint examples/language-features/counters.qnt --backend=rust
+    quint run ../examples/language-features/counters.qnt --backend=rust
 
