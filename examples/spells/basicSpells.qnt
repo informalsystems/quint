@@ -345,9 +345,31 @@ module basicSpells {
   /// - @param f: a function that takes an element of the list and returns a boolean
   /// - @returns the first element of `l` that satisfies `f`, or None
   pure def findFirst(l, f) = l.foldl(None, (a, i) => if (a == None and f(i)) Some(i) else a)
+  // FIXME: #1560 (remove the copy when fixed)
+  pure def find_first(l, f) = l.foldl(None, (a, i) => if (a == None and f(i)) Some(i) else a)
 
   run findFirstTest = all {
     assert(findFirst([1, 2, 3], x => x > 1) == Some(2)),
     assert(findFirst([1, 2, 3], x => x == 4) == None),
+  }
+
+  pure def unwrap(value: Option[a]): a = {
+    match value {
+      | None => Map().get(value)
+      | Some(x) => x
+    }
+  }
+
+  pure def safeGet(m: a -> b, k: a): Option[b] = {
+    if (m.has(k)) Some(m.get(k)) else None
+  }
+
+  pure def filterMap(s: Set[a], f: (a) => Option[b]): Set[b] = {
+    s.fold(Set(), (acc, e) => {
+      match f(e) {
+        | Some(x) => acc.union(Set(x))
+        | None => acc
+      }
+    })
   }
 }
