@@ -1,3 +1,5 @@
+"use client";
+
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
 import {Input} from '@/components/ui/input';
@@ -9,6 +11,7 @@ export default function PaypalTopUpPage() {
 
   const handleTopUp = async () => {
     // TODO: Implement PayPal top-up logic here
+    alert(`Topping up with ${amount}`);
     console.log(`Topping up with ${amount}`);
   };
 
@@ -35,3 +38,4 @@ export default function PaypalTopUpPage() {
     </div>
   );
 }
+
