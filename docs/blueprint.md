@@ -1,3 +1,14 @@
+# Sardex Network Hub
+
+This project is a modern web application for sardex.net, designed to revitalize the platform, streamline user interactions, and facilitate trade within the network.
+
+## Table of Contents
+
+- [Technology Stack](#technology-stack)
+- [Application Architecture](#application-architecture)
+- [Core Modules](#core-modules)
+- [AI Agentic System Plan](#ai-agentic-system-plan)
+
 # **App Name**: Sardex Network Hub
 
 ## Core Features:
@@ -79,7 +90,44 @@
 *   Detail the plan for implementing the AI agentic system.
 
 
-API REF
+## Technology Stack
 
-https://demo.cyclos.org/api
+**Frontend:**
+
+*   **Next.js (React):** Chosen for its server-side rendering (SSR), excellent performance, SEO benefits, and ease of development.
+*   **TypeScript:** For static typing, improved code maintainability, and developer experience.
+*   **Tailwind CSS:** For utility-first CSS approach, rapid UI development, and consistency in design.
+*   **Radix UI:** For accessible UI components.
+
+**Backend:**
+
+*   **Node.js (with NestJS):** Chosen for its scalability, performance, and TypeScript support. NestJS provides a modular architecture and excellent developer experience.
+*   **Prisma:** Chosen as a modern database ORM.
+
+**Database:**
+
+*   **PostgreSQL:** Chosen for its robustness, data integrity, and support for advanced features like JSONB, suitable for complex data structures.
+
+**Other Tools:**
+
+*   **Cyclos API:** For core payment and account balance management.
+*   **PayPal API:** For fiat currency top-ups by Enterprises.
+*   **OpenAI API:** For AI trade suggestion and marketplace summarization.
+*   **Vercel:** For hosting, CI/CD, and performance optimizations.
+
+## Application Architecture
+
+The application follows a modular architecture with clear separation of concerns:
+
+1.  **Frontend (Next.js):**
+    *   **Pages:** Routes and layouts.
+    *   **Components:** Reusable UI elements.
+    *   **Hooks:** Custom React hooks for logic and state management.
+    *   **Services:** Client-side data fetching and API interaction.
+
+2.  **Backend (NestJS):**
+    *   **Controllers:** Handle incoming requests and responses.
+    *   **Services:** Business logic and data operations.
+    *   **Modules:** Group related controllers and services.
+    *   **Database (Prisma):** ORM to manage data models and interact with PostgreSQL.
   
