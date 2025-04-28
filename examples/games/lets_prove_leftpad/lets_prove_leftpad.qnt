@@ -6,9 +6,9 @@
  * Carlos Rodriguez, Informal Systems, 2025
  */
 
-module LeftPad {
+module lets_prove_leftpad {
   /// Maximum length of the input string or padded string
-  pure val MAX_UINT = 2^8 - 1
+  pure val MAX_UINT = 100
 
   /// Characters that can be used for input or padding
   pure val CHARS = Set(
@@ -28,7 +28,7 @@ module LeftPad {
     // Punctuation Symbols
     "!", "#", "$", "%", "&", "'", "(", ")", "*", "+", 
     ",", "-", ".", "/", ":", ";", "<", "=", ">", "?",
-    "@", "[", "\\", "]", "^", "_", "`", "{", "|", "}",
+    "@", "[", "\\", "]", "^", "_", "{", "|", "}",
     "~"
   )
 
@@ -42,43 +42,41 @@ module LeftPad {
   pure def max(x: int, y: int): int =
     if (x > y) x else y
 
-  /// Generates a list of characters by repeating a character a number of times
-  pure def repeat(c: str, times: int): List[str] =
-    range(0, times).foldl([], (acc, _) => acc.append(c))
-
   /// Takes the first n characters of a list of characters
   pure def take(s: List[str], n: int): List[str] =
-    range(0, n).foldl([], (acc, i) => if (i < s.length()) acc.append(s.nth(i)) else acc)
+    s.slice(0, n)
 
   /// Drops the first n characters of a list of characters
   pure def drop(s: List[str], n: int): List[str] =
-    range(n, s.length()).foldl([], (acc, i) => acc.append(s.nth(i)))
+    pure val len = s.length()
+    s.slice(len - n, len)
+
+  /// Generates a list of characters by repeating a character a number of times.
+  /// As Apalache cannot handle ranges on non-constant values (0.to(x)), we repeat for the maximum
+  /// range (constant) and then use `take` to reduce them to the actual size we want.
+  pure def repeat(c: str, times: int): List[str] =
+    0.to(MAX_UINT).fold([], (acc, _) => acc.append(c)).take(times)
 
   /// The main padding function that adds padding characters to the beginning of a string
   action leftpad(s: List[str], char: str, n: int): bool = all {
-    output' = if (s.length() >= n)
-      s
-    else
-      repeat(char, n - s.length()).concat(s)
+    output' = repeat(char, n - s.length()).concat(s)
   }
 
-  /// Initialize the state with a simple example: padding "foo" with "!"
-  action init = {
-    val string = List("f", "o", "o")
+  /// Init explores different combinations of inputs, padding chars and desired lengths
+  action init = all {
     all {
+      input' = [],
+      char' = "_",
       n' = 0,
-      char' = "!",
-      input' = string,
-      output' = string,
+      output' = []
     }
   }
 
-  /// Step explores different combinations of inputs, padding chars and desired lengths
   action step = all {
+    n < 10,
     // Input string
-    nondet inputChar = CHARS.oneOf()
-    nondet inputLen = 0.to(MAX_UINT).oneOf()
-    val string = repeat(inputChar, inputLen)
+    nondet next_char = CHARS.oneOf()
+    val string = input.append(next_char)
     // Padding character
     nondet paddingChar = CHARS.oneOf()
     // Desired length
@@ -86,7 +84,7 @@ module LeftPad {
     all {
       input' = string,
       char' = paddingChar,
-      n' = len,
+      n' = n + 1,
       leftpad(string, paddingChar, len)
     }
   }
