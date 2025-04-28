@@ -8,10 +8,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## UNRELEASED
 
 ### Added
+
+- Errors from the Rust evaluator now show the corresponding location (#1648)
+
 ### Changed
 ### Deprecated
 ### Removed
 ### Fixed
+
+- Fixed a problem on `pure val`s referring to constants resulting in errors in the Rust evaluator (#1647)
+
+### Security
+
+## v0.24.0 -- 2025-04-08
+
+### Added
+
+- Added a `--flatten` option to `quint compile` to enable compilation of unflattened modules (#1623)
+- Added a `main` field to the JSON output of `quint compile` (#1623)
+- Added a `--backend` option to `quint run` to enable running the new Rust simulator (#1623)
+
+### Changed
+### Deprecated
+### Removed
+### Fixed
+
+- Init definitions are now properly transpiled into TLA+ without assignments (#1613)
+
 ### Security
 
 ## v0.23.1 -- 2025-03-10
