@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed a problem on `pure val`s referring to constants resulting in errors in the Rust evaluator (#1647)
+- Improved error messages for type application mismatches, making them clearer and more user-friendly (#1361)
 
 ### Security
 

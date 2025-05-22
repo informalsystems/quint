@@ -13,7 +13,7 @@
  */
 
 import { Either, left, right } from '@sweet-monads/either'
-import { Error, ErrorTree, buildErrorLeaf, buildErrorTree } from '../errorTree'
+import { Error, ErrorTree, TypeApplicationErrorDetails, buildErrorLeaf, buildErrorTree } from '../errorTree'
 import { rowToString, typeToString } from '../ir/IRprinting'
 import { QuintConstType, QuintType, Row, rowNames, typeNames } from '../ir/quintTypes'
 import { Constraint, compareConstraints } from './base'
@@ -41,7 +41,7 @@ export function solveConstraint(
     case 'empty':
       return right([])
     case 'eq':
-      return unify(table, constraint.types[0], constraint.types[1]).mapLeft(e => {
+      return unify(table, constraint.types[0], constraint.types[1], constraint.operatorInfo).mapLeft(e => {
         errors.set(constraint.sourceId, e)
         return errors
       })
@@ -91,11 +91,21 @@ export function solveConstraint(
  *
  * @param t1 a type to be unified
  * @param t2 the type to be unified with
+ * @param operatorInfo optional information about the operator for better error messages
  *
  * @returns an array of substitutions that unifies both types, when possible.
  *          Otherwise, an error tree with an error message and its trace.
  */
-export function unify(table: LookupTable, t1: QuintType, t2: QuintType): Either<ErrorTree, Substitutions> {
+export function unify(
+  table: LookupTable, 
+  t1: QuintType, 
+  t2: QuintType,
+  operatorInfo?: {
+    operatorName: string;
+    operatorSignature: string;
+    argumentPosition?: number;
+  }
+): Either<ErrorTree, Substitutions> {
   const location = `Trying to unify ${typeToString(t1)} and ${typeToString(t2)}`
 
   if (typeToString(t1) === typeToString(t2)) {
@@ -127,6 +137,23 @@ export function unify(table: LookupTable, t1: QuintType, t2: QuintType): Either<
   } else if ((t1.kind === 'rec' && t2.kind === 'rec') || (t1.kind === 'sum' && t2.kind === 'sum')) {
     return unifyRows(table, t1.fields, t2.fields).mapLeft(error => buildErrorTree(location, error))
   } else {
+    // Create a more informative error message if operator information is available
+    if (operatorInfo) {
+      const typeAppDetails: TypeApplicationErrorDetails = {
+        operatorName: operatorInfo.operatorName,
+        expectedType: typeToString(t1),
+        actualType: typeToString(t2),
+        operatorSignature: operatorInfo.operatorSignature,
+        argumentPosition: operatorInfo.argumentPosition
+      }
+      
+      return left(buildErrorLeaf(
+        location,
+        `Couldn't unify ${t1.kind} and ${t2.kind}`,
+        typeAppDetails
+      ))
+    }
+    
     return left(buildErrorLeaf(location, `Couldn't unify ${t1.kind} and ${t2.kind}`))
   }
 }
@@ -248,8 +275,8 @@ function applySubstitutionsAndUnify(
   t1: QuintType,
   t2: QuintType
 ): Either<Error, Substitutions> {
-  const newSubstitutions = unify(table, applySubstitution(table, subs, t1), applySubstitution(table, subs, t2))
-  return newSubstitutions.map(newSubs => compose(table, newSubs, subs))
+  const r1 = unify(table, applySubstitution(table, subs, t1), applySubstitution(table, subs, t2))
+  return r1.map(subst => compose(table, subs, subst))
 }
 
 function checkSameLength(
@@ -257,15 +284,27 @@ function checkSameLength(
   types1: QuintType[],
   types2: QuintType[]
 ): Either<Error, [QuintType[], QuintType[]]> {
-  if (types1.length !== types2.length) {
-    return left(buildErrorLeaf(location, `Expected ${types1.length} arguments, got ${types2.length}`))
-  }
-
-  return right([types1, types2])
+  return types1.length === types2.length
+    ? right([types1, types2])
+    : left(`Types don't have the same length: ${types1.length} vs ${types2.length}`)
 }
 
 function chainUnifications(table: LookupTable, types1: QuintType[], types2: QuintType[]): Either<Error, Substitutions> {
-  return types1.reduce((result: Either<Error, Substitutions>, t, i) => {
-    return result.chain(subs => applySubstitutionsAndUnify(table, subs, t, types2[i]))
-  }, right([]))
+  if (types1.length !== types2.length) {
+    return left(`Can't unify types with different lengths: ${types1.length} vs ${types2.length}`)
+  } else if (types1.length === 0) {
+    return right([])
+  }
+
+  // Unify the first pair and apply the substitutions to the rest
+  return unify(table, types1[0], types2[0]).chain(subs => {
+    if (types1.length === 1) {
+      return right(subs)
+    } else {
+      // Recurse with the updated types
+      const restTypes1 = types1.slice(1).map(t => applySubstitution(table, subs, t))
+      const restTypes2 = types2.slice(1).map(t => applySubstitution(table, subs, t))
+      return chainUnifications(table, restTypes1, restTypes2).map(restSubs => compose(table, subs, restSubs))
+    }
+  })
 }
