@@ -1,11 +1,20 @@
 import { QuintType } from '../ir/quintTypes'
 
 /*
+ * Information about an operator for better error messages
+ */
+export interface OperatorInfo {
+  operatorName: string;
+  operatorSignature: string;
+  argumentPosition?: number;
+}
+
+/*
  * Type constraints
  */
 export type Constraint =
   /// equality of two types, defined as unifiability
-  | { kind: 'eq'; types: [QuintType, QuintType]; sourceId: bigint }
+  | { kind: 'eq'; types: [QuintType, QuintType]; sourceId: bigint; operatorInfo?: OperatorInfo }
   /// a conjunction of constraints
   | { kind: 'conjunction'; constraints: Constraint[]; sourceId: bigint }
   /// a type unifying with `type` is defined in the context

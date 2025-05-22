@@ -24,6 +24,24 @@ export interface ErrorTree {
   location: string
   /* The node's children */
   children: ErrorTree[]
+  /* Operator-specific details for type application errors */
+  typeAppDetails?: TypeApplicationErrorDetails
+}
+
+/*
+ * Details for type application errors to provide clearer error messages
+ */
+export interface TypeApplicationErrorDetails {
+  /* The name of the operator with a type application mismatch */
+  operatorName?: string
+  /* The expected type for the argument */
+  expectedType?: string
+  /* The actual type provided for the argument */
+  actualType?: string
+  /* The full operator signature */
+  operatorSignature?: string
+  /* The argument position (1-based) */
+  argumentPosition?: number
 }
 
 /*
@@ -41,18 +59,27 @@ export type Error = ErrorTree | ErrorTree[] | string
  *
  * @param location a description of where these errors occurred
  * @param errors one or more ErrorTree instances
+ * @param typeAppDetails optional type application error details
  *
  * @returns an error tree with the given location and errors, avoiding duplication
  */
-export function buildErrorTree(location: string, errors: Error): ErrorTree {
+export function buildErrorTree(
+  location: string, 
+  errors: Error, 
+  typeAppDetails?: TypeApplicationErrorDetails
+): ErrorTree {
   if (typeof errors === 'string') {
-    return buildErrorLeaf(location, errors)
+    return buildErrorLeaf(location, errors, typeAppDetails)
   } else if (!Array.isArray(errors) && location === errors.location) {
     // Avoid redundant locations
-    return errors
+    return { ...errors, typeAppDetails: typeAppDetails || errors.typeAppDetails }
   }
 
-  return { location, children: Array.isArray(errors) ? errors : [errors] }
+  return { 
+    location, 
+    children: Array.isArray(errors) ? errors : [errors],
+    typeAppDetails
+  }
 }
 
 /*
@@ -60,11 +87,52 @@ export function buildErrorTree(location: string, errors: Error): ErrorTree {
  *
  * @param location the description of where the error occurred
  * @param message the description of the error
+ * @param typeAppDetails optional type application error details
  *
  * @returns an ErrorTree with given attributes and no children
  */
-export function buildErrorLeaf(location: string, message: string): ErrorTree {
-  return { location, message, children: [] }
+export function buildErrorLeaf(
+  location: string, 
+  message: string, 
+  typeAppDetails?: TypeApplicationErrorDetails
+): ErrorTree {
+  return { location, message, children: [], typeAppDetails }
+}
+
+/**
+ * Builds a leaf for type application mismatch errors with detailed information
+ * 
+ * @param location the description of where the error occurred
+ * @param operatorName the name of the operator
+ * @param expectedType the expected type
+ * @param actualType the actual type
+ * @param operatorSignature the full type signature of the operator
+ * @param argumentPosition the position of the argument in the operator's parameter list (optional)
+ * 
+ * @returns an ErrorTree with type application mismatch information
+ */
+export function buildTypeApplicationMismatchLeaf(
+  location: string,
+  operatorName: string,
+  expectedType: string,
+  actualType: string,
+  operatorSignature: string,
+  argumentPosition?: number
+): ErrorTree {
+  const positionText = argumentPosition !== undefined ? 
+    `as its ${getOrdinal(argumentPosition)} argument` : '';
+  
+  const message = `Operator \`${operatorName}\` expected \`${expectedType}\` ${positionText}, but the provided argument is a \`${actualType}\`.`;
+  
+  const typeAppDetails: TypeApplicationErrorDetails = {
+    operatorName,
+    expectedType,
+    actualType,
+    operatorSignature,
+    argumentPosition
+  };
+  
+  return buildErrorLeaf(location, message, typeAppDetails);
 }
 
 /**
@@ -75,10 +143,42 @@ export function buildErrorLeaf(location: string, message: string): ErrorTree {
  * @returns a multiline string with the pretty printed error tree
  */
 export function errorTreeToString(e: ErrorTree): string {
+  if (e.typeAppDetails && 
+      e.typeAppDetails.operatorName && 
+      e.typeAppDetails.expectedType && 
+      e.typeAppDetails.actualType) {
+    
+    // Format type application errors with more helpful messages
+    let out = ''
+    const { operatorName, expectedType, actualType, operatorSignature, argumentPosition } = e.typeAppDetails
+    
+    // Generate a more specific message based on the position of the argument
+    const positionText = argumentPosition ? ` as its ${getOrdinal(argumentPosition)} argument` : ''
+    out += `Operator \`${operatorName}\` expected \`${expectedType}\`${positionText}, but the provided argument is a \`${actualType}\`.\n`
+    out += `  Expected: ${expectedType}\n`
+    out += `  Got: ${actualType}\n`
+    
+    if (operatorSignature) {
+      out += `Type signature for \`${operatorName}\` is ${operatorSignature}\n`
+    }
+    
+    return out
+  }
+  
+  // Original error formatting behavior
   const childrenErrors = e.children.map(errorTreeToString)
   let out = childrenErrors.join('and\n')
   out += e.message ? e.message + '\n' : ''
   out += e.location + '\n'
 
   return out
+}
+
+/**
+ * Helper function to get ordinal representation of a number
+ */
+function getOrdinal(n: number): string {
+  const suffixes = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0]);
 }
