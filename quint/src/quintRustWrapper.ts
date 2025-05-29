@@ -18,13 +18,12 @@ import JSONbig from 'json-bigint'
 import { LookupTable } from './names/base'
 import { replacer } from './jsonHelper'
 import { ofItf } from './itf'
-import { Presets, SingleBar } from 'cli-progress'
+import { ExecutionFrame } from './runtime/trace'
+const spawn = require('cross-spawn')
+
 import path from 'path'
 import os from 'os'
 import chalk from 'chalk'
-import readline from 'readline'
-import { Buffer } from 'buffer'
-import { spawn } from 'child_process'
 import { rustEvaluatorDir } from './config'
 import { QuintError } from './quintError'
 
@@ -37,6 +36,11 @@ export type ParsedQuint = {
   init: QuintEx
   step: QuintEx
   invariant: QuintEx
+}
+
+export interface TestOutcome extends Outcome {
+  test_name?: string
+  frames: ExecutionFrame[]
 }
 
 export class QuintRustWrapper {
@@ -59,8 +63,10 @@ export class QuintRustWrapper {
    * @param {number} nruns - The number of runs for the simulation.
    * @param {number} nsteps - The number of steps per run.
    * @param {number} ntraces - The number of traces to store.
+   * @param {boolean} isTest - Whether this is a test run.
+   * @param {string} testName - The name of the test, if this is a test run.
    *
-   * @returns {Outcome} The outcome of the simulation.
+   * @returns {Promise<TestOutcome>} The outcome of the simulation.
    * @throws Will throw an error if the Rust evaluator fails to launch or returns an error.
    */
   async simulate(
@@ -69,8 +75,10 @@ export class QuintRustWrapper {
     witnesses: QuintEx[],
     nruns: number,
     nsteps: number,
-    ntraces: number
-  ): Promise<Outcome> {
+    ntraces: number,
+    isTest: boolean = false,
+    testName?: string
+  ): Promise<TestOutcome> {
     const exe = await getRustEvaluatorPath()
     const args = ['simulate-from-stdin']
     const input = JSONbig.stringify(
@@ -81,82 +89,36 @@ export class QuintRustWrapper {
         nruns: nruns,
         nsteps: nsteps,
         ntraces: ntraces,
+        is_test: isTest,
+        test_name: testName,
       },
       replacer
     )
 
     debugLog(this.verbosityLevel, 'Starting Rust evaluator synchronously')
-
-    // Create progress bar
-    const progressBar = new SingleBar(
-      {
-        clearOnComplete: true,
-        forceRedraw: true,
-        format: 'Running... [{bar}] {percentage}% | ETA: {eta}s | {value}/{total} samples | {speed} samples/s',
-      },
-      Presets.rect
-    )
-    progressBar.start(nruns, 0, { speed: '0' })
-
-    const startTime = Date.now()
-
-    // Spawn the Rust evaluator in subprocess
-    const process = spawn(exe, args, {
+    const result = spawn.sync(exe, args, {
       shell: false,
-      stdio: ['pipe', 'pipe', 'pipe'], // stdin, stdout, stderr
+      input: input,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', process.stderr], // stdin, stdout, stderr
     })
 
-    // Write the input to stdin
-    process.stdin.write(input)
-    process.stdin.end()
-
-    // Handle error on launch
-    process.on('error', (err: Error) => {
-      throw new Error(`Failed to launch Rust evaluator: ${err.message}`)
-    })
-
-    // Collect output from stdout
-    let output = ''
-    process.stdout.on('data', (data: Buffer) => {
-      output += data.toString('utf8')
-    })
-
-    // Convert stderr to a readable stream that emits its output line by line
-    const stderr = readline.createInterface({
-      input: process.stderr,
-      terminal: false,
-    })
-
-    // Handle progress updates from stderr
-    stderr.on('line', (line: string) => {
-      try {
-        const progress = JSON.parse(line)
-
-        if (progress.type === 'progress') {
-          const elapsedSeconds = (Date.now() - startTime) / 1000
-          const speed = Math.round(progress.current / elapsedSeconds)
-          progressBar.update(progress.current, { speed })
-        }
-      } catch (_) {
-        // Ignore non-JSON lines
-      }
-    })
-
-    // Wait for process completion
-    const exitCode = await new Promise<number>(resolve => {
-      process.on('close', resolve)
-    })
-
-    progressBar.stop()
-
-    debugLog(this.verbosityLevel, `Received data from Rust evaluator: ${output}`)
-
-    if (exitCode !== 0) {
-      throw new Error(`Rust evaluator exited with code ${exitCode}`)
+    if (result.error) {
+      throw new Error(`Failed to launch Rust evaluator: ${result.error.message}`)
     }
 
+    if (result.status !== 0) {
+      throw new Error(`Rust evaluator exited with code ${result.status}`)
+    }
+
+    if (!result.stdout) {
+      throw new Error('No output received from Rust evaluator')
+    }
+
+    debugLog(this.verbosityLevel, `Received data from Rust evaluator: ${result.stdout}`)
+
     try {
-      const parsed = JSONbig.parse(output)
+      const parsed = JSONbig.parse(result.stdout)
       if (parsed.error) {
         throw new Error(parsed.error)
       }
@@ -167,6 +129,20 @@ export class QuintRustWrapper {
       // Convert errors
       parsed.errors = parsed.errors.map((err: any): QuintError => ({ ...err, reference: BigInt(err.reference) }))
 
+      // Convert frames if present
+      if (parsed.frames) {
+        try {
+          parsed.frames = parsed.frames.map((frame: any) => ({
+            state: frame.state.map(([name, value]: [string, any]) => ({
+              name,
+              value: ofItf(value),
+            })),
+            action: frame.action,
+          }))
+        } catch (conversionError) {
+          throw new Error(`Failed to convert execution frames: ${conversionError}`)
+        }
+      }
       return parsed
     } catch (error) {
       throw new Error(`Failed to parse data from Rust evaluator: ${JSONbig.stringify(error)}`)

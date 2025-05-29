@@ -26,7 +26,7 @@ import {
 import { ErrorMessage } from './ErrorMessage'
 
 import { Either, left, mergeInMany, right } from '@sweet-monads/either'
-import { fail } from 'assert'
+import assert, { fail } from 'assert'
 import { EffectScheme } from './effects/base'
 import { LookupTable } from './names/base'
 import { ReplOptions, quintRepl } from './repl'
@@ -37,7 +37,7 @@ import { DocumentationEntry, produceDocs, toMarkdown } from './docs'
 import { QuintError, quintErrorToString } from './quintError'
 import { TestOptions, TestResult } from './runtime/testing'
 import { IdGenerator, newIdGenerator } from './idGenerator'
-import { Outcome, SimulatorOptions, showTraceStatistics } from './simulation'
+import { Outcome, SimulationTrace, SimulatorOptions } from './simulation'
 import { ofItf, toItf } from './itf'
 import { printExecutionFrameRec, printTrace, terminalWidth } from './graphics'
 import { verbosity } from './verbosity'
@@ -54,8 +54,19 @@ import { Evaluator } from './runtime/impl/evaluator'
 import { NameResolver } from './names/resolver'
 import { walkExpression } from './ir/IRVisitor'
 import { convertInit } from './ir/initToPredicate'
-import { QuintRustWrapper } from './quintRustWrapper'
+import { QuintRustWrapper, TestOutcome } from './quintRustWrapper'
 import { replacer } from './jsonHelper'
+
+/**
+ * Write json to a file.
+ *
+ * @param filename name of the file to write to
+ * @param json is an object tree to write
+ */
+function writeToJson(filename: string, json: any) {
+  const path = resolve(cwd(), filename)
+  writeFileSync(path, jsonStringOfOutputStage(json))
+}
 
 export type stage =
   | 'loading'
@@ -357,7 +368,6 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
   }
 
   const out = console.log
-
   const outputTemplate = testing.args.outItf
 
   // Start the Timer and being running the tests
@@ -371,30 +381,102 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
     .flat()
     .filter(d => d.kind === 'def' && options.testMatch(d.name))
 
-  const evaluator = new Evaluator(testing.table, newTraceRecorder(verbosityLevel, rng, 1), rng)
-  const results: TestResult[] = []
-  let nFailures = 1
+  let results: TestResult[] = []
 
-  // Run each test and display results immediately
-  for (const def of testDefs) {
-    const result = evaluator.test(def, maxSamples, options.onTrace(results.length))
-    results.push(result)
+  if (prev.args.backend === 'rust') {
+    const quintRustWrapper = new QuintRustWrapper(verbosityLevel)
+    // Placeholder for 'true' expression
+    const trueExpr: QuintEx = { id: prev.idGen.nextId(), kind: 'bool', value: true }
 
-    // Display result immediately
-    if (verbosity.hasResults(verbosityLevel)) {
-      if (result.status === 'passed') {
-        out(`    ${chalk.green('ok')} ${result.name} passed ${result.nsamples} test(s)`)
+    for (const def of testDefs) {
+      if (def.kind !== 'def') {
+        results.push({
+          name: def.name,
+          status: 'ignored',
+          errors: [],
+          seed: 0n, // Placeholder
+          frames: [],
+          nsamples: 0,
+        })
+        continue
       }
-      if (result.status === 'failed') {
-        const errNo = chalk.red(nFailures)
-        out(`    ${errNo}) ${result.name} failed after ${result.nsamples} test(s)`)
-        nFailures++
+
+      const testExpr = def.expr
+      if (!testExpr) {
+        results.push({
+          name: def.name,
+          status: 'failed',
+          errors: [{ code: 'QNT500', message: `Test ${def.name} has no expression`, reference: def.id }],
+          seed: 0n,
+          frames: [],
+          nsamples: 0,
+        })
+        continue
+      }
+
+      try {
+        const rustOutcome: TestOutcome = await quintRustWrapper.simulate(
+          {
+            modules: [main],
+            table: prev.table,
+            main: mainName,
+            init: trueExpr,
+            step: trueExpr,
+            invariant: testExpr,
+          },
+          prev.sourceCode.get(prev.path)!,
+          [], // witnesses
+          1, // nruns
+          1, // nsteps
+          1, // ntraces
+          true, // isTest
+          def.name
+        )
+
+        results.push({
+          name: def.name,
+          status: rustOutcome.status === 'ok' ? 'passed' : 'failed',
+          errors: rustOutcome.errors,
+          seed: 0n,
+          frames: rustOutcome.frames ?? [],
+          nsamples: 1,
+        })
+      } catch (e: any) {
+        results.push({
+          name: def.name,
+          status: 'failed',
+          errors: [{ code: 'QNT000', message: `Rust backend error: ${e.message}` }], // No specific ID for backend error source
+          seed: 0n,
+          frames: [],
+          nsamples: 0,
+        })
       }
     }
+  } else {
+    // Existing TypeScript backend
+    const evaluator = new Evaluator(testing.table, newTraceRecorder(verbosityLevel, rng, 1), rng)
+    results = testDefs.map((def, index) => {
+      return evaluator.test(def, maxSamples, options.onTrace(index))
+    })
   }
 
   // We're finished running the tests
   const elapsedMs = Date.now() - startMs
+
+  // output the status for every test
+  let nFailures = 1
+  if (verbosity.hasResults(verbosityLevel)) {
+    results.forEach(res => {
+      if (res.status === 'passed') {
+        out(`    ${chalk.green('ok')} ${res.name} passed ${res.nsamples} test(s)`)
+      }
+      if (res.status === 'failed') {
+        const errNo = chalk.red(nFailures)
+        out(`    ${errNo}) ${res.name} failed after ${res.nsamples} test(s)`)
+        nFailures++
+      }
+    })
+  }
 
   const passed = results.filter(r => r.status === 'passed')
   const failed = results.filter(r => r.status === 'failed')
@@ -607,16 +689,47 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
   } else {
     // Use the typescript simulator
     const evaluator = new Evaluator(prev.resolver.table, recorder, options.rng, options.storeMetadata)
-    outcome = evaluator.simulate(
+    const evalResult = evaluator.simulate(
       init,
       step,
       invariant,
       witnesses,
       prev.args.maxSamples,
       prev.args.maxSteps,
-      prev.args.nTraces ?? 1,
-      options.onTrace
+      prev.args.nTraces ?? 1
     )
+
+    simulator.seed = recorder.bestTraces[0]?.seed
+
+    const results: Either<QuintError[], SimulationTrace[]> = mergeInMany(
+      recorder.bestTraces.map((trace, index) => {
+        const maybeEvalResult = trace.frame.result
+        if (maybeEvalResult.isLeft()) {
+          return left(maybeEvalResult.value)
+        }
+        const quintExResult = maybeEvalResult.value.toQuintEx(prev.idGen)
+        assert(quintExResult.kind === 'bool', 'invalid simulation produced non-boolean value ')
+        const simulationSucceeded = quintExResult.value
+        const status = simulationSucceeded ? 'ok' : 'violation'
+        const states = trace.frame.args.map(e => e.toQuintEx(prev.idGen))
+
+        options.onTrace(index, status, evaluator.varNames(), states)
+
+        return right({ states, result: simulationSucceeded, seed: trace.seed })
+      })
+    )
+
+    if (results.isLeft()) {
+      return cliErr('Runtime error', {
+        ...simulator,
+        errors: results.value.map(mkErrorMessage(prev.sourceMap)),
+      })
+    }
+
+    // The `bestTraces` are now directly in `evalResult.bestTraces`
+    // let traces = results.value
+
+    outcome = evalResult
   }
 
   const elapsedMs = Date.now() - startMs
@@ -630,20 +743,15 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
       return cliErr('Runtime error', {
         ...simulator,
         status: outcome.status,
-        seed: prev.args.seed,
+        // trace: states,
         errors: outcome.errors.map(mkErrorMessage(prev.sourceMap)),
       })
 
     case 'ok':
       maybePrintCounterExample(verbosityLevel, states, frames, prev.args.hide || [])
       if (verbosity.hasResults(verbosityLevel)) {
-        console.log(
-          chalk.green('[ok]') +
-            ' No violation found ' +
-            chalk.gray(`(${elapsedMs}ms at ${Math.round((1000 * outcome.samples) / elapsedMs)} traces/second).`)
-        )
+        console.log(chalk.green('[ok]') + ' No violation found ' + chalk.gray(`(${elapsedMs}ms).`))
         if (verbosity.hasHints(verbosityLevel)) {
-          console.log(chalk.gray(showTraceStatistics(outcome.traceStatistics)))
           console.log(chalk.gray('You may increase --max-samples and --max-steps.'))
           console.log(chalk.gray('Use --verbosity to produce more (or less) output.'))
         }
@@ -659,11 +767,7 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
     case 'violation':
       maybePrintCounterExample(verbosityLevel, states, frames, prev.args.hide || [])
       if (verbosity.hasResults(verbosityLevel)) {
-        console.log(
-          chalk.red(`[violation]`) +
-            ' Found an issue ' +
-            chalk.gray(`(${elapsedMs}ms at ${Math.round((1000 * outcome.samples) / elapsedMs)} traces/second).`)
-        )
+        console.log(chalk.red(`[violation]`) + ' Found an issue ' + chalk.gray(`(${elapsedMs}ms).`))
 
         if (verbosity.hasHints(verbosityLevel)) {
           console.log(chalk.gray('Use --verbosity=3 to show executions.'))
@@ -1022,17 +1126,6 @@ function addItfHeader(source: string, status: string, traceInJson: any): any {
 
 function jsonStringOfOutputStage(json: any): string {
   return JSONbig.stringify(json, replacer)
-}
-
-/**
- * Write json to a file.
- *
- * @param filename name of the file to write to
- * @param json is an object tree to write
- */
-function writeToJson(filename: string, json: any) {
-  const path = resolve(cwd(), filename)
-  writeFileSync(path, jsonStringOfOutputStage(json))
 }
 
 /**
