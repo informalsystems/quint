@@ -30,7 +30,7 @@ import assert, { fail } from 'assert'
 import { EffectScheme } from './effects/base'
 import { LookupTable } from './names/base'
 import { ReplOptions, quintRepl } from './repl'
-import { OpQualifier, QuintBool, QuintEx, QuintModule } from './ir/quintIr'
+import { OpQualifier, QuintEx, QuintModule } from './ir/quintIr'
 import { TypeScheme } from './types/base'
 import { createFinders, formatError } from './errorReporter'
 import { DocumentationEntry, produceDocs, toMarkdown } from './docs'
@@ -54,7 +54,7 @@ import { Evaluator } from './runtime/impl/evaluator'
 import { NameResolver } from './names/resolver'
 import { walkExpression } from './ir/IRVisitor'
 import { convertInit } from './ir/initToPredicate'
-import { QuintRustWrapper } from './quintRustWrapper'
+import { QuintRustWrapper, TestOutcome } from './quintRustWrapper'
 import { replacer } from './jsonHelper'
 
 /**
@@ -381,10 +381,90 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
     .flat()
     .filter(d => d.kind === 'def' && options.testMatch(d.name))
 
-  const evaluator = new Evaluator(testing.table, newTraceRecorder(verbosityLevel, rng, 1), rng)
-  const results = testDefs.map((def, index) => {
-    return evaluator.test(def, maxSamples, options.onTrace(index))
-  })
+  let results: TestResult[] = []
+
+  if (prev.args.backend === 'rust') {
+    const quintRustWrapper = new QuintRustWrapper(verbosityLevel)
+    // Placeholder for 'true' expression
+    const trueExpr: QuintEx = { id: prev.idGen.nextId(), kind: 'bool', value: true }
+
+    for (const def of testDefs) {
+      // A test definition is a QuintDef. We need its expression.
+      // Assuming test definitions are simple boolean expressions or actions evaluating to boolean.
+      // The 'init' and 'step' for the Rust simulator can be 'true' if the test is an invariant.
+      // The test expression itself becomes the invariant.
+      if (def.kind !== 'def') {
+        // Should not happen due to filter above, but as a safeguard
+        results.push({
+          name: def.name,
+          status: 'ignored',
+          errors: [],
+          seed: 0n, // Placeholder
+          frames: [],
+          nsamples: 0,
+        })
+        continue
+      }
+
+      // The actual expression of the test definition
+      const testExpr = def.expr
+      if (!testExpr) {
+        results.push({
+          name: def.name,
+          status: 'failed',
+          errors: [{ code: 'QNT500', message: `Test ${def.name} has no expression`, reference: def.id }],
+          seed: 0n,
+          frames: [],
+          nsamples: 0,
+        })
+        continue
+      }
+
+      try {
+        const rustOutcome: TestOutcome = await quintRustWrapper.simulate(
+          {
+            modules: [main],
+            table: prev.table,
+            main: mainName,
+            init: trueExpr,
+            step: trueExpr,
+            invariant: testExpr,
+          },
+          prev.sourceCode.get(prev.path)!,
+          [], // witnesses
+          1, // nruns
+          1, // nsteps
+          1, // ntraces
+          true, // isTest
+          def.name
+        )
+
+        results.push({
+          name: def.name,
+          status: rustOutcome.status === 'ok' ? 'passed' : 'failed',
+          errors: rustOutcome.errors,
+          seed: 0n,
+          frames: rustOutcome.frames ?? [],
+          nsamples: 1,
+        })
+      } catch (e: any) {
+        results.push({
+          name: def.name,
+          status: 'failed',
+          errors: [{ code: 'QNT000', message: `Rust backend error: ${e.message}` }], // No specific ID for backend error source
+          seed: 0n,
+          frames: [],
+          nsamples: 0,
+        })
+      }
+    }
+  } else {
+    // Existing TypeScript backend
+    const evaluator = new Evaluator(testing.table, newTraceRecorder(verbosityLevel, rng, 1), rng)
+    results = testDefs.map((def, index) => {
+      return evaluator.test(def, maxSamples, options.onTrace(index))
+    })
+  }
 
   // We're finished running the tests
   const elapsedMs = Date.now() - startMs
@@ -652,15 +732,10 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
       })
     }
 
-    let traces = results.value
+    // The `bestTraces` are now directly in `evalResult.bestTraces`
+    // let traces = results.value
 
-    outcome = {
-      status: evalResult.isRight() ? ((evalResult.value.result as QuintBool).value ? 'ok' : 'violation') : 'error',
-      errors: evalResult.isLeft() ? [evalResult.value] : [],
-      bestTraces: traces,
-      witnessingTraces: evalResult.isRight() ? evalResult.value.witnessingTraces : [],
-      samples: evalResult.isRight() ? evalResult.value.samples : 0,
-    }
+    outcome = evalResult
   }
 
   const elapsedMs = Date.now() - startMs

@@ -158,7 +158,7 @@ fn run_simulation(args: RunArgs) -> eyre::Result<()> {
 
     let start = Instant::now();
     log!("Simulation", "Starting simulation");
-    let result = parsed.simulate(args.max_steps, args.max_samples, args.n_traces);
+    let result = parsed.simulate(args.max_steps, args.max_samples, args.n_traces, None);
 
     let elapsed = start.elapsed();
 
@@ -193,7 +193,7 @@ fn simulate_from_stdin() -> eyre::Result<()> {
     let input: SimulateInput = serde_json::from_str(&input)?;
     let parsed = input.parsed;
 
-    let result = parsed.simulate(input.nsteps, input.nruns, input.ntraces);
+    let result = parsed.simulate(input.nsteps, input.nruns, input.ntraces, None);
 
     // Transform the SimulationResult into the Outcome format expected by Quint
     let mut outcome = to_outcome(input.source, result);
