@@ -201,18 +201,17 @@ const testCmd = {
         desc: 'random seed to use for non-deterministic choice',
         type: 'string',
       })
+      .option('backend', {
+        desc: 'the backend to use for testing',
+        type: 'string',
+        choices: ['typescript', 'rust'],
+        default: 'typescript',
+      })
       .option('verbosity', {
         desc: 'control how much output is produced (0 to 5)',
         type: 'number',
         default: verbosity.defaultLevel,
       })
-      // Timeouts are postponed for:
-      // https://github.com/informalsystems/quint/issues/633
-      //
-      //      .option('timeout', {
-      //        desc: 'timeout in seconds',
-      //        type: 'number',
-      //      })
       .option('match', {
         desc: 'a string or regex that selects names to use as tests',
         type: 'string',

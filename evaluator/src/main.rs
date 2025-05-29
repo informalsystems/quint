@@ -12,7 +12,7 @@ use std::time::Instant;
 use argh::FromArgs;
 use eyre::bail;
 use quint_evaluator::ir::{QuintError, QuintEx};
-use quint_evaluator::simulator::{ParsedQuint, ProgressUpdate, SimulationResult};
+use quint_evaluator::simulator::{ParsedQuint, SimulationResult};
 use quint_evaluator::{helpers, log};
 use serde::{Deserialize, Serialize};
 
@@ -81,6 +81,8 @@ struct SimulateInput {
     nruns: usize,
     nsteps: usize,
     ntraces: usize,
+    is_test: bool,
+    test_name: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -101,6 +103,8 @@ struct Outcome {
     best_traces: Vec<SimulationTrace>,
     witnessing_traces: Vec<usize>,
     samples: usize,
+    test_name: Option<String>,
+    frames: Vec<ExecutionFrame>,
 }
 
 #[derive(Serialize)]
@@ -109,6 +113,13 @@ struct SimulationTrace {
     seed: usize,
     states: itf::Trace<itf::Value>,
     result: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ExecutionFrame {
+    state: Vec<(String, itf::Value)>,
+    action: Option<String>,
 }
 
 /// The CLI has two main commands: 1. `run`: Runs the simulation on a file with
@@ -147,7 +158,7 @@ fn run_simulation(args: RunArgs) -> eyre::Result<()> {
 
     let start = Instant::now();
     log!("Simulation", "Starting simulation");
-    let result = parsed.simulate(args.max_steps, args.max_samples, args.n_traces, None);
+    let result = parsed.simulate(args.max_steps, args.max_samples, args.n_traces);
 
     let elapsed = start.elapsed();
 
@@ -182,26 +193,25 @@ fn simulate_from_stdin() -> eyre::Result<()> {
     let input: SimulateInput = serde_json::from_str(&input)?;
     let parsed = input.parsed;
 
-    // Create a progress callback that writes progress to stderr in JSON format
-    let progress_callback = Box::new(|update: ProgressUpdate| {
-        let progress = serde_json::json!({
-            "type": "progress",
-            "current": update.current,
-            "total": update.total,
-            "percentage": update.percentage()
-        });
-        eprintln!("{progress}");
-    });
-
-    let result = parsed.simulate(
-        input.nsteps,
-        input.nruns,
-        input.ntraces,
-        Some(progress_callback),
-    );
+    let result = parsed.simulate(input.nsteps, input.nruns, input.ntraces);
 
     // Transform the SimulationResult into the Outcome format expected by Quint
-    let outcome = to_outcome(input.source, result);
+    let mut outcome = to_outcome(input.source, result);
+    // Add test-specific information if this is a test run
+    if input.is_test {
+        outcome.test_name = input.test_name;
+        // Convert simulation traces to execution frames
+        outcome.frames = outcome
+            .best_traces
+            .iter()
+            .flat_map(|trace| {
+                trace.states.states.iter().map(|state| ExecutionFrame {
+                    state: vec![("state".to_string(), state.value.clone())],
+                    action: None, // TODO: Extract action information if available
+                })
+            })
+            .collect();
+    }
 
     // Serialize the outcome to JSON and print it to STDOUT
     println!("{}", serde_json::to_string(&outcome)?);
@@ -246,5 +256,7 @@ fn to_outcome(source: String, result: Result<SimulationResult, QuintError>) -> O
         // TODO: This simulator is not tracking witnesses yet
         witnessing_traces: vec![],
         samples: 0,
+        test_name: None,
+        frames: Vec::new(),
     }
 }
