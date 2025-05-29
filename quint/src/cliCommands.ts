@@ -389,12 +389,7 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
     const trueExpr: QuintEx = { id: prev.idGen.nextId(), kind: 'bool', value: true }
 
     for (const def of testDefs) {
-      // A test definition is a QuintDef. We need its expression.
-      // Assuming test definitions are simple boolean expressions or actions evaluating to boolean.
-      // The 'init' and 'step' for the Rust simulator can be 'true' if the test is an invariant.
-      // The test expression itself becomes the invariant.
       if (def.kind !== 'def') {
-        // Should not happen due to filter above, but as a safeguard
         results.push({
           name: def.name,
           status: 'ignored',
@@ -406,7 +401,6 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
         continue
       }
 
-      // The actual expression of the test definition
       const testExpr = def.expr
       if (!testExpr) {
         results.push({
