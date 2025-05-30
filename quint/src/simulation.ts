@@ -25,7 +25,6 @@ export interface SimulatorOptions {
   rng: Rng
   verbosity: number
   storeMetadata: boolean
-  hideVars: string[]
   onTrace(index: number, status: string, vars: string[], states: QuintEx[]): void
 }
 
@@ -45,7 +44,6 @@ export interface Outcome {
   bestTraces: SimulationTrace[]
   witnessingTraces: number[]
   samples: number
-  traceStatistics: TraceStatistics
 }
 
 /**
@@ -55,25 +53,4 @@ export interface SimulationResult {
   result: QuintEx
   witnessingTraces: number[]
   samples: number
-  traceStatistics: TraceStatistics
-}
-
-export interface TraceStatistics {
-  averageTraceLength: number
-  minTraceLength: number
-  maxTraceLength: number
-}
-
-export function getTraceStatistics(traceLengths: number[]): TraceStatistics {
-  return {
-    maxTraceLength: Math.max(...traceLengths),
-    minTraceLength: Math.min(...traceLengths),
-    averageTraceLength: traceLengths.reduce((a, b) => a + b, 0) / traceLengths.length,
-  }
-}
-
-export function showTraceStatistics(stats: TraceStatistics): string {
-  return `Trace length statistics: max=${stats.maxTraceLength}, min=${
-    stats.minTraceLength
-  }, average=${stats.averageTraceLength.toFixed(2)}`
 }

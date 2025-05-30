@@ -238,7 +238,7 @@ const runCmd = {
         type: 'string',
       })
       .option('out-itf', {
-        desc: 'output the trace in the Informal Trace Format to file, e.g., out_{seq}.itf.json where {seq} is the trace sequence number',
+        desc: 'output the trace in the Informal Trace Format to file, e.g., out_{seq}.itf.json where {seq} is the trace sequence number (suppresses all console output)',
         type: 'string',
       })
       .option('max-samples', {
@@ -273,11 +273,6 @@ const runCmd = {
       })
       .option('witnesses', {
         desc: 'space separated list of witnesses to report on (counting for how many traces the witness is true)',
-        type: 'array',
-        default: [],
-      })
-      .option('hide', {
-        desc: 'space separated list of variable names to hide from the terminal output (does not affect ITF output)',
         type: 'array',
         default: [],
       })

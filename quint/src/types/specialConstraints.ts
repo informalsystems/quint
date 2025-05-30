@@ -14,41 +14,63 @@
  */
 
 import { Either, left, mergeInMany, right } from '@sweet-monads/either'
-import { Error, ErrorTree, buildErrorLeaf } from '../errorTree'
+import { ErrorTree, buildErrorLeaf } from '../errorTree'
 import { expressionToString } from '../ir/IRprinting'
 import { QuintEx } from '../ir/quintIr'
-import { QuintOperType, QuintType, QuintVarType, sumType } from '../ir/quintTypes'
+import { QuintOperType, QuintType, QuintVarType, RowField, sumType } from '../ir/quintTypes'
 import { Constraint } from './base'
 import { chunk, times } from 'lodash'
-import { RowField } from '../ir/quintTypes'
+import { duplicateRecordFieldError } from '../../../src/parsing/parseErrors'
 
 export function recordConstructorConstraints(
   id: bigint,
   args: [QuintEx, QuintType][],
   resultTypeVar: QuintVarType
-): Either<Error, Constraint[]> {
-  // A record constructor has the normal form Rec('field1', value1, 'field2', value2, ...)
-  // So we iterate over the arguments in pairs (chunks of size 2)
-  //
-  // - We can ignore the _keyType because we are verifying here that every key is a string litteral
-  // - We can ignore the _value because we are only doing type checking
-  const fields = chunk(args, 2).map(([[key, _keyType], [_value, valueType]]) => {
+): Either<ErrorTree, Constraint[]> {
+  const fieldsEither: Either<ErrorTree, RowField>[] = chunk(args, 2).map((pair: [QuintEx, QuintType][]) => {
+    const [[key, _keyType], [_value, valueType]] = pair as [[QuintEx, QuintType], [QuintEx, QuintType]]
     if (key.kind !== 'str') {
       return left(
         buildErrorLeaf(
           `Generating record constraints for ${args.map(a => expressionToString(a[0]))}`,
           `Record field name must be a name expression but is ${key.kind}: ${expressionToString(key)}`
         )
-      )
+      ) as Either<ErrorTree, RowField>
     }
-
     return right({ fieldName: key.value, fieldType: valueType })
   })
 
-  return mergeInMany(fields).map(fs => {
+  const seenFields = new Set<string>()
+  for (const fieldEither of fieldsEither) {
+    if (fieldEither.isLeft()) {
+      return left(fieldEither.value) as Either<ErrorTree, Constraint[]>
+    }
+    const field = fieldEither.value
+    if (seenFields.has(field.fieldName)) {
+      const error = duplicateRecordFieldError(id, field.fieldName)
+      return left(buildErrorLeaf(id.toString(), error.message))
+    }
+    seenFields.add(field.fieldName)
+  }
+
+  const validFields = fieldsEither.filter(f => f.isRight()).map(f => f.value as RowField)
+  
+  if (validFields.length !== fieldsEither.length) {
+    const firstError = fieldsEither.find(f => f.isLeft())
+    if (firstError) {
+        return firstError as unknown as Either<ErrorTree, Constraint[]>
+    }
+    return left(buildErrorLeaf(id.toString(), 'Unknown error processing record fields'))
+  }
+
+  const eithersForMerge: Either<ErrorTree, RowField>[] = fieldsEither.map(f => f as Either<ErrorTree, RowField>)
+
+  return mergeInMany(eithersForMerge).map((fs: RowField[]) => {
     const t: QuintType = { kind: 'rec', fields: { kind: 'row', fields: fs, other: { kind: 'empty' } } }
     const constraint: Constraint = { kind: 'eq', types: [t, resultTypeVar], sourceId: id }
     return [constraint]
+  }).mapLeft(errorArray => {
+    return errorArray.length > 0 ? errorArray[0] : buildErrorLeaf(id.toString(), 'Error merging record fields')
   })
 }
 
@@ -56,7 +78,7 @@ export function fieldConstraints(
   id: bigint,
   args: [QuintEx, QuintType][],
   resultTypeVar: QuintVarType
-): Either<Error, Constraint[]> {
+): Either<ErrorTree, Constraint[]> {
   // We can ignore the _fieldNameType because we are verifying here that every key is a string litteral
   const [[_rec, recType], [fieldName, _fieldNameType]] = args
 
@@ -102,7 +124,7 @@ export function withConstraints(
   id: bigint,
   args: [QuintEx, QuintType][],
   resultTypeVar: QuintVarType
-): Either<Error, Constraint[]> {
+): Either<ErrorTree, Constraint[]> {
   // We can ignore the _fieldNameType because we are verifying here that every key is a string litteral
   const [[_rec, recType], [fieldName, _fieldNameType], [_value, valueType]] = args
 
@@ -148,7 +170,7 @@ export function itemConstraints(
   id: bigint,
   args: [QuintEx, QuintType][],
   resultTypeVar: QuintVarType
-): Either<Error, Constraint[]> {
+): Either<ErrorTree, Constraint[]> {
   // We can ignore the _itemNameType because we are verifying here that every key is a string litteral
   const [[_tup, tupType], [itemName, _itemNameType]] = args
 
@@ -194,7 +216,7 @@ export function variantConstraints(
   id: bigint,
   args: [QuintEx, QuintType][],
   resultTypeVar: QuintVarType
-): Either<Error, Constraint[]> {
+): Either<ErrorTree, Constraint[]> {
   // `_valuEx : valueType` is checked already via the constraintGenerator
   const [[labelExpr, labelType], [_valueEx, valueType]] = args
 
@@ -245,7 +267,7 @@ export function matchConstraints(
   id: bigint,
   args: [QuintEx, QuintType][],
   resultTypeVar: QuintVarType
-): Either<Error, Constraint[]> {
+): Either<ErrorTree, Constraint[]> {
   // A match eliminator has the normal form `matchVariant(expr, 'field1', elim1,..., 'fieldn', elimn)`.
   // We separate the `expr` we are matching against into the `_variantExpr` and the
   // `labelsAndCases`, which holds the pairs of field labels and eliminators.
@@ -310,5 +332,7 @@ export function matchConstraints(
     }
 
     return [variantTypeIsMatchCaseType, ...resultTypesAreEqual]
+  }).mapLeft(errorArray => {
+    return errorArray.length > 0 ? errorArray[0] : buildErrorLeaf(id.toString(), 'Error merging match cases')
   })
 }
