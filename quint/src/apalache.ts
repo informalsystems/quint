@@ -16,7 +16,7 @@
  * @module
  */
 
-import { Either, chain, left, right } from '@sweet-monads/either'
+import { Either, left, right } from '@sweet-monads/either'
 import { ErrorMessage } from './ErrorMessage'
 import path from 'path'
 import fs from 'fs'
@@ -496,5 +496,10 @@ export async function connect(
           apalache.on('error', error => resolve(err(`Failed to launch Apalache server: ${error.message}`)))
         })
     )
-    .then(chain(() => tryConnect(serverEndpoint, true)))
+    .then(async result => {
+      if (result.isLeft()) {
+        return left(result.value) as ApalacheResult<Apalache>
+      }
+      return await tryConnect(serverEndpoint, true)
+    })
 }

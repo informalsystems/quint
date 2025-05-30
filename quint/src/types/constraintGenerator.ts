@@ -143,19 +143,16 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
       return
     }
 
-    // For each override, ensure that the the type for the name and the type of
-    // the value are the same
     def.overrides.forEach(([name, ex]) => {
       this.addToResults(name.id, this.typeForName(name.name, name.id, 2).map(toScheme))
 
-      this.fetchResult(name.id).chain(originalType => {
-        return this.fetchResult(ex.id).map(expressionType => {
+      this.fetchResult(name.id).chain((originalType: TypeScheme) => {
+        return this.fetchResult(ex.id).map((expressionType: TypeScheme) => {
           this.constraints.push({ kind: 'eq', types: [originalType.type, expressionType.type], sourceId: ex.id })
         })
       })
     })
 
-    // Solve constraints here since this won't go through `exitDef`
     if (this.constraints.length > 0) {
       this.solveConstraints()
     }
@@ -184,32 +181,25 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
       return
     }
 
-    const argsResult: Either<Error, [QuintEx, QuintType][]> = mergeInMany(
+    const argsResult: Either<Error, Array<[QuintEx, QuintType]>> = mergeInMany(
       e.args.map(e => {
-        return this.fetchResult(e.id).map(r => [e, r.type])
+        return this.fetchResult(e.id).map((r: TypeScheme) => [e, r.type] as [QuintEx, QuintType])
       })
     )
 
-    // We want `definedSignature` computed before the fresh variable `a` so that the
-    // numbering of their fresh variables stays in order, with `a`, used for return types,
-    // bearing the highest number.
     const definedSignature = this.typeForName(e.opcode, e.id, e.args.length)
-    const a: QuintType = { kind: 'var', name: this.freshVarGenerator.freshVar('_t') }
+    const a: QuintVarType = { kind: 'var', name: this.freshVarGenerator.freshVar('_t') }
     
-    // Default result type
-    let result = a;
+    let result: QuintType = a;
     
     if (argsResult.isRight()) {
-      const results = argsResult.value;
+      const results: Array<[QuintEx, QuintType]> = argsResult.value;
       
-      // Apply different logic based on opcode
       switch (e.opcode) {
-        // Record operators
         case 'Rec': {
           if (validateArity(e.opcode, results, l => l % 2 === 0, 'even number of').isRight()) {
             const recordResult = recordConstructorConstraints(e.id, results, a);
             if (recordResult.isRight()) {
-              // We know recordResult.value should be our expected type
               this.constraints.push(...recordResult.value);
             }
           }
@@ -242,7 +232,6 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
           }
           break;
         }
-        // Tuple operators
         case 'Tup': {
           const tupleResult = tupleConstructorConstraints(e.id, results, a);
           if (tupleResult.isRight()) {
@@ -259,7 +248,6 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
           }
           break;
         }
-        // Sum type operators
         case 'variant': {
           if (validateArity(e.opcode, results, l => l === 2, '2').isRight()) {
             const variantResult = variantConstraints(e.id, results, a);
@@ -278,50 +266,35 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
           }
           break;
         }
-        // Default case for standard operators
         default: {
-          // Create operator information for better error messages
           const operatorInfo: OperatorInfo = {
             operatorName: e.opcode,
-            operatorSignature: ''
+            operatorSignature: definedSignature.isRight() ? typeToString(definedSignature.value) : ''
           }
           
           if (definedSignature.isRight()) {
             const operType = definedSignature.value;
+            const types1: QuintType[] = [];
             
-            // Create a full operator type with arguments
-            const types1 = [];
-            
-            // Add all the argument types
             for (let i = 0; i < results.length; i++) {
-              const argType = results[i][1];
+              const [_, argType] = results[i];
               types1.push(argType);
               
-              // Create constraint with operator information and position
-              const argOperatorInfo: OperatorInfo = {
-                ...operatorInfo,
-                argumentPosition: i + 1 // 1-based indexing for user-friendly messages
-              };
+              const resType: QuintVarType = { kind: 'var', name: this.freshVarGenerator.freshVar('_t') };
               
-              // Save the argument-specific constraint with position information
               this.constraints.push({
                 kind: 'eq',
                 types: [
-                  { kind: 'oper', args: [argType], res: { kind: 'var', name: this.freshVarGenerator.freshVar('_t') } },
+                  { kind: 'oper', args: [argType], res: resType },
                   operType
                 ],
                 sourceId: e.id,
-                operatorInfo: argOperatorInfo
+                operatorInfo: { ...operatorInfo, argumentPosition: i + 1 }
               });
             }
             
-            // Add result type
             types1.push(a);
             
-            // Capture the operator signature for error messages
-            operatorInfo.operatorSignature = typeToString(operType);
-            
-            // Save the operator application constraint
             this.constraints.push({
               kind: 'eq',
               types: [
@@ -357,9 +330,9 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
     }
 
     // Get parameter types
-    const paramTypesResult = mergeInMany(
+    const paramTypesResult: Either<Error, QuintType[]> = mergeInMany(
       e.params.map(p => 
-        this.fetchResult(p.id).map(paramType => {
+        this.fetchResult(p.id).map((paramType: TypeScheme): QuintType => {
           // If parameter has a type annotation, create a constraint
           if (p.typeAnnotation) {
             this.constraints.push({ 
@@ -502,11 +475,11 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
 
   private addToResults(exprId: bigint, result: Either<Error, TypeScheme>): void {
     result
-      .map(type => {
+      .map((type: TypeScheme) => {
         this.types.set(exprId, type)
         this.typesInScope.set(exprId, type)
       })
-      .mapLeft(error => {
+      .mapLeft((error: Error) => {
         const tree = typeof error === 'string' ? buildErrorLeaf(this.location, error) : error
         this.errors.set(exprId, tree as ErrorTree)
       })
@@ -527,20 +500,16 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
   }
 
   private solveConstraints(): Either<void, Substitutions> {
-    // Constraints need to be joined
     const c: Constraint =
       this.constraints.length == 0
         ? { kind: 'empty' }
         : { kind: 'conjunction', constraints: this.constraints, sourceId: 0n }
 
-    // We have subconstraints for different operators.
-    // Need to combine them into a single constraint first.
     const result = this.solvingFunction(this.table, c)
     this.constraints = []
 
-    return result.mapLeft(newErrors => {
-      newErrors.forEach((newError, id) => {
-        // if there is already a previous (probably more specific) error for this id, don't overwrite it
+    return result.mapLeft((newErrors: Map<bigint, ErrorTree>) => {
+      newErrors.forEach((newError: ErrorTree, id: bigint) => {
         if (!this.errors.has(id)) {
           this.errors.set(id, newError)
         }

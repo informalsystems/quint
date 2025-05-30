@@ -41,7 +41,7 @@ export function solveConstraint(
     case 'empty':
       return right([])
     case 'eq':
-      return unify(table, constraint.types[0], constraint.types[1], constraint.operatorInfo).mapLeft(e => {
+      return unify(table, constraint.types[0], constraint.types[1], constraint.operatorInfo).mapLeft((e: ErrorTree) => {
         errors.set(constraint.sourceId, e)
         return errors
       })
@@ -53,15 +53,15 @@ export function solveConstraint(
           // If previous result is a failure, try to solve the original constraint
           // to gather all errors instead of just propagating the first one
           let newCons = con
-          result.map(s => {
+          result.map((s: Substitutions) => {
             newCons = applySubstitutionToConstraint(table, s, con)
           })
           return solveConstraint(table, newCons)
-            .mapLeft(e => {
-              e.forEach((error, id) => errors.set(id, error))
+            .mapLeft((e: Map<bigint, ErrorTree>) => {
+              e.forEach((error: ErrorTree, id: bigint) => errors.set(id, error))
               return errors
             })
-            .chain(newSubs => result.map(s => compose(table, newSubs, s)))
+            .chain((newSubs: Substitutions) => result.map((s: Substitutions) => compose(table, newSubs, s)))
         }, right([]))
     }
     case 'isDefined': {
@@ -101,9 +101,9 @@ export function unify(
   t1: QuintType, 
   t2: QuintType,
   operatorInfo?: {
-    operatorName: string;
-    operatorSignature: string;
-    argumentPosition?: number;
+    operatorName: string
+    operatorSignature: string
+    argumentPosition?: number
   }
 ): Either<ErrorTree, Substitutions> {
   const location = `Trying to unify ${typeToString(t1)} and ${typeToString(t2)}`
@@ -137,7 +137,7 @@ export function unify(
   } else if ((t1.kind === 'rec' && t2.kind === 'rec') || (t1.kind === 'sum' && t2.kind === 'sum')) {
     return unifyRows(table, t1.fields, t2.fields).mapLeft(error => buildErrorTree(location, error))
   } else {
-    // Create a more informative error message if operator information is available
+    // Create operator-specific error if we have operator information
     if (operatorInfo) {
       const typeAppDetails: TypeApplicationErrorDetails = {
         operatorName: operatorInfo.operatorName,
@@ -180,9 +180,9 @@ export function unifyRows(table: LookupTable, r1: Row, r2: Row): Either<ErrorTre
   if (rowToString(ra) === rowToString(rb)) {
     return right([])
   } else if (ra.kind === 'var') {
-    return bindRow(ra.name, rb).mapLeft(msg => buildErrorLeaf(location, msg))
+    return bindRow(ra.name, rb).mapLeft((msg: string) => buildErrorLeaf(location, msg))
   } else if (rb.kind === 'var') {
-    return bindRow(rb.name, ra).mapLeft(msg => buildErrorLeaf(location, msg))
+    return bindRow(rb.name, ra).mapLeft((msg: string) => buildErrorLeaf(location, msg))
   } else if (ra.kind === 'row' && rb.kind === 'row') {
     // Both rows are normal rows, so we need to compare their fields
     const sharedFieldNames = ra.fields.map(f => f.fieldName).filter(n => rb.fields.some(f => n === f.fieldName))
@@ -195,7 +195,8 @@ export function unifyRows(table: LookupTable, r1: Row, r2: Row): Either<ErrorTre
         const s1 = bindRow(ra.other.name, { ...rb, other: tailVar })
         const s2 = bindRow(rb.other.name, { ...ra, other: tailVar })
         // These bindings + composition should always succeed. I couldn't find a scenario where they don't.
-        return s1.chain(sa => s2.map(sb => compose(table, sa, sb))).mapLeft(msg => buildErrorLeaf(location, msg))
+        return s1.chain((sa: Substitutions) => s2.map((sb: Substitutions) => compose(table, sa, sb)))
+          .mapLeft((msg: string) => buildErrorLeaf(location, msg))
       } else {
         return left(
           buildErrorLeaf(
@@ -225,8 +226,8 @@ export function unifyRows(table: LookupTable, r1: Row, r2: Row): Either<ErrorTre
 
       // Return the composition of the two substitutions
       return tailSubs
-        .chain(subs => fieldSubs.map(s => compose(table, subs, s)))
-        .mapLeft(error => buildErrorTree(location, error))
+        .chain((subs: Substitutions) => fieldSubs.map((s: Substitutions) => compose(table, subs, s)))
+        .mapLeft((error: Error) => buildErrorTree(location, error))
     }
   } else {
     return left(buildErrorLeaf(location, `Couldn't unify ${ra.kind} and ${rb.kind}`))
@@ -276,7 +277,7 @@ function applySubstitutionsAndUnify(
   t2: QuintType
 ): Either<Error, Substitutions> {
   const r1 = unify(table, applySubstitution(table, subs, t1), applySubstitution(table, subs, t2))
-  return r1.map(subst => compose(table, subs, subst))
+  return r1.map((subst: Substitutions) => compose(table, subs, subst))
 }
 
 function checkSameLength(
@@ -297,14 +298,34 @@ function chainUnifications(table: LookupTable, types1: QuintType[], types2: Quin
   }
 
   // Unify the first pair and apply the substitutions to the rest
-  return unify(table, types1[0], types2[0]).chain(subs => {
+  return unify(table, types1[0], types2[0]).chain((subs: Substitutions) => {
     if (types1.length === 1) {
       return right(subs)
     } else {
       // Recurse with the updated types
       const restTypes1 = types1.slice(1).map(t => applySubstitution(table, subs, t))
       const restTypes2 = types2.slice(1).map(t => applySubstitution(table, subs, t))
-      return chainUnifications(table, restTypes1, restTypes2).map(restSubs => compose(table, subs, restSubs))
+      return chainUnifications(table, restTypes1, restTypes2).map((restSubs: Substitutions) => compose(table, subs, restSubs))
     }
   })
+}
+
+// Helper function to check if a type is a type variable or contains only type variables
+function isTypeVar(type: QuintType): boolean {
+  if (type.kind === 'var') {
+    return true
+  }
+  
+  // For compound types, check their components
+  switch (type.kind) {
+    case 'set':
+    case 'list':
+      return isTypeVar(type.elem)
+    case 'fun':
+      return isTypeVar(type.arg) && isTypeVar(type.res)
+    case 'oper':
+      return type.args.every(isTypeVar) && isTypeVar(type.res)
+    default:
+      return false
+  }
 }
