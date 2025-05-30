@@ -178,6 +178,7 @@ Added those variables to the `vars` field of the ITF json so that they are displ
 
 ### Added
 
+- Add the operator `generate` to mirror `Apalache!Gen` (see #1455).
 - In the `verify` command, add warning if `--out-itf` option contains `{test}` or `{seq}` as those have no effect since Apalache only produces a single trace (#1485)
 - The `run` and `test` commands now display a progress bar (#1457)
 
