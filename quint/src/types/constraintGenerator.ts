@@ -33,7 +33,7 @@ import {
 import { QuintType, QuintVarType, rowNames, typeNames } from '../ir/quintTypes'
 import { expressionToString, rowToString, typeToString } from '../ir/IRprinting'
 import { Either, left, mergeInMany, right } from '@sweet-monads/either'
-import { Error, ErrorTree, buildErrorLeaf, buildErrorTree, errorTreeToString } from '../errorTree'
+import { buildErrorLeaf, buildErrorTree, errorTreeToString, ErrorTree } from '../errorTree'
 import { getSignatures } from './builtinSignatures'
 import { Constraint, QuantifiedVariables, Signature, TypeScheme, toScheme } from './base'
 import { Substitutions, applySubstitution, compose } from './substitutions'
@@ -68,14 +68,16 @@ function validateArity(
   args: [QuintEx, QuintType][],
   pred: (arity: number) => Boolean,
   msg: String
-): Either<Error, null> {
+): Either<ErrorTree, null> {
   if (!pred(args.length)) {
-    return left(
-      buildErrorLeaf(
-        `Checking arity for application of ${opcode}`,
-        `Operator expects ${msg} arguments but was given ${args.length}`
-      )
-    )
+    return left({
+      location: 'Validating operator arity',
+      children: [{
+        location: 'Checking arity for application of ' + opcode,
+        message: `Operator expects ${msg} arguments but was given ${args.length}`,
+        children: []
+      }]
+    })
   } else {
     return right(null)
   }
@@ -174,11 +176,11 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
       return
     }
 
-    const argsResult: Either<Error, [QuintEx, QuintType][]> = mergeInMany(
+    const argsResult: Either<ErrorTree, [QuintEx, QuintType][]> = mergeInMany(
       e.args.map(e => {
-        return this.fetchResult(e.id).map(r => [e, r.type])
+        return this.fetchResult(e.id).map(r => [e, r.type] as [QuintEx, QuintType])
       })
-    )
+    ).mapLeft(errors => buildErrorTree('Validating operator arguments', errors))
 
     // We want `definedSignature` computed before the fresh variable `a` so that the
     // numbering of their fresh variables stays in order, with `a`, used for return types,
@@ -340,9 +342,23 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
     })
   }
 
-  private addToResults(exprId: bigint, result: Either<Error, TypeScheme>) {
+  private addToResults(exprId: bigint, result: Either<unknown, TypeScheme>) {
     result
-      .mapLeft(err => this.errors.set(exprId, buildErrorTree(this.location, err)))
+      .mapLeft(err => {
+        if (typeof err === 'string') {
+          // It's a string error message
+          this.errors.set(exprId, buildErrorLeaf(this.location, err))
+        } else if (Array.isArray(err)) {
+          // It's an array of ErrorTree
+          this.errors.set(exprId, buildErrorTree(this.location, err as ErrorTree[]))
+        } else if (err && typeof err === 'object' && 'location' in err) {
+          // It's a single ErrorTree
+          this.errors.set(exprId, err as ErrorTree)
+        } else {
+          // It's some other error type, convert it to ErrorTree
+          this.errors.set(exprId, buildErrorLeaf(this.location, String(err)))
+        }
+      })
       .map(r => {
         this.typesInScope.set(exprId, r)
         this.types.set(exprId, r)

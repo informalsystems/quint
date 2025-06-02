@@ -43,3 +43,12 @@ type variable 'a' is unbound. To fix it, write
     data: {},
   }
 }
+
+export function duplicateRecordFieldError(id: bigint, fieldName: string): QuintError {
+  return {
+    code: 'QNT015',
+    message: `Duplicate field name '${fieldName}' in record declaration`,
+    reference: id,
+    data: {},
+  }
+}

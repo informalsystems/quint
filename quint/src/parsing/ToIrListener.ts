@@ -38,7 +38,7 @@ import { TerminalNode } from 'antlr4ts/tree/TerminalNode'
 import { QuintTypeDef } from '../ir/quintIr'
 import { zip } from '../util'
 import { QuintError } from '../quintError'
-import { lowercaseTypeError, tooManySpreadsError, undeclaredTypeParamsError } from './parseErrors'
+import { duplicateRecordFieldError, lowercaseTypeError, tooManySpreadsError, undeclaredTypeParamsError } from './parseErrors'
 import { Loc } from '../ErrorMessage'
 import assert, { fail } from 'assert'
 
@@ -770,7 +770,20 @@ export class ToIrListener implements QuintListener {
     const pairs = elems.map(e => (e.kind === 'app' && e.args.length === 2 ? e.args : [])).filter(es => es.length > 0)
 
     if (spreads.length === 0) {
-      // { field1: value1, field2: value2 }
+      // Check for duplicate fields before constructing the record
+      const seenFields = new Set<string>()
+      for (const pair of pairs) {
+        const [key] = pair
+        if (key.kind === 'str') {
+          if (seenFields.has(key.value)) {
+            const id = this.getId(ctx)
+            this.errors.push(duplicateRecordFieldError(id, key.value))
+            return
+          }
+          seenFields.add(key.value)
+        }
+      }
+      // No duplicates found, proceed with record construction
       this.pushApplication(ctx, 'Rec', pairs.flat())
     } else if (spreads.length > 1) {
       // error
