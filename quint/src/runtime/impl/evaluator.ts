@@ -14,7 +14,7 @@
  * @module
  */
 
-import { Either, left, right } from '@sweet-monads/either'
+import { Either, left, mergeInMany, right } from '@sweet-monads/either'
 import { QuintApp, QuintEx } from '../../ir/quintIr'
 import { LookupDefinition, LookupTable } from '../../names/base'
 import { QuintError } from '../../quintError'
@@ -28,7 +28,8 @@ import { zerog } from '../../idGenerator'
 import { List } from 'immutable'
 import { Builder, buildDef, buildExpr, nameWithNamespaces } from './builder'
 import { Presets, SingleBar } from 'cli-progress'
-import { SimulationResult } from '../../simulation'
+import { Outcome, SimulationTrace, getTraceStatistics } from '../../simulation'
+import assert from 'assert'
 
 /**
  * An evaluator for Quint in Node TS runtime.
@@ -68,6 +69,10 @@ export class Evaluator {
    */
   updateTable(table: LookupTable) {
     this.builder.table = table
+  }
+
+  updateState(state: QuintEx) {
+    this.ctx.varStorage.fromRecord(rv.fromQuintEx(state))
   }
 
   /**
@@ -135,8 +140,8 @@ export class Evaluator {
    * @param nruns - The number of simulation runs to perform.
    * @param nsteps - The number of steps to perform in each simulation run.
    * @param ntraces - The number of error traces to collect before stopping the simulation.
-   * @returns a boolean expression indicating whether all simulations passed without errors,
-              or an error if the simulation cannot be completed.
+   * @param onTrace - A callback function to be called with trace information for each simulation run.
+   * @returns a simulation outcome with all data to report
    */
   simulate(
     init: QuintEx,
@@ -145,30 +150,35 @@ export class Evaluator {
     witnesses: QuintEx[],
     nruns: number,
     nsteps: number,
-    ntraces: number
-  ): Either<QuintError, SimulationResult> {
+    ntraces: number,
+    onTrace?: (index: number, status: string, vars: string[], states: QuintEx[]) => void
+  ): Outcome {
     let errorsFound = 0
     let failure: QuintError | undefined = undefined
+    const startTime = Date.now()
 
     const progressBar = new SingleBar(
       {
         clearOnComplete: true,
         forceRedraw: true,
-        format: 'Running... [{bar}] {percentage}% | ETA: {eta}s | {value}/{total} samples',
+        format: 'Running... [{bar}] {percentage}% | ETA: {eta}s | {value}/{total} samples | {speed} samples/s',
       },
       Presets.rect
     )
-    progressBar.start(Number(nruns), 0)
+    progressBar.start(Number(nruns), 0, { speed: '0' })
 
     const initEval = buildExpr(this.builder, init)
     const stepEval = buildExpr(this.builder, step)
     const invEval = buildExpr(this.builder, inv)
     const witnessesEvals = witnesses.map(w => buildExpr(this.builder, w))
     const witnessingTraces = new Array(witnesses.length).fill(0)
+    const traceLengths: number[] = []
 
     let runNo = 0
     for (; errorsFound < ntraces && !failure && runNo < nruns; runNo++) {
-      progressBar.update(runNo)
+      const elapsedSeconds = (Date.now() - startTime) / 1000
+      const speed = Math.round(runNo / elapsedSeconds)
+      progressBar.update(runNo, { speed })
       const traceWitnessed = new Array(witnesses.length).fill(false)
 
       this.recorder.onRunCall()
@@ -200,6 +210,8 @@ export class Evaluator {
 
             const stepResult = stepEval(this.ctx).mapLeft(error => (failure = error))
             if (!isTrue(stepResult)) {
+              traceLengths.push(this.trace.get().length)
+
               // The run cannot be extended. In some cases, this may indicate a deadlock.
               // Since we are doing random simulation, it is very likely
               // that we have not generated good values for extending
@@ -233,6 +245,8 @@ export class Evaluator {
               witnessingTraces[i] = witnessingTraces[i] + 1
             }
           })
+
+          traceLengths.push(this.trace.get().length)
         }
       }
 
@@ -241,9 +255,38 @@ export class Evaluator {
     }
     progressBar.stop()
 
-    return failure
-      ? left(failure)
-      : right({ result: { id: 0n, kind: 'bool', value: errorsFound == 0 }, witnessingTraces, samples: runNo })
+    const results: Either<QuintError[], SimulationTrace[]> = mergeInMany(
+      this.recorder.bestTraces.map((trace, index) => {
+        const maybeEvalResult = trace.frame.result
+        if (maybeEvalResult.isLeft()) {
+          return left(maybeEvalResult.value)
+        }
+        const quintExResult = maybeEvalResult.value.toQuintEx(zerog)
+        assert(quintExResult.kind === 'bool', 'invalid simulation produced non-boolean value ')
+        const simulationSucceeded = quintExResult.value
+        const status = simulationSucceeded ? 'ok' : 'violation'
+        const states = trace.frame.args.map(e => e.toQuintEx(zerog))
+
+        if (onTrace !== undefined) {
+          onTrace(index, status, this.varNames(), states)
+        }
+
+        return right({ states, result: simulationSucceeded, seed: trace.seed })
+      })
+    )
+
+    const runtimeErrors = results.isLeft() ? results.value : []
+
+    let traces = results.isRight() ? results.value : []
+
+    return {
+      status: failure ? 'error' : errorsFound == 0 ? 'ok' : 'violation',
+      errors: failure ? [failure, ...runtimeErrors] : runtimeErrors,
+      bestTraces: traces,
+      witnessingTraces,
+      samples: runNo,
+      traceStatistics: getTraceStatistics(traceLengths),
+    }
   }
 
   /**
@@ -261,16 +304,17 @@ export class Evaluator {
     onTrace: (name: string, status: string, vars: string[], states: QuintEx[]) => void
   ): TestResult {
     const name = nameWithNamespaces(testDef.name, List(testDef.namespaces))
+    const startTime = Date.now()
     const progressBar = new SingleBar(
       {
         clearOnComplete: true,
         forceRedraw: true,
-        format: '     {test} [{bar}] {percentage}% | ETA: {eta}s | {value}/{total} samples',
+        format: '     {test} [{bar}] {percentage}% | ETA: {eta}s | {value}/{total} samples | {speed} samples/s',
       },
       Presets.rect
     )
 
-    progressBar.start(maxSamples, 0, { test: name })
+    progressBar.start(maxSamples, 0, { test: name, speed: '0' })
 
     this.trace.reset()
     this.recorder.clear()
@@ -283,7 +327,9 @@ export class Evaluator {
     let nsamples = 1
     // run up to maxSamples, stop on the first failure
     for (; nsamples <= maxSamples; nsamples++) {
-      progressBar.update(nsamples, { test: name })
+      const elapsedSeconds = (Date.now() - startTime) / 1000
+      const speed = Math.round(nsamples / elapsedSeconds)
+      progressBar.update(nsamples, { test: name, speed })
       // record the seed value
       seed = this.rng.getState()
       this.recorder.onRunCall()
@@ -401,12 +447,19 @@ export class Evaluator {
    * @returns the result of the simulation, or an error if the simulation cannot be completed.
    */
   private evaluateSimulation(expr: QuintApp): Either<QuintError, QuintEx> {
+    let result: Outcome
     if (expr.opcode === 'q::testOnce') {
       const [nsteps, ntraces, init, step, inv] = expr.args
-      return this.simulate(init, step, inv, [], 1, toNumber(nsteps), toNumber(ntraces)).map(r => r.result)
+      result = this.simulate(init, step, inv, [], 1, toNumber(nsteps), toNumber(ntraces))
     } else {
       const [nruns, nsteps, ntraces, init, step, inv] = expr.args
-      return this.simulate(init, step, inv, [], toNumber(nruns), toNumber(nsteps), toNumber(ntraces)).map(r => r.result)
+      result = this.simulate(init, step, inv, [], toNumber(nruns), toNumber(nsteps), toNumber(ntraces))
+    }
+
+    if (result.status === 'error') {
+      return left(result.errors[0])
+    } else {
+      return right({ kind: 'str', value: result.status, id: 0n })
     }
   }
 }

@@ -26,18 +26,18 @@ import {
 import { ErrorMessage } from './ErrorMessage'
 
 import { Either, left, mergeInMany, right } from '@sweet-monads/either'
-import assert, { fail } from 'assert'
+import { fail } from 'assert'
 import { EffectScheme } from './effects/base'
 import { LookupTable } from './names/base'
 import { ReplOptions, quintRepl } from './repl'
-import { OpQualifier, QuintBool, QuintEx, QuintModule } from './ir/quintIr'
+import { OpQualifier, QuintEx, QuintModule } from './ir/quintIr'
 import { TypeScheme } from './types/base'
 import { createFinders, formatError } from './errorReporter'
 import { DocumentationEntry, produceDocs, toMarkdown } from './docs'
 import { QuintError, quintErrorToString } from './quintError'
 import { TestOptions, TestResult } from './runtime/testing'
 import { IdGenerator, newIdGenerator } from './idGenerator'
-import { Outcome, SimulationTrace, SimulatorOptions } from './simulation'
+import { Outcome, SimulatorOptions, showTraceStatistics } from './simulation'
 import { ofItf, toItf } from './itf'
 import { printExecutionFrameRec, printTrace, terminalWidth } from './graphics'
 import { verbosity } from './verbosity'
@@ -335,11 +335,11 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
   }
   const rng = rngOrError.unwrap()
 
-  const matchFun = (n: string): boolean => isMatchingTest(testing.args.match, n)
-  const maxSamples = testing.args.maxSamples
+  const matchFun = (n: string): boolean => isMatchingTest(prev.args.match, n)
+  const maxSamples = prev.args.maxSamples
   const options: TestOptions = {
     testMatch: matchFun,
-    maxSamples: testing.args.maxSamples,
+    maxSamples: prev.args.maxSamples,
     rng,
     verbosity: verbosityLevel,
     onTrace: (index: number) => (name: string, status: string, vars: string[], states: QuintEx[]) => {
@@ -358,7 +358,7 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
 
   const out = console.log
 
-  const outputTemplate = testing.args.outItf
+  const outputTemplate = prev.args.outItf
 
   // Start the Timer and being running the tests
   const startMs = Date.now()
@@ -371,7 +371,7 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
     .flat()
     .filter(d => d.kind === 'def' && options.testMatch(d.name))
 
-  const evaluator = new Evaluator(testing.table, newTraceRecorder(verbosityLevel, rng, 1), rng)
+  const evaluator = new Evaluator(prev.table, newTraceRecorder(verbosityLevel, rng, 1), rng)
   const results = testDefs.map((def, index) => {
     return evaluator.test(def, maxSamples, options.onTrace(index))
   })
@@ -399,7 +399,7 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
   const ignored = results.filter(r => r.status === 'ignored')
   const namedErrors: [TestResult, ErrorMessage][] = failed.reduce(
     (acc: [TestResult, ErrorMessage][], failure) =>
-      acc.concat(failure.errors.map(e => [failure, mkErrorMessage(testing.sourceMap)(e)])),
+      acc.concat(failure.errors.map(e => [failure, mkErrorMessage(prev.sourceMap)(e)])),
     []
   )
 
@@ -475,14 +475,19 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
 }
 
 // Print a counterexample if the appropriate verbosity is set
-function maybePrintCounterExample(verbosityLevel: number, states: QuintEx[], frames: ExecutionFrame[] = []) {
+function maybePrintCounterExample(
+  verbosityLevel: number,
+  states: QuintEx[],
+  frames: ExecutionFrame[] = [],
+  hideVars: string[] = []
+) {
   if (verbosity.hasStateOutput(verbosityLevel)) {
     console.log(chalk.gray('An example execution:\n'))
     const myConsole = {
       width: terminalWidth(),
       out: (s: string) => process.stdout.write(s),
     }
-    printTrace(myConsole, states, frames)
+    printTrace(myConsole, states, frames, hideVars)
   }
 }
 
@@ -510,8 +515,8 @@ function maybePrintWitnesses(verbosityLevel: number, outcome: Outcome, witnesses
 export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure<TracingStage>> {
   const simulator = { ...prev, stage: 'running' as stage }
   const startMs = Date.now()
-  // Force disable output if `--out-itf` is set
-  const verbosityLevel = prev.args.outItf ? 0 : deriveVerbosity(prev.args)
+  // Verboity level controls how much of the output is shown
+  const verbosityLevel = deriveVerbosity(prev.args)
   const mainName = guessMainModule(prev)
   const main = prev.modules.find(m => m.name === mainName)
   if (!main) {
@@ -525,15 +530,34 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
   }
   const rng = rngOrError.unwrap()
 
+  // Process both invariant and invariants options
+  let invariantsList: string[] = []
+  if (prev.args.invariant && prev.args.invariant !== 'true') {
+    invariantsList.push(prev.args.invariant)
+  }
+  if (prev.args.invariants && prev.args.invariants.length > 0) {
+    invariantsList = invariantsList.concat(prev.args.invariants)
+  }
+  // If no invariants specified, use the default 'true'
+  const invariantString = invariantsList.length > 0 ? invariantsList.join(' and ') : 'true'
+  // Keep track of individual invariants for reporting
+  const individualInvariants = invariantsList.length > 0 ? invariantsList : ['true']
+
+  // We use:
+  // - 'invariantString' as the combined invariant string for the simulator to check
+  // - 'individualInvariants' for reporting which specific invariants were violated
+
   const options: SimulatorOptions = {
     init: prev.args.init,
     step: prev.args.step,
-    invariant: prev.args.invariant,
+    invariant: invariantString,
+    individualInvariants: individualInvariants,
     maxSamples: prev.args.maxSamples,
     maxSteps: prev.args.maxSteps,
     rng,
     verbosity: verbosityLevel,
     storeMetadata: prev.args.mbt,
+    hideVars: prev.args.hide || [],
     numberOfTraces: prev.args.nTraces,
     onTrace: (index: number, status: string, vars: string[], states: QuintEx[]) => {
       const itfFile: string | undefined = prev.args.outItf
@@ -552,23 +576,8 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
 
   const recorder = newTraceRecorder(options.verbosity, options.rng, options.numberOfTraces)
 
-  function toExpr(input: string): Either<QuintError, QuintEx> {
-    const parseResult = parseExpressionOrDeclaration(input, '<input>', prev.idGen, prev.sourceMap)
-    if (parseResult.kind !== 'expr') {
-      return left({ code: 'QNT501', message: `Expected ${input} to be a valid expression` })
-    }
-
-    prev.resolver.switchToModule(mainName)
-    walkExpression(prev.resolver, parseResult.expr)
-    if (prev.resolver.errors.length > 0) {
-      return left(prev.resolver.errors[0])
-    }
-
-    return right(parseResult.expr)
-  }
-
   const argsParsingResult = mergeInMany(
-    [prev.args.init, prev.args.step, prev.args.invariant, ...prev.args.witnesses].map(toExpr)
+    [prev.args.init, prev.args.step, invariantString, ...prev.args.witnesses].map(e => toExpr(prev, e))
   )
   if (argsParsingResult.isLeft()) {
     return cliErr('Argument error', {
@@ -587,9 +596,18 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
       console.warn(chalk.yellow('Use the typescript backend if you need that functionality.'))
     }
 
+    // Parse the combined invariant for the Rust backend
+    const invariantExpr = toExpr(prev, invariantString)
+    if (invariantExpr.isLeft()) {
+      return cliErr('Argument error', {
+        ...simulator,
+        errors: [mkErrorMessage(prev.sourceMap)(invariantExpr.value)],
+      })
+    }
+
     const quintRustWrapper = new QuintRustWrapper(verbosityLevel)
     outcome = await quintRustWrapper.simulate(
-      { modules: [], table: prev.resolver.table, main: mainName, init, step, invariant },
+      { modules: [], table: prev.resolver.table, main: mainName, init, step, invariant: invariantExpr.value },
       prev.path,
       witnesses,
       prev.args.maxSamples,
@@ -599,52 +617,16 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
   } else {
     // Use the typescript simulator
     const evaluator = new Evaluator(prev.resolver.table, recorder, options.rng, options.storeMetadata)
-    const evalResult = evaluator.simulate(
+    outcome = evaluator.simulate(
       init,
       step,
       invariant,
       witnesses,
       prev.args.maxSamples,
       prev.args.maxSteps,
-      prev.args.nTraces ?? 1
+      prev.args.nTraces ?? 1,
+      options.onTrace
     )
-
-    simulator.seed = recorder.bestTraces[0]?.seed
-
-    const results: Either<QuintError[], SimulationTrace[]> = mergeInMany(
-      recorder.bestTraces.map((trace, index) => {
-        const maybeEvalResult = trace.frame.result
-        if (maybeEvalResult.isLeft()) {
-          return left(maybeEvalResult.value)
-        }
-        const quintExResult = maybeEvalResult.value.toQuintEx(prev.idGen)
-        assert(quintExResult.kind === 'bool', 'invalid simulation produced non-boolean value ')
-        const simulationSucceeded = quintExResult.value
-        const status = simulationSucceeded ? 'ok' : 'violation'
-        const states = trace.frame.args.map(e => e.toQuintEx(prev.idGen))
-
-        options.onTrace(index, status, evaluator.varNames(), states)
-
-        return right({ states, result: simulationSucceeded, seed: trace.seed })
-      })
-    )
-
-    if (results.isLeft()) {
-      return cliErr('Runtime error', {
-        ...simulator,
-        errors: results.value.map(mkErrorMessage(prev.sourceMap)),
-      })
-    }
-
-    let traces = results.value
-
-    outcome = {
-      status: evalResult.isRight() ? ((evalResult.value.result as QuintBool).value ? 'ok' : 'violation') : 'error',
-      errors: evalResult.isLeft() ? [evalResult.value] : [],
-      bestTraces: traces,
-      witnessingTraces: evalResult.isRight() ? evalResult.value.witnessingTraces : [],
-      samples: evalResult.isRight() ? evalResult.value.samples : 0,
-    }
   }
 
   const elapsedMs = Date.now() - startMs
@@ -658,15 +640,20 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
       return cliErr('Runtime error', {
         ...simulator,
         status: outcome.status,
-        // trace: states,
+        seed: prev.args.seed,
         errors: outcome.errors.map(mkErrorMessage(prev.sourceMap)),
       })
 
     case 'ok':
-      maybePrintCounterExample(verbosityLevel, states, frames)
+      maybePrintCounterExample(verbosityLevel, states, frames, prev.args.hide || [])
       if (verbosity.hasResults(verbosityLevel)) {
-        console.log(chalk.green('[ok]') + ' No violation found ' + chalk.gray(`(${elapsedMs}ms).`))
+        console.log(
+          chalk.green('[ok]') +
+            ' No violation found ' +
+            chalk.gray(`(${elapsedMs}ms at ${Math.round((1000 * outcome.samples) / elapsedMs)} traces/second).`)
+        )
         if (verbosity.hasHints(verbosityLevel)) {
+          console.log(chalk.gray(showTraceStatistics(outcome.traceStatistics)))
           console.log(chalk.gray('You may increase --max-samples and --max-steps.'))
           console.log(chalk.gray('Use --verbosity to produce more (or less) output.'))
         }
@@ -680,14 +667,21 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
       })
 
     case 'violation':
-      maybePrintCounterExample(verbosityLevel, states, frames)
+      maybePrintCounterExample(verbosityLevel, states, frames, prev.args.hide || [])
       if (verbosity.hasResults(verbosityLevel)) {
-        console.log(chalk.red(`[violation]`) + ' Found an issue ' + chalk.gray(`(${elapsedMs}ms).`))
+        console.log(
+          chalk.red(`[violation]`) +
+            ' Found an issue ' +
+            chalk.gray(`(${elapsedMs}ms at ${Math.round((1000 * outcome.samples) / elapsedMs)} traces/second).`)
+        )
 
-        if (verbosity.hasHints(verbosityLevel)) {
-          console.log(chalk.gray('Use --verbosity=3 to show executions.'))
-        }
+        printViolatedInvariants(states[states.length - 1], individualInvariants, prev)
       }
+
+      if (verbosity.hasHints(verbosityLevel)) {
+        console.log(chalk.gray('Use --verbosity=3 to show executions.'))
+      }
+
       maybePrintWitnesses(verbosityLevel, outcome, prev.args.witnesses)
 
       return cliErr('Invariant violated', {
@@ -696,6 +690,45 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
         trace: states,
         errors: [],
       })
+  }
+}
+function toExpr(prev: TypecheckedStage, input: string): Either<QuintError, QuintEx> {
+  const mainName = guessMainModule(prev)
+  const parseResult = parseExpressionOrDeclaration(input, '<input>', prev.idGen, prev.sourceMap)
+  if (parseResult.kind !== 'expr') {
+    return left({ code: 'QNT501', message: `Expected ${input} to be a valid expression` })
+  }
+
+  prev.resolver.switchToModule(mainName)
+  walkExpression(prev.resolver, parseResult.expr)
+  if (prev.resolver.errors.length > 0) {
+    return left(prev.resolver.errors[0])
+  }
+
+  return right(parseResult.expr)
+}
+
+function printViolatedInvariants(state: QuintEx, invariants: string[], prev: TypecheckedStage) {
+  if (invariants.length <= 1) {
+    return
+  }
+
+  const evaluator = new Evaluator(prev.resolver.table, newTraceRecorder(0, newRng()), newRng(), false)
+
+  // For each individual invariant, check if it's violated in the final state
+  for (const inv of invariants) {
+    const invExpr = toExpr(prev, inv).unwrap()
+    // Evaluate the invariant to create the registers
+    evaluator.evaluate(invExpr)
+    // Set the registers with the last state
+    evaluator.updateState(state)
+    // Now actually evaluate the invariant
+    const evalResult = evaluator.evaluate(invExpr)
+
+    // If we can evaluate it and it's false, it's violated
+    if (evalResult.isRight() && evalResult.value.kind === 'bool' && !evalResult.value.value) {
+      console.log(chalk.red(`  ❌ ${inv}`))
+    }
   }
 }
 
@@ -711,14 +744,21 @@ export async function compile(typechecked: TypecheckedStage): Promise<CLIProcedu
     return cliErr(`module ${mainName} does not exist`, { ...typechecked, errors: [], sourceCode: new Map() })
   }
 
-  // Wrap init, step, invariant and temporal properties in other definitions,
-  // to make sure they are not considered unused in the main module and,
-  // therefore, ignored by the flattener
+  // Process both invariant and invariants options
+  let invariantsList: string[] = []
+  if (args.invariant && args.invariant !== 'true') {
+    invariantsList.push(args.invariant)
+  }
+  if (args.invariants && args.invariants.length > 0) {
+    invariantsList = invariantsList.concat(args.invariants)
+  }
+
   const extraDefsAsText = [`action q::init = ${args.init}`, `action q::step = ${args.step}`]
 
-  if (args.invariant) {
-    extraDefsAsText.push(`val q::inv = and(${args.invariant})`)
+  if (invariantsList.length > 0) {
+    extraDefsAsText.push(`val q::inv = and(${invariantsList.join(',')})`)
   }
+
   if (args.temporal) {
     extraDefsAsText.push(`temporal q::temporalProps = and(${args.temporal})`)
   }
@@ -867,6 +907,15 @@ export async function verifySpec(prev: CompiledStage): Promise<CLIProcedure<Trac
   const veryfiyingFlat = { ...prev, modules: [prev.mainModule] }
   const parsedSpec = jsonStringOfOutputStage(pickOutputStage(veryfiyingFlat))
 
+  // Process both invariant and invariants options
+  let invariantsList: string[] = []
+  if (prev.args.invariant && prev.args.invariant !== 'true') {
+    invariantsList.push(prev.args.invariant)
+  }
+  if (prev.args.invariants && prev.args.invariants.length > 0) {
+    invariantsList = invariantsList.concat(prev.args.invariants)
+  }
+
   // We need to insert the data form CLI args into their appropriate locations
   // in the Apalache config
   const config = {
@@ -884,7 +933,7 @@ export async function verifySpec(prev: CompiledStage): Promise<CLIProcedure<Trac
       length: args.maxSteps,
       init: 'q::init',
       next: 'q::step',
-      inv: args.invariant ? ['q::inv'] : undefined,
+      inv: invariantsList.length > 0 ? ['q::inv'] : undefined,
       'temporal-props': args.temporal ? ['q::temporalProps'] : undefined,
       tuning: {
         ...(loadedConfig.checker?.tuning ?? {}),
@@ -913,10 +962,11 @@ export async function verifySpec(prev: CompiledStage): Promise<CLIProcedure<Trac
         const status = trace !== undefined ? 'violation' : 'failure'
         if (trace !== undefined) {
           // Always print the conterexample, unless the output is being directed to one of the outfiles
-          maybePrintCounterExample(verbosityLevel, trace)
+          maybePrintCounterExample(verbosityLevel, trace, [], prev.args.hide || [])
 
           if (verbosity.hasResults(verbosityLevel)) {
             console.log(chalk.red(`[${status}]`) + ' Found an issue ' + chalk.gray(`(${elapsedMs}ms).`))
+            printViolatedInvariants(trace[trace.length - 1], invariantsList, prev)
           }
 
           if (prev.args.outItf && err.traces) {

@@ -229,7 +229,7 @@ Options:
                                                                         [string]
   --out-itf      output the trace in the Informal Trace Format to file, e.g.,
                  out_{seq}.itf.json where {seq} is the trace sequence number
-                 (suppresses all console output)                        [string]
+                                                                        [string]
   --max-samples  the maximum number of runs to attempt before giving up
                                                        [number] [default: 10000]
   --n-traces     how many traces to generate (only affects output to out-itf)
@@ -238,10 +238,16 @@ Options:
                                                           [number] [default: 20]
   --init         name of the initializer action       [string] [default: "init"]
   --step         name of the step action              [string] [default: "step"]
-  --invariant    invariant to check: a definition name or an expression
-                                                      [string] [default: "true"]
+  --invariants   space separated list of invariants to check (definition names).
+                 When specified, all invariants are combined with AND and
+                 checked together, with detailed reporting of which ones were
+                 violated                                  [array] [default: []]
+  --invariant    invariant to check: a definition name or an expression. Can be
+                 used together with --invariants      [string] [default: "true"]
   --witnesses    space separated list of witnesses to report on (counting for
                  how many traces the witness is true)      [array] [default: []]
+  --hide         space separated list of variable names to hide from the terminal
+                 output (does not affect ITF output)       [array] [default: []]
   --seed         random seed to use for non-deterministic choice        [string]
   --verbosity    control how much output is produced (0 to 5)
                                                            [number] [default: 2]
@@ -349,10 +355,13 @@ Options:
                         filename)                                       [string]
   --init                name of the initializer action[string] [default: "init"]
   --step                name of the step action       [string] [default: "step"]
-  --invariant           the invariants to check, separated by commas (e.g.)
-                                                                        [string]
+  --invariant           the invariants to check, separated by commas    [string]
   --temporal            the temporal properties to check, separated by commas
                                                                         [string]
+  --invariants          space separated list of invariants to check (definition
+                        names). When specified, all invariants are combined with
+                        AND and checked together, with detailed reporting of
+                        which ones were violated           [array] [default: []]
   --out-itf             output the trace in the Informal Trace Format to file
                         (suppresses all console output)                 [string]
   --max-steps           the maximum number of steps in every trace
@@ -367,7 +376,7 @@ Options:
 
 <!-- TODO: Update after https://github.com/informalsystems/quint/issues/701 -->
 By default, this command will automatically obtain and run Apalache. The only
-prerequisite is a [compatible installation of OpenJDK](../quint/README.md).
+prerequisite is a [compatible installation of OpenJDK](https://quint-lang.org/docs/getting-started).
 
 You may also manually obtain and run a distribution of Apalache, following these
 steps:
@@ -460,10 +469,10 @@ an output file in the Quint format.
 JSON format. This configuration files specifies the indentation rules. The
 exact format is to be specified in the future.
 
-[ADR002]: ./adr002-errors.md
+[ADR002]: ./development-docs/architecture-decision-records/adr002-errors.md
 [Working Backwards]: https://www.allthingsdistributed.com/2006/11/working_backwards.html
 [Source map]: https://docs.google.com/document/d/1U1RGAehQwRypUTovF1KRlpiOFze0b-_2gc6fAH0KY0k/edit
-[Quint IR]: https://github.com/informalsystems/quint/blob/main/quint/src/quintIr.ts
+[Quint IR]: https://github.com/informalsystems/quint/blob/main/quint/src/ir/quintIr.ts
 [REPL]: https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop
 [Informal Trace Format]: https://apalache-mc.org/docs/adr/015adr-trace.html
 [ITF Trace Viewer]: https://marketplace.visualstudio.com/items?itemName=informal.itf-trace-viewer
