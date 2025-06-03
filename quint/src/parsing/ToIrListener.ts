@@ -764,6 +764,22 @@ export class ToIrListener implements QuintListener {
   }
 
   // record constructor, e.g., { name: "igor", year: 2021 }
+  private checkDuplicateFields(pairs: QuintEx[][], ctx: p.RecordContext): boolean {
+    const seenFields = new Set<string>()
+    for (const pair of pairs) {
+      const [key] = pair
+      if (key.kind === 'str') {
+        if (seenFields.has(key.value)) {
+          const id = this.getId(ctx)
+          this.errors.push(duplicateRecordFieldError(id, key.value))
+          return true
+        }
+        seenFields.add(key.value)
+      }
+    }
+    return false
+  }
+
   exitRecord(ctx: p.RecordContext) {
     const elems = popMany(this.exprStack, ctx.recElem().length, this.undefinedExpr(ctx))
     const spreads = elems.filter(e => e.kind === 'app' && e.args.length === 1)
@@ -771,17 +787,8 @@ export class ToIrListener implements QuintListener {
 
     if (spreads.length === 0) {
       // Check for duplicate fields before constructing the record
-      const seenFields = new Set<string>()
-      for (const pair of pairs) {
-        const [key] = pair
-        if (key.kind === 'str') {
-          if (seenFields.has(key.value)) {
-            const id = this.getId(ctx)
-            this.errors.push(duplicateRecordFieldError(id, key.value))
-            return
-          }
-          seenFields.add(key.value)
-        }
+      if (this.checkDuplicateFields(pairs, ctx)) {
+        return
       }
       // No duplicates found, proceed with record construction
       this.pushApplication(ctx, 'Rec', pairs.flat())
