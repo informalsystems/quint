@@ -20,7 +20,7 @@ import { QuintEx } from '../ir/quintIr'
 import { QuintOperType, QuintType, QuintVarType, RowField, sumType } from '../ir/quintTypes'
 import { Constraint } from './base'
 import { chunk, times } from 'lodash'
-import { duplicateRecordFieldError } from '../../../src/parsing/parseErrors'
+import { duplicateRecordFieldError } from '../parsing/parseErrors'
 
 export function recordConstructorConstraints(
   id: bigint,
