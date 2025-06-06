@@ -38,7 +38,12 @@ import { TerminalNode } from 'antlr4ts/tree/TerminalNode'
 import { QuintTypeDef } from '../ir/quintIr'
 import { zip } from '../util'
 import { QuintError } from '../quintError'
-import { lowercaseTypeError, tooManySpreadsError, undeclaredTypeParamsError } from './parseErrors'
+import {
+  duplicateRecordFieldError,
+  lowercaseTypeError,
+  tooManySpreadsError,
+  undeclaredTypeParamsError,
+} from './parseErrors'
 import { Loc } from '../ErrorMessage'
 import assert, { fail } from 'assert'
 
@@ -764,13 +769,34 @@ export class ToIrListener implements QuintListener {
   }
 
   // record constructor, e.g., { name: "igor", year: 2021 }
+  private checkDuplicateFields(pairs: QuintEx[][], ctx: p.RecordContext): boolean {
+    const seenFields = new Set<string>()
+    for (const pair of pairs) {
+      const [key] = pair
+      if (key.kind === 'str') {
+        if (seenFields.has(key.value)) {
+          const id = this.getId(ctx)
+          this.errors.push(duplicateRecordFieldError(id, key.value))
+          return true
+        }
+        seenFields.add(key.value)
+      }
+    }
+    return false
+  }
+
   exitRecord(ctx: p.RecordContext) {
     const elems = popMany(this.exprStack, ctx.recElem().length, this.undefinedExpr(ctx))
     const spreads = elems.filter(e => e.kind === 'app' && e.args.length === 1)
     const pairs = elems.map(e => (e.kind === 'app' && e.args.length === 2 ? e.args : [])).filter(es => es.length > 0)
 
+    // Check for duplicate fields before constructing any record
+    if (this.checkDuplicateFields(pairs, ctx)) {
+      return
+    }
+
     if (spreads.length === 0) {
-      // { field1: value1, field2: value2 }
+      // No duplicates found, proceed with record construction
       this.pushApplication(ctx, 'Rec', pairs.flat())
     } else if (spreads.length > 1) {
       // error
