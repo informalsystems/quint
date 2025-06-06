@@ -2,12 +2,13 @@ import { describe, it } from 'mocha'
 import { assert } from 'chai'
 import { Constraint } from '../../src/types/base'
 import { ConstraintGeneratorVisitor, SolvingFunctionType } from '../../src/types/constraintGenerator'
-import { left, right } from '@sweet-monads/either'
+import { Either, left, right } from '@sweet-monads/either'
 import { walkModule } from '../../src/ir/IRVisitor'
 import { constraintToString } from '../../src/types/printing'
 import { ErrorTree } from '../../src/errorTree'
 import { LookupTable } from '../../src/names/base'
 import { parseMockedModule } from '../util'
+import { Substitutions } from '../../src/types/substitutions'
 
 describe('ConstraintGeneratorVisitor', () => {
   const baseDefs = ['var s: str', 'var y: int', 'const N: int']
@@ -28,7 +29,7 @@ describe('ConstraintGeneratorVisitor', () => {
     const expectedConstraint =
       '(int, int) => int ~ (t_x_9, int) => _t0 /\\ (Set[_t1], (_t1) => _t2) => Set[_t2] ~ (t_S_7, (t_x_9) => _t0) => _t3'
 
-    const solvingFunction = (_: LookupTable, c: Constraint) => {
+    const solvingFunction = (_: LookupTable, c: Constraint): Either<Map<bigint, ErrorTree>, Substitutions> => {
       assert.deepEqual(constraintToString(c), expectedConstraint)
       return right([])
     }
@@ -41,7 +42,7 @@ describe('ConstraintGeneratorVisitor', () => {
 
     const expectedConstraint = '(Set[_t1], (_t1) => _t2) => Set[_t2] ~ (t_S_7, (_t0) => int) => _t3'
 
-    const solvingFunction = (_: LookupTable, c: Constraint) => {
+    const solvingFunction = (_: LookupTable, c: Constraint): Either<Map<bigint, ErrorTree>, Substitutions> => {
       assert.deepEqual(constraintToString(c), expectedConstraint)
       return right([])
     }
@@ -52,7 +53,7 @@ describe('ConstraintGeneratorVisitor', () => {
   it('collects types from variable and constant definitions', () => {
     const defs = ['def a = s', 'def b = N']
 
-    const solvingFunction = (_: LookupTable, _c: Constraint) => right([])
+    const solvingFunction = (_: LookupTable, _c: Constraint): Either<Map<bigint, ErrorTree>, Substitutions> => right([])
 
     const visitor = visitModuleWithDefs(defs, solvingFunction)
     const [errors, types] = visitor.getResult()
@@ -78,7 +79,7 @@ describe('ConstraintGeneratorVisitor', () => {
 
     const solvingErrors = new Map<bigint, ErrorTree>([[1n, error]])
 
-    const solvingFunction = (_: LookupTable, _c: Constraint) => left(solvingErrors)
+    const solvingFunction = (_: LookupTable, _c: Constraint): Either<Map<bigint, ErrorTree>, Substitutions> => left(solvingErrors)
 
     const visitor = visitModuleWithDefs(defs, solvingFunction)
     const [errors, _types] = visitor.getResult()
