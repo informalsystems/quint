@@ -15,7 +15,7 @@
  *
  * @module
  */
-
+import { Readable } from 'stream'
 import { Either, chain, left, right } from '@sweet-monads/either'
 import { ErrorMessage } from './ErrorMessage'
 import path from 'path'
@@ -292,7 +292,10 @@ async function loadProtoDefViaReflection(
 
       // Decode reflection response to FileDescriptorProto
       let fileDescriptorProtos = protoDefResponse.file_descriptor_response.file_descriptor_proto.map(
-        bytes => protobufDescriptor.FileDescriptorProto.decode(bytes) as protobufDescriptor.IFileDescriptorProto
+        bytes =>
+          protobufDescriptor.FileDescriptorProto.decode(
+            bytes as unknown as Uint8Array
+          ) as protobufDescriptor.IFileDescriptorProto
       )
 
       // Use proto-loader to load the FileDescriptorProto wrapped in a FileDescriptorSet
@@ -340,7 +343,11 @@ function downloadAndUnpackApalache(apalacheVersion: string): Promise<ApalacheRes
   return fetch(url)
     .then(
       // unpack response body
-      res => pipeline(res.body!, tar.extract({ cwd: apalacheDistDir(apalacheVersion), strict: true })),
+      res =>
+        pipeline(
+          Readable.fromWeb(res.body! as any),
+          tar.extract({ cwd: apalacheDistDir(apalacheVersion), strict: true })
+        ),
       error => err(`Error fetching ${url}: ${error}`)
     )
     .then(

@@ -17,7 +17,7 @@ import { ErrorTree, buildErrorTree } from '../errorTree'
 import { Effect, Entity } from './base'
 import { effectToString, substitutionsToString } from './printing'
 import { simplify } from './simplification'
-import { isEqual } from 'lodash'
+import { isDeepStrictEqual } from 'node:util'
 
 /*
  * Substitutions can be applied to both effects and entities, replacing
@@ -88,7 +88,7 @@ export function applySubstitution(subs: Substitutions, e: Effect): Either<ErrorT
   }
 
   return result.map(simplify).chain(r => {
-    if (!isEqual(r, e)) {
+    if (!isDeepStrictEqual(r, e)) {
       // Keep re-applying the substitutions until the effect is unchanged.
       // Useful when substitutions have a transitive pattern [ a |-> b, b |-> c ]
       return applySubstitution(subs, r)

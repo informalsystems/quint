@@ -15,7 +15,7 @@
 import { Either, right } from '@sweet-monads/either'
 import { EvalFunction } from './builder'
 import { RuntimeValue, rv } from './runtimeValue'
-import { isEqual } from 'lodash'
+import { isDeepStrictEqual } from 'node:util'
 import { QuintError } from '../../quintError'
 import { CachedValue } from './Context'
 import { Maybe } from '@sweet-monads/maybe'
@@ -47,7 +47,7 @@ export function evalNondet(
 ): EvalFunction {
   return ctx =>
     setEval(ctx).chain(set => {
-      if (isEqual(set.cardinality(), right(0n))) {
+      if (isDeepStrictEqual(set.cardinality(), right(0n))) {
         // The whole let expression is false if there are no elements to be picked.
         return right(rv.mkBool(false))
       }
@@ -92,7 +92,7 @@ export function evalNondet(
         }
 
         // Retry if condition is satisfied and we haven't exhausted all possible positions.
-      } while (shouldRetry && !isEqual(newPositions, originalPositions))
+      } while (shouldRetry && !isDeepStrictEqual(newPositions, originalPositions))
 
       // Reset the cache
       cache.value = undefined
