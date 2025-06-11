@@ -18,9 +18,6 @@
 		"type": "git",
 		"url": "https://github.com/informalsystems/quint.git"
 	},
-	"activationEvents": [
-		"onLanguage:quint"
-	],
 	"main": "./client/out/extension",
 	"contributes": {
 		"languages": [

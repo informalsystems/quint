@@ -75,7 +75,10 @@ export class QuintLanguageServer {
   // A timeout to store scheduled analysis
   private analysisTimeout: NodeJS.Timeout = setTimeout(() => {}, 0)
 
-  constructor(private readonly connection: Connection, private readonly documents: TextDocuments<TextDocument>) {
+  constructor(
+    private readonly connection: Connection,
+    private readonly documents: TextDocuments<TextDocument>
+  ) {
     const loadedBuiltInDocs = builtinDocs(this.idGenerator)
 
     connection.onInitialize((_params: InitializeParams) => {
