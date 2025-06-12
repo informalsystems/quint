@@ -15,7 +15,7 @@
 
 import { Either, left, mergeInMany, right } from '@sweet-monads/either'
 import { Error, ErrorTree, buildErrorLeaf } from '../errorTree'
-import { expressionToString } from '../ir/IRprinting'
+import { expressionToString, typeToString } from '../ir/IRprinting'
 import { QuintEx } from '../ir/quintIr'
 import { QuintOperType, QuintType, QuintVarType, sumType } from '../ir/quintTypes'
 import { Constraint } from './base'
@@ -65,6 +65,29 @@ export function fieldConstraints(
       buildErrorLeaf(
         `Generating record constraints for ${args.map(a => expressionToString(a[0]))}`,
         `Record field name must be a string expression but is ${fieldName.kind}: ${expressionToString(fieldName)}`
+      )
+    )
+  }
+
+  // PATCH: If recType is not a record, but the field name is a known operator, suggest missing parentheses
+  if (recType.kind !== 'rec') {
+    // Import getSignatures here to avoid circular import at the top
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { getSignatures } = require('./builtinSignatures')
+    const signatures = getSignatures()
+    if (signatures.has(fieldName.value)) {
+      return left(
+        buildErrorLeaf(
+          `Type checking field access for ${args.map(a => expressionToString(a[0]))}`,
+          `Did you mean to call the operator '${fieldName.value}'? Use parentheses: l.${fieldName.value}() instead of l.${fieldName.value}`
+        )
+      )
+    }
+    // Otherwise, keep the old error
+    return left(
+      buildErrorLeaf(
+        `Type checking field access for ${args.map(a => expressionToString(a[0]))}`,
+        `Cannot access field '${fieldName.value}' on a non-record value of type ${typeToString(recType)}`
       )
     )
   }
