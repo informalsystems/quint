@@ -249,7 +249,13 @@ describe('syntax errors', () => {
   it('error on type declarations with undeclared variables', () => {
     // we should use double quotes
     const code = `module singleQuotes {  type T = (List[a], Set[b]) }`
-    const [error] = parseErrorsFrom(defaultSourceName, code)
+    const gen = newIdGenerator()
+    const mainPath = { normalizedPath: 'fake_path', toSourceName: () => 'fake_path' }
+    const phase1Result = parsePhase1fromText(gen, code, mainPath.toSourceName())
+    const phase2Result = parsePhase2sourceResolution(gen, fileSourceResolver(new Map(), p => p), mainPath, phase1Result)
+    const phase3Result = parsePhase3importAndNameResolution(phase2Result)
+    const { errors } = parsePhase4toposort(phase3Result)
+    const [error] = errors
     assert.deepEqual(error.code, 'QNT014')
     assert.deepEqual(
       error.message,

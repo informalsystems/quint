@@ -41,6 +41,7 @@ import { QuintError } from '../quintError'
 import {
   duplicateRecordFieldError,
   lowercaseTypeError,
+  mapSyntaxError,
   tooManySpreadsError,
   undeclaredTypeParamsError,
 } from './parseErrors'
@@ -1349,7 +1350,7 @@ export class ToIrListener implements QuintListener {
     const unqualifiedName = parts.pop()!
 
     if (unqualifiedName[0].match('[a-z]')) {
-      this.errors.push(lowercaseTypeError(id, unqualifiedName, parts))
+      this.errors.push(lowercaseTypeError(id, unqualifiedName))
     }
   }
 }

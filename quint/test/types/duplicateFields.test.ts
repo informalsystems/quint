@@ -29,4 +29,4 @@ describe('Duplicate field detection', () => {
 
     assert.isEmpty(parseResult.errors)
   })
-}) 
+})

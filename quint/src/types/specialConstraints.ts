@@ -20,7 +20,6 @@ import { QuintEx } from '../ir/quintIr'
 import { QuintOperType, QuintType, QuintVarType, RowField, sumType } from '../ir/quintTypes'
 import { Constraint } from './base'
 import { chunk, times } from 'lodash'
-import { duplicateRecordFieldError } from '../parsing/parseErrors'
 
 export function recordConstructorConstraints(
   id: bigint,
@@ -40,38 +39,17 @@ export function recordConstructorConstraints(
     return right({ fieldName: key.value, fieldType: valueType })
   })
 
-  const seenFields = new Set<string>()
-  for (const fieldEither of fieldsEither) {
-    if (fieldEither.isLeft()) {
-      return left(fieldEither.value) as Either<ErrorTree, Constraint[]>
-    }
-    const field = fieldEither.value
-    if (seenFields.has(field.fieldName)) {
-      const error = duplicateRecordFieldError(id, field.fieldName)
-      return left(buildErrorLeaf(id.toString(), error.message))
-    }
-    seenFields.add(field.fieldName)
-  }
-
-  const validFields = fieldsEither.filter(f => f.isRight()).map(f => f.value as RowField)
-  
-  if (validFields.length !== fieldsEither.length) {
-    const firstError = fieldsEither.find(f => f.isLeft())
-    if (firstError) {
-        return firstError as unknown as Either<ErrorTree, Constraint[]>
-    }
-    return left(buildErrorLeaf(id.toString(), 'Unknown error processing record fields'))
-  }
-
   const eithersForMerge: Either<ErrorTree, RowField>[] = fieldsEither.map(f => f as Either<ErrorTree, RowField>)
 
-  return mergeInMany(eithersForMerge).map((fs: RowField[]) => {
-    const t: QuintType = { kind: 'rec', fields: { kind: 'row', fields: fs, other: { kind: 'empty' } } }
-    const constraint: Constraint = { kind: 'eq', types: [t, resultTypeVar], sourceId: id }
-    return [constraint]
-  }).mapLeft(errorArray => {
-    return errorArray.length > 0 ? errorArray[0] : buildErrorLeaf(id.toString(), 'Error merging record fields')
-  })
+  return mergeInMany(eithersForMerge)
+    .map((fs: RowField[]) => {
+      const t: QuintType = { kind: 'rec', fields: { kind: 'row', fields: fs, other: { kind: 'empty' } } }
+      const constraint: Constraint = { kind: 'eq', types: [t, resultTypeVar], sourceId: id }
+      return [constraint]
+    })
+    .mapLeft(errorArray => {
+      return errorArray.length > 0 ? errorArray[0] : buildErrorLeaf(id.toString(), 'Error merging record fields')
+    })
 }
 
 export function fieldConstraints(
@@ -315,24 +293,26 @@ export function matchConstraints(
   // TODO: Support more expressive and informative type errors.
   //       This will require tying into the constraint checking system.
   //       See https://github.com/informalsystems/quint/issues/1231
-  return mergeInMany(validatedFields).map((fields: [string, QuintType][]): Constraint[] => {
-    // Form a constraint ensuring that the match expression fits the sum-type it is applied to:
-    const matchCaseType = wildCardMatch ? sumType(fields, `${resultTypeVar.name}_wildcard`) : sumType(fields) // The sum-type implied by the match elimination cases.
-    // s ~ < i1 : t1, ..., in : tn > )
-    const variantTypeIsMatchCaseType: Constraint = { kind: 'eq', types: [variantType, matchCaseType], sourceId: id }
+  return mergeInMany(validatedFields)
+    .map((fields: [string, QuintType][]): Constraint[] => {
+      // Form a constraint ensuring that the match expression fits the sum-type it is applied to:
+      const matchCaseType = wildCardMatch ? sumType(fields, `${resultTypeVar.name}_wildcard`) : sumType(fields) // The sum-type implied by the match elimination cases.
+      // s ~ < i1 : t1, ..., in : tn > )
+      const variantTypeIsMatchCaseType: Constraint = { kind: 'eq', types: [variantType, matchCaseType], sourceId: id }
 
-    // Form a set of constraints ensuring that all the result types of the match cases are the same:
-    // We extract just the types of the eliminator operators, which we've ensured are operators during field validation.
-    const eliminatorOpResultTypes = labelAndElimPairs.map(([_, elim]) => (elim[1] as QuintOperType).res)
-    // These equality constraints implement the fact that all return values of cases, and the value of
-    // the match expression as a whole, are of the same type, `t`
-    const resultTypesAreEqual: Constraint[] = []
-    for (const resultType of eliminatorOpResultTypes) {
-      resultTypesAreEqual.push({ kind: 'eq', types: [resultTypeVar, resultType], sourceId: id })
-    }
+      // Form a set of constraints ensuring that all the result types of the match cases are the same:
+      // We extract just the types of the eliminator operators, which we've ensured are operators during field validation.
+      const eliminatorOpResultTypes = labelAndElimPairs.map(([_, elim]) => (elim[1] as QuintOperType).res)
+      // These equality constraints implement the fact that all return values of cases, and the value of
+      // the match expression as a whole, are of the same type, `t`
+      const resultTypesAreEqual: Constraint[] = []
+      for (const resultType of eliminatorOpResultTypes) {
+        resultTypesAreEqual.push({ kind: 'eq', types: [resultTypeVar, resultType], sourceId: id })
+      }
 
-    return [variantTypeIsMatchCaseType, ...resultTypesAreEqual]
-  }).mapLeft(errorArray => {
-    return errorArray.length > 0 ? errorArray[0] : buildErrorLeaf(id.toString(), 'Error merging match cases')
-  })
+      return [variantTypeIsMatchCaseType, ...resultTypesAreEqual]
+    })
+    .mapLeft(errorArray => {
+      return errorArray.length > 0 ? errorArray[0] : buildErrorLeaf(id.toString(), 'Error merging match cases')
+    })
 }

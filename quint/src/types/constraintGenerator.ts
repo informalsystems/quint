@@ -72,11 +72,13 @@ function validateArity(
   if (!pred(args.length)) {
     return left({
       location: 'Validating operator arity',
-      children: [{
-        location: 'Checking arity for application of ' + opcode,
-        message: `Operator expects ${msg} arguments but was given ${args.length}`,
-        children: []
-      }]
+      children: [
+        {
+          location: 'Checking arity for application of ' + opcode,
+          message: `Operator expects ${msg} arguments but was given ${args.length}`,
+          children: [],
+        },
+      ],
     })
   } else {
     return right(null)
