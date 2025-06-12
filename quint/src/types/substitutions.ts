@@ -19,7 +19,7 @@ import { ConcreteFixedRow, QuintType, Row } from '../ir/quintTypes'
 import { Constraint } from './base'
 import { unify, unifyRows } from './constraintSolver'
 import { substitutionsToString } from './printing'
-import { isEqual } from 'lodash'
+import { isDeepStrictEqual } from 'node:util'
 
 /*
  * Substitutions can be applied to Quint types, type variables with another type
@@ -113,7 +113,7 @@ export function applySubstitution(table: LookupTable, subs: Substitutions, t: Qu
   }
 
   const result = singleApplication()
-  if (isEqual(result, t)) {
+  if (isDeepStrictEqual(result, t)) {
     return t
   } else {
     return applySubstitution(table, subs, result)

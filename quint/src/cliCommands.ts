@@ -47,7 +47,7 @@ import { verify } from './quintVerifier'
 import { flattenModules } from './flattening/fullFlattener'
 import { AnalysisOutput, analyzeInc, analyzeModules } from './quintAnalyzer'
 import { ExecutionFrame, newTraceRecorder } from './runtime/trace'
-import { flow, isEqual, uniqWith } from 'lodash'
+import { flow, uniqWith } from 'lodash'
 import { Maybe, just, none } from '@sweet-monads/maybe'
 import { compileToTlaplus } from './compileToTlaplus'
 import { Evaluator } from './runtime/impl/evaluator'
@@ -56,6 +56,7 @@ import { walkExpression } from './ir/IRVisitor'
 import { convertInit } from './ir/initToPredicate'
 import { QuintRustWrapper } from './quintRustWrapper'
 import { replacer } from './jsonHelper'
+import { isDeepStrictEqual } from 'node:util'
 
 export type stage =
   | 'loading'
@@ -1033,7 +1034,7 @@ export function outputResult(result: CLIProcedure<ProcedureStage>) {
         writeToJson(args.out, outputData)
       } else {
         const finders = createFinders(sourceCode!)
-        uniqWith(errors, isEqual).forEach(err => console.error(formatError(sourceCode, finders, err)))
+        uniqWith(errors, isDeepStrictEqual).forEach(err => console.error(formatError(sourceCode, finders, err)))
         if (!stage.args.outItf && outputData.seed && verbosity.hasResults(verbosityLevel)) {
           console.log(chalk.gray(`Use --seed=0x${outputData.seed.toString(16)} to reproduce.`))
         }
