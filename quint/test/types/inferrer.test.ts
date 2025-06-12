@@ -523,4 +523,21 @@ Trying to unify (_t0, Set[_t0]) => bool and (int, str) => _t1
 `
     assert.equal(msgs[0], expectedMessage)
   })
+
+  it('provides clear error messages for map function on lists (#1361)', () => {
+    const defs = [
+      'val foo = [1, 2].map(x => x + 1)'
+    ]
+
+    const [errors] = inferTypesForDefs(defs)
+    assert.isNotEmpty([...errors.entries()])
+
+    const actualErrors = [...errors.entries()].map(e => errorTreeToString(e[1]))
+    // Verify the error message is now more user-friendly
+    // The error should indicate that 'map' expects a Set but got a List
+    assert.match(actualErrors[0], /Operator `map` expected `Set\[.*\]`.*but the provided argument is a `List\[int\]`/)
+    assert.match(actualErrors[0], /Expected: Set\[.*\]/)
+    assert.match(actualErrors[0], /Got: List\[int\]/)
+    assert.match(actualErrors[0], /Type signature for `map` is/)
+  })
 })
