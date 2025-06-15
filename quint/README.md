@@ -7,10 +7,10 @@ with [the Quint specification language](https://github.com/informalsystems/quint
 
 - Node.js >= 18: Use your package manager or download [nodejs](https://nodejs.org/en/download).
 
-- Java Development Kit >= 17, if you are going to use `quint verify`.  We
+- **Java Development Kit (JDK) >= 17 is required for verification**: The `quint verify` command requires Java 17 or later. We
   recommend version 17 of the [Eclipse Temurin](https://adoptium.net/) or
   [Zulu](https://www.azul.com/downloads/?version=java-17-lts&package=jdk#download-openjdk)
-  builds of OpenJDK.
+  builds of OpenJDK. Without Java installed, the verify command will not work.
 
 ## Installation
 

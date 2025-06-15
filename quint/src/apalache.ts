@@ -466,7 +466,9 @@ export async function connect(
           function exitHandler() {
             debugLog(verbosityLevel, 'Shutting down Apalache server')
             try {
-              apalache.kill('SIGTERM')
+              if (apalache.pid) {
+                apalache.kill('SIGTERM')
+              }
             } catch (error: any) {
               // ESRCH is raised if no process with `pid` exists, i.e.,
               // if Apalache server exited on its own
@@ -477,6 +479,18 @@ export async function connect(
               }
             }
           }
+
+          // Handle process exit
+          apalache.on('exit', (code, signal) => {
+            if (code !== 0) {
+              resolve(err(`Apalache server exited with code ${code}. Please ensure Java 17 or later is installed and available in your PATH.`))
+            }
+          })
+
+          // Handle process error (e.g., failed to spawn)
+          apalache.on('error', error => {
+            resolve(err(`Failed to launch Apalache server: ${error.message}. Please ensure Java 17 or later is installed and available in your PATH.`))
+          })
 
           if (apalache.pid) {
             // Apalache launched successfully
@@ -491,9 +505,6 @@ export async function connect(
 
             resolve(right(void 0))
           }
-          // If Apalache fails to spawn, `apalache.pid` is undefined and 'error' is
-          // emitted.
-          apalache.on('error', error => resolve(err(`Failed to launch Apalache server: ${error.message}`)))
         })
     )
     .then(chain(() => tryConnect(serverEndpoint, true)))
