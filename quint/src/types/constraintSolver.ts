@@ -97,10 +97,13 @@ export function solveConstraint(
  *          Otherwise, an error tree with an error message and its trace.
  */
 export function unify(
-  table: LookupTable, 
-  t1: QuintType, 
+  table: LookupTable,
+  t1: QuintType,
   t2: QuintType,
   operatorInfo?: {
+    operatorName: string
+    operatorSignature: string
+    argumentPosition?: number
     operatorName: string
     operatorSignature: string
     argumentPosition?: number
@@ -144,16 +147,12 @@ export function unify(
         expectedType: typeToString(t1),
         actualType: typeToString(t2),
         operatorSignature: operatorInfo.operatorSignature,
-        argumentPosition: operatorInfo.argumentPosition
+        argumentPosition: operatorInfo.argumentPosition,
       }
-      
-      return left(buildErrorLeaf(
-        location,
-        `Couldn't unify ${t1.kind} and ${t2.kind}`,
-        typeAppDetails
-      ))
+
+      return left(buildErrorLeaf(location, `Couldn't unify ${t1.kind} and ${t2.kind}`, typeAppDetails))
     }
-    
+
     return left(buildErrorLeaf(location, `Couldn't unify ${t1.kind} and ${t2.kind}`))
   }
 }
@@ -268,16 +267,6 @@ function bindRow(name: string, row: Row): Either<string, Substitutions> {
   } else {
     return right([{ kind: 'row', name: name, value: row }])
   }
-}
-
-function applySubstitutionsAndUnify(
-  table: LookupTable,
-  subs: Substitutions,
-  t1: QuintType,
-  t2: QuintType
-): Either<Error, Substitutions> {
-  const r1 = unify(table, applySubstitution(table, subs, t1), applySubstitution(table, subs, t2))
-  return r1.map((subst: Substitutions) => compose(table, subs, subst))
 }
 
 function checkSameLength(

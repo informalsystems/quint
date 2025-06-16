@@ -23,30 +23,19 @@ import {
   QuintInstance,
   QuintInt,
   QuintLambda,
-  QuintLambdaParameter,
   QuintLet,
   QuintName,
   QuintOpDef,
   QuintStr,
   QuintVar,
-  isAnnotatedDef,
 } from '../ir/quintIr'
-import { 
-  QuintType, 
-  QuintVarType, 
-  Row, 
-  ConcreteRow,
-  EmptyRow,
-  VarRow,
-  rowNames, 
-  typeNames 
-} from '../ir/quintTypes'
-import { expressionToString, rowToString, typeToString } from '../ir/IRprinting'
+import { ConcreteRow, QuintType, QuintVarType, Row } from '../ir/quintTypes'
+import { expressionToString, typeToString } from '../ir/IRprinting'
 import { Either, left, mergeInMany, right } from '@sweet-monads/either'
-import { Error, ErrorTree, buildErrorLeaf, buildErrorTree, errorTreeToString } from '../errorTree'
+import { Error, ErrorTree, buildErrorLeaf } from '../errorTree'
 import { getSignatures } from './builtinSignatures'
 import { Constraint, OperatorInfo, QuantifiedVariables, Signature, TypeScheme, toScheme } from './base'
-import { Substitutions, applySubstitution, compose } from './substitutions'
+import { Substitutions } from './substitutions'
 import { LookupTable } from '../names/base'
 import {
   fieldConstraints,
@@ -188,124 +177,137 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
     )
 
     const definedSignature = this.typeForName(e.opcode, e.id, e.args.length)
-    const a: QuintVarType = { kind: 'var', name: this.freshVarGenerator.freshVar('_t') }
-    
-    let result: QuintType = a;
-    
+    const a: QuintType = { kind: 'var', name: this.freshVarGenerator.freshVar('_t') }
+
+    // Default result type
+    let result = a
+
     if (argsResult.isRight()) {
-      const results: Array<[QuintEx, QuintType]> = argsResult.value;
-      
+      const results = argsResult.value
+
+      // Apply different logic based on opcode
       switch (e.opcode) {
         case 'Rec': {
           if (validateArity(e.opcode, results, l => l % 2 === 0, 'even number of').isRight()) {
-            const recordResult = recordConstructorConstraints(e.id, results, a);
+            const recordResult = recordConstructorConstraints(e.id, results, a)
             if (recordResult.isRight()) {
-              this.constraints.push(...recordResult.value);
+              // We know recordResult.value should be our expected type
+              this.constraints.push(...recordResult.value)
             }
           }
-          break;
+          break
         }
         case 'field': {
           if (validateArity(e.opcode, results, l => l === 2, '2').isRight()) {
-            const fieldResult = fieldConstraints(e.id, results, a);
+            const fieldResult = fieldConstraints(e.id, results, a)
             if (fieldResult.isRight()) {
-              this.constraints.push(...fieldResult.value);
+              this.constraints.push(...fieldResult.value)
             }
           }
-          break;
+          break
         }
         case 'fieldNames': {
           if (validateArity(e.opcode, results, l => l === 1, '1').isRight()) {
-            const fieldNamesResult = fieldNamesConstraints(e.id, results, a);
+            const fieldNamesResult = fieldNamesConstraints(e.id, results, a)
             if (fieldNamesResult.isRight()) {
-              this.constraints.push(...fieldNamesResult.value);
+              this.constraints.push(...fieldNamesResult.value)
             }
           }
-          break;
+          break
         }
         case 'with': {
           if (validateArity(e.opcode, results, l => l === 3, '3').isRight()) {
-            const withResult = withConstraints(e.id, results, a);
+            const withResult = withConstraints(e.id, results, a)
             if (withResult.isRight()) {
-              this.constraints.push(...withResult.value);
+              this.constraints.push(...withResult.value)
             }
           }
-          break;
+          break
         }
         case 'Tup': {
-          const tupleResult = tupleConstructorConstraints(e.id, results, a);
+          const tupleResult = tupleConstructorConstraints(e.id, results, a)
           if (tupleResult.isRight()) {
-            this.constraints.push(...tupleResult.value);
+            this.constraints.push(...tupleResult.value)
           }
-          break;
+          break
         }
         case 'item': {
           if (validateArity(e.opcode, results, l => l === 2, '2').isRight()) {
-            const itemResult = itemConstraints(e.id, results, a);
+            const itemResult = itemConstraints(e.id, results, a)
             if (itemResult.isRight()) {
-              this.constraints.push(...itemResult.value);
+              this.constraints.push(...itemResult.value)
             }
           }
-          break;
+          break
         }
         case 'variant': {
           if (validateArity(e.opcode, results, l => l === 2, '2').isRight()) {
-            const variantResult = variantConstraints(e.id, results, a);
+            const variantResult = variantConstraints(e.id, results, a)
             if (variantResult.isRight()) {
-              this.constraints.push(...variantResult.value);
+              this.constraints.push(...variantResult.value)
             }
           }
-          break;
+          break
         }
         case 'matchVariant': {
           if (validateArity(e.opcode, results, l => l % 2 !== 0, 'odd number of').isRight()) {
-            const matchResult = matchConstraints(e.id, results, a);
+            const matchResult = matchConstraints(e.id, results, a)
             if (matchResult.isRight()) {
-              this.constraints.push(...matchResult.value);
+              this.constraints.push(...matchResult.value)
             }
           }
-          break;
+          break
         }
         default: {
           const operatorInfo: OperatorInfo = {
             operatorName: e.opcode,
-            operatorSignature: definedSignature.isRight() ? typeToString(definedSignature.value) : ''
+            operatorSignature: '',
           }
-          
+
           if (definedSignature.isRight()) {
-            const operType = definedSignature.value;
-            const types1: QuintType[] = [];
-            
+            const operType = definedSignature.value
+
+            // Create a full operator type with arguments
+            const types1 = []
+
+            // Add all the argument types
             for (let i = 0; i < results.length; i++) {
-              const [_, argType] = results[i];
-              types1.push(argType);
-              
-              const resType: QuintVarType = { kind: 'var', name: this.freshVarGenerator.freshVar('_t') };
-              
+              const argType = results[i][1]
+              types1.push(argType)
+
+              // Create constraint with operator information and position
+              const argOperatorInfo: OperatorInfo = {
+                ...operatorInfo,
+                argumentPosition: i + 1, // 1-based indexing for user-friendly messages
+              }
+
+              // Save the argument-specific constraint with position information
               this.constraints.push({
                 kind: 'eq',
                 types: [
-                  { kind: 'oper', args: [argType], res: resType },
-                  operType
+                  { kind: 'oper', args: [argType], res: { kind: 'var', name: this.freshVarGenerator.freshVar('_t') } },
+                  operType,
                 ],
                 sourceId: e.id,
-                operatorInfo: { ...operatorInfo, argumentPosition: i + 1 }
-              });
+                operatorInfo: argOperatorInfo,
+              })
             }
-            
-            types1.push(a);
-            
+
+            // Add result type
+            types1.push(a)
+
+            // Capture the operator signature for error messages
+            operatorInfo.operatorSignature = typeToString(operType)
+
+            // Save the operator application constraint
             this.constraints.push({
               kind: 'eq',
-              types: [
-                { kind: 'oper', args: types1.slice(0, -1), res: types1[types1.length - 1] },
-                operType
-              ],
+              types: [{ kind: 'oper', args: types1.slice(0, -1), res: types1[types1.length - 1] }, operType],
               sourceId: e.id,
-              operatorInfo
-            });
+              operatorInfo,
+            })
           }
-          break;
+          break
         }
       }
     }
@@ -315,8 +317,7 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
 
   enterLambda(expr: QuintLambda) {
     expr.params.forEach(p => {
-      const paramTypeVar: QuintType = p.typeAnnotation || 
-                                      { kind: 'var', name: this.freshVarGenerator.freshVar('_t') }
+      const paramTypeVar: QuintType = p.typeAnnotation || { kind: 'var', name: this.freshVarGenerator.freshVar('_t') }
       this.typesInScope.set(p.id, toScheme(paramTypeVar))
     })
   }
@@ -330,15 +331,15 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
     }
 
     // Get parameter types
-    const paramTypesResult: Either<Error, QuintType[]> = mergeInMany(
-      e.params.map(p => 
-        this.fetchResult(p.id).map((paramType: TypeScheme): QuintType => {
+    const paramTypesResult = mergeInMany(
+      e.params.map(p =>
+        this.fetchResult(p.id).map(paramType => {
           // If parameter has a type annotation, create a constraint
           if (p.typeAnnotation) {
-            this.constraints.push({ 
-              kind: 'eq', 
-              types: [p.typeAnnotation, paramType.type], 
-              sourceId: p.id 
+            this.constraints.push({
+              kind: 'eq',
+              types: [p.typeAnnotation, paramType.type],
+              sourceId: p.id,
             })
           }
           return paramType.type
@@ -350,15 +351,15 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
     const bodyResult = this.fetchResult(e.expr.id)
 
     if (paramTypesResult.isRight() && bodyResult.isRight()) {
-      const paramTypes = paramTypesResult.value;
-      const bodyType = bodyResult.value;
-      
+      const paramTypes = paramTypesResult.value
+      const bodyType = bodyResult.value
+
       // Simple case: (x: A) => B becomes A => B
       if (paramTypes.length === 1) {
         const lambdaType: QuintType = {
           kind: 'fun',
           arg: paramTypes[0],
-          res: bodyType.type
+          res: bodyType.type,
         }
         this.addToResults(e.id, right(toScheme(lambdaType)))
       } else {
@@ -367,7 +368,7 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
         const lambdaType: QuintType = {
           kind: 'oper',
           args: paramTypes,
-          res: bodyType.type
+          res: bodyType.type,
         }
         this.addToResults(e.id, right(toScheme(lambdaType)))
       }
@@ -383,13 +384,13 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
     }
 
     // The opdef (which can be a val) has been typechecked
-    const opdefResult = this.fetchResult(e.opdef.id);
+    const opdefResult = this.fetchResult(e.opdef.id)
     if (opdefResult.isRight()) {
       // Add the defined name to the environment
       this.typesInScope.set(e.opdef.id, opdefResult.value)
-      
+
       // Typecheck the body with the new environment
-      const exprResult = this.fetchResult(e.expr.id);
+      const exprResult = this.fetchResult(e.expr.id)
       if (exprResult.isRight()) {
         this.addToResults(e.id, right(exprResult.value))
       }
@@ -411,10 +412,10 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
       return
     }
 
-    const exprResult = this.fetchResult(def.expr.id);
+    const exprResult = this.fetchResult(def.expr.id)
     if (exprResult.isRight()) {
-      const t = exprResult.value;
-      
+      const t = exprResult.value
+
       // A name is polymorphic if its free type variables don't overlap with the
       // free variables of already defined names.
       const generalTypes = variablesDifference(
@@ -444,9 +445,7 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
     } else {
       // For declaration, if the inference failed but we have an annotation,
       // we can still use the annotation type for checking the usages of this def.
-      if (def.typeAnnotation && 
-          (def.qualifier === 'pureval' || def.qualifier === 'puredef') && 
-          def.id) {
+      if (def.typeAnnotation && (def.qualifier === 'pureval' || def.qualifier === 'puredef') && def.id) {
         this.types.set(def.id, toScheme(def.typeAnnotation))
       }
     }
@@ -463,9 +462,9 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
       return
     }
 
-    const assumptionResult = this.fetchResult(e.assumption.id);
+    const assumptionResult = this.fetchResult(e.assumption.id)
     if (assumptionResult.isRight()) {
-      const t = assumptionResult.value;
+      const t = assumptionResult.value
       this.constraints.push({ kind: 'eq', types: [t.type, { kind: 'bool' }], sourceId: e.id })
       this.addToResults(e.id, right(toScheme({ kind: 'bool' })))
     } else {
@@ -520,14 +519,14 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
   private typeForName(name: string, nameId: bigint, arity: number): Either<ErrorTree, QuintType> {
     // Search in the lookup table for the name
     let defId: bigint | undefined = undefined
-    
+
     // Check if it's a built-in operator
     const bltSig = this.builtinSignatures.get(name)
     if (bltSig) {
       const sig = bltSig(arity)
       return right(this.newInstance(sig))
     }
-    
+
     // Look through all definitions
     for (const [id, def] of this.table.entries()) {
       if (def.kind === 'def' && def.name === name) {
@@ -535,7 +534,7 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
         break
       }
     }
-    
+
     if (defId === undefined) {
       return left(
         buildErrorLeaf(
@@ -545,7 +544,7 @@ Did you forget to declare a variable or operator? Or maybe the name is not visib
         )
       )
     }
-    
+
     // Non-built-in name
     const typeDef = this.types.get(defId)
     if (typeDef) {
@@ -586,15 +585,19 @@ Did you forget to declare a variable or operator? Or maybe the name is not visib
   }
 }
 
-function checkAnnotationGenerality(
-  subs: Substitutions,
-  typeAnnotation: QuintType | undefined
-): Either<ErrorTree, Substitutions> {
-  if (!typeAnnotation) {
-    return right(subs)
-  }
+function quantify(tvs: QuantifiedVariables, type: QuintType): TypeScheme {
+  return { ...tvs, type }
+}
 
-  return right(subs)
+function freeTypes(t: TypeScheme): QuantifiedVariables {
+  return { typeVariables: new Set([...t.typeVariables]), rowVariables: new Set([...t.rowVariables]) }
+}
+
+function variablesDifference(a: QuantifiedVariables, b: QuantifiedVariables): QuantifiedVariables {
+  return {
+    typeVariables: new Set([...a.typeVariables].filter(v => !b.typeVariables.has(v))),
+    rowVariables: new Set([...a.rowVariables].filter(v => !b.rowVariables.has(v))),
+  }
 }
 
 // Replace type *variables* in a type with given substitutions
@@ -615,19 +618,19 @@ function instantiateVariables(type: QuintType, tvs: Map<string, QuintVarType>, r
       res: instantiateVariables(type.res, tvs, rvs),
     }
   } else if (type.kind === 'tup') {
-    return { 
+    return {
       ...type,
-      fields: instantiateVariablesForRow(type.fields, tvs, rvs)
+      fields: instantiateVariablesForRow(type.fields, tvs, rvs),
     }
   } else if (type.kind === 'rec') {
-    return { 
+    return {
       ...type,
-      fields: instantiateVariablesForRow(type.fields, tvs, rvs)
+      fields: instantiateVariablesForRow(type.fields, tvs, rvs),
     }
   } else if (type.kind === 'sum') {
-    return { 
+    return {
       ...type,
-      fields: instantiateVariablesForRow(type.fields, tvs, rvs) as ConcreteRow
+      fields: instantiateVariablesForRow(type.fields, tvs, rvs) as ConcreteRow,
     }
   } else {
     return type
@@ -645,53 +648,13 @@ function instantiateVariablesForRow(row: Row, tvs: Map<string, QuintVarType>, rv
       fieldName: field.fieldName,
       fieldType: instantiateVariables(field.fieldType, tvs, rvs),
     }))
-    
-    return { 
+
+    return {
       kind: 'row',
-      fields: newFields, 
-      other: instantiateVariablesForRow(row.other, tvs, rvs) 
+      fields: newFields,
+      other: instantiateVariablesForRow(row.other, tvs, rvs),
     }
   }
-  
+
   return row
-}
-
-function quantify(tvs: QuantifiedVariables, type: QuintType): TypeScheme {
-  return { ...tvs, type }
-}
-
-function freeTypes(t: TypeScheme): QuantifiedVariables {
-  return { typeVariables: new Set([...t.typeVariables]), rowVariables: new Set([...t.rowVariables]) }
-}
-
-function addBindingsToFreeTypes(free: QuantifiedVariables, substitutions: Substitutions): void {
-  for (const binding of substitutions) {
-    if (binding.kind === 'type') {
-      free.typeVariables.delete(binding.name)
-      // Recursively added dependencies are added
-      const typeUsedNames = typeNames(binding.value)
-      // We don't use the union here, since the set is changed by side effect
-      for (const n of typeUsedNames.typeVariables) {
-        free.typeVariables.add(n)
-      }
-      for (const n of typeUsedNames.rowVariables) {
-        free.rowVariables.add(n)
-      }
-    } else {
-      free.rowVariables.delete(binding.name)
-      // Recursively added dependencies are added
-      const rowUsedNames = rowNames(binding.value)
-      // We don't use the union here, since the set is changed by side effect
-      for (const n of rowUsedNames) {
-        free.rowVariables.add(n)
-      }
-    }
-  }
-}
-
-function variablesDifference(a: QuantifiedVariables, b: QuantifiedVariables): QuantifiedVariables {
-  return {
-    typeVariables: new Set([...a.typeVariables].filter(v => !b.typeVariables.has(v))),
-    rowVariables: new Set([...a.rowVariables].filter(v => !b.rowVariables.has(v))),
-  }
 }
