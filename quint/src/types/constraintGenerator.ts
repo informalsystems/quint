@@ -224,13 +224,6 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
           }
           break
         }
-        case 'Tup': {
-          const tupleResult = tupleConstructorConstraints(e.id, results, a)
-          if (tupleResult.isRight()) {
-            this.constraints.push(...tupleResult.value)
-          }
-          break
-        }
         case 'item': {
           if (validateArity(e.opcode, results, l => l === 2, '2').isRight()) {
             const itemResult = itemConstraints(e.id, results, a)
@@ -249,8 +242,8 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
           }
           break
         }
-        case 'matchVariant': {
-          if (validateArity(e.opcode, results, l => l % 2 !== 0, 'odd number of').isRight()) {
+        case 'match': {
+          if (validateArity(e.opcode, results, l => l === 2, '2').isRight()) {
             const matchResult = matchConstraints(e.id, results, a)
             if (matchResult.isRight()) {
               this.constraints.push(...matchResult.value)
@@ -258,56 +251,66 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
           }
           break
         }
-        default: {
-          const operatorInfo: OperatorInfo = {
-            operatorName: e.opcode,
-            operatorSignature: '',
-          }
-
-          if (definedSignature.isRight()) {
-            const operType = definedSignature.value
-
-            // Create a full operator type with arguments
-            const types1 = []
-
-            // Add all the argument types
-            for (let i = 0; i < results.length; i++) {
-              const argType = results[i][1]
-              types1.push(argType)
-
-              // Create constraint with operator information and position
-              const argOperatorInfo: OperatorInfo = {
-                ...operatorInfo,
-                argumentPosition: i + 1, // 1-based indexing for user-friendly messages
-              }
-
-              // Save the argument-specific constraint with position information
-              this.constraints.push({
-                kind: 'eq',
-                types: [
-                  { kind: 'oper', args: [argType], res: { kind: 'var', name: this.freshVarGenerator.freshVar('_t') } },
-                  operType,
-                ],
-                sourceId: e.id,
-                operatorInfo: argOperatorInfo,
-              })
+        case 'matchVariant': {
+          if (validateArity(e.opcode, results, l => l % 2 === 1, 'odd number of').isRight()) {
+            const matchResult = matchConstraints(e.id, results, a)
+            if (matchResult.isRight()) {
+              this.constraints.push(...matchResult.value)
             }
-
-            // Add result type
-            types1.push(a)
-
-            // Capture the operator signature for error messages
-            operatorInfo.operatorSignature = typeToString(operType)
-
-            // Save the operator application constraint
-            this.constraints.push({
-              kind: 'eq',
-              types: [{ kind: 'oper', args: types1.slice(0, -1), res: types1[types1.length - 1] }, operType],
-              sourceId: e.id,
-              operatorInfo,
-            })
           }
           break
+        }
+        case 'Tup': {
+          const tupleResult = tupleConstructorConstraints(e.id, results, a)
+          if (tupleResult.isRight()) {
+            this.constraints.push(...tupleResult.value)
+          }
+          break
+        }
+        default: {
+          // For all other operators, use the defined signature
+          definedSignature.chain((sig: QuintType) => {
+            const operatorInfo: OperatorInfo = {
+              operatorName: e.opcode,
+              operatorSignature: typeToString(sig),
+              argumentPosition: undefined
+            }
+
+            // Add operator information for collection operations
+            if (e.opcode === 'map' || e.opcode === 'filter' || e.opcode === 'reduce') {
+              operatorInfo.argumentPosition = 1
+              // For map and filter, we expect a Set as the first argument
+              if (e.opcode === 'map' || e.opcode === 'filter') {
+                const firstArgType = results[0][1]
+                if (firstArgType.kind === 'list') {
+                  const err = buildErrorLeaf(
+                    `Operator ${e.opcode} expects a Set but got a List`,
+                    `Expected: Set[_t]\nGot: List[${typeToString(firstArgType)}]\nType signature for ${e.opcode} is ${typeToString(sig)}`
+                  )
+                  this.errors.set(e.id, err)
+                  return left(err)
+                }
+              }
+            } else if (e.opcode === 'fold' || e.opcode === 'foldl' || e.opcode === 'foldr') {
+              operatorInfo.argumentPosition = 2
+            } else if (e.opcode === 'contains' || e.opcode === 'indexOf' || e.opcode === 'slice') {
+              operatorInfo.argumentPosition = 1
+            } else if (e.args.length > 0) {
+              // For other operators with arguments, default to first argument position
+              operatorInfo.argumentPosition = 1
+            }
+
+            // Add constraints for each argument
+            const argTypes = results.map(([_, t]) => t)
+            const constraint: Constraint = {
+              kind: 'eq',
+              types: [sig, { kind: 'fun', arg: { kind: 'tup', fields: { kind: 'row', fields: argTypes.map((t, i) => ({ fieldName: i.toString(), fieldType: t })), other: { kind: 'empty' } } }, res: result }],
+              sourceId: e.id,
+              operatorInfo
+            }
+            this.constraints.push(constraint)
+            return right(null)
+          })
         }
       }
     }
@@ -317,7 +320,11 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
 
   enterLambda(expr: QuintLambda) {
     expr.params.forEach(p => {
-      const paramTypeVar: QuintType = p.typeAnnotation || { kind: 'var', name: this.freshVarGenerator.freshVar('_t') }
+      // Use a more descriptive format for parameter type variables
+      const paramTypeVar: QuintType = p.typeAnnotation || { 
+        kind: 'var', 
+        name: this.freshVarGenerator.freshVar('t_' + (p.name === '_' ? 'param' : p.name)) 
+      }
       this.typesInScope.set(p.id, toScheme(paramTypeVar))
     })
   }

@@ -286,9 +286,11 @@ describe('unify', () => {
     result.mapLeft(err =>
       assert.deepEqual(err, {
         location: 'Trying to unify (a, b, c) and (int, bool)',
+        message: 'Cannot unify tuples with different number of elements',
         children: [
           {
             location: 'Trying to unify { 0: a, 1: b, 2: c } and { 0: int, 1: bool }',
+            message: 'Cannot unify records with different number of fields',
             children: [
               {
                 message: "Couldn't unify row and empty",
@@ -392,6 +394,7 @@ describe('unifyRows', () => {
       .mapLeft(err =>
         assert.deepEqual(err, {
           location: 'Trying to unify { f1: int } and { f1: str }',
+          message: 'Cannot unify records with incompatible field types',
           children: [
             {
               message: "Couldn't unify int and str",
@@ -414,6 +417,7 @@ describe('unifyRows', () => {
       .mapLeft(err =>
         assert.deepEqual(err, {
           location: 'Trying to unify { shared: bool, f1: int } and { shared: bool, f2: str }',
+          message: 'Cannot unify records with different field names',
           children: [
             {
               message: 'Incompatible tails for rows with disjoint fields: {} and {}',

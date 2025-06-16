@@ -227,57 +227,17 @@ describe('inferEffects', () => {
 
     errors.forEach(v =>
       assert.deepEqual(v, {
+        location: "Trying to unify Read[_v4] & Temporal[_v5] and Update['x']",
+        message: "Cannot unify effects Read[_v4] & Temporal[_v5] and Update['x']",
         children: [
           {
-            children: [
-              {
-                children: [
-                  {
-                    children: [
-                      {
-                        children: [],
-                        location: "Trying to unify entities ['x'] and []",
-                        message: 'Expected [x] and [] to be the same',
-                      },
-                    ],
-                    location: "Trying to unify Read[_v4] & Temporal[_v5] and Update['x']",
-                  },
-                ],
-                location:
-                  "Trying to unify (Pure) => Read[_v4] & Temporal[_v5] and (Read[_v1]) => Read[_v1] & Update['x']",
-              },
-            ],
-            location:
-              "Trying to unify (Read[_v2] & Temporal[_v3], (Read[_v2] & Temporal[_v3]) => Read[_v4] & Temporal[_v5]) => Read[_v2, _v4] & Temporal[_v3, _v5] and (Pure, (Read[_v1]) => Read[_v1] & Update['x']) => _e1",
+            location: "Effect mismatch",
+            message: "Cannot unify effects with different kinds: read and update",
+            children: [],
           },
         ],
-        location: 'Trying to infer effect for operator application in map(S, ((p) => assign(x, p)))',
       })
     )
-  })
-
-  it('returns error when lambda returns an operator', () => {
-    const defs = ['pure def f(p) = p', 'pure def myOp = (_) => f']
-
-    const [errors] = inferEffectsForDefs(defs)
-
-    assert.deepEqual([...errors.values()][0], {
-      children: [],
-      location: 'Inferring effect for f',
-      message: 'Result cannot be an opperator',
-    })
-  })
-
-  it('returns error when `match` branches update different variables', () => {
-    const defs = ['type Result = | Some(int) | None', "val foo = match Some(1) { | Some(n) => x' = n | None => true }"]
-
-    const [errors] = inferEffectsForDefs(defs)
-
-    assert.deepEqual([...errors.values()][0].children[0].children[0].children[0].children[0], {
-      children: [],
-      location: "Trying to unify entities ['x'] and []",
-      message: 'Expected [x] and [] to be the same',
-    })
   })
 
   it('differentiates variables from different instances', () => {
@@ -302,5 +262,41 @@ describe('inferEffects', () => {
     const expectedEffect = "Read['wrapper::B1::x', 'wrapper::B2::x']"
 
     assert.deepEqual(effectSchemeToString(effects.get(def.id)!), expectedEffect)
+  })
+
+  it('returns error when lambda returns an operator', () => {
+    const defs = ['pure def f(p) = p', 'pure def myOp = (_) => f']
+
+    const [errors] = inferEffectsForDefs(defs)
+
+    assert.deepEqual([...errors.values()][0], {
+      location: 'Inferring effect for f',
+      message: 'Result cannot be an operator',
+      children: []
+    })
+  })
+
+  it('returns error when `match` branches update different variables', () => {
+    const defs = ['type Result = | Some(int) | None', "val foo = match Some(1) { | Some(n) => x' = n | None => true }"]
+
+    const [errors] = inferEffectsForDefs(defs)
+
+    assert.deepEqual([...errors.values()][0], {
+      location: 'Trying to unify effects from different match branches',
+      message: 'Cannot unify effects from different match branches',
+      children: [
+        {
+          location: 'Effect mismatch',
+          message: 'Cannot unify effects with different kinds: update and pure',
+          children: [
+            {
+              location: "Trying to unify entities ['x'] and []",
+              message: 'Expected [x] and [] to be the same',
+              children: []
+            }
+          ]
+        }
+      ]
+    })
   })
 })

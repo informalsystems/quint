@@ -102,6 +102,7 @@ describe('ConstraintGeneratorVisitor', () => {
 
     const error: ErrorTree = {
       location: 'Checking type annotation t',
+      message: 'Type annotation error',
       children: [
         {
           location: 'Checking variable t',

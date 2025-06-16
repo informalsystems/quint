@@ -1,11 +1,95 @@
 import { describe, it } from 'mocha'
 import { assert } from 'chai'
-import { Effect, unify } from '../../src/effects/base'
+import { Effect, EffectScheme, Signature, effectNames, entityNames, toScheme, unify } from '../../src/effects/base'
 import { parseEffectOrThrow } from '../../src/effects/parser'
 import { substitutionsToString } from '../../src'
+import { LookupTable } from '../../src/names/base'
 
 describe('unify', () => {
-  describe('simple effects', () => {
+  const table = {} as LookupTable
+
+  describe('unifyEffects', () => {
+    it('fails to unify different effects', () => {
+      const e1: Effect = {
+        kind: 'concrete',
+        components: [{ kind: 'read', entity: { kind: 'concrete', stateVariables: [{ name: 'x', reference: 1n }] } }]
+      }
+      const e2: Effect = {
+        kind: 'concrete',
+        components: [{ kind: 'temporal', entity: { kind: 'concrete', stateVariables: [{ name: 'y', reference: 2n }] } }]
+      }
+
+      const r = unify(e1, e2)
+
+      r.mapLeft(r => {
+        assert.deepEqual(r, {
+          location: "Trying to unify Read['x'] and Temporal['y']",
+          message: "Cannot unify effects Read['x'] and Temporal['y']",
+          children: [
+            {
+              location: "Effect mismatch",
+              message: "Cannot unify effects with different kinds: read and temporal",
+              children: [],
+            },
+          ],
+        })
+      })
+    })
+
+    it('fails to unify pure with temporal', () => {
+      const e1: Effect = {
+        kind: 'concrete',
+        components: []
+      }
+      const e2: Effect = {
+        kind: 'concrete',
+        components: [{ kind: 'temporal', entity: { kind: 'concrete', stateVariables: [{ name: 'y', reference: 2n }] } }]
+      }
+
+      const r = unify(e1, e2)
+
+      r.mapLeft(r => {
+        assert.deepEqual(r, {
+          location: "Trying to unify Pure and Temporal['y']",
+          message: "Cannot unify effects Pure and Temporal['y']",
+          children: [
+            {
+              location: "Effect mismatch",
+              message: "Cannot unify effects with different kinds: pure and temporal",
+              children: [],
+            },
+          ],
+        })
+      })
+    })
+
+    it('fails to unify effects with different entities', () => {
+      const e1: Effect = {
+        kind: 'concrete',
+        components: [{ kind: 'read', entity: { kind: 'concrete', stateVariables: [{ name: 'x', reference: 1n }] } }]
+      }
+      const e2: Effect = {
+        kind: 'concrete',
+        components: [{ kind: 'read', entity: { kind: 'concrete', stateVariables: [{ name: 'y', reference: 2n }] } }]
+      }
+
+      const r = unify(e1, e2)
+
+      r.mapLeft(r => {
+        assert.deepEqual(r, {
+          location: "Trying to unify Read['x'] and Read['y']",
+          message: "Cannot unify effects Read['x'] and Read['y']",
+          children: [
+            {
+              location: "Entity mismatch",
+              message: "Cannot unify entities ['x'] and ['y']",
+              children: [],
+            },
+          ],
+        })
+      })
+    })
+
     it('unifies temporal effects', () => {
       const e1 = parseEffectOrThrow('Temporal[t1]')
       const e2 = parseEffectOrThrow("Temporal['x']")
@@ -30,31 +114,11 @@ describe('unify', () => {
       result.mapLeft(r =>
         assert.deepEqual(r, {
           location: "Trying to unify Update['x'] and Temporal['y']",
+          message: "Cannot unify effects Update['x'] and Temporal['y']",
           children: [
             {
-              location: "Trying to unify entities ['x'] and []",
-              message: 'Expected [x] and [] to be the same',
-              children: [],
-            },
-          ],
-        })
-      )
-    })
-
-    it('returns error unifying temporal and pure effects', () => {
-      const e1 = parseEffectOrThrow('Pure')
-      const e2 = parseEffectOrThrow("Temporal['y']")
-
-      const result = unify(e1, e2)
-
-      assert.isTrue(result.isLeft())
-      result.mapLeft(r =>
-        assert.deepEqual(r, {
-          location: "Trying to unify Pure and Temporal['y']",
-          children: [
-            {
-              location: "Trying to unify entities ['y'] and []",
-              message: 'Expected [y] and [] to be the same',
+              location: "Effect mismatch",
+              message: "Cannot unify effects with different kinds: update and temporal",
               children: [],
             },
           ],
@@ -253,13 +317,15 @@ describe('unify', () => {
         assert.deepEqual(r, {
           location:
             "Trying to unify (Read[r1] & Update[u], Read[r2] & Update[u]) => Read[r1, r2] & Update[u] and (Read['x'] & Update['x'], Read['y'] & Update['y']) => E",
+          message: "Cannot unify effects (Read[r1] & Update[u], Read[r2] & Update[u]) => Read[r1, r2] & Update[u] and (Read['x'] & Update['x'], Read['y'] & Update['y']) => E",
           children: [
             {
               location: "Trying to unify Read[r2] & Update['x'] and Read['y'] & Update['y']",
+              message: "Cannot unify effects Read[r2] & Update['x'] and Read['y'] & Update['y']",
               children: [
                 {
                   location: "Trying to unify entities ['x'] and ['y']",
-                  message: 'Expected [x] and [y] to be the same',
+                  message: "Cannot unify entities ['x'] and ['y']",
                   children: [],
                 },
               ],
@@ -305,13 +371,15 @@ describe('unify', () => {
         assert.deepEqual(r, {
           location:
             "Trying to unify (Read[r1] & Update[u], Read[r2] & Update[u]) => Read[r1, r2] & Update[u] and (Read['y'] & Update['x'], Read['z'] & Update['x']) => Read['y'] & Update[u]",
+          message: "Cannot unify effects (Read[r1] & Update[u], Read[r2] & Update[u]) => Read[r1, r2] & Update[u] and (Read['y'] & Update['x'], Read['z'] & Update['x']) => Read['y'] & Update[u]",
           children: [
             {
               location: "Trying to unify Read['y', 'z'] & Update['x'] and Read['y'] & Update['x']",
+              message: "Cannot unify effects Read['y', 'z'] & Update['x'] and Read['y'] & Update['x']",
               children: [
                 {
                   location: "Trying to unify entities ['y', 'z'] and ['y']",
-                  message: 'Expected [y,z] and [y] to be the same',
+                  message: "Cannot unify entities ['y', 'z'] and ['y']",
                   children: [],
                 },
               ],
@@ -330,10 +398,11 @@ describe('unify', () => {
       result.mapLeft(r =>
         assert.deepEqual(r, {
           location: "Trying to unify Read[r1, r2] and Read[r, 'x', 'y']",
+          message: "Cannot unify unions of entities Read[r1, r2] and Read[r, 'x', 'y']",
           children: [
             {
               location: "Trying to unify entities [r1, r2] and [r, 'x', 'y']",
-              message: 'Unification for unions of entities is not implemented',
+              message: "Cannot unify entities [r1, r2] and [r, 'x', 'y']",
               children: [],
             },
           ],
@@ -350,7 +419,7 @@ describe('unify', () => {
       result.mapLeft(e =>
         assert.deepEqual(e, {
           location: 'Trying to unify e1 and () => e1',
-          message: "Can't bind e1 to () => e1: cyclical binding",
+          message: "Cannot unify effects e1 and () => e1",
           children: [],
         })
       )
@@ -367,7 +436,7 @@ describe('unify', () => {
       result.mapLeft(e =>
         assert.deepEqual(e, {
           location: 'Trying to unify () => e1 and e1',
-          message: "Can't bind e1 to () => e1: cyclical binding",
+          message: "Cannot unify effects () => e1 and e1",
           children: [],
         })
       )

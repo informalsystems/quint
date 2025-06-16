@@ -13,14 +13,44 @@
  */
 
 import { Either, left, right } from '@sweet-monads/either'
-import { Error, ErrorTree, TypeApplicationErrorDetails, buildErrorLeaf, buildErrorTree } from '../errorTree'
+import { ErrorTree, buildErrorLeaf, buildErrorTree, buildTypeApplicationMismatchLeaf } from '../errorTree'
 import { rowToString, typeToString } from '../ir/IRprinting'
 import { QuintConstType, QuintType, Row, rowNames, typeNames } from '../ir/quintTypes'
-import { Constraint, compareConstraints } from './base'
+import { Constraint, compareConstraints, OperatorInfo } from './base'
 import { Substitutions, applySubstitution, applySubstitutionToConstraint, compose } from './substitutions'
 import { unzip } from 'lodash'
 import { LookupTable } from '../names/base'
 import { simplifyRow } from './simplification'
+
+function occurs(name: string, type: QuintType | Row): boolean {
+  switch (type.kind) {
+    case 'var':
+      return type.name === name
+    case 'oper':
+      return type.args.some(t => occurs(name, t)) || occurs(name, type.res)
+    case 'set':
+    case 'list':
+      return occurs(name, type.elem)
+    case 'fun':
+      return occurs(name, type.arg) || occurs(name, type.res)
+    case 'tup':
+    case 'rec':
+    case 'sum':
+      return occurs(name, type.fields)
+    case 'row':
+      return type.fields.some(f => occurs(name, f.fieldType)) || occurs(name, type.other)
+    case 'empty':
+      return false
+    case 'const':
+      return false
+    default:
+      return false
+  }
+}
+
+function buildTypeError(location: string, message: string): ErrorTree {
+  return buildErrorLeaf(location, message)
+}
 
 /*
  * Try to solve a constraint by unifying all pairs of types in equality
@@ -42,7 +72,20 @@ export function solveConstraint(
       return right([])
     case 'eq':
       return unify(table, constraint.types[0], constraint.types[1], constraint.operatorInfo).mapLeft((e: ErrorTree) => {
-        errors.set(constraint.sourceId, e)
+        if (constraint.operatorInfo) {
+          const { operatorName, operatorSignature, argumentPosition } = constraint.operatorInfo
+          const enhancedError = buildTypeApplicationMismatchLeaf(
+            e.location,
+            operatorName,
+            typeToString(constraint.types[0]),
+            typeToString(constraint.types[1]),
+            operatorSignature,
+            argumentPosition
+          )
+          errors.set(constraint.sourceId, enhancedError)
+        } else {
+          errors.set(constraint.sourceId, e)
+        }
         return errors
       })
     case 'conjunction': {
@@ -104,9 +147,6 @@ export function unify(
     operatorName: string
     operatorSignature: string
     argumentPosition?: number
-    operatorName: string
-    operatorSignature: string
-    argumentPosition?: number
   }
 ): Either<ErrorTree, Substitutions> {
   const location = `Trying to unify ${typeToString(t1)} and ${typeToString(t2)}`
@@ -114,13 +154,19 @@ export function unify(
   if (typeToString(t1) === typeToString(t2)) {
     return right([])
   } else if (t1.kind === 'var') {
-    return bindType(t1.name, t2).mapLeft(msg => buildErrorLeaf(location, msg))
+    return bindType(t1.name, t2)
   } else if (t2.kind === 'var') {
-    return bindType(t2.name, t1).mapLeft(msg => buildErrorLeaf(location, msg))
-  } else if (t1.kind === 'oper' && t2.kind === 'oper') {
-    return checkSameLength(location, t1.args, t2.args)
+    return bindType(t2.name, t1)
+  } else   if (t1.kind === 'oper' && t2.kind === 'oper') {
+    return checkSameLength('Operator arguments', t1.args, t2.args)
       .chain(([args1, args2]) => chainUnifications(table, [...args1, t1.res], [...args2, t2.res]))
-      .mapLeft(error => buildErrorTree(location, error))
+      .mapLeft((error: ErrorTree) => {
+        return {
+          location: 'Operator unification',
+          message: error.message,
+          children: [error]
+        }
+      })
   } else if (t1.kind === 'set' && t2.kind === 'set') {
     return unify(table, t1.elem, t2.elem)
   } else if (t1.kind === 'list' && t2.kind === 'list') {
@@ -132,28 +178,42 @@ export function unify(
       return subs2.map(s => compose(table, subs, s))
     })
   } else if (t1.kind === 'tup' && t2.kind === 'tup') {
-    return unifyRows(table, t1.fields, t2.fields).mapLeft(error => buildErrorTree(location, error))
-  } else if (t1.kind === 'const') {
-    return unifyWithAlias(table, t1, t2)
+    return unifyRows(table, t1.fields, t2.fields).mapLeft((error: ErrorTree) => {
+      return {
+        location,
+        message: error.message,
+        children: [error]
+      }
+    })
+  } else if (t1.kind === 'const' && t2.kind === 'const') {
+    return t1.name === t2.name ? right([]) : left(buildTypeError(
+      'Type mismatch',
+      `Cannot unify ${typeToString(t1)} with ${typeToString(t2)}`
+    ))
   } else if (t2.kind === 'const') {
     return unifyWithAlias(table, t2, t1)
   } else if ((t1.kind === 'rec' && t2.kind === 'rec') || (t1.kind === 'sum' && t2.kind === 'sum')) {
-    return unifyRows(table, t1.fields, t2.fields).mapLeft(error => buildErrorTree(location, error))
+    return unifyRows(table, t1.fields, t2.fields).mapLeft((error: ErrorTree) => {
+      return {
+        location,
+        message: error.message,
+        children: [error]
+      }
+    })
   } else {
     // Create operator-specific error if we have operator information
     if (operatorInfo) {
-      const typeAppDetails: TypeApplicationErrorDetails = {
-        operatorName: operatorInfo.operatorName,
-        expectedType: typeToString(t1),
-        actualType: typeToString(t2),
-        operatorSignature: operatorInfo.operatorSignature,
-        argumentPosition: operatorInfo.argumentPosition,
-      }
-
-      return left(buildErrorLeaf(location, `Couldn't unify ${t1.kind} and ${t2.kind}`, typeAppDetails))
+      return left(buildTypeApplicationMismatchLeaf(
+        location,
+        operatorInfo.operatorName,
+        operatorInfo.operatorSignature,
+        typeToString(t1),
+        typeToString(t2),
+        operatorInfo.argumentPosition
+      ))
     }
 
-    return left(buildErrorLeaf(location, `Couldn't unify ${t1.kind} and ${t2.kind}`))
+    return left(buildTypeError(location, `Couldn't unify ${t1.kind} and ${t2.kind}`))
   }
 }
 
@@ -179,9 +239,9 @@ export function unifyRows(table: LookupTable, r1: Row, r2: Row): Either<ErrorTre
   if (rowToString(ra) === rowToString(rb)) {
     return right([])
   } else if (ra.kind === 'var') {
-    return bindRow(ra.name, rb).mapLeft((msg: string) => buildErrorLeaf(location, msg))
+    return bindRow(ra.name, rb)
   } else if (rb.kind === 'var') {
-    return bindRow(rb.name, ra).mapLeft((msg: string) => buildErrorLeaf(location, msg))
+    return bindRow(rb.name, ra)
   } else if (ra.kind === 'row' && rb.kind === 'row') {
     // Both rows are normal rows, so we need to compare their fields
     const sharedFieldNames = ra.fields.map(f => f.fieldName).filter(n => rb.fields.some(f => n === f.fieldName))
@@ -195,7 +255,13 @@ export function unifyRows(table: LookupTable, r1: Row, r2: Row): Either<ErrorTre
         const s2 = bindRow(rb.other.name, { ...ra, other: tailVar })
         // These bindings + composition should always succeed. I couldn't find a scenario where they don't.
         return s1.chain((sa: Substitutions) => s2.map((sb: Substitutions) => compose(table, sa, sb)))
-          .mapLeft((msg: string) => buildErrorLeaf(location, msg))
+          .mapLeft((error: ErrorTree) => {
+            return {
+              location,
+              message: error.message,
+              children: [error]
+            }
+          })
       } else {
         return left(
           buildErrorLeaf(
@@ -226,7 +292,13 @@ export function unifyRows(table: LookupTable, r1: Row, r2: Row): Either<ErrorTre
       // Return the composition of the two substitutions
       return tailSubs
         .chain((subs: Substitutions) => fieldSubs.map((s: Substitutions) => compose(table, subs, s)))
-        .mapLeft((error: Error) => buildErrorTree(location, error))
+        .mapLeft((error: ErrorTree) => {
+          return {
+            location,
+            message: error.message,
+            children: [error]
+          }
+        })
     }
   } else {
     return left(buildErrorLeaf(location, `Couldn't unify ${ra.kind} and ${rb.kind}`))
@@ -253,50 +325,52 @@ function unifyWithAlias(table: LookupTable, t1: QuintConstType, t2: QuintType) {
   return unify(table, aliasValue.type, t2)
 }
 
-function bindType(name: string, type: QuintType): Either<string, Substitutions> {
-  if (typeNames(type).typeVariables.has(name)) {
-    return left(`Can't bind ${name} to ${typeToString(type)}: cyclical binding`)
-  } else {
-    return right([{ kind: 'type', name: name, value: type }])
+function bindType(name: string, type: QuintType): Either<ErrorTree, Substitutions> {
+  if (occurs(name, type)) {
+    return left(buildTypeError(
+      `Binding type ${name}`,
+      `Can't bind ${name} to ${typeToString(type)}: cyclical binding`
+    ))
   }
+  return right([{ kind: 'type', name, value: type }])
 }
 
-function bindRow(name: string, row: Row): Either<string, Substitutions> {
-  if (rowNames(row).has(name)) {
-    return left(`Can't bind ${name} to ${rowToString(row)}: cyclical binding`)
-  } else {
-    return right([{ kind: 'row', name: name, value: row }])
+function bindRow(name: string, row: Row): Either<ErrorTree, Substitutions> {
+  if (occurs(name, row)) {
+    return left(buildTypeError(
+      `Binding row ${name}`,
+      `Can't bind ${name} to ${rowToString(row)}: cyclical binding`
+    ))
   }
+  return right([{ kind: 'row', name, value: row }])
 }
 
 function checkSameLength(
   location: string,
   types1: QuintType[],
   types2: QuintType[]
-): Either<Error, [QuintType[], QuintType[]]> {
-  return types1.length === types2.length
-    ? right([types1, types2])
-    : left(`Types don't have the same length: ${types1.length} vs ${types2.length}`)
+): Either<ErrorTree, [QuintType[], QuintType[]]> {
+  if (types1.length !== types2.length) {
+    return left(buildTypeError(location, `Expected ${types1.length} arguments, got ${types2.length}`))
+  }
+  return right([types1, types2])
 }
 
-function chainUnifications(table: LookupTable, types1: QuintType[], types2: QuintType[]): Either<Error, Substitutions> {
-  if (types1.length !== types2.length) {
-    return left(`Can't unify types with different lengths: ${types1.length} vs ${types2.length}`)
-  } else if (types1.length === 0) {
-    return right([])
-  }
-
-  // Unify the first pair and apply the substitutions to the rest
-  return unify(table, types1[0], types2[0]).chain((subs: Substitutions) => {
-    if (types1.length === 1) {
-      return right(subs)
-    } else {
-      // Recurse with the updated types
-      const restTypes1 = types1.slice(1).map(t => applySubstitution(table, subs, t))
-      const restTypes2 = types2.slice(1).map(t => applySubstitution(table, subs, t))
-      return chainUnifications(table, restTypes1, restTypes2).map((restSubs: Substitutions) => compose(table, subs, restSubs))
-    }
-  })
+function chainUnifications(table: LookupTable, types1: QuintType[], types2: QuintType[]): Either<ErrorTree, Substitutions> {
+  return types1.reduce((result: Either<ErrorTree, Substitutions>, t1: QuintType, i: number) => {
+    return result.chain((subs: Substitutions) => {
+      const t2 = types2[i]
+      const newT1 = applySubstitution(table, subs, t1)
+      const newT2 = applySubstitution(table, subs, t2)
+      return unify(table, newT1, newT2).mapLeft((error: ErrorTree) => {
+        return {
+          location: 'Type unification',
+          message: error.message,
+          children: [error]
+        }
+      })
+    })
+  }, right([]))
 }
 
 // Helper function to check if a type is a type variable or contains only type variables

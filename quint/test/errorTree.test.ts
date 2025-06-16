@@ -6,6 +6,7 @@ describe('errorTreeToString', () => {
   it('converts errorTree to multiline string', () => {
     const errorTree = {
       location: 'General location',
+      message: '',
       children: [
         {
           location: 'Specific location 1',
