@@ -483,13 +483,21 @@ export async function connect(
           // Handle process exit
           apalache.on('exit', (code, signal) => {
             if (code !== 0) {
-              resolve(err(`Apalache server exited with code ${code}. Please ensure Java 17 or later is installed and available in your PATH.`))
+              resolve(
+                err(
+                  `Apalache server exited with code ${code}. Please ensure Java 17 or later is installed and available in your PATH.`
+                )
+              )
             }
           })
 
           // Handle process error (e.g., failed to spawn)
           apalache.on('error', error => {
-            resolve(err(`Failed to launch Apalache server: ${error.message}. Please ensure Java 17 or later is installed and available in your PATH.`))
+            resolve(
+              err(
+                `Failed to launch Apalache server: ${error.message}. Please ensure Java 17 or later is installed and available in your PATH.`
+              )
+            )
           })
 
           if (apalache.pid) {
