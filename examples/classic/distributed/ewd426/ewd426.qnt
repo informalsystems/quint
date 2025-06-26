@@ -20,7 +20,7 @@ module self_stabilization {
 
   /// Mapping of node indices to their states
   var system: int -> int
-
+  var unused: Set[int]
   var prev_token_count: int
   var token_count: int
 
@@ -45,6 +45,7 @@ module self_stabilization {
     nondet initial = 0.to(N).setOfMaps(0.to(K - 1)).oneOf()
     all {
       system' = initial,
+      unused' = 0.to(K-1).exclude(initial.keys().fold(Set(), (s, x) => s.union(Set(initial.get(x))))),
       prev_token_count' = count_tokens(initial),
       token_count' = count_tokens(initial),
     }
@@ -57,6 +58,7 @@ module self_stabilization {
       system' = n,
       prev_token_count' = token_count,
       token_count' = count_tokens(n),
+      unused' = unused,
     }
 
   /// Pick several active nodes non-deterministically and update their state.
@@ -69,6 +71,7 @@ module self_stabilization {
       system' = n,
       prev_token_count' = token_count,
       token_count' = count_tokens(n),
+      unused' = unused,
     }
 
   // Pure function to count how many tokens exist
@@ -84,7 +87,16 @@ module self_stabilization {
   // Invariant
   def tokenInv = count_tokens(system) > 0
 
-  def conv = token_count <= prev_token_count
+  def convergenceInv = token_count <= prev_token_count
+
+  def closureInv = prev_token_count == 1 implies token_count == 1
+
+  def bottom_has_fresh_value = unused.contains(system.get(bottom))
+
+  def leader_waits = bottom_has_fresh_value implies
+      (system.has_token(bottom) implies token_count == 1)
+  
+
 
   def TypeOK =
     val domain = 0.to(K - 1)
@@ -93,6 +105,8 @@ module self_stabilization {
       domain.contains(prev_token_count),
       domain.contains(token_count),
     }
+
+  def inductiveInv = TypeOK and tokenInv and convergenceInv and closureInv and leader_waits
 
   /// to better see the token in the repl
   pure def show_token(nodes: int -> int): int -> bool =
