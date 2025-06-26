@@ -20,9 +20,12 @@ module self_stabilization {
 
   /// Mapping of node indices to their states
   var system: int -> int
-  var unused: Set[int]
-  var prev_token_count: int
-  var token_count: int
+  var prev: int -> int
+  var steppers: Set[int]
+
+  // var unused: Set[int]
+  // var prev_token_count: int
+  // var token_count: int
 
   /// Check if a node has the token
   pure def has_token(nodes: int -> int, index: int): bool =
@@ -45,9 +48,8 @@ module self_stabilization {
     nondet initial = 0.to(N).setOfMaps(0.to(K - 1)).oneOf()
     all {
       system' = initial,
-      unused' = 0.to(K-1).exclude(initial.keys().fold(Set(), (s, x) => s.union(Set(initial.get(x))))),
-      prev_token_count' = count_tokens(initial),
-      token_count' = count_tokens(initial),
+      prev' = initial,
+      steppers' = Set(),
     }
 
   /// Pick a single active node non-deterministically and update its state
@@ -56,9 +58,8 @@ module self_stabilization {
     val n = system.set(node, state_transition(system, node))
     all {
       system' = n,
-      prev_token_count' = token_count,
-      token_count' = count_tokens(n),
-      unused' = unused,
+      steppers' = Set(node),
+      prev' = system,
     }
 
   /// Pick several active nodes non-deterministically and update their state.
@@ -69,9 +70,11 @@ module self_stabilization {
     val n = nodes.fold(system, (s, x) => s.set(x, state_transition(system, x)))
     all {
       system' = n,
-      prev_token_count' = token_count,
-      token_count' = count_tokens(n),
-      unused' = unused,
+      steppers' = nodes,
+      prev' = system,
+      // prev_token_count' = token_count,
+      // token_count' = count_tokens(n),
+      // unused' = unused,
     }
 
   // Pure function to count how many tokens exist
@@ -87,26 +90,34 @@ module self_stabilization {
   // Invariant
   def tokenInv = count_tokens(system) > 0
 
-  def convergenceInv = token_count <= prev_token_count
+  def prevInv = system == steppers.fold(prev, (s, x) => s.set(x, state_transition(prev, x)))
 
-  def closureInv = prev_token_count == 1 implies token_count == 1
+  def convergenceInv = count_tokens(system) <= count_tokens(prev)
 
-  def bottom_has_fresh_value = unused.contains(system.get(bottom))
+  def closureInv = count_tokens(prev) == 1 implies count_tokens(system) == 1
 
-  def leader_waits = bottom_has_fresh_value implies
-      (system.has_token(bottom) implies token_count == 1)
   
+  def stable_prefix(i) = 
+    0.to(K - 1).exists(value =>
+      0.to(i).forall(j => system.get(j) == value) and
+      (i+1).to(N).forall(j => system.get(j) != value))
 
+  def stable_size(sys) = sys.keys().filter(i => stable_prefix(i)).size()
+    
+  def grow = 
+    stable_size(prev) != N implies
+      stable_size(system) >= stable_size(prev)
+
+  def stable_bottom_token = stable_size(system) == N implies system.has_token(bottom)
+  def bottom_waits = stable_size(system) == 1 implies not(system.has_token(bottom))
 
   def TypeOK =
     val domain = 0.to(K - 1)
     and {
       system.keys().forall(v => domain.contains(system.get(v))),
-      domain.contains(prev_token_count),
-      domain.contains(token_count),
     }
 
-  def inductiveInv = TypeOK and tokenInv and convergenceInv and closureInv and leader_waits
+  //def inductiveInv = TypeOK and tokenInv and convergenceInv and closureInv and leader_waits
 
   /// to better see the token in the repl
   pure def show_token(nodes: int -> int): int -> bool =
