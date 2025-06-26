@@ -21,6 +21,9 @@ module self_stabilization {
   /// Mapping of node indices to their states
   var system: int -> int
 
+  var prev_token_count: int
+  var token_count: int
+
   /// Check if a node has the token
   pure def has_token(nodes: int -> int, index: int): bool =
     if (index == bottom)
@@ -38,24 +41,35 @@ module self_stabilization {
       nodes.get(index - 1)
 
   /// Initialize all nodes with non-deterministic states
-  action init = all {
+  action init = 
     nondet initial = 0.to(N).setOfMaps(0.to(K - 1)).oneOf()
-    system' = initial
-  }
+    all {
+      system' = initial,
+      prev_token_count' = count_tokens(initial),
+      token_count' = count_tokens(initial),
+    }
 
   /// Pick a single active node non-deterministically and update its state
-  action step = {
+  action step = 
     nondet node = 0.to(N).filter(i => has_token(system, i)).oneOf()
-    system' = system.set(node, state_transition(system, node))
-  }
+    val n = system.set(node, state_transition(system, node))
+    all {
+      system' = n,
+      prev_token_count' = token_count,
+      token_count' = count_tokens(n),
+    }
 
   /// Pick several active nodes non-deterministically and update their state.
   /// Closer to the distributed demon is discussed in EWD 391. We are not
   /// considering interleaving in the execution of state_transition here
-  action distributed_step = {
+  action distributed_step = 
     nondet nodes = 0.to(N).filter(i => has_token(system, i)).powerset().exclude(Set()).oneOf()
-    system' = nodes.fold(system, (s, x) => s.set(x, state_transition(system, x)))
-  }
+    val n = nodes.fold(system, (s, x) => s.set(x, state_transition(system, x)))
+    all {
+      system' = n,
+      prev_token_count' = token_count,
+      token_count' = count_tokens(n),
+    }
 
   // Pure function to count how many tokens exist
   pure def count_tokens(nodes: int -> int): int = {
@@ -69,6 +83,16 @@ module self_stabilization {
 
   // Invariant
   def tokenInv = count_tokens(system) > 0
+
+  def conv = token_count <= prev_token_count
+
+  def TypeOK =
+    val domain = 0.to(K - 1)
+    and {
+      system.keys().forall(v => domain.contains(system.get(v))),
+      domain.contains(prev_token_count),
+      domain.contains(token_count),
+    }
 
   /// to better see the token in the repl
   pure def show_token(nodes: int -> int): int -> bool =
