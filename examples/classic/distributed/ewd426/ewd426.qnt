@@ -59,7 +59,7 @@ module self_stabilization {
     all {
       system' = n,
       steppers' = Set(node),
-      prev' = system,
+      prev' = system
     }
 
   /// Pick several active nodes non-deterministically and update their state.
@@ -69,9 +69,9 @@ module self_stabilization {
     nondet nodes = 0.to(N).filter(i => has_token(system, i)).powerset().exclude(Set()).oneOf()
     val n = nodes.fold(system, (s, x) => s.set(x, state_transition(system, x)))
     all {
+      prev' = system,
       system' = n,
       steppers' = nodes,
-      prev' = system,
       // prev_token_count' = token_count,
       // token_count' = count_tokens(n),
       // unused' = unused,
@@ -112,9 +112,11 @@ module self_stabilization {
   def bottom_waits = stable_size(system) == 1 implies not(system.has_token(bottom))
 
   def TypeOK =
-    val domain = 0.to(K - 1)
+    // val domain = 0.to(K - 1)
     and {
-      system.keys().forall(v => domain.contains(system.get(v))),
+      system.keys().forall(v => 0 <= system.get(v) and system.get(v) < K),
+      prev.keys().forall(v => 0 <= prev.get(v) and system.get(v) < K),
+      steppers.forall(v => 0 <= v and v <= N),     
     }
 
   //def inductiveInv = TypeOK and tokenInv and convergenceInv and closureInv and leader_waits
