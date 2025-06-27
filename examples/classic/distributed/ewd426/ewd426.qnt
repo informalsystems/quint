@@ -12,6 +12,10 @@ module self_stabilization {
   const N: int
   const K: int
 
+  pure def values(m: a -> b): Set[b] = {
+    m.keys().map(k => m.get(k))
+  }
+
   /// Ensures the state space is larger than the number of nodes
   //assume _ = K >= N
 
@@ -52,6 +56,7 @@ module self_stabilization {
       steppers' = Set(),
     }
 
+
   /// Pick a single active node non-deterministically and update its state
   action step = 
     nondet node = 0.to(N).filter(i => has_token(system, i)).oneOf()
@@ -74,9 +79,6 @@ module self_stabilization {
       prev' = system,
       system' = n,
       steppers' = nodes,
-      // prev_token_count' = token_count,
-      // token_count' = count_tokens(n),
-      // unused' = unused,
     }
 
   // Pure function to count how many tokens exist
@@ -99,24 +101,54 @@ module self_stabilization {
   def closureInv = count_tokens(prev) == 1 implies count_tokens(system) == 1
 
   /// bottom's value is different from the values of the other processes
-  def bottom_unique = not(system.get(bottom).in(system.keys().exclude(Set(bottom)).fold(Set(), (s, x) => s.union(Set(system.get(x))))))
+  def bottom_unique = not(system.get(bottom).in(system.keys().exclude(Set(bottom)).map(k => system.get(k))))
 
   pure def potential(sys) = 
     sys.keys().fold(0, (s, x) => if (has_token(sys, x)) 
                                     s + x 
                                   else s)
   
+  /// This proves that either we are converging, bottom takes an infinite number of steps
   def convergenceInv = or {
-    count_tokens(system) < count_tokens(prev), 
-    count_tokens(prev) == 1,
-    system == prev,
-    system.has_token(bottom),
-    potential(system) > potential(prev),
-    // if (pivot(prev) != -1)
-    //   pivot(system) >= pivot(prev)
-    // else
-    //   true
+    count_tokens(prev) == 1,                    // we are done, or
+    count_tokens(system) < count_tokens(prev),  // we are getting closer, or
+    potential(system) > potential(prev),        // we are getting closer in another way (potential is bounded from above by Sum of keys)
+    system == prev,                             // just to exclude initial state
+    system.has_token(bottom),                   // bottom is making a step
   }
+
+  /// If bottom has a token, it must increment its value. If it does so infinitely many times, it will eventually reach all values in {0, ..., K-1}
+  def increment = {
+    system.has_token(bottom) and bottom.in(steppers) implies system.get(bottom) == (prev.get(bottom) + 1) % K
+  }
+
+
+  /// Only bottom can introduce new values into the system.
+  def fresh =
+    system.values().exclude(prev.values()).size() > 0 implies bottom_unique
+
+  // fresh and induction on increment mean eventually bottom_unique
+
+  def bu = bottom_unique implies not(has_token(system, bottom))
+
+  def ba = bottom_unique implies pss(system) != Set()
+
+    // def pivotize = 
+    //   pivot(system) != -1 implies 
+    //     or {
+    //       pivot(system) > pivot(prev),
+    //       and {
+    //         pivot(system) == pivot(prev),
+    //         or {
+    //           count_tokens(system) < count_tokens(prev),
+    //           potential(system) > potential(prev),
+    //         },
+    //       and {
+    //         pivot(system) < pivot(prev),
+    //         count_tokens(system) == 1,
+    //       }
+    //       }
+    //     }
 
   def start_stable = bottom_unique implies not(has_token(system, bottom))
 
@@ -128,19 +160,16 @@ pure def getOnlyElement2(s: Set[a]): a = {
    hack.get("value")
  }
 }
-  pure def pivot(sys: int -> int): int = 
-    val u = 0.to(N).filter(x => prefix_unique(sys, x))
-    if (u.size() == 0) 
-      -1
-    else 
-      u.getOnlyElement2()
+pure def pss(sys) = 0.to(N).filter(x => prefix_unique(sys, x))
+
+
 
 
   pure def prefix_unique(sys, i) = 
     val hd = 0.to(i)
     val tl = (i + 1).to(N)
-    val headval = hd.fold(Set(), (s, x) => s.union(Set(sys.get(x))))
-    val tailval = tl.fold(Set(), (s, x) => s.union(Set(sys.get(x))))
+    val headval = hd.map(x => sys.get(x))
+    val tailval = tl.map(x => sys.get(x))
     and {
       headval.size() == 1,
       or {
