@@ -13,7 +13,7 @@ module self_stabilization {
   const K: int
 
   /// Ensures the state space is larger than the number of nodes
-  assume _ = K >= N
+  //assume _ = K >= N
 
   val bottom = 0
   val top = N
@@ -62,6 +62,8 @@ module self_stabilization {
       prev' = system
     }
 
+
+
   /// Pick several active nodes non-deterministically and update their state.
   /// Closer to the distributed demon is discussed in EWD 391. We are not
   /// considering interleaving in the execution of state_transition here
@@ -90,33 +92,68 @@ module self_stabilization {
   // Invariant
   def tokenInv = count_tokens(system) > 0
 
-  def prevInv = system == steppers.fold(prev, (s, x) => s.set(x, state_transition(prev, x)))
+  // def prevInv = system == steppers.fold(prev, (s, x) => s.set(x, state_transition(prev, x)))
 
-  def convergenceInv = count_tokens(system) <= count_tokens(prev)
+  def simple_convergenceInv = count_tokens(system) <= count_tokens(prev) 
 
   def closureInv = count_tokens(prev) == 1 implies count_tokens(system) == 1
 
+  /// bottom's value is different from the values of the other processes
+  def bottom_unique = not(system.get(bottom).in(system.keys().exclude(Set(bottom)).fold(Set(), (s, x) => s.union(Set(system.get(x))))))
+
+  pure def potential(sys) = 
+    sys.keys().fold(0, (s, x) => if (has_token(sys, x)) 
+                                    s + x 
+                                  else s)
   
-  def stable_prefix(i) = 
-    0.to(K - 1).exists(value =>
-      0.to(i).forall(j => system.get(j) == value) and
-      (i+1).to(N).forall(j => system.get(j) != value))
+  def convergenceInv = or {
+    count_tokens(system) < count_tokens(prev), 
+    count_tokens(prev) == 1,
+    system == prev,
+    system.has_token(bottom),
+    potential(system) > potential(prev),
+    // if (pivot(prev) != -1)
+    //   pivot(system) >= pivot(prev)
+    // else
+    //   true
+  }
 
-  def stable_size(sys) = sys.keys().filter(i => stable_prefix(i)).size()
-    
-  def grow = 
-    stable_size(prev) != N implies
-      stable_size(system) >= stable_size(prev)
+  def start_stable = bottom_unique implies not(has_token(system, bottom))
 
-  def stable_bottom_token = stable_size(system) == N implies system.has_token(bottom)
-  def bottom_waits = stable_size(system) == 1 implies not(system.has_token(bottom))
+pure def getOnlyElement2(s: Set[a]): a = {
+ pure val hack = s.map(e => ("value", e)).setToMap()
+ if (s.size() != 1) {
+   hack.get("error: expected singleton")
+ } else {
+   hack.get("value")
+ }
+}
+  pure def pivot(sys: int -> int): int = 
+    val u = 0.to(N).filter(x => prefix_unique(sys, x))
+    if (u.size() == 0) 
+      -1
+    else 
+      u.getOnlyElement2()
+
+
+  pure def prefix_unique(sys, i) = 
+    val hd = 0.to(i)
+    val tl = (i + 1).to(N)
+    val headval = hd.fold(Set(), (s, x) => s.union(Set(sys.get(x))))
+    val tailval = tl.fold(Set(), (s, x) => s.union(Set(sys.get(x))))
+    and {
+      headval.size() == 1,
+      or {
+        tailval.size() == 0,
+        not(headval.subseteq(tailval)),
+      }
+    }
 
   def TypeOK =
-    // val domain = 0.to(K - 1)
     and {
-      system.keys().forall(v => 0 <= system.get(v) and system.get(v) < K),
-      prev.keys().forall(v => 0 <= prev.get(v) and system.get(v) < K),
-      steppers.forall(v => 0 <= v and v <= N),     
+      system.in(0.to(N).setOfMaps(0.to(K - 1))),
+      prev.in(0.to(N).setOfMaps(0.to(K - 1))),
+      steppers.in(0.to(N).powerset()),     
     }
 
   //def inductiveInv = TypeOK and tokenInv and convergenceInv and closureInv and leader_waits
