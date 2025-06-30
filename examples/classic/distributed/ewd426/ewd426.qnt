@@ -129,38 +129,9 @@ module self_stabilization {
 
   // fresh and induction on increment mean eventually bottom_unique
 
-  def bu = bottom_unique implies not(has_token(system, bottom))
+  def bot_unique_implies_token = bottom_unique implies not(has_token(system, bottom))
 
-  def ba = bottom_unique implies pss(system) != Set()
 
-    // def pivotize = 
-    //   pivot(system) != -1 implies 
-    //     or {
-    //       pivot(system) > pivot(prev),
-    //       and {
-    //         pivot(system) == pivot(prev),
-    //         or {
-    //           count_tokens(system) < count_tokens(prev),
-    //           potential(system) > potential(prev),
-    //         },
-    //       and {
-    //         pivot(system) < pivot(prev),
-    //         count_tokens(system) == 1,
-    //       }
-    //       }
-    //     }
-
-  def start_stable = bottom_unique implies not(has_token(system, bottom))
-
-pure def getOnlyElement2(s: Set[a]): a = {
- pure val hack = s.map(e => ("value", e)).setToMap()
- if (s.size() != 1) {
-   hack.get("error: expected singleton")
- } else {
-   hack.get("value")
- }
-}
-pure def pss(sys) = 0.to(N).filter(x => prefix_unique(sys, x))
 
 
 
@@ -173,10 +144,52 @@ pure def pss(sys) = 0.to(N).filter(x => prefix_unique(sys, x))
     and {
       headval.size() == 1,
       or {
-        tailval.size() == 0,
+        // tailval.size() == 0,
         not(headval.subseteq(tailval)),
       }
     }
+
+pure def getOnlyElement2(s: Set[a]): a = {
+ pure val hack = s.map(e => ("value", e)).setToMap()
+ if (s.size() != 1) {
+   hack.get("error: expected singleton")
+ } else {
+   hack.get("value")
+ }
+}
+
+  pure def good_prefix(sys) = 0.to(N).filter(x => prefix_unique(sys, x))
+
+  pure def pivot(sys) = 
+    if (good_prefix(sys).size() == 0)
+      -1
+    else
+      getOnlyElement2(good_prefix(sys))
+
+  def ba = bottom_unique implies good_prefix(system) != Set()
+
+    def stable_wave = 
+      pivot(prev) >= 0 implies 
+        or {
+          and { // prefix grows
+            pivot(prev) < pivot(system),
+          },
+          and { // prefix stays, but movement in suffix
+            pivot(prev) == pivot(system),
+            or {
+              count_tokens(system) < count_tokens(prev),
+              potential(system) > potential(prev),
+            },
+          and {
+            count_tokens(system) == 1,
+          }
+        }
+    }
+
+  def start_stable = bottom_unique implies not(has_token(system, bottom))
+
+
+
 
   def TypeOK =
     and {
