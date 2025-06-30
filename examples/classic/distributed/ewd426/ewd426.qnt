@@ -5,6 +5,10 @@
  * This implementation ensures that from some time on,
  * exactly one token circulates in a set of nodes,
  *
+ * run
+ * quint verify ewd426.qnt --main ewd426 --inductive-invariant "wave_invariant" --step distributed_step 
+ * to verify it!
+ *
  * Mahtab Norouzi, Josef Widder, Informal Systems, 2024-2025
  */
 module self_stabilization {
@@ -50,10 +54,11 @@ module self_stabilization {
   /// Initialize all nodes with non-deterministic states
   action init = 
     nondet initial = 0.to(N).setOfMaps(0.to(K - 1)).oneOf()
+    nondet nodes = 0.to(N).filter(i => has_token(initial, i)).powerset().exclude(Set(Set())).oneOf()
     all {
-      system' = initial,
+      system' = nodes.fold(initial, (s, x) => s.set(x, state_transition(initial, x))),
       prev' = initial,
-      steppers' = Set(),
+      steppers' = nodes,
     }
 
 
@@ -73,7 +78,7 @@ module self_stabilization {
   /// Closer to the distributed demon is discussed in EWD 391. We are not
   /// considering interleaving in the execution of state_transition here
   action distributed_step = 
-    nondet nodes = 0.to(N).filter(i => has_token(system, i)).powerset().exclude(Set()).oneOf()
+    nondet nodes = 0.to(N).filter(i => has_token(system, i)).powerset().exclude(Set(Set())).oneOf()
     val n = nodes.fold(system, (s, x) => s.set(x, state_transition(system, x)))
     all {
       prev' = system,
@@ -91,54 +96,99 @@ module self_stabilization {
   temporal closure = always(count_tokens(system) == 1 implies always(count_tokens(system) == 1))
   temporal persistence = step.weakFair(Set(system)) implies eventually(always(count_tokens(system) == 1))
 
-  // Invariant
+
+  // Invariants
+
+  def TypeOK =
+    and {
+      system.in(0.to(N).setOfMaps(0.to(K - 1))),
+      prev.in(0.to(N).setOfMaps(0.to(K - 1))),
+      steppers.in(0.to(N).powerset()),     
+    }
+
+
   def tokenInv = count_tokens(system) > 0
 
-  // def prevInv = system == steppers.fold(prev, (s, x) => s.set(x, state_transition(prev, x)))
+  /// prev is used to store the previous state of the system. We need this invariant to relate it
+  /// to the current state
+  def prevInv = system == steppers.fold(prev, (s, x) => s.set(x, state_transition(prev, x)))
+
+  def no_deadlockInv = steppers != Set()
 
   def simple_convergenceInv = count_tokens(system) <= count_tokens(prev) 
 
   def closureInv = count_tokens(prev) == 1 implies count_tokens(system) == 1
 
-  /// bottom's value is different from the values of the other processes
-  def bottom_unique = not(system.get(bottom).in(system.keys().exclude(Set(bottom)).map(k => system.get(k))))
-
+  /// The potential is the sum of the keys of the nodes that have a token. If a token moves
+  /// to the right, the potential grows. However, for the same number of tokens, the potential
+  /// is bounded from above. So it cannot grow indefinitely.
   pure def potential(sys) = 
     sys.keys().fold(0, (s, x) => if (has_token(sys, x)) 
                                     s + x 
                                   else s)
   
-  /// This proves that either we are converging, bottom takes an infinite number of steps
+  /// This proves that either we are converging, or bottom takes an infinite number of steps
   def convergenceInv = or {
     count_tokens(prev) == 1,                    // we are done, or
     count_tokens(system) < count_tokens(prev),  // we are getting closer, or
     potential(system) > potential(prev),        // we are getting closer in another way (potential is bounded from above by Sum of keys)
-    system == prev,                             // just to exclude initial state
     system.has_token(bottom),                   // bottom is making a step
   }
 
-  /// If bottom has a token, it must increment its value. If it does so infinitely many times, it will eventually reach all values in {0, ..., K-1}
-  def increment = {
+  /// This invariant is inductive. 
+  def basic_Inv = and {
+      TypeOK,
+      tokenInv,
+      prevInv,
+      no_deadlockInv,
+      closureInv,
+      simple_convergenceInv,
+      convergenceInv,
+    }
+
+  // From the above invariant, in particular from convergenceInv, we observe that either the system converges or
+  // bottom is making an infinite number of steps. In the following we show a stronger convergence from the point
+  // where bottom has a unique value
+
+  /// If bottom has a token, it must increment its value. 
+  def incrementInv = {
     system.has_token(bottom) and bottom.in(steppers) implies system.get(bottom) == (prev.get(bottom) + 1) % K
   }
 
+  // If bottom increments its value infinitely many times, it will eventually reach all values in {0, ..., K-1}
 
-  /// Only bottom can introduce new values into the system.
-  def fresh =
-    system.values().exclude(prev.values()).size() > 0 implies bottom_unique
+  /// bottom's value is different from the values of the other processes
+  def bottom_unique = not(system.get(bottom).in(system.keys().exclude(Set(bottom)).map(k => system.get(k))))
+
+  /// Only bottom can introduce new values into the system. If a value is introduced, then bottom is unique
+  def freshInv =
+    system.values().exclude(prev.values()).size() > 0 implies 
+      and {
+        bottom_unique,
+        system.get(bottom).in(system.values().exclude(prev.values()))
+      }
 
   // fresh and induction on increment mean eventually bottom_unique
 
-  def bot_unique_implies_token = bottom_unique implies not(has_token(system, bottom))
 
+  // In the following we show that once bottom_unique holds, bottom's value will
+  // spread to all nodes, for this we will define a pivot that separates the nodes who
+  // have the same value as bottom from those who do not. 
 
+  def wave_startInv = bottom_unique == prefix_unique(system, bottom)
 
-
-
+  pure def getOnlyElement2(s: Set[a]): a = {
+  pure val hack = s.map(e => ("value", e)).setToMap()
+  if (s.size() != 1) {
+    hack.get("error: expected singleton")
+  } else {
+    hack.get("value")
+  }
+  }
 
   pure def prefix_unique(sys, i) = 
-    val hd = 0.to(i)
-    val tl = (i + 1).to(N)
+    val hd = 0.to(N).filter(x => x <= i)
+    val tl = 0.to(N).filter(x => x > i)
     val headval = hd.map(x => sys.get(x))
     val tailval = tl.map(x => sys.get(x))
     and {
@@ -149,15 +199,6 @@ module self_stabilization {
       }
     }
 
-pure def getOnlyElement2(s: Set[a]): a = {
- pure val hack = s.map(e => ("value", e)).setToMap()
- if (s.size() != 1) {
-   hack.get("error: expected singleton")
- } else {
-   hack.get("value")
- }
-}
-
   pure def good_prefix(sys) = 0.to(N).filter(x => prefix_unique(sys, x))
 
   pure def pivot(sys) = 
@@ -166,39 +207,42 @@ pure def getOnlyElement2(s: Set[a]): a = {
     else
       getOnlyElement2(good_prefix(sys))
 
-  def ba = bottom_unique implies good_prefix(system) != Set()
 
-    def stable_wave = 
-      pivot(prev) >= 0 implies 
-        or {
-          and { // prefix grows
-            pivot(prev) < pivot(system),
+  /// If bottom is unique, then we have a pivot
+  def bot_unique_implies_pivotInv = bottom_unique implies pivot(system) == bottom
+
+  /// Once we have a pivot, we have the following convergence invariant:
+  def wave_convergenceInv = 
+    pivot(prev) >= 0 implies 
+      or {
+        and { // prefix grows
+          pivot(prev) < pivot(system),
+        },
+        and { // prefix stays, but movement in suffix
+          pivot(prev) == pivot(system),
+          or {
+            count_tokens(system) < count_tokens(prev),
+            potential(system) > potential(prev),
           },
-          and { // prefix stays, but movement in suffix
-            pivot(prev) == pivot(system),
-            or {
-              count_tokens(system) < count_tokens(prev),
-              potential(system) > potential(prev),
-            },
-          and {
-            count_tokens(system) == 1,
-          }
+        },
+        and {
+          count_tokens(system) == 1,
         }
-    }
+      }
+  
+  def new_waveInv = pivot(prev) == N implies pivot(system) == 0
 
-  def start_stable = bottom_unique implies not(has_token(system, bottom))
-
-
-
-
-  def TypeOK =
-    and {
-      system.in(0.to(N).setOfMaps(0.to(K - 1))),
-      prev.in(0.to(N).setOfMaps(0.to(K - 1))),
-      steppers.in(0.to(N).powerset()),     
-    }
-
-  //def inductiveInv = TypeOK and tokenInv and convergenceInv and closureInv and leader_waits
+  /// From the below we conclude that eventually bottom will have a unique value. At this point we will have
+  /// a pivot. From then on we will converge to having a single token circulating in the system.
+  pure def wave_invariant = and {
+    basic_Inv,
+    incrementInv,
+    freshInv,
+    bot_unique_implies_pivotInv,
+    wave_startInv,
+    wave_convergenceInv,
+    new_waveInv,
+  }
 
   /// to better see the token in the repl
   pure def show_token(nodes: int -> int): int -> bool =
@@ -206,7 +250,7 @@ pure def getOnlyElement2(s: Set[a]): a = {
 }
 
 module ewd426 {
-  import self_stabilization(N = 5, K = 7).*
+  import self_stabilization(N = 5, K = 5).*
 }
 
 module broken_ewd426 {
