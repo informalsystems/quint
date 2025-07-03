@@ -19,8 +19,8 @@
 //! while lazy ops will be compiled into closures that take colusures as
 //! arguments (which should be called to evaluate each argument).
 
-use crate::evaluator::{CompiledExprWithArgs, CompiledExprWithLazyArgs};
-use crate::ir::QuintError;
+use crate::evaluator::{CompiledExprWithArgs, CompiledExprWithLazyArgs, NondetId, NondetState};
+use crate::ir::{QuintError, QuintId};
 use crate::value::{ImmutableMap, ImmutableSet, ImmutableVec, Value};
 use fxhash::FxHashSet;
 use itertools::Itertools;
@@ -42,7 +42,6 @@ pub const LAZY_OPS: [&str; 13] = [
     "reps",
     "expect",
 ];
-
 /// Compile an operator in a lazy way, where the arguments should only be
 /// evaluated when needed.
 pub fn compile_lazy_op(op: &str) -> CompiledExprWithLazyArgs {
@@ -157,32 +156,6 @@ pub fn compile_lazy_op(op: &str) -> CompiledExprWithLazyArgs {
                 )),
             }
         },
-        "oneOf" => |env, args| {
-            // Randomly selects one element of the set.
-            let set = args[0].execute(env)?;
-            // Some sets require multiple random numbers in order to pick an element efficiently.
-            // For example, a cross product will require one random number per set, and return a tuple like
-            // (set1.pick(r1), set2.pick(r2), ..., setn.pick(rn))
-
-            // The ranges in which to generate which random number
-            let bounds = set.bounds();
-            // The generated random number for each bound
-            let mut positions = Vec::with_capacity(bounds.len());
-
-            for bound in bounds {
-                if bound == 0 {
-                    return Err(QuintError::new("QNT509", "Applied oneOf on an empty set"));
-                }
-
-                // TODO: The old simulator generates a limited bound for infinite sets
-                // Not sure if we want to keep this behavior
-                // Related: https://github.com/informalsystems/quint/issues/279
-
-                positions.push(env.rand.next(bound))
-            }
-
-            Ok(set.pick(&mut positions.into_iter()))
-        },
         "then" => |env, args| {
             // Compose two actions, executing the second one only if the first one results in true.
             let first = args[0].execute(env)?;
@@ -254,9 +227,7 @@ pub fn compile_lazy_op(op: &str) -> CompiledExprWithLazyArgs {
                 Ok(Value::Bool(true))
             }
         }
-        _ => {
-            panic!("Unknown lazy op: {op}")
-        }
+        _ => |_env, _args| Err(QuintError::new("QNT501", "Unknown built-in operator")),
     })
 }
 
@@ -778,9 +749,7 @@ pub fn compile_eager_op(op: &str) -> CompiledExprWithArgs {
             ))
         },
 
-        _ => {
-            panic!("Unknown eager op: {op}")
-        }
+        _ => |_env, _args| Err(QuintError::new("QNT501", "Unknown built-in operator")),
     })
 }
 

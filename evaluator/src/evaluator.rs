@@ -74,6 +74,18 @@ impl CompiledExprWithLazyArgs {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct NondetId {
+    pub id: QuintId,
+    pub choices: Vec<Vec<usize>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct NondetState {
+    pub bounds: Vec<usize>,
+    pub counter: Vec<usize>,
+}
+
 pub struct Env {
     // The storage for state variables, holding their values on the current and
     // next state. We need it in the enviroment for taking and restoring snapshots.
@@ -83,6 +95,8 @@ pub struct Env {
     pub rand: Rand,
     // TODO: trace recorder (for --verbosity) and trace collector (for proper
     // trace tracking in runs)
+    pub bounds: FxHashMap<NondetId, NondetState>,
+    pub choices: Vec<Vec<usize>>,
 }
 
 impl Env {
@@ -90,6 +104,8 @@ impl Env {
         Self {
             var_storage,
             rand: Rand::new(),
+            bounds: FxHashMap::default(),
+            choices: Vec::new(),
         }
     }
 
@@ -98,6 +114,8 @@ impl Env {
         Self {
             var_storage,
             rand: Rand::with_state(state),
+            bounds: FxHashMap::default(),
+            choices: Vec::new(),
         }
     }
 
@@ -521,10 +539,8 @@ impl<'a> Interpreter<'a> {
                     // Lazy operator, compile the arguments and give their
                     // closures to the operator so it decides when to eval
                     let opcode = opcode.clone();
-                    CompiledExpr::new(move |env| {
-                        let op = compile_lazy_op(&opcode);
-                        op.execute(env, &compiled_args)
-                    })
+                    let op = compile_lazy_op(&opcode);
+                    CompiledExpr::new(move |env| op.execute(env, &compiled_args))
                 } else {
                     // Otherwise, this is either a normal (eager) builtin, or an user-defined operator.
                     // For both, we first evaluate the arguments and then apply the operator.
@@ -548,9 +564,111 @@ impl<'a> Interpreter<'a> {
                         .or_insert_with(|| Rc::new(RefCell::new(None)));
                     Rc::clone(cached)
                 };
+
                 // Then, we build the expression for the let body. It will use the lookup table and, every time it needs the value
                 // for the definition under the let, it will use the cached value (or eval a new value and store it).
                 let compiled_expr = self.compile(expr);
+
+                if opdef.qualifier == OpQualifier::Nondet {
+                    if let QuintEx::QuintApp {
+                        id,
+                        opcode: _,
+                        args,
+                    } = opdef.expr.clone()
+                    {
+                        let compiled_set = self.compile(&args[0]);
+
+                        return CompiledExpr::new(move |env| {
+                            let set = compiled_set.execute(env)?;
+                            if set.cardinality() == 0 {
+                                return Ok(Value::Bool(false));
+                            }
+
+                            if set.cardinality() == 1 {
+                                // If the set has only one element, we can just return it
+                                let picked = set.pick(&mut std::iter::once(0));
+                                cached_value.borrow_mut().replace(Ok(picked));
+                            } else {
+                                let key = NondetId {
+                                    id,
+                                    choices: env.choices.clone(),
+                                };
+
+                                pub fn increment(state: &mut NondetState) -> bool {
+                                    if state.bounds.is_empty() {
+                                        return false;
+                                    }
+                                    for i in (0..state.counter.len()).rev() {
+                                        if state.counter[i] < state.bounds[i] - 1 {
+                                            state.counter[i] += 1;
+                                            // println!("Incremented counter[{}] to {}", i, state.counter[i]);
+                                            return true;
+                                        } else {
+                                            state.counter[i] = 0;
+                                            return true;
+                                        }
+                                    }
+                                    // If we reach here, it means we have incremented all counters to 0
+                                    println!("Finished incrementing all counters, resetting to 0");
+                                    return false;
+                                }
+
+                                // Some sets require multiple random numbers in order to pick an element efficiently.
+                                // For example, a cross product will require one random number per set, and return a tuple like
+                                // (set1.pick(r1), set2.pick(r2), ..., setn.pick(rn))
+                                if env.bounds.contains_key(&key) {
+                                    let state: &mut NondetState = env.bounds.get_mut(&key).unwrap(); // increment
+                                    let incr_res = increment(state);
+                                    if !incr_res {
+                                        return Ok(Value::Bool(false));
+                                    }
+                                    // println!("has bound with counter: {:?}", state.counter.clone());
+                                    env.choices.push(state.counter.clone());
+                                    let picked = set.pick(&mut state.counter.clone().into_iter());
+                                    cached_value.borrow_mut().replace(Ok(picked));
+                                } else {
+                                    // The ranges in which to generate which random number
+                                    let bounds = set.bounds();
+                                    let positions: Vec<usize> = (0..bounds.len()).collect();
+                                    env.bounds.insert(
+                                        key.clone(),
+                                        NondetState {
+                                            bounds: bounds.clone(),
+                                            counter: positions.clone(),
+                                        },
+                                    );
+                                    println!("new bound {:?}", key);
+                                    env.choices.push(positions.clone());
+                                    let picked = set.pick(&mut positions.into_iter());
+                                    cached_value.borrow_mut().replace(Ok(picked));
+                                }
+                            }
+                            let result = compiled_expr.execute(env);
+                            // After evaluating the whole let expression, we clear the cached value, as it is no longer in scope.
+                            // The next time the whole let expression is evaluated, the definition will be re-evaluated.
+                            cached_value.replace(None);
+                            result
+
+                            // // The generated random number for each bound
+                            // let mut positions = Vec::with_capacity(bounds.len());
+
+                            // for bound in bounds {
+                            //     if bound == 0 {
+                            //         return Err(QuintError::new("QNT509", "Applied oneOf on an empty set"));
+                            //     }
+
+                            //     // TODO: The old simulator generates a limited bound for infinite sets
+                            //     // Not sure if we want to keep this behavior
+                            //     // Related: https://github.com/informalsystems/quint/issues/279
+
+                            //     positions.push(env.rand.next(bound))
+                            // }
+
+                            // Ok(set.pick(&mut positions.into_iter()))
+                        });
+                    }
+                }
+
                 CompiledExpr::new(move |env| {
                     let result = compiled_expr.execute(env);
                     // After evaluating the whole let expression, we clear the cached value, as it is no longer in scope.

@@ -143,7 +143,7 @@ run_tlc() {
     info "Running TLC for $tla_file..."
 
     # Run TLC, writing to both stdout and the temp file
-    if ! java $JAVA_OPTS -cp "$APALACHE_JAR" tlc2.TLC -deadlock -workers "$WORKERS" "$tla_file" 2>&1 | tee "$output_file"; then
+    if ! java $JAVA_OPTS -cp "$APALACHE_JAR" tlc2.TLC -maxSetSize 17000000 -deadlock -workers "$WORKERS" "$tla_file" 2>&1 | tee "$output_file"; then
         err_and_exit "TLC execution failed for $tla_file"
     fi
 

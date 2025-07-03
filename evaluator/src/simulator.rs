@@ -95,6 +95,9 @@ impl ParsedQuint {
 
             let mut trace = Vec::with_capacity(steps + 1);
 
+            env.choices.clear();
+            // TODO: backtracking
+
             if !init.execute(&mut env)?.as_bool() {
                 trace_lengths.push(0);
                 return Ok(SimulationResult {
@@ -105,7 +108,13 @@ impl ParsedQuint {
                 });
             }
 
+            // println!("{:?}", env.bounds);
+
             for step_number in 1..=(steps + 1) {
+                for bound in &env.bounds {
+                    // println!("Bound: {:?}", bound);
+                }
+
                 interpreter.shift();
 
                 trace.push(interpreter.var_storage.borrow().as_record());
@@ -139,6 +148,7 @@ impl ParsedQuint {
                     trace_lengths.push(trace.len());
                     break;
                 }
+                // println!("Choices: {:?}", env.choices);
             }
             trace_lengths.push(trace.len());
             collect_trace(
@@ -150,6 +160,9 @@ impl ParsedQuint {
                 },
             );
         }
+        println!("Choices: {:?}", env.choices);
+        println!("Number of bounds tracked: {}", env.bounds.len());
+        println!("Traces avg: {:?}", get_trace_statistics(&trace_lengths).average_trace_length);
         Ok(SimulationResult {
             result: true,
             best_traces,
