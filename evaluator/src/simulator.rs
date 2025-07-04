@@ -1,10 +1,12 @@
 //! Simulation for Quint models.
 
+
 use crate::{
     evaluator::{Env, Interpreter},
     ir::{LookupTable, QuintError, QuintEx},
     itf::Trace,
 };
+use ahash::RandomState;
 use serde::{Deserialize, Serialize};
 
 /// Simulation input that depends on the typescript Quint tool.
@@ -85,6 +87,8 @@ impl ParsedQuint {
         let mut best_traces = Vec::with_capacity(n_traces + 1);
         let mut trace_lengths = Vec::with_capacity(n_traces + 1);
 
+        let hash_builder = RandomState::new();
+
         for sample_number in 1..=samples {
             if let Some(callback) = &mut progress_callback {
                 callback(ProgressUpdate {
@@ -96,9 +100,12 @@ impl ParsedQuint {
             let mut trace = Vec::with_capacity(steps + 1);
 
             env.choices.clear();
-            // TODO: backtracking
 
             if !init.execute(&mut env)?.as_bool() {
+                if !trace_lengths.is_empty() {
+                    // We produced all
+                    break;
+                }
                 trace_lengths.push(0);
                 return Ok(SimulationResult {
                     result: false,
@@ -117,7 +124,12 @@ impl ParsedQuint {
 
                 interpreter.shift();
 
-                trace.push(interpreter.var_storage.borrow().as_record());
+                let state = interpreter.var_storage.borrow().as_record();
+                trace.push(state.clone());
+
+                // println!("State: {:?}", state.clone());
+                env.choices.picks.clear();
+                env.choices.state = Some(hash_builder.hash_one(state));
 
                 if !invariant.execute(&mut env)?.as_bool() {
                     trace_lengths.push(trace.len());
@@ -137,6 +149,7 @@ impl ParsedQuint {
                         samples: sample_number,
                     });
                 }
+                // println!("inv ok");
 
                 if step_number != steps + 1 && !step.execute(&mut env)?.as_bool() {
                     // The run cannot be extended. In some cases, this may indicate a deadlock.
@@ -162,7 +175,11 @@ impl ParsedQuint {
         }
         println!("Choices: {:?}", env.choices);
         println!("Number of bounds tracked: {}", env.bounds.len());
-        println!("Traces avg: {:?}", get_trace_statistics(&trace_lengths).average_trace_length);
+        println!(
+            "Traces avg: {:?}",
+            get_trace_statistics(&trace_lengths).average_trace_length
+        );
+        // println!("Total seen states: {}", state_tracker.total_seen());
         Ok(SimulationResult {
             result: true,
             best_traces,

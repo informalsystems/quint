@@ -77,13 +77,39 @@ impl CompiledExprWithLazyArgs {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NondetId {
     pub id: QuintId,
-    pub choices: Vec<Vec<usize>>,
+    pub choices: Choices,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NondetState {
     pub bounds: Vec<usize>,
     pub counter: Vec<usize>,
+    pub closure: Rc<dyn Fn(&mut dyn std::iter::Iterator<Item = usize>) -> Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Choices {
+    pub state: Option<u64>,
+    pub picks: Vec<Vec<usize>>,
+}
+
+impl Default for Choices {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Choices {
+    pub fn new() -> Self {
+        Self {
+            state: None,
+            picks: Vec::new(),
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.state = None;
+        self.picks.clear();
+    }
 }
 
 pub struct Env {
@@ -96,7 +122,7 @@ pub struct Env {
     // TODO: trace recorder (for --verbosity) and trace collector (for proper
     // trace tracking in runs)
     pub bounds: FxHashMap<NondetId, NondetState>,
-    pub choices: Vec<Vec<usize>>,
+    pub choices: Choices,
 }
 
 impl Env {
@@ -105,7 +131,7 @@ impl Env {
             var_storage,
             rand: Rand::new(),
             bounds: FxHashMap::default(),
-            choices: Vec::new(),
+            choices: Choices::new(),
         }
     }
 
@@ -115,7 +141,7 @@ impl Env {
             var_storage,
             rand: Rand::with_state(state),
             bounds: FxHashMap::default(),
-            choices: Vec::new(),
+            choices: Choices::new(),
         }
     }
 
@@ -594,25 +620,6 @@ impl<'a> Interpreter<'a> {
                                     choices: env.choices.clone(),
                                 };
 
-                                pub fn increment(state: &mut NondetState) -> bool {
-                                    if state.bounds.is_empty() {
-                                        return false;
-                                    }
-                                    for i in (0..state.counter.len()).rev() {
-                                        if state.counter[i] < state.bounds[i] - 1 {
-                                            state.counter[i] += 1;
-                                            // println!("Incremented counter[{}] to {}", i, state.counter[i]);
-                                            return true;
-                                        } else {
-                                            state.counter[i] = 0;
-                                            return true;
-                                        }
-                                    }
-                                    // If we reach here, it means we have incremented all counters to 0
-                                    println!("Finished incrementing all counters, resetting to 0");
-                                    return false;
-                                }
-
                                 // Some sets require multiple random numbers in order to pick an element efficiently.
                                 // For example, a cross product will require one random number per set, and return a tuple like
                                 // (set1.pick(r1), set2.pick(r2), ..., setn.pick(rn))
@@ -623,23 +630,29 @@ impl<'a> Interpreter<'a> {
                                         return Ok(Value::Bool(false));
                                     }
                                     // println!("has bound with counter: {:?}", state.counter.clone());
-                                    env.choices.push(state.counter.clone());
-                                    let picked = set.pick(&mut state.counter.clone().into_iter());
+                                    env.choices.picks.push(state.counter.clone());
+                                    let picked =
+                                        (*state.closure)(&mut state.counter.clone().into_iter());
                                     cached_value.borrow_mut().replace(Ok(picked));
                                 } else {
                                     // The ranges in which to generate which random number
                                     let bounds = set.bounds();
-                                    let positions: Vec<usize> = (0..bounds.len()).collect();
+                                    let positions: Vec<usize> =
+                                        (0..bounds.len()).map(|_| 0).collect();
+                                    let closure = set.get_pick_closure().clone();
                                     env.bounds.insert(
                                         key.clone(),
                                         NondetState {
                                             bounds: bounds.clone(),
                                             counter: positions.clone(),
+                                            closure: Rc::clone(&closure),
                                         },
                                     );
                                     println!("new bound {:?}", key);
-                                    env.choices.push(positions.clone());
-                                    let picked = set.pick(&mut positions.into_iter());
+                                    println!("bounds: {:?}", bounds);
+                                    println!("counter: {:?}", positions);
+                                    env.choices.picks.push(positions.clone());
+                                    let picked = closure(&mut positions.into_iter());
                                     cached_value.borrow_mut().replace(Ok(picked));
                                 }
                             }
@@ -769,4 +782,22 @@ pub fn run(table: &LookupTable, expr: &QuintEx) -> Result<Value, QuintError> {
     let mut env = Env::new(interpreter.var_storage.clone());
 
     interpreter.eval(&mut env, expr.clone())
+}
+
+pub fn increment(state: &mut NondetState) -> bool {
+    if state.bounds.is_empty() {
+        return false;
+    }
+    for i in (0..state.counter.len()).rev() {
+        if state.counter[i] < state.bounds[i] - 1 {
+            state.counter[i] += 1;
+            // println!("Incremented counter[{}] to {}", i, state.counter[i]);
+            return true;
+        } else {
+            state.counter[i] = 0;
+        }
+    }
+    // If we reach here, it means we have incremented all counters to 0
+    println!("Finished incrementing all counters, resetting to 0");
+    false
 }

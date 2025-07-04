@@ -19,8 +19,8 @@
 //! while lazy ops will be compiled into closures that take colusures as
 //! arguments (which should be called to evaluate each argument).
 
-use crate::evaluator::{CompiledExprWithArgs, CompiledExprWithLazyArgs, NondetId, NondetState};
-use crate::ir::{QuintError, QuintId};
+use crate::evaluator::{CompiledExprWithArgs, CompiledExprWithLazyArgs};
+use crate::ir::QuintError;
 use crate::value::{ImmutableMap, ImmutableSet, ImmutableVec, Value};
 use fxhash::FxHashSet;
 use itertools::Itertools;

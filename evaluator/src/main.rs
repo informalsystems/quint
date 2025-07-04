@@ -148,7 +148,22 @@ fn run_simulation(args: RunArgs) -> eyre::Result<()> {
 
     let start = Instant::now();
     log!("Simulation", "Starting simulation");
-    let result = parsed.simulate(args.max_steps, args.max_samples, args.n_traces, None);
+    let progress_callback = Box::new(|update: ProgressUpdate| {
+        let progress = serde_json::json!({
+            "type": "progress",
+            "current": update.current,
+            "total": update.total,
+            "percentage": update.percentage()
+        });
+        eprintln!("{progress}");
+    });
+
+    let result = parsed.simulate(
+        args.max_steps,
+        args.max_samples,
+        args.n_traces,
+        Some(progress_callback),
+    );
 
     let elapsed = start.elapsed();
 
