@@ -629,14 +629,14 @@ impl<'a> Interpreter<'a> {
                                 if env.bounds.contains_key(&key) {
                                     let state: &mut NondetState = env.bounds.get_mut(&key).unwrap(); // increment
                                     let incr_res = increment(state);
-                                    if !incr_res {
-                                        return Ok(Value::Bool(false));
-                                    }
-                                    println!("has bound with counter: {:?}", state.counter.clone());
+                                    // println!("has bound with counter: {:?}", state.counter.clone());
                                     env.choices.picks.push(state.counter.clone());
                                     let picked =
                                         (*state.closure)(&mut state.counter.clone().into_iter());
                                     cached_value.borrow_mut().replace(Ok(picked));
+                                    if !incr_res && !env.bounds.keys().any(|k| k.choices.picks.starts_with(&env.choices.picks)) {
+                                        return Ok(Value::Bool(false));
+                                    }
                                 } else {
                                     // The ranges in which to generate which random number
                                     let bounds = set.bounds();
@@ -651,9 +651,9 @@ impl<'a> Interpreter<'a> {
                                             closure: Rc::clone(&closure),
                                         },
                                     );
-                                    println!("new bound {:?}", key);
-                                    println!("bounds: {:?}", bounds);
-                                    println!("counter: {:?}", positions);
+                                    // println!("new bound {:?}", key);
+                                    // println!("bounds: {:?}", bounds);
+                                    // println!("counter: {:?}", positions);
                                     env.choices.picks.push(positions.clone());
                                     let picked = closure(&mut positions.into_iter());
                                     cached_value.borrow_mut().replace(Ok(picked));
