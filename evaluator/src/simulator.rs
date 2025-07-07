@@ -1,12 +1,12 @@
 //! Simulation for Quint models.
 
-
 use crate::{
     evaluator::{Env, Interpreter},
     ir::{LookupTable, QuintError, QuintEx},
     itf::Trace,
 };
 use ahash::RandomState;
+use fxhash::FxHashSet;
 use serde::{Deserialize, Serialize};
 
 /// Simulation input that depends on the typescript Quint tool.
@@ -88,6 +88,7 @@ impl ParsedQuint {
         let mut trace_lengths = Vec::with_capacity(n_traces + 1);
 
         let hash_builder = RandomState::new();
+        let mut states: FxHashSet<u64> = FxHashSet::default();
 
         for sample_number in 1..=samples {
             if let Some(callback) = &mut progress_callback {
@@ -118,9 +119,9 @@ impl ParsedQuint {
             // println!("{:?}", env.bounds);
 
             for step_number in 1..=(steps + 1) {
-                for bound in &env.bounds {
-                    // println!("Bound: {:?}", bound);
-                }
+                // for bound in &env.bounds {
+                //     println!("Bound {:?}: {:?}", bound.0, bound.1.bounds);
+                // }
 
                 interpreter.shift();
 
@@ -129,7 +130,9 @@ impl ParsedQuint {
 
                 // println!("State: {:?}", state.clone());
                 env.choices.picks.clear();
-                env.choices.state = Some(hash_builder.hash_one(state));
+                let hash = hash_builder.hash_one(state);
+                env.choices.state = Some(hash);
+                states.insert(hash);
 
                 if !invariant.execute(&mut env)?.as_bool() {
                     trace_lengths.push(trace.len());
@@ -179,7 +182,9 @@ impl ParsedQuint {
             "Traces avg: {:?}",
             get_trace_statistics(&trace_lengths).average_trace_length
         );
-        // println!("Total seen states: {}", state_tracker.total_seen());
+        println!("Total seen states: {}", states.len());
+        // TODO: I need to backtrack, otherwise I exhaust the options on the first nondet and still have
+        // to consider more combinations with the second nondet.
         Ok(SimulationResult {
             result: true,
             best_traces,

@@ -5,11 +5,12 @@
 
 use crate::rand::Rand;
 use crate::storage::{Storage, VariableRegister};
-use crate::{builtins::*, ir::*, value::*};
+use crate::{builtins::*, ir::*, log, value::*};
 use fxhash::FxHashMap;
 use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
+use std::time::Instant;
 
 /// The result of evaluating a Quint expression: either a [`Value`] or an error.
 pub type EvalResult = Result<Value, QuintError>;
@@ -595,6 +596,7 @@ impl<'a> Interpreter<'a> {
                 // for the definition under the let, it will use the cached value (or eval a new value and store it).
                 let compiled_expr = self.compile(expr);
 
+                log::set_json(false);
                 if opdef.qualifier == OpQualifier::Nondet {
                     if let QuintEx::QuintApp {
                         id,
@@ -615,6 +617,7 @@ impl<'a> Interpreter<'a> {
                                 let picked = set.pick(&mut std::iter::once(0));
                                 cached_value.borrow_mut().replace(Ok(picked));
                             } else {
+                                // let start = Instant::now();
                                 let key = NondetId {
                                     id,
                                     choices: env.choices.clone(),
@@ -629,7 +632,7 @@ impl<'a> Interpreter<'a> {
                                     if !incr_res {
                                         return Ok(Value::Bool(false));
                                     }
-                                    // println!("has bound with counter: {:?}", state.counter.clone());
+                                    println!("has bound with counter: {:?}", state.counter.clone());
                                     env.choices.picks.push(state.counter.clone());
                                     let picked =
                                         (*state.closure)(&mut state.counter.clone().into_iter());
@@ -655,10 +658,16 @@ impl<'a> Interpreter<'a> {
                                     let picked = closure(&mut positions.into_iter());
                                     cached_value.borrow_mut().replace(Ok(picked));
                                 }
+                                // let elapsed = start.elapsed();
+                                // log!("Elapsed let", "{elapsed:.2?}");
                             }
+
+                            // let start = Instant::now();
                             let result = compiled_expr.execute(env);
                             // After evaluating the whole let expression, we clear the cached value, as it is no longer in scope.
                             // The next time the whole let expression is evaluated, the definition will be re-evaluated.
+                            // let elapsed = start.elapsed();
+                            // log!("Elapsed in", "{elapsed:.2?}");
                             cached_value.replace(None);
                             result
 
@@ -799,5 +808,7 @@ pub fn increment(state: &mut NondetState) -> bool {
     }
     // If we reach here, it means we have incremented all counters to 0
     println!("Finished incrementing all counters, resetting to 0");
-    false
+    true
+    // TODO: return false only if there are no bounds with this as key (i.e. no nondet nested within this)
+    // false
 }
