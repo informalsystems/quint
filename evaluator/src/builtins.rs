@@ -227,7 +227,10 @@ pub fn compile_lazy_op(op: &str) -> CompiledExprWithLazyArgs {
                 Ok(Value::Bool(true))
             }
         }
-        _ => |_env, _args| Err(QuintError::new("QNT501", "Unknown built-in operator")),
+        _ => {
+            println!("Unknown lazy operator: {op}");
+            |_env, _args| Err(QuintError::new("QNT501", "Unknown built-in operator"))
+        }
     })
 }
 
@@ -749,7 +752,10 @@ pub fn compile_eager_op(op: &str) -> CompiledExprWithArgs {
             ))
         },
 
-        _ => |_env, _args| Err(QuintError::new("QNT501", "Unknown built-in operator")),
+        _ => {
+            println!("Unknown eager operator: {op}");
+            |_env, _args| Err(QuintError::new("QNT501", "Unknown built-in operator"))
+        }
     })
 }
 

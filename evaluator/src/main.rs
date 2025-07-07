@@ -162,8 +162,8 @@ fn run_simulation(args: RunArgs) -> eyre::Result<()> {
         args.max_steps,
         args.max_samples,
         args.n_traces,
-        // Some(progress_callback),
-        None
+        Some(progress_callback),
+        // None,
     );
 
     let elapsed = start.elapsed();
