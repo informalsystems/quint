@@ -6,7 +6,7 @@
 use crate::rand::Rand;
 use crate::storage::{Storage, VariableRegister};
 use crate::{builtins::*, ir::*, log, value::*};
-use fxhash::FxHashMap;
+use fxhash::{FxHashMap, FxHashSet};
 use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
@@ -125,7 +125,7 @@ pub struct Env {
     pub bounds: FxHashMap<NondetId, NondetState>,
     pub choices: Choices,
     pub cache: FxHashMap<QuintId, Vec<(Choices, EvalResult)>>,
-    pub should_cache: usize,
+    pub dont_cache: FxHashSet<QuintId>,
 }
 
 pub fn is_sub_choices(c1: &Choices, c2: &Choices) -> bool {
@@ -140,7 +140,7 @@ impl Env {
             bounds: FxHashMap::default(),
             choices: Choices::new(),
             cache: FxHashMap::default(),
-            should_cache: 0,
+            dont_cache: FxHashSet::default(),
         }
     }
 
@@ -152,7 +152,7 @@ impl Env {
             bounds: FxHashMap::default(),
             choices: Choices::new(),
             cache: FxHashMap::default(),
-            should_cache: 0,
+            dont_cache: FxHashSet::default(),
         }
     }
 
@@ -553,10 +553,17 @@ impl<'a> Interpreter<'a> {
 
                         let result = closure.execute(env);
 
+                        if env.dont_cache.contains(&def.id()) {
+                            env.dont_cache.insert(cache_id);
+                            return result;
+                        }
+
                         if let Some(cached) = try_cache(env, def.id()) {
-                            copy_cache(env, def.id(), cache_id);
-                            // println!("saving from name");
-                            // save_cache(env, cached.clone(), cache_id, false);
+                            if !env.dont_cache.contains(&cache_id) {
+                                copy_cache(env, def.id(), cache_id);
+                                // println!("saving from name");
+                                // save_cache(env, cached.clone(), cache_id, false);
+                            }
                         }
 
                         result
@@ -611,10 +618,21 @@ impl<'a> Interpreter<'a> {
 
                         if cloned_args
                             .iter()
-                            .any(|arg| try_cache(env, arg.id()).is_some())
+                            .any(|arg| env.dont_cache.contains(&arg.id()))
                         {
-                            // println!("saving from lazy");
-                            save_cache(env, result.clone(), cache_id, false);
+                            env.dont_cache.insert(cache_id);
+                            return result;
+                        }
+
+                        if !env.dont_cache.contains(&cache_id) {
+                            // find longest choices.picks
+                            let choices = cloned_args
+                                .iter()
+                                .filter_map(|arg| get_cache_choices(env, arg.id()))
+                                .max_by_key(|v| v.picks.len());
+                            if let Some(choices) = choices {
+                                save_cache(env, choices, result.clone(), cache_id, false);
+                            }
                         }
                         result
                     })
@@ -633,6 +651,7 @@ impl<'a> Interpreter<'a> {
                         }
 
                         let mut should_cache = false;
+                        let mut blocklisted = false;
 
                         let evaluated_args = compiled_args
                             .iter()
@@ -645,6 +664,9 @@ impl<'a> Interpreter<'a> {
                                 let result = arg.execute(env);
                                 if try_cache(env, cloned_args[i].id()).is_some() {
                                     should_cache = true;
+                                }
+                                if env.dont_cache.contains(&cloned_args[i].id()) {
+                                    blocklisted = true;
                                 }
                                 result
                             })
@@ -661,11 +683,26 @@ impl<'a> Interpreter<'a> {
                         //         env.cache.contains_key(&key)
                         //     })
                         // };
-
-                        if should_cache {
-                            // println!("saving from eager");
-                            save_cache(env, result.clone(), cache_id, false);
+                        if blocklisted {
+                            env.dont_cache.insert(cache_id);
+                            return result;
                         }
+
+                        if should_cache && !env.dont_cache.contains(&cache_id) {
+                            // find longest choices.picks
+                            let choices = cloned_args
+                                .iter()
+                                .filter_map(|arg| get_cache_choices(env, arg.id()))
+                                .max_by_key(|v| v.picks.len());
+                            if let Some(choices) = choices {
+                                save_cache(env, choices, result.clone(), cache_id, false);
+                            }
+                        }
+
+                        // if should_cache && !env.dont_cache.contains(&cache_id) {
+                        //     // println!("saving from eager");
+                        //     save_cache(env, env.choices.clone(), result.clone(), cache_id, false);
+                        // }
                         result
                     })
                 }
@@ -684,12 +721,13 @@ impl<'a> Interpreter<'a> {
                 // Then, we build the expression for the let body. It will use the lookup table and, every time it needs the value
                 // for the definition under the let, it will use the cached value (or eval a new value and store it).
                 let compiled_expr = self.compile(expr);
+                let name = opdef.name.clone();
 
                 log::set_json(false);
                 if opdef.qualifier == OpQualifier::Nondet {
                     if let QuintEx::QuintApp {
                         id,
-                        opcode,
+                        opcode: _,
                         args,
                     } = opdef.expr.clone()
                     {
@@ -723,6 +761,7 @@ impl<'a> Interpreter<'a> {
                                 // for (k, v) in env.bounds.iter() {
                                 //     println!("Key: {:?}, Done: {:?}", k, v.done);
                                 // }
+                                println!("blocklisting: {:?}", env.dont_cache);
 
                                 let should_increment = !env.bounds.iter().any(|(k, state)| {
                                     k.choices.picks != env.choices.picks
@@ -764,8 +803,17 @@ impl<'a> Interpreter<'a> {
                                     env.choices.picks.push(counter);
                                     if !should_increment && try_cache(env, op_id).is_none() {
                                         println!("saving increment");
-                                        save_cache(env, Ok(picked.clone()), op_id, true);
-                                        env.should_cache = env.choices.picks.len();
+                                        save_cache(
+                                            env,
+                                            env.choices.clone(),
+                                            Ok(picked.clone()),
+                                            op_id,
+                                            true,
+                                        );
+                                        // env.should_cache = env.choices.picks.len();
+                                    } else if should_increment && !env.cache.contains_key(&op_id) {
+                                        println!("Can blocklist here? {name}");
+                                        env.dont_cache.insert(op_id);
                                     }
                                     cached_value.borrow_mut().replace(Ok(picked));
                                 } else {
@@ -790,7 +838,13 @@ impl<'a> Interpreter<'a> {
                                     let picked = closure(&mut positions.into_iter());
                                     // save_cache(env, Ok(picked.clone()), id);
                                     println!("saving new bound");
-                                    save_cache(env, Ok(picked.clone()), op_id, true);
+                                    save_cache(
+                                        env,
+                                        env.choices.clone(),
+                                        Ok(picked.clone()),
+                                        op_id,
+                                        true,
+                                    );
                                     should_clear_cache = true;
                                     cached_value.borrow_mut().replace(Ok(picked));
                                 }
@@ -813,8 +867,9 @@ impl<'a> Interpreter<'a> {
                                         && k.choices.picks.starts_with(&env.choices.picks)
                                         && !state.done
                                 }) {
-                                println!("will clear cache on nondet {opcode}");
-                                clear_cache(env);
+                                    println!("will clear cache on nondet {}", name);
+                                    // XXX: both nondets are hitting this!!
+                                    clear_cache(env);
                                 }
                             }
                             result
@@ -872,8 +927,7 @@ impl<'a> Interpreter<'a> {
     }
 }
 
-
-    fn builtin_value(name: &str) -> CompiledExpr {
+fn builtin_value(name: &str) -> CompiledExpr {
     match name {
         "true" => CompiledExpr::new(move |_| Ok(Value::Bool(true))),
         "false" => CompiledExpr::new(move |_| Ok(Value::Bool(false))),
@@ -984,8 +1038,30 @@ pub fn try_cache(env: &mut Env, id: QuintId) -> Option<EvalResult> {
     }
     None
 }
+pub fn get_cache_choices(env: &mut Env, id: QuintId) -> Option<Choices> {
+    // if id == 1167 || id == 1194 {
+    //   println!("Trying to hit cache for id: {}", id);
+    // }
+    if let Some(cached_states) = env.cache.get(&id) {
+        // println!("Found cache for id: {}, checking matching choices", id);
+        for (choices, _cached) in cached_states {
+            // println!(
+            //     "is_sub_choices: {:?} {:?} = {}",
+            //     env.choices,
+            //     choices,
+            //     is_sub_choices(&env.choices, choices)
+            // );
+            if is_sub_choices(&env.choices, &choices) {
+                // If the choices are a subset of the cached ones, we can use the cached value
+                // println!("Cache hit for {:?} {:?}", id, choices);
+                return Some(choices.clone());
+            }
+        }
+    }
+    None
+}
 
-fn save_cache(env: &mut Env, result: EvalResult, id: u64, force: bool) {
+fn save_cache(env: &mut Env, choices: Choices, result: EvalResult, id: u64, force: bool) {
     // if !env.choices.picks.is_empty() && !env.bounds.iter().any(|(k, state)| {
     //     k.choices.picks != env.choices.picks
     //         && k.choices.picks.starts_with(&env.choices.picks)
@@ -1001,14 +1077,18 @@ fn save_cache(env: &mut Env, result: EvalResult, id: u64, force: bool) {
     //     println!("env.should_cache = {}", env.should_cache);
     //     println!("env.choices.picks.len() = {}", env.choices.picks.len());
     // }
-    if !force && env.should_cache < env.choices.picks.len() {
-        // println!("Will not cache id: {}, choices: {:?}", id, env.choices);
+    if env.dont_cache.contains(&id) {
+        println!("Will not cache id: {}, choices: {:?}", id, env.choices);
         return;
     }
 
-    println!("------------Saving cache for id: {}, choices: {:?}", id, env.choices.clone());
+    println!(
+        "------------Saving cache for id: {}, choices: {:?}",
+        id,
+        choices.clone()
+    );
     let env_cache = env.cache.get_mut(&id);
-    let to_save = (env.choices.clone(), result);
+    let to_save = (choices.clone(), result);
     if let Some(v) = env_cache {
         v.push(to_save)
     } else {
@@ -1024,9 +1104,13 @@ fn clear_cache(env: &mut Env) {
             // println!("choices: {:?}", choices);
             !is_sub_choices(&env.choices, choices)
         });
-        !cached_states.is_empty() // Keep if not empty
+        // !cached_states.is_empty() // Keep if not empty
+        true
     });
 }
 fn copy_cache(env: &mut Env, existing_id: u64, new_id: u64) {
-    env.cache.insert(new_id, env.cache.get(&existing_id).cloned().unwrap_or_default());
+    env.cache.insert(
+        new_id,
+        env.cache.get(&existing_id).cloned().unwrap_or_default(),
+    );
 }
