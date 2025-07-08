@@ -160,7 +160,7 @@ module self_stabilization {
   // If bottom increments its value infinitely many times, it will eventually reach all values in {0, ..., K-1}
 
   /// There is always an unused value.
-  def unused_value = 0.to(-1).exclude(system.values()) != Set()
+  def unused_value = 0.to(K-1).exclude(system.values()) != Set()
 
   /// bottom's value is different from the values of the other processes
   def bottom_unique = not(system.get(bottom).in(system.keys().exclude(Set(bottom)).map(k => system.get(k))))
