@@ -253,6 +253,10 @@ module ewd426 {
   import self_stabilization(N = 5, K = 5).*
 }
 
+module big {
+  import self_stabilization(N = 10, K = 10).*
+}
+
 module broken_ewd426 {
   // This should break the assumption of K >= N. See #1182.
   import self_stabilization(N = 3, K = 2).*
