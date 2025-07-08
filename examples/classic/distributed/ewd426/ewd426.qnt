@@ -261,7 +261,7 @@ module ewd426 {
 }
 
 module less_proc {
-  import self_stabilization(N = 3, K = 3).*
+  import self_stabilization(N = 3, K = 5).*
 }
 
 module broken_ewd426 {
