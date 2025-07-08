@@ -1,5 +1,7 @@
 //! Simulation for Quint models.
 
+use std::time::Instant;
+
 use crate::{
     evaluator::{Env, Interpreter},
     ir::{LookupTable, QuintError, QuintEx},
@@ -102,6 +104,7 @@ impl ParsedQuint {
 
             env.choices.clear();
 
+            let start = Instant::now();
             if !init.execute(&mut env)?.as_bool() {
                 if !trace_lengths.is_empty() {
                     // We produced all
@@ -115,14 +118,10 @@ impl ParsedQuint {
                     samples: sample_number,
                 });
             }
-
-            // println!("{:?}", env.bounds);
+            let elapsed = start.elapsed();
+            println!("Elapsed for init: {elapsed:.2?}");
 
             for step_number in 1..=(steps + 1) {
-                // for bound in &env.bounds {
-                //     println!("Bound {:?}: {:?}", bound.0, bound.1.bounds);
-                // }
-
                 interpreter.shift();
 
                 let state = interpreter.var_storage.borrow().as_record();
@@ -177,14 +176,14 @@ impl ParsedQuint {
             );
         }
         println!("Choices: {:?}", env.choices);
-        println!("Number of bounds tracked: {}", env.bounds.len());
+        println!("Number of bounds tracked: {}", env.nondet_states.len());
         println!(
             "Traces avg: {:?}",
             get_trace_statistics(&trace_lengths).average_trace_length
         );
+        // PS: I'm only tracking seen states to inform me of how well the solution is doing,
+        // but we don't actually need it for the solution.
         println!("Total seen states: {}", states.len());
-        // TODO: I need to backtrack, otherwise I exhaust the options on the first nondet and still have
-        // to consider more combinations with the second nondet.
         Ok(SimulationResult {
             result: true,
             best_traces,

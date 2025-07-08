@@ -10,7 +10,6 @@ use fxhash::{FxHashMap, FxHashSet};
 use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
-use std::time::Instant;
 
 /// The result of evaluating a Quint expression: either a [`Value`] or an error.
 pub type EvalResult = Result<Value, QuintError>;
@@ -82,9 +81,14 @@ pub struct NondetId {
 }
 
 pub struct NondetState {
+    // Bounds so we now how to properly implement each position, and when to finish
     pub bounds: Vec<usize>,
-    pub counter: Vec<usize>,
+    // A closure containing the call for `pick` over this set. More efficient
+    // than calling `pick` every time, as some parts of the procedure can be
+    // pre-computed and captured by the closure.
     pub closure: Rc<dyn Fn(&mut dyn std::iter::Iterator<Item = usize>) -> Value>,
+    // Stateful part: the current positions and whether we have more positions to explore
+    pub counter: Vec<usize>,
     pub done: bool,
 }
 
@@ -123,7 +127,7 @@ pub struct Env {
     pub rand: Rand,
     // TODO: trace recorder (for --verbosity) and trace collector (for proper
     // trace tracking in runs)
-    pub bounds: FxHashMap<NondetId, NondetState>,
+    pub nondet_states: FxHashMap<NondetId, NondetState>,
     pub choices: Choices,
     pub cache: FxHashMap<QuintId, Vec<(Choices, EvalResult)>>,
     pub dont_cache: FxHashSet<QuintId>,
@@ -138,7 +142,7 @@ impl Env {
         Self {
             var_storage,
             rand: Rand::new(),
-            bounds: FxHashMap::default(),
+            nondet_states: FxHashMap::default(),
             choices: Choices::new(),
             cache: FxHashMap::default(),
             dont_cache: FxHashSet::default(),
@@ -150,7 +154,7 @@ impl Env {
         Self {
             var_storage,
             rand: Rand::with_state(state),
-            bounds: FxHashMap::default(),
+            nondet_states: FxHashMap::default(),
             choices: Choices::new(),
             cache: FxHashMap::default(),
             dont_cache: FxHashSet::default(),
@@ -556,10 +560,8 @@ impl<'a> Interpreter<'a> {
                             return result;
                         }
 
-                        if let Some(cached) = try_cache(env, def.id()) {
-                            if !env.dont_cache.contains(&cache_id) {
-                                copy_cache(env, def.id(), cache_id);
-                            }
+                        if try_cache(env, def.id()).is_some() && !env.dont_cache.contains(&cache_id) {
+                            copy_cache(env, def.id(), cache_id);
                         }
 
                         result
@@ -602,7 +604,7 @@ impl<'a> Interpreter<'a> {
                     // closures to the operator so it decides when to eval
                     let opcode = opcode.clone();
                     let op = compile_lazy_op(&opcode);
-                    let cloned_args = args.iter().cloned().collect::<Vec<_>>(); // Ensure owned copies
+                    let cloned_args = args.to_vec(); // Ensure owned copies
                     let cache_id = *id; // Copy if id is Copy, otherwise use .clone()
 
                     CompiledExpr::new(move |env| {
@@ -637,11 +639,10 @@ impl<'a> Interpreter<'a> {
                     // For both, we first evaluate the arguments and then apply the operator.
                     // Clone everything needed for the closure upfront
                     let compiled_op = self.compile_op(id, opcode);
-                    let cloned_args = args.iter().cloned().collect::<Vec<_>>(); // Ensure owned copies
+                    let cloned_args = args.to_vec(); // Ensure owned copies
                     let cache_id = *id; // Copy if id is Copy, otherwise use .clone()
 
                     CompiledExpr::new(move |env| {
-                        let start = Instant::now();
                         if let Some(cached) = try_cache(env, cache_id) {
                             return cached;
                         }
@@ -688,10 +689,6 @@ impl<'a> Interpreter<'a> {
                             }
                         }
 
-                        let elapsed = start.elapsed();
-                        if elapsed.as_millis() > 1 {
-                            log!("Elapsed eager", "{elapsed:.2?}");
-                        }
                         result
                     })
                 }
@@ -734,7 +731,6 @@ impl<'a> Interpreter<'a> {
                                 let picked = set.pick(&mut std::iter::once(0));
                                 cached_value.borrow_mut().replace(Ok(picked));
                             } else {
-                                let start = Instant::now();
                                 let key = NondetId {
                                     id,
                                     choices: env.choices.clone(),
@@ -745,14 +741,16 @@ impl<'a> Interpreter<'a> {
                                 // }
                                 // println!("blocklisting: {:?}", env.dont_cache);
 
-                                let should_increment = !env.bounds.iter().any(|(k, state)| {
-                                    k.choices.picks != env.choices.picks
-                                        && k.choices.picks.starts_with(&env.choices.picks)
-                                        && !state.done
-                                });
+                                let should_increment =
+                                    !env.nondet_states.iter().any(|(k, state)| {
+                                        k.choices.picks != env.choices.picks
+                                            && k.choices.picks.starts_with(&env.choices.picks)
+                                            && !state.done
+                                    });
 
-                                if env.bounds.contains_key(&key) {
-                                    let state: &mut NondetState = env.bounds.get_mut(&key).unwrap();
+                                if env.nondet_states.contains_key(&key) {
+                                    let state: &mut NondetState =
+                                        env.nondet_states.get_mut(&key).unwrap();
 
                                     // only increment if subtree fully explored
                                     if should_increment {
@@ -793,7 +791,7 @@ impl<'a> Interpreter<'a> {
                                     let positions: Vec<usize> =
                                         (0..bounds.len()).map(|_| 0).collect();
                                     let closure = set.get_pick_closure().clone();
-                                    env.bounds.insert(
+                                    env.nondet_states.insert(
                                         key.clone(),
                                         NondetState {
                                             bounds: bounds.clone(),
@@ -811,20 +809,15 @@ impl<'a> Interpreter<'a> {
                                     should_clear_cache = true;
                                     cached_value.borrow_mut().replace(Ok(picked));
                                 }
-                                let elapsed = start.elapsed();
-                                log!("Elapsed let", "{elapsed:.2?}");
                             }
 
-                            let start = Instant::now();
                             let result = compiled_expr.execute(env);
                             // After evaluating the whole let expression, we clear the cached value, as it is no longer in scope.
                             // The next time the whole let expression is evaluated, the definition will be re-evaluated.
-                            let elapsed = start.elapsed();
-                            log!("Elapsed in", "{elapsed:.2?}");
 
                             cached_value.replace(None);
                             if should_clear_cache
-                                && !env.bounds.iter().any(|(k, state)| {
+                                && !env.nondet_states.iter().any(|(k, state)| {
                                     k.choices.picks != env.choices.picks
                                         && k.choices.picks.starts_with(&env.choices.picks)
                                         && !state.done
@@ -962,8 +955,7 @@ pub fn increment(state: &mut NondetState) -> bool {
 pub fn try_cache(env: &Env, id: QuintId) -> Option<EvalResult> {
     if let Some(cached_states) = env.cache.get(&id) {
         for (choices, cached) in cached_states {
-            // println!("cached_states choices: {:?}", choices);
-            if is_sub_choices(&env.choices, &choices) {
+            if is_sub_choices(&env.choices, choices) {
                 return Some(cached.clone());
             }
         }
@@ -973,7 +965,7 @@ pub fn try_cache(env: &Env, id: QuintId) -> Option<EvalResult> {
 pub fn get_cache_choices(env: &mut Env, id: QuintId) -> Option<Choices> {
     if let Some(cached_states) = env.cache.get(&id) {
         for (choices, _cached) in cached_states {
-            if is_sub_choices(&env.choices, &choices) {
+            if is_sub_choices(&env.choices, choices) {
                 return Some(choices.clone());
             }
         }
