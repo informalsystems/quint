@@ -135,6 +135,8 @@ module self_stabilization {
     system.has_token(bottom),                   // bottom is making a step
   }
 
+
+
   /// This invariant is inductive. 
   def basic_Inv = and {
       TypeOK,
@@ -159,6 +161,8 @@ module self_stabilization {
 
   /// bottom's value is different from the values of the other processes
   def bottom_unique = not(system.get(bottom).in(system.keys().exclude(Set(bottom)).map(k => system.get(k))))
+
+  def unused_value = 0.to(K).exclude(system.values()) != Set()
 
   /// Only bottom can introduce new values into the system. If a value is introduced, then bottom is unique
   def freshInv =
@@ -237,6 +241,7 @@ module self_stabilization {
   pure def wave_invariant = and {
     basic_Inv,
     incrementInv,
+    unused_value,
     freshInv,
     bot_unique_implies_pivotInv,
     wave_startInv,
@@ -250,11 +255,11 @@ module self_stabilization {
 }
 
 module ewd426 {
-  import self_stabilization(N = 5, K = 5).*
+  import self_stabilization(N = 5, K = 7).*
 }
 
-module big {
-  import self_stabilization(N = 10, K = 10).*
+module less_proc {
+  import self_stabilization(N = 3, K = 10).*
 }
 
 module broken_ewd426 {
