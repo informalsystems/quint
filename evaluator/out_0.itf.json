@@ -1,1 +1,0 @@
-{"#meta":{"format":"ITF","format-description":"https://apalache-mc.org/docs/adr/015adr-trace.html","source":"/home/gabriela/projects/quint/local/test.qnt","description":"Created by Quint (Rust version) on Mon, 7 Jul 2025 23:02:25 -0300","varTypes":{},"timestamp":1751940145159,"status":"ok"},"params":[],"vars":["x","y"],"loop":null,"states":[{"#meta":{"index":0},"x":2,"y":10}]}

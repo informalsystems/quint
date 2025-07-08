@@ -125,6 +125,7 @@ pub struct Env {
     pub bounds: FxHashMap<NondetId, NondetState>,
     pub choices: Choices,
     pub cache: FxHashMap<QuintId, Vec<(Choices, EvalResult)>>,
+    pub should_cache: usize,
 }
 
 pub fn is_sub_choices(c1: &Choices, c2: &Choices) -> bool {
@@ -139,6 +140,7 @@ impl Env {
             bounds: FxHashMap::default(),
             choices: Choices::new(),
             cache: FxHashMap::default(),
+            should_cache: 0,
         }
     }
 
@@ -150,6 +152,7 @@ impl Env {
             bounds: FxHashMap::default(),
             choices: Choices::new(),
             cache: FxHashMap::default(),
+            should_cache: 0,
         }
     }
 
@@ -551,8 +554,9 @@ impl<'a> Interpreter<'a> {
                         let result = closure.execute(env);
 
                         if let Some(cached) = try_cache(env, def.id()) {
+                            copy_cache(env, def.id(), cache_id);
                             // println!("saving from name");
-                            save_cache(env, cached.clone(), cache_id, false);
+                            // save_cache(env, cached.clone(), cache_id, false);
                         }
 
                         result
@@ -685,7 +689,7 @@ impl<'a> Interpreter<'a> {
                 if opdef.qualifier == OpQualifier::Nondet {
                     if let QuintEx::QuintApp {
                         id,
-                        opcode: _,
+                        opcode,
                         args,
                     } = opdef.expr.clone()
                     {
@@ -761,6 +765,7 @@ impl<'a> Interpreter<'a> {
                                     if !should_increment && try_cache(env, op_id).is_none() {
                                         println!("saving increment");
                                         save_cache(env, Ok(picked.clone()), op_id, true);
+                                        env.should_cache = env.choices.picks.len();
                                     }
                                     cached_value.borrow_mut().replace(Ok(picked));
                                 } else {
@@ -802,11 +807,13 @@ impl<'a> Interpreter<'a> {
 
                             cached_value.replace(None);
                             if should_clear_cache {
+                                // println!("Checking if should clear cache");
                                 if !env.bounds.iter().any(|(k, state)| {
                                     k.choices.picks != env.choices.picks
                                         && k.choices.picks.starts_with(&env.choices.picks)
                                         && !state.done
                                 }) {
+                                println!("will clear cache on nondet {opcode}");
                                 clear_cache(env);
                                 }
                             }
@@ -865,7 +872,8 @@ impl<'a> Interpreter<'a> {
     }
 }
 
-fn builtin_value(name: &str) -> CompiledExpr {
+
+    fn builtin_value(name: &str) -> CompiledExpr {
     match name {
         "true" => CompiledExpr::new(move |_| Ok(Value::Bool(true))),
         "false" => CompiledExpr::new(move |_| Ok(Value::Bool(false))),
@@ -969,7 +977,7 @@ pub fn try_cache(env: &mut Env, id: QuintId) -> Option<EvalResult> {
             // );
             if is_sub_choices(&env.choices, &choices) {
                 // If the choices are a subset of the cached ones, we can use the cached value
-                println!("Cache hit for {:?} {:?}", id, choices);
+                // println!("Cache hit for {:?} {:?}", id, choices);
                 return Some(cached.clone());
             }
         }
@@ -986,9 +994,14 @@ fn save_cache(env: &mut Env, result: EvalResult, id: u64, force: bool) {
     //     return;
     // }
 
-    if !force && !env.cache.values().any(|v| v.iter().any(|(choices, _)| {
-        choices == &env.choices
-    })) {
+    // if !force && !env.cache.values().any(|v| v.iter().any(|(choices, _)| {
+    //     choices == &env.choices
+    // })) {
+    // if !force {
+    //     println!("env.should_cache = {}", env.should_cache);
+    //     println!("env.choices.picks.len() = {}", env.choices.picks.len());
+    // }
+    if !force && env.should_cache < env.choices.picks.len() {
         // println!("Will not cache id: {}, choices: {:?}", id, env.choices);
         return;
     }
@@ -1013,4 +1026,7 @@ fn clear_cache(env: &mut Env) {
         });
         !cached_states.is_empty() // Keep if not empty
     });
+}
+fn copy_cache(env: &mut Env, existing_id: u64, new_id: u64) {
+    env.cache.insert(new_id, env.cache.get(&existing_id).cloned().unwrap_or_default());
 }
