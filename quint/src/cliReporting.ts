@@ -5,7 +5,7 @@ import { QuintEx, QuintModule } from './ir/quintIr'
 import { ExecutionFrame, newTraceRecorder } from './runtime/trace'
 import { Outcome } from './simulation'
 import JSONbig from 'json-bigint'
-import { Evaluator } from './runtime/impl/evaluator'
+import { Evaluator, isFalse } from './runtime/impl/evaluator'
 import { newRng } from './rng'
 import {
   CLIProcedure,
@@ -28,6 +28,7 @@ import { QuintError } from './quintError'
 import { TestResult } from './runtime/testing'
 import { createFinders, formatError } from './errorReporter'
 import { ErrorMessage } from './ErrorMessage'
+import { expressionToString } from './ir/IRprinting'
 
 export type TraceHook = (index: number, status: string, vars: string[], states: QuintEx[], name?: string) => void
 
@@ -93,13 +94,43 @@ export function printViolatedInvariants(state: QuintEx, invariants: string[], pr
   const evaluator = new Evaluator(prev.resolver.table, newTraceRecorder(0, newRng()), newRng(), false)
 
   for (const inv of invariants) {
-    const invExpr = toExpr(prev, inv).unwrap()
+    let invExpr = toExpr(prev, inv).unwrap()
+    let importedFrom
     evaluator.evaluate(invExpr)
     evaluator.updateState(state)
     const evalResult = evaluator.evaluate(invExpr)
 
     if (evalResult.isRight() && evalResult.value.kind === 'bool' && !evalResult.value.value) {
       console.log(chalk.red(`  ❌ ${inv}`))
+
+      while (invExpr.kind == 'name') {
+        const a = prev.resolver.table.get(invExpr.id)!
+        invExpr = a.expr
+            importedFrom ??= a.importedFrom
+      }
+
+      if (invExpr.kind === 'app' && invExpr.opcode === 'and') {
+        for (let arg of invExpr.args) {
+          while (arg.kind == 'name') {
+            const a = prev.resolver.table.get(arg.id)!
+            arg = a.expr
+            importedFrom ??= a.importedFrom
+          }
+          let argEvalF
+          if (importedFrom)
+            argEvalF = evaluator.builder.memoByInstance.get(importedFrom.id)?.get(arg.id)
+          else
+            argEvalF = evaluator.builder.memo.get(arg.id)
+
+          if (argEvalF === undefined) {
+            continue
+          }
+          const argEval = argEvalF(evaluator.ctx)
+          if (isFalse(argEval)) {
+            console.log(chalk.red(`    ❌ ${expressionToString(arg)}`))
+          }
+        }
+      }
     }
   }
 }

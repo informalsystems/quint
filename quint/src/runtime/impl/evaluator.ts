@@ -39,7 +39,7 @@ export class Evaluator {
   public ctx: Context
   public recorder: TraceRecorder
   private rng: Rng
-  private builder: Builder
+  public builder: Builder
 
   /**
    * Constructs an Evaluator that can be re-used across evaluations.
