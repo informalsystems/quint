@@ -64,6 +64,10 @@ import { deriveVerbosity, getInvariants, guessMainModule, isMatchingTest, mkErro
 import { fail } from 'assert'
 import { newRng } from './rng'
 import { TestOptions } from './runtime/testing'
+import { createConfig } from './apalache'
+import { ItfTrace, ofItf } from './itf'
+import { Trace } from './runtime/impl/trace'
+import { fromQuintEx } from './runtime/impl/runtimeValue'
 
 export type stage =
   | 'loading'
@@ -386,6 +390,22 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
   }
   const [init, step, invariant, ...witnesses] = argsParsingResult.value
 
+  let traceToFollow: Trace | undefined
+
+  if (prev.args.inItf) {
+    if (!existsSync(prev.args.inItf)) {
+      return cliErr(`input interface file ${prev.args.inItf} does not exist`, {
+        ...simulator,
+        errors: [],
+      })
+    }
+    const inItf = readFileSync(prev.args.inItf, 'utf8')
+    const itfTrace: ItfTrace = JSON.parse(inItf)
+    const expressions = ofItf(itfTrace)
+    traceToFollow = new Trace()
+    traceToFollow.reset(expressions.map(e => fromQuintEx(e).unwrap()))
+  }
+
   let outcome: Outcome
   if (prev.args.backend == 'rust') {
     if (prev.args.mbt || prev.args.witnesses.length > 0) {
@@ -428,7 +448,8 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
       prev.args.maxSamples,
       prev.args.maxSteps,
       prev.args.nTraces ?? 1,
-      options.onTrace
+      options.onTrace,
+      traceToFollow
     )
   }
 

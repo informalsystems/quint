@@ -46,4 +46,10 @@ export class Trace {
     const doc = diffRuntimeValueDoc(comparisonBase, this.states.last()!, config)
     return format(width, 0, doc)
   }
+
+  shift() {
+    if (this.states.size > 0) {
+      this.states = this.states.shift()
+    }
+  }
 }

@@ -28,6 +28,7 @@ import { LookupDefinition, LookupTable } from '../../names/base'
 import { NamedRegister, VarStorage, initialRegisterValue } from './VarStorage'
 import { List } from 'immutable'
 import { evalNondet } from './nondet'
+import { Trace } from './trace'
 
 /**
  * The type returned by the builder in its methods, which can be called to get the
@@ -51,6 +52,7 @@ export class Builder {
   memoByInstance: Map<bigint, Map<bigint, EvalFunction>> = new Map()
   namespaces: List<string> = List()
   varStorage: VarStorage
+  traceToFollow: Trace | undefined
 
   /**
    * Constructs a new Builder instance.
@@ -75,7 +77,6 @@ export class Builder {
     if (this.varStorage.vars.has(key)) {
       return
     }
-
     const varName = nameWithNamespaces(name, this.namespaces)
     const register: NamedRegister = { name: varName, value: initialRegisterValue(varName) }
     const nextRegister: NamedRegister = { name: varName, value: initialRegisterValue(varName) }
@@ -438,6 +439,18 @@ function buildExprCore(builder: Builder, expr: QuintEx): EvalFunction {
           builder.discoverVar(varDef.id, varDef.name)
           const register = builder.getNextVar(varDef.id)
           const exprEval = buildExpr(builder, expr.args[1])
+
+          if (builder.traceToFollow) {
+            const rhsEval = buildExpr(builder, expr.args[1])
+            return ctx => {
+              const nextValue = builder.traceToFollow!.get().at(0)!.toOrderedMap().get(varDef.name)!
+              register.value = right(nextValue)
+              return rhsEval(ctx).map(rightValue => {
+                const result = nextValue.equals(rightValue)
+                return rv.mkBool(result)
+              })
+            }
+          }
 
           return ctx => {
             return exprEval(ctx).map(value => {

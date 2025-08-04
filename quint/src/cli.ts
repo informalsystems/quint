@@ -243,6 +243,10 @@ const runCmd = {
         desc: 'output the trace in the Informal Trace Format to file, e.g., out_{seq}.itf.json where {seq} is the trace sequence number',
         type: 'string',
       })
+      .option('in-itf', {
+        desc: 'a trace in the Informal Trace Format for the simulator to follow',
+        type: 'string',
+      })
       .option('max-samples', {
         desc: 'the maximum number of runs to attempt before giving up',
         type: 'number',
