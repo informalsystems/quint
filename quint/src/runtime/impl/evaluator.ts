@@ -194,11 +194,15 @@ export class Evaluator {
 
       this.recorder.onRunCall()
       this.reset()
+      if (traceToFollow) {
+        this.ctx.varStorage.fromRecord(traceToFollow!.get().at(0)!)
+      }
       // Mocked def for the trace recorder
       const initApp: QuintApp = { id: 0n, kind: 'app', opcode: 'q::initAndInvariant', args: [] }
       this.recorder.onUserOperatorCall(initApp)
 
       const initResult = initEval(this.ctx).mapLeft(error => (failure = error))
+      // console.log(initResult)
       if (!isTrue(initResult)) {
         traceLengths.push(0)
         this.recorder.onUserOperatorReturn(initApp, [], initResult)
@@ -213,6 +217,9 @@ export class Evaluator {
         } else {
           // check all { step, shift(), inv } in a loop
           for (let i = 0; errorsFound < ntraces && !failure && i < nsteps; i++) {
+            if (traceToFollow) {
+              this.ctx.varStorage.fromRecord(traceToFollow!.get().at(0)!, false)
+            }
             const stepApp: QuintApp = {
               id: 0n,
               kind: 'app',
@@ -222,6 +229,7 @@ export class Evaluator {
             this.recorder.onUserOperatorCall(stepApp)
 
             const stepResult = stepEval(this.ctx).mapLeft(error => (failure = error))
+            // console.log(stepResult)
             if (!isTrue(stepResult)) {
               traceLengths.push(this.trace.get().length)
 
@@ -233,15 +241,15 @@ export class Evaluator {
               // positives, which look like deadlocks but they are not.
 
               // We actually want to flag an issue if we were following a specific trace
-              if (traceToFollow) {
-                // If we are following a trace, we want to report an error
-                errorsFound++
-                otherErrors.push({
-                  code: 'QNT512',
-                  message: `Simulation run ${runNo} failed at step ${i}`,
-                  reference: stepApp.id,
-                })
-              }
+              // if (traceToFollow) {
+              //   // If we are following a trace, we want to report an error
+              //   errorsFound++
+              //   otherErrors.push({
+              //     code: 'QNT512',
+              //     message: `Simulation run ${runNo} failed at step ${i}`,
+              //     reference: stepApp.id,
+              //   })
+              // }
 
               this.recorder.onUserOperatorReturn(stepApp, [], stepResult)
               this.recorder.onRunReturn(right(rv.mkBool(true)), this.trace.get())

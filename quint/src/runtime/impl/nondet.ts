@@ -52,6 +52,16 @@ export function evalNondet(
         return right(rv.mkBool(false))
       }
 
+      const pickToFollow = ctx.varStorage.nondetPicks.get(name)
+      if (pickToFollow) {
+        // An ITF trace was loaded, so we follow the picked value.
+        console.log('nondet', name, pickToFollow)
+        cache.value = right(pickToFollow)
+        const result = bodyEval(ctx)
+        cache.value = undefined
+        return result
+      }
+
       const bounds = set.bounds()
       const originalPositions: bigint[] = bounds.map((b): bigint => {
         if (b.isJust()) {
