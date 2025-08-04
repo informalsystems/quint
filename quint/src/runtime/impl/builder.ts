@@ -459,6 +459,14 @@ function buildExprCore(builder: Builder, expr: QuintEx): EvalFunction {
                 // console.log(format(80, 0, prettyQuintEx(nextValue.toQuintEx(zerog))))
                 // console.log('vs')
                 // console.log(format(80, 0, prettyQuintEx(rightValue.toQuintEx(zerog))))
+                 const s = ctx.varStorage.snapshot()
+                  ctx.diffs.push({
+                    nondetPicks: s.nondetPicks,
+                    actionTaken: s.actionTaken,
+                    variable: register.name,
+                    value: rightValue
+                  })
+
               }
               return rv.mkBool(result)
             })

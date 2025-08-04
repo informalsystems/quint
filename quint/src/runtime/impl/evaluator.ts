@@ -31,6 +31,9 @@ import { Presets, SingleBar } from 'cli-progress'
 import { Outcome, SimulationTrace, getTraceStatistics } from '../../simulation'
 import assert from 'assert'
 import { TraceHook } from '../../cliReporting'
+import { format } from '../../prettierimp'
+import { diffRuntimeValueDoc } from './runtimeValueDiff'
+import { terminalWidth } from '../../graphics'
 
 /**
  * An evaluator for Quint in Node TS runtime.
@@ -192,6 +195,11 @@ export class Evaluator {
       if (!isTrue(initResult)) {
         traceLengths.push(0)
         this.recorder.onUserOperatorReturn(initApp, [], initResult)
+        console.log('Diffs number:', this.ctx.diffs.length)
+        this.ctx.diffs.forEach(diff => {
+          console.log('DIFF', diff)
+        })
+
       } else {
         this.shift()
 

@@ -27,6 +27,7 @@ import { QuintApp } from '../../ir/quintIr'
 import { prettyQuintEx, terminalWidth } from '../../graphics'
 import { format } from '../../prettierimp'
 import { EvalFunction } from './builder'
+import { diffRuntimeValueDoc } from './runtimeValueDiff'
 
 /**
  * Evaluates the given Quint builtin value by its name.
@@ -269,6 +270,13 @@ export function lazyBuiltinLambda(
               ctx.targetState = undefined
 
               if (result.isRight() && !result.unwrap().toBool()) {
+                ctx.diffs.forEach((diff, i) => {
+                  const doc = diffRuntimeValueDoc(diff.value, stateAfterThen.toOrderedMap().get(diff.variable)!)
+                  console.log(`Diff #${i + 1} (${diff.variable}):`)
+                  console.log(format(terminalWidth(), 0, doc))
+                })
+
+                console.log(format(terminalWidth(), 0, prettyQuintEx(stateAfterThen.toQuintEx(zerog))))
                 return left({
                   code: 'QNT516',
                   message: `Error reproducing the transition from 'then' using 'step'`,

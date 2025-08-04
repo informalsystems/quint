@@ -69,6 +69,13 @@ export class Context {
   public model?: Model
   public targetState?: RuntimeValue
 
+  public diffs: {
+    nondetPicks: Map<string, RuntimeValue | undefined>
+    actionTaken: string | undefined
+    variable: string
+    value: RuntimeValue
+  }[] = []
+
   /**
    * Constructs a new evaluation context.
    *
@@ -88,5 +95,6 @@ export class Context {
   shift() {
     this.varStorage.shiftVars()
     this.trace.extend(this.varStorage.asRecord())
+    this.diffs = []
   }
 }
