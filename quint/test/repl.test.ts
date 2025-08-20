@@ -596,7 +596,10 @@ describe('repl ok', () => {
       |>>> Int.contains(x)
       |true
       |>>> nondet m = 1.to(5).setOfMaps(Int).oneOf(); x' = m.get(3)
-      |true
+      |runtime error: error: [QNT501] Infinite set Int is non-enumerable
+      |nondet m = 1.to(5).setOfMaps(Int).oneOf(); x' = m.get(3)
+      |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      |
       |>>> x.in(Int)
       |true
       |>>> `

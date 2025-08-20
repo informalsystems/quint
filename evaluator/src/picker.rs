@@ -69,8 +69,16 @@ impl Value {
             Value::CrossProduct(sets) => sets.iter().map(|set| set.cardinality()).collect(),
             Value::PowerSet(base_set) => vec![base_set.cardinality()],
             Value::MapSet(domain, range) => {
-                // Cardinality of range repeated domain times
-                vec![range.cardinality(); domain.cardinality()]
+                // For each element in domain, we need the bounds of the range set
+                let range_bounds = range.bounds();
+                let domain_size = domain.cardinality();
+                
+                // Repeat the range bounds for each domain element
+                let mut result = Vec::with_capacity(domain_size * range_bounds.len());
+                for _ in 0..domain_size {
+                    result.extend_from_slice(&range_bounds);
+                }
+                result
             }
             _ => panic!("Not a set"),
         }
