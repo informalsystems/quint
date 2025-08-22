@@ -283,6 +283,22 @@ type variable 'a' is unbound. To fix it, write
     assert.deepEqual(error2.code, 'QNT008')
     assert.deepEqual(error2.message, `Reserved keyword 'export' cannot be used as an identifier.`)
   })
+
+  it('error on duplicate record fields', () => {
+    const code = `module duplicateFields { val a = { foo: 1, foo: 2 } }`
+    const errors = parseErrorsFrom(defaultSourceName, code)
+    assert.equal(errors.length, 1)
+    assert.equal(errors[0].code, 'QNT016')
+    assert.equal(errors[0].message, 'Duplicated field on record')
+  })
+
+  it('error on duplicate record fields with spread operator', () => {
+    const code = `module duplicateFields { val a = {foo: 1, bar: 2} val b = {...a, bar: 2, bar: 3 } }`
+    const errors = parseErrorsFrom(defaultSourceName, code)
+    assert.equal(errors.length, 1)
+    assert.equal(errors[0].code, 'QNT016')
+    assert.equal(errors[0].message, 'Duplicated field on record')
+  })
 })
 
 // Test the JSON error output. Most of the tests here should migrate to the
