@@ -69,16 +69,22 @@ impl Value {
             Value::CrossProduct(sets) => sets.iter().map(|set| set.cardinality()).collect(),
             Value::PowerSet(base_set) => vec![base_set.cardinality()],
             Value::MapSet(domain, range) => {
-                // For each element in domain, we need the bounds of the range set
-                let range_bounds = range.bounds();
                 let domain_size = domain.cardinality();
                 
-                // Repeat the range bounds for each domain element
-                let mut result = Vec::with_capacity(domain_size * range_bounds.len());
-                for _ in 0..domain_size {
-                    result.extend_from_slice(&range_bounds);
+                // Only enumerate the range set if the range set is a MapSet
+                // For other set formats, use the old method (repeat range cardinality)
+                if matches!(**range, Value::MapSet(_, _)) {
+                    // New method: enumerate the range set bounds for nested MapSets
+                    let range_bounds = range.bounds();
+                    let mut result = Vec::with_capacity(domain_size * range_bounds.len());
+                    for _ in 0..domain_size {
+                        result.extend_from_slice(&range_bounds);
+                    }
+                    result
+                } else {
+                    // Old method: repeat range cardinality for non-MapSet ranges
+                    vec![range.cardinality(); domain_size]
                 }
-                result
             }
             _ => panic!("Not a set"),
         }
