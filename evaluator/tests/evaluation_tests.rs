@@ -1214,3 +1214,34 @@ fn run_q_debug_single_arg() -> Result<(), Box<dyn std::error::Error>> {
          run run1 = (n' = 1).then(n' = q::debug(n + 1))",
     )
 }
+
+#[test]
+fn run_nested_set_of_maps_one_of() -> Result<(), Box<dyn std::error::Error>> {
+    // Regression test for https://github.com/informalsystems/quint/issues/1736
+    // Tests that `oneOf` works with nested setOfMaps
+    let input = "
+        val A = Set(\"a\", \"b\", \"c\")
+        val B = Set(2, 3, 4)
+        val C = Set(\"x\", \"y\")
+        var myMap2: str -> (int -> str)
+
+        action initialize = {
+            nondet _foo = A.setOfMaps(B.setOfMaps(C)).oneOf()
+            myMap2' = _foo
+        }
+
+        action doStep = all {
+            myMap2' = myMap2,
+        }
+
+        val inv = myMap2.keys() == A
+
+        run run1 = initialize.then(doStep)
+    ";
+    
+    // This should succeed - the key thing is that it doesn't crash
+    let result = eval_run("run1", input);
+    assert!(result.is_ok());
+    
+    Ok(())
+}

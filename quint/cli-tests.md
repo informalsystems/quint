@@ -386,6 +386,14 @@ Regression test for [#1108](https://github.com/informalsystems/quint/issues/1108
 <!-- !test check 1108 -->
     quint parse testFixture/_1052one.qnt
 
+### OK on run 1736
+
+Regression test for [#1736](https://github.com/informalsystems/quint/issues/1736).
+Tests that `quint run` works with nested setOfMaps and oneOf.
+
+<!-- !test check 1736 -->
+    quint run --invariant=inv testFixture/issue1736.qnt
+
 ### OK on typecheck SuperSpec via Unix hashbang
 
 See [#1500](https://github.com/informalsystems/quint/issues/1500).
