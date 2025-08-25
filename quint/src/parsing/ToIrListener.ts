@@ -38,7 +38,13 @@ import { TerminalNode } from 'antlr4ts/tree/TerminalNode'
 import { QuintTypeDef } from '../ir/quintIr'
 import { zip } from '../util'
 import { QuintError } from '../quintError'
-import { lowercaseTypeError, mapSyntaxError, tooManySpreadsError, undeclaredTypeParamsError } from './parseErrors'
+import {
+  duplicatedRecordField,
+  lowercaseTypeError,
+  mapSyntaxError,
+  tooManySpreadsError,
+  undeclaredTypeParamsError,
+} from './parseErrors'
 import { Loc } from '../ErrorMessage'
 import assert, { fail } from 'assert'
 import { typeToString } from '../ir/IRprinting'
@@ -787,6 +793,17 @@ export class ToIrListener implements QuintListener {
     const elems = popMany(this.exprStack, ctx.recElem().length, this.undefinedExpr(ctx))
     const spreads = elems.filter(e => e.kind === 'app' && e.args.length === 1)
     const pairs = elems.map(e => (e.kind === 'app' && e.args.length === 2 ? e.args : [])).filter(es => es.length > 0)
+
+    // Check for duplicate field names
+    const fieldNames = pairs
+      .map(pair => pair[0])
+      .filter((field): field is QuintStr => field.kind === 'str')
+      .map(field => field.value)
+
+    if (new Set(fieldNames).size !== fieldNames.length) {
+      const id = this.getId(ctx)
+      this.errors.push(duplicatedRecordField(id))
+    }
 
     if (spreads.length === 0) {
       // { field1: value1, field2: value2 }
