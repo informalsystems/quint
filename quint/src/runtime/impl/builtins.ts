@@ -268,6 +268,13 @@ export function lazyBuiltinLambda(
               const result = ctx.model.step(ctx)
               ctx.targetState = undefined
 
+              if (result.isRight() && !result.unwrap().toBool()) {
+                return left({
+                  code: 'QNT516',
+                  message: `Error reproducing the transition from 'then' using 'step'`,
+                })
+              }
+
               return result
             }
             return right(secondResult)

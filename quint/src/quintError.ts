@@ -123,6 +123,8 @@ export type ErrorCode =
   | 'QNT514'
   /* QNT515: 'apalache::generate' is not supported by the simulator */
   | 'QNT515'
+  /* QNT516: Error reproducing the transition from 'then' using 'step'*/
+  | 'QNT516'
 
 /* Additional data for a Quint error */
 export interface QuintErrorData {
