@@ -256,9 +256,6 @@ export function lazyBuiltinLambda(
 
           return args[1](ctx).chain(secondResult => {
             if (ctx.model !== undefined) {
-              // save to recover
-              const snapshot = ctx.varStorage.snapshot()
-
               // obtain the next variables after the `then` action
               ctx.shift()
               const stateAfterThen = ctx.varStorage.asRecord()
@@ -269,12 +266,8 @@ export function lazyBuiltinLambda(
 
               // TODO: do we need retries?
               const result = ctx.model.step(ctx)
+              ctx.targetState = undefined
 
-              ctx.varStorage.recoverSnapshot(snapshot)
-
-              if (result.isLeft()) {
-                console.log('ERROR')
-              }
               return result
             }
             return right(secondResult)
