@@ -183,6 +183,16 @@ const testCmd = {
         desc: 'name of the main module (by default, computed from filename)',
         type: 'string',
       })
+      .option('init', {
+        desc: 'name of the initializer action',
+        type: 'string',
+        default: 'init',
+      })
+      .option('step', {
+        desc: 'name of the step action',
+        type: 'string',
+        default: 'step',
+      })
       .option('out-itf', {
         desc: 'write a trace for every test, e.g., out_{test}_{seq}.itf.json where {test} is the name of a test, and {seq} is the test sequence number',
         type: 'string',

@@ -254,7 +254,31 @@ export function lazyBuiltinLambda(
           const newState = ctx.varStorage.asRecord()
           ctx.recorder.onNextState(oldState, newState)
 
-          return args[1](ctx)
+          return args[1](ctx).chain(secondResult => {
+            if (ctx.model !== undefined) {
+              // save to recover
+              const snapshot = ctx.varStorage.snapshot()
+
+              // obtain the next variables after the `then` action
+              ctx.shift()
+              const stateAfterThen = ctx.varStorage.asRecord()
+              ctx.targetState = stateAfterThen
+
+              // restore the state before the `then` action to do a model step
+              ctx.varStorage.fromRecord(newState)
+
+              // TODO: do we need retries?
+              const result = ctx.model.step(ctx)
+
+              ctx.varStorage.recoverSnapshot(snapshot)
+
+              if (result.isLeft()) {
+                console.log('ERROR')
+              }
+              return result
+            }
+            return right(secondResult)
+          })
         })
       }
     case 'reps':

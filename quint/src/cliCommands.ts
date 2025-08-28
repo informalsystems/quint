@@ -76,6 +76,7 @@ import { fail } from 'assert'
 import { newRng } from './rng'
 import { TestOptions } from './runtime/testing'
 import { createConfig } from './apalache'
+import { buildExpr } from './runtime/impl/builder'
 
 export type stage =
   | 'loading'
@@ -318,7 +319,20 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
     .flat()
     .filter(d => d.kind === 'def' && options.testMatch(d.name))
 
+  const argsParsingResult = mergeInMany([prev.args.init, prev.args.step].map(e => toExpr(prev, e)))
+  if (argsParsingResult.isLeft()) {
+    return cliErr('Argument error', {
+      ...testing,
+      errors: argsParsingResult.value.map(mkErrorMessage(new Map())),
+    })
+  }
+  const [initExpr, stepExpr] = argsParsingResult.value
+
   const evaluator = new Evaluator(prev.table, newTraceRecorder(verbosityLevel, options.rng, 1), options.rng)
+
+  const init = buildExpr(evaluator.builder, initExpr)
+  const step = buildExpr(evaluator.builder, stepExpr)
+  evaluator.ctx.model = { init: init, step: step }
   const results = testDefs.map((def, index) => evaluator.test(def, options.maxSamples, index, options.onTrace))
 
   const elapsedMs = Date.now() - startMs

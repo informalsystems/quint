@@ -52,6 +52,15 @@ export function evalNondet(
         return right(rv.mkBool(false))
       }
 
+      const pickToFollow = ctx.varStorage.nondetPicks.get(name)
+      if (pickToFollow) {
+        // This will be true when `targetState` was set and contained `nondetPicks`
+        cache.value = right(pickToFollow)
+        const result = bodyEval(ctx)
+        cache.value = undefined
+        return result
+      }
+
       const bounds = set.bounds()
       const originalPositions: bigint[] = bounds.map((b): bigint => {
         if (b.isJust()) {

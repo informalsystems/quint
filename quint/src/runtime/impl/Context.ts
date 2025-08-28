@@ -18,6 +18,7 @@ import { RuntimeValue } from './runtimeValue'
 import { TraceRecorder } from '../trace'
 import { VarStorage } from './VarStorage'
 import { Trace } from './trace'
+import { EvalFunction } from './builder'
 
 /**
  * A pointer to a value, so we can use the same reference in multiple places, and just update the value.
@@ -37,6 +38,11 @@ export interface CachedValue {
    * The cached value, which can either be a runtime value, an error, or undefined if not cached yet.
    */
   value: Either<QuintError, RuntimeValue> | undefined
+}
+
+export interface Model {
+  init: EvalFunction
+  step: EvalFunction
 }
 
 export class Context {
@@ -59,6 +65,9 @@ export class Context {
    * Storage for variables at current and next state.
    */
   public varStorage: VarStorage
+
+  public model?: Model
+  public targetState?: RuntimeValue
 
   /**
    * Constructs a new evaluation context.

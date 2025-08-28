@@ -440,9 +440,27 @@ function buildExprCore(builder: Builder, expr: QuintEx): EvalFunction {
           const exprEval = buildExpr(builder, expr.args[1])
 
           return ctx => {
-            return exprEval(ctx).map(value => {
-              register.value = right(value)
-              return rv.mkBool(true)
+            if (ctx.targetState === undefined) {
+              // Regular evaluation, generating a new state
+              return exprEval(ctx).map(value => {
+                register.value = right(value)
+                return rv.mkBool(true)
+              })
+            }
+
+            // evaluation with target, i.e. in a `then` or following a trace
+            return exprEval(ctx).map(rightValue => {
+              const nextValue = ctx.targetState?.toOrderedMap().get(varDef.name)!
+              // console.log(format(80, 0, prettyQuintEx(nextValue.toQuintEx(zerog))))
+              register.value = right(nextValue)
+              const result = nextValue.equals(rightValue)
+              if (!result) {
+                // ctx.diffs.push(ctx.varStorage.snapshot())
+                // console.log(format(80, 0, prettyQuintEx(nextValue.toQuintEx(zerog))))
+                // console.log('vs')
+                // console.log(format(80, 0, prettyQuintEx(rightValue.toQuintEx(zerog))))
+              }
+              return rv.mkBool(result)
             })
           }
         })

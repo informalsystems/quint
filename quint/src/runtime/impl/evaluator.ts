@@ -38,8 +38,8 @@ import { TraceHook } from '../../cliReporting'
 export class Evaluator {
   public ctx: Context
   public recorder: TraceRecorder
+  public builder: Builder
   private rng: Rng
-  private builder: Builder
 
   /**
    * Constructs an Evaluator that can be re-used across evaluations.
