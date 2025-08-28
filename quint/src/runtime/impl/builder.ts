@@ -450,7 +450,7 @@ function buildExprCore(builder: Builder, expr: QuintEx): EvalFunction {
 
             // evaluation with target, i.e. in a `then` or following a trace
             return exprEval(ctx).map(rightValue => {
-              const nextValue = ctx.targetState?.toOrderedMap().get(varDef.name)!
+              const nextValue = ctx.targetState?.toOrderedMap().get(register.name)!
               // console.log(format(80, 0, prettyQuintEx(nextValue.toQuintEx(zerog))))
               register.value = right(nextValue)
               const result = nextValue.equals(rightValue)
