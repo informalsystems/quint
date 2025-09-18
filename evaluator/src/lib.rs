@@ -11,6 +11,7 @@ pub mod itf;
 pub mod log;
 pub mod normalizer;
 pub mod picker;
+pub mod progress;
 pub mod rand;
 pub mod simulator;
 pub mod storage;
