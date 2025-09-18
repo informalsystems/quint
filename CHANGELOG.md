@@ -9,9 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 ### Changed
+
+- Apalache traces are now normalized (#1760)
+
 ### Deprecated
 ### Removed
 ### Fixed
+
+- Fixed unauthorized errors when downloading the Rust backend (#1763)
+- Fixed undefined behavior when non-array options are passed twice in the CLI (#1757)
+
 ### Security
 
 ## v0.28.0 -- 2025-09-16
@@ -21,15 +28,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bump Apalache to 0.50.3 (fix counterexamples for `apalache::generate`)
 - Bump Apalache to 0.50.2 (increasing the GRPC message size to 1GB)
-- Apalache traces are now normalized (#1760)
 
 ### Deprecated
 ### Removed
 ### Fixed
 
 - Fixed several issues with the integration of Apalache (#1754)
-- Fixed unauthorized errors when downloading the Rust backend (#1763)
-- Fixed undefined behavior when non-array options are passed twice in the CLI (#1757)
 
 ### Security
 
