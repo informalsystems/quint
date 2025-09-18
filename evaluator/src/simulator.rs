@@ -56,7 +56,7 @@ impl ParsedQuint {
         steps: usize,
         samples: usize,
         n_traces: usize,
-        reporter: R,
+        mut reporter: R,
     ) -> Result<SimulationResult, QuintError> {
         let mut interpreter = Interpreter::new(&self.table);
         let mut env = Env::new(interpreter.var_storage.clone());
@@ -70,7 +70,7 @@ impl ParsedQuint {
         let mut trace_lengths = Vec::with_capacity(n_traces + 1);
 
         for sample_number in 1..=samples {
-            reporter.report(sample_number);
+            reporter.next_sample();
             let mut trace = Vec::with_capacity(steps + 1);
 
             if !init.execute(&mut env)?.as_bool() {

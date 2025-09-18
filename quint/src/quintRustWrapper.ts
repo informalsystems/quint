@@ -71,7 +71,8 @@ export class QuintRustWrapper {
     nsteps: number,
     ntraces: number
   ): Promise<Outcome> {
-    const exe = await getRustEvaluatorPath()
+    // const exe = await getRustEvaluatorPath()
+    const exe = '/home/erickpintor/Projects/Informal/quint/evaluator/target/debug/quint_evaluator'
     const args = ['simulate-from-stdin']
     const input = JSONbig.stringify(
       {

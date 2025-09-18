@@ -153,7 +153,7 @@ fn run_simulation(args: RunArgs) -> eyre::Result<()> {
         args.max_steps,
         args.max_samples,
         args.n_traces,
-        progress::NoReport,
+        progress::no_report(),
     );
 
     let elapsed = start.elapsed();
@@ -189,12 +189,15 @@ fn simulate_from_stdin() -> eyre::Result<()> {
     let input: SimulateInput = serde_json::from_str(&input)?;
     let parsed = input.parsed;
 
-    let result = parsed.simulate(
-        input.nsteps,
-        input.nruns,
-        input.ntraces,
-        progress::JsonStdErr::new(input.nruns),
-    );
+    let result = {
+        let reporter_thread = progress::spawn_reporter_thread(input.nruns);
+        parsed.simulate(
+            input.nsteps,
+            input.nruns,
+            input.ntraces,
+            reporter_thread.reporter,
+        )
+    };
 
     // Transform the SimulationResult into the Outcome format expected by Quint
     let outcome = to_outcome(input.source, result);
