@@ -289,7 +289,7 @@ echo ".load ../examples/language-features/counters.qnt counters" \
 
 <!-- !test out repl loads a file with .load -->
 ```
->>> >>> >>> 
+>>> >>> 
 ```
 
 ### Repl saves a file with .save and loads it back
@@ -309,7 +309,7 @@ rm tmp-counters.qnt
 <!-- !test out repl saves a file with .save and loads it back -->
 ```
 >>> Session saved to: tmp-counters.qnt
->>> >>> 
+>>> 
 >>> true
 >>> 
 ```
@@ -1052,6 +1052,36 @@ quint -q -r \
 cd - > /dev/null
 ```
 
+### REPL prints command history
+
+<!-- !test in repl prints command history -->
+```
+quint -r ../examples/tutorials/repl/kettle.qnt | tail -n +2 | head -n 19
+```
+
+<!-- !test out repl prints command history -->
+```
+Type ".exit" to exit, or ".help" for more information
+Evaluating expression history in ../examples/tutorials/repl/kettle.qnt
+>>> 1 + 3
+4
+>>> Set(1, 2, 3).map(i => i * 2)
+Set(2, 4, 6)
+>>> fahrenheit(freezingTemperature)
+32
+>>> fahrenheit(boilingTemperature)
+212
+>>> 0.to(100).exists(celsius => fahrenheit(celsius) == celsius)
+false
+>>> (-100).to(100).exists(celsius => fahrenheit(celsius) == celsius)
+true
+>>> veryCold
+-40
+>>> veryHot
+104
+>>> temperature
+```
+
 ### test --verbosity=3 outputs a trace
 
 <!-- !test exit 1 -->
@@ -1544,6 +1574,19 @@ quint run ./examples/language-features/counters.qnt --n-traces 20000
 <!-- !test err n-traces greater than default max-samples -->
 ```text
 --n-traces (20000) cannot be greater than --max-samples (10000).
+```
+
+### Error when non-array options are set more than once
+
+<!-- !test in non-array options set more than once -->
+```sh
+quint run ./examples/language-features/counters.qnt --max-steps 10 --max-steps 15
+```
+
+<!-- !test exit 1 -->
+<!-- !test err non-array options set more than once -->
+```text
+--max-steps can not be specified more than once
 ```
 
 ### Regression on 428

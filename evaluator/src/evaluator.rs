@@ -564,7 +564,6 @@ impl<'a> Interpreter<'a> {
 
                 // Regular let expression handling (including non-oneOf nondet expressions)
                 {
-                    // Regular let expression handling
                     let cached_value = {
                         let cached = self
                             .scoped_cached_values
@@ -665,7 +664,6 @@ fn can_cache(def: &LookupDefinition) -> Cache {
 
     Cache::None
 }
-
 
 /// Utility to compile and evaluate an expression in a new interpreter
 pub fn run(table: &LookupTable, expr: &QuintEx) -> Result<Value, QuintError> {

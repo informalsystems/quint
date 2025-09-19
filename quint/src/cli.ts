@@ -150,8 +150,8 @@ const compileCmd = {
 
 // construct repl commands with yargs
 const replCmd = {
-  command: ['repl', '*'],
-  desc: 'run an interactive Read-Evaluate-Print-Loop',
+  command: ['repl [commands..]', '*'],
+  desc: 'Run an interactive Read-Evaluate-Print-Loop. Optionally, takes one or more commands to execute upon entering the REPL.',
   builder: (yargs: any) =>
     yargs
       .option('require', {
@@ -399,8 +399,21 @@ const docsCmd = {
   handler: (args: any) => load(args).then(chainCmd(docs)).then(outputResult),
 }
 
-// validate that --n-traces is not greater than --max-samples
-const validate = (argv: any) => {
+// Perform parser input validation.
+const validate = (argv: any, opts: any) => {
+  // Validate that only array options can be specified more than once.
+  for (const key in argv) {
+    if (key == 'commands' && (argv['_'][0] || 'repl') === 'repl') {
+      // Skip checking repl's positional arguments for both `quint ...` and
+      // `quint repl ...` commands. Note that `opts` don't have enought information
+      // on positional arguments, thus making this special case necessary.
+      continue
+    }
+    if (key !== '_' && !opts.array.includes(key) && Array.isArray(argv[key])) {
+      throw new Error(`--${key} can not be specified more than once`)
+    }
+  }
+  // Validate that --n-traces is not greater than --max-samples.
   if (argv['n-traces'] !== undefined && argv['max-samples'] !== undefined) {
     if (argv['n-traces'] > argv['max-samples']) {
       throw new Error(`--n-traces (${argv['n-traces']}) cannot be greater than --max-samples (${argv['max-samples']}).`)

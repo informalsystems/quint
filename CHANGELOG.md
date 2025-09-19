@@ -8,16 +8,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## UNRELEASED
 
 ### Added
+
+- Added support for passing commands to the REPL (#1768)
+
+### Changed
+
+- Behavior of `oneOf` in the rust simulator now matches the typescript one (#1773)
+- The REPL now prints file embedded expressions when executing them (#1774)
+
+### Deprecated
+### Removed
+### Fixed
+
+- Fixed copying and pasting multi-line expressions from the REPL (#1776)
+
+### Security
+
+## v0.28.0 -- 2025-09-16
+
+### Added
 ### Changed
 
 - Bump Apalache to 0.50.3 (fix counterexamples for `apalache::generate`)
 - Bump Apalache to 0.50.2 (increasing the GRPC message size to 1GB)
+- Apalache traces are now normalized (#1760)
 
 ### Deprecated
 ### Removed
 ### Fixed
 
 - Fixed several issues with the integration of Apalache (#1754)
+- Fixed unauthorized errors when downloading the Rust backend (#1763)
+- Fixed undefined behavior when non-array options are passed twice in the CLI (#1757)
 
 ### Security
 
