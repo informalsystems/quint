@@ -434,12 +434,9 @@ impl<'a> Interpreter<'a> {
 
     fn mk_lambda(&mut self, params: Vec<QuintLambdaParameter>, body: CompiledExpr) -> Value {
         let registers = params
-            .into_iter()
-            .map(|param| {
-                let register = self.get_or_create_param(&param);
-                Rc::clone(&register)
-            })
-            .collect::<Vec<_>>();
+            .iter()
+            .map(|param| self.get_or_create_param(param))
+            .collect();
 
         Value::Lambda(registers, body)
     }
@@ -590,7 +587,7 @@ impl<'a> Interpreter<'a> {
                 let op = self.compile_def(def);
                 CompiledExprWithArgs::new(move |env, args| {
                     let lambda = op.execute(env)?;
-                    let closure = lambda.as_closure();
+                    let mut closure = lambda.as_closure();
                     closure(env, args)
                 })
             }

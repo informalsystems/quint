@@ -83,7 +83,7 @@ impl Value {
             | Self::CrossProduct(_)
             | Self::PowerSet(_)
             | Self::MapSet(_, _) => {
-                itf::Value::Set(self.as_set().iter().map(|v| v.to_itf()).collect())
+                itf::Value::Set(self.clone().as_set().iter().map(|v| v.to_itf()).collect())
             }
             Self::Tuple(elems) => itf::Value::Tuple(elems.iter().map(|v| v.to_itf()).collect()),
             Self::Record(fields) => itf::Value::Record(

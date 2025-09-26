@@ -21,7 +21,6 @@ use crate::ir::QuintName;
 use imbl::shared_ptr::RcK;
 use imbl::{GenericHashMap, GenericHashSet, GenericVector};
 use itertools::Itertools;
-use std::borrow::Cow;
 use std::cell::RefCell;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -57,12 +56,12 @@ pub enum Value {
     Map(ImmutableMap<Value, Value>),
     List(ImmutableVec<Value>),
     Lambda(Vec<Rc<RefCell<EvalResult>>>, CompiledExpr),
-    Variant(QuintName, Rc<Value>),
+    Variant(QuintName, Box<Value>),
     // "Intermediate" values using during evaluation to avoid expensive computations
     Interval(i64, i64),
     CrossProduct(Vec<Value>),
-    PowerSet(Rc<Value>),
-    MapSet(Rc<Value>, Rc<Value>),
+    PowerSet(Box<Value>),
+    MapSet(Box<Value>, Box<Value>),
 }
 
 impl Hash for Value {
@@ -136,11 +135,11 @@ impl PartialEq for Value {
             (Value::Int(a), Value::Int(b)) => a == b,
             (Value::Bool(a), Value::Bool(b)) => a == b,
             (Value::Str(a), Value::Str(b)) => a == b,
-            (Value::Set(a), Value::Set(b)) => *a == *b,
-            (Value::Tuple(a), Value::Tuple(b)) => *a == *b,
-            (Value::Record(a), Value::Record(b)) => *a == *b,
-            (Value::Map(a), Value::Map(b)) => *a == *b,
-            (Value::List(a), Value::List(b)) => *a == *b,
+            (Value::Set(a), Value::Set(b)) => a == b,
+            (Value::Tuple(a), Value::Tuple(b)) => a == b,
+            (Value::Record(a), Value::Record(b)) => a == b,
+            (Value::Map(a), Value::Map(b)) => a == b,
+            (Value::List(a), Value::List(b)) => a == b,
             (Value::Lambda(_, _), Value::Lambda(_, _)) => panic!("Cannot compare lambdas"),
             (Value::Variant(a_label, a_value), Value::Variant(b_label, b_value)) => {
                 a_label == b_label && a_value == b_value
@@ -148,11 +147,11 @@ impl PartialEq for Value {
             (Value::Interval(a_start, a_end), Value::Interval(b_start, b_end)) => {
                 a_start == b_start && a_end == b_end
             }
-            (Value::CrossProduct(a), Value::CrossProduct(b)) => *a == *b,
-            (Value::PowerSet(a), Value::PowerSet(b)) => *a == *b,
+            (Value::CrossProduct(a), Value::CrossProduct(b)) => a == b,
+            (Value::PowerSet(a), Value::PowerSet(b)) => a == b,
             (Value::MapSet(a1, b1), Value::MapSet(a2, b2)) => a1 == a2 && b1 == b2,
             // To compare two sets represented in different ways, we need to enumerate them both
-            (a, b) if a.is_set() && b.is_set() => a.as_set() == b.as_set(),
+            (a, b) if a.is_set() && b.is_set() => a.clone().as_set() == b.clone().as_set(),
             _ => false,
         }
     }
@@ -197,7 +196,7 @@ impl Value {
                     && sets.iter().zip(elems).all(|(set, elem)| set.contains(elem))
             }
             (Value::PowerSet(base), Value::Set(elems)) => {
-                let base_elems = base.as_set();
+                let base_elems = base.clone().as_set();
                 elems.len() <= base_elems.len()
                     && elems.iter().all(|elem| base_elems.contains(elem))
             }
@@ -231,33 +230,33 @@ impl Value {
                 Value::MapSet(superset_domain, superset_range),
             ) => subset_domain == superset_domain && subset_range.subseteq(superset_range),
             // Fall back to the native implementation (`is_subset`) if no optimization is possible
-            (subset, superset) => subset.as_set().is_subset(superset.as_set().as_ref()),
+            (subset, superset) => subset.clone().as_set().is_subset(superset.clone().as_set()),
         }
     }
 
     /// Convert an integer value to `i64`. Panics if the wrong type is given,
     /// which should never happen as input expressions are type-checked.
-    pub fn as_int(&self) -> i64 {
+    pub fn as_int(self) -> i64 {
         match self {
-            Value::Int(n) => *n,
+            Value::Int(n) => n,
             _ => panic!("Expected integer"),
         }
     }
 
     /// Convert a boolean value to `bool`. Panics if the wrong type is given,
     /// which should never happen as input expressions are type-checked.
-    pub fn as_bool(&self) -> bool {
+    pub fn as_bool(self) -> bool {
         match self {
-            Value::Bool(b) => *b,
+            Value::Bool(b) => b,
             _ => panic!("Expected boolean"),
         }
     }
 
     /// Convert a string value to `Str`. Panics if the wrong type is given,
     /// which should never happen as input expressions are type-checked.
-    pub fn as_str(&self) -> Str {
+    pub fn as_str(self) -> Str {
         match self {
-            Value::Str(s) => s.clone(),
+            Value::Str(s) => s,
             _ => panic!("Expected string"),
         }
     }
@@ -282,49 +281,44 @@ impl Value {
     /// operate over the borroweed value (&self). So this returns a
     /// clone-on-write (Cow) pointer, avoiding unnecessary clones that would be
     /// required if we always wanted to return Owned data.
-    pub fn as_set(&self) -> Cow<'_, ImmutableSet<Value>> {
+    pub fn as_set(self) -> ImmutableSet<Value> {
         match self {
-            Value::Set(set) => Cow::Borrowed(set),
-            Value::Interval(start, end) => Cow::Owned((*start..=*end).map(Value::Int).collect()),
+            Value::Set(set) => set,
+            Value::Interval(start, end) => (start..=end).map(Value::Int).collect(),
             Value::CrossProduct(sets) => {
-                let size = self.cardinality();
-                if size == 0 {
-                    // an empty set produces the empty product
-                    return Cow::Owned(ImmutableSet::default());
+                let mut inner_sets = Vec::with_capacity(sets.len());
+                for value in sets {
+                    if value.cardinality() == 0 {
+                        // an empty set produces the empty product
+                        return ImmutableSet::default();
+                    }
+                    inner_sets.push(value.as_set());
                 }
-
-                #[allow(clippy::unnecessary_to_owned)] // False positive
-                let product_sets = sets
+                inner_sets
                     .iter()
-                    .map(|set| set.as_set().into_owned().into_iter().collect::<Vec<_>>())
                     .multi_cartesian_product()
-                    .map(|product| Value::Tuple(ImmutableVec::from(product)))
-                    .collect::<ImmutableSet<_>>();
-
-                Cow::Owned(product_sets)
+                    .map(|product| {
+                        let iter = product.into_iter().cloned();
+                        Value::Tuple(ImmutableVec::from_iter(iter))
+                    })
+                    .collect::<ImmutableSet<_>>()
             }
 
             Value::PowerSet(value) => {
                 let base = value.as_set();
                 let size = 1 << base.len(); // 2^n subsets for a set of size n
-                Cow::Owned(
-                    (0..size)
-                        .map(|i| powerset_at_index(base.as_ref(), i))
-                        .collect(),
-                )
+                (0..size).map(|i| powerset_at_index(&base, i)).collect()
             }
 
             Value::MapSet(domain, range) => {
                 if domain.cardinality() == 0 {
                     // To reflect the behaviour of TLC, an empty domain needs to give Set(Map())
-                    return Cow::Owned(
-                        std::iter::once(Value::Map(ImmutableMap::default())).collect(),
-                    );
+                    return std::iter::once(Value::Map(ImmutableMap::default())).collect();
                 }
 
                 if range.cardinality() == 0 {
                     // To reflect the behaviour of TLC, an empty range needs to give Set()
-                    return Cow::Owned(ImmutableSet::default());
+                    return ImmutableSet::default();
                 }
                 let domain_vec = domain.as_set().iter().cloned().collect::<Vec<_>>();
                 let range_vec = range.as_set().iter().cloned().collect::<Vec<_>>();
@@ -346,7 +340,7 @@ impl Value {
                     result_set.insert(Value::Map(ImmutableMap::from_iter(pairs)));
                 }
 
-                Cow::Owned(result_set)
+                result_set
             }
             _ => panic!("Expected set"),
         }
@@ -354,7 +348,7 @@ impl Value {
 
     /// Convert a map value to a map. Panics if the wrong type is given, which
     /// should never happen as input expressions are type-checked.
-    pub fn as_map(&self) -> &ImmutableMap<Value, Value> {
+    pub fn as_map(self) -> ImmutableMap<Value, Value> {
         match self {
             Value::Map(map) => map,
             _ => panic!("Expected map"),
@@ -363,7 +357,7 @@ impl Value {
 
     /// Convert a list or a tuple value to a vector. Panics if the wrong type is
     /// given, which should never happen as input expressions are type-checked.
-    pub fn as_list(&self) -> &ImmutableVec<Value> {
+    pub fn as_list(self) -> ImmutableVec<Value> {
         match self {
             Value::Tuple(elems) => elems,
             Value::List(elems) => elems,
@@ -373,7 +367,7 @@ impl Value {
 
     /// Convert a record value to a map. Panics if the wrong type is given,
     /// which should never happen as input expressions are type-checked.
-    pub fn as_record_map(&self) -> &ImmutableMap<QuintName, Value> {
+    pub fn as_record_map(self) -> ImmutableMap<QuintName, Value> {
         match self {
             Value::Record(fields) => fields,
             _ => panic!("Expected record"),
@@ -382,7 +376,7 @@ impl Value {
 
     /// Convert a lambda value to a closure. Panics if the wrong type is given,
     /// which should never happen as input expressions are type-checked.
-    pub fn as_closure(&self) -> impl Fn(&mut Env, Vec<Value>) -> EvalResult + '_ {
+    pub fn as_closure(self) -> impl FnMut(&mut Env, Vec<Value>) -> EvalResult {
         match self {
             Value::Lambda(registers, body) => move |env: &mut Env, args: Vec<Value>| {
                 args.into_iter().enumerate().for_each(|(i, arg)| {
@@ -399,9 +393,9 @@ impl Value {
     /// Convert a variant value to a tuple like (label, value). Panics if the
     /// wrong type is given, which should never happen as input expressions are
     /// type-checked.
-    pub fn as_variant(&self) -> (&QuintName, &Value) {
+    pub fn as_variant(self) -> (QuintName, Value) {
         match self {
-            Value::Variant(label, value) => (label, value),
+            Value::Variant(label, value) => (label, *value),
             _ => panic!("Expected variant"),
         }
     }
@@ -412,9 +406,9 @@ impl Value {
     /// Useful as some builtins expect tuples of 2 elements, so we have type
     /// guarantees that this conversion will work and can avoid having to handle
     /// other scenarios.
-    pub fn as_tuple2(&self) -> (Value, Value) {
-        let mut elems = self.as_list().iter();
-        (elems.next().unwrap().clone(), elems.next().unwrap().clone())
+    pub fn as_tuple2(self) -> (Value, Value) {
+        let mut elems = self.as_list().into_iter();
+        elems.next_tuple().expect("missing tuple elements")
     }
 }
 
@@ -452,7 +446,7 @@ impl fmt::Display for Value {
             | Value::PowerSet(_)
             | Value::MapSet(_, _) => {
                 write!(f, "Set(")?;
-                for (i, set) in self.as_set().iter().enumerate() {
+                for (i, set) in self.clone().as_set().iter().enumerate() {
                     if i > 0 {
                         write!(f, ", ")?;
                     }

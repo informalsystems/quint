@@ -24,7 +24,6 @@ use crate::ir::QuintError;
 use crate::value::{ImmutableMap, ImmutableSet, ImmutableVec, Value};
 use fxhash::FxHashSet;
 use itertools::Itertools;
-use std::rc::Rc;
 
 /// A list of operators that need to be compiled lazily (with `compile_lazy_op`).
 pub const LAZY_OPS: [&str; 13] = [
@@ -134,8 +133,8 @@ pub fn compile_lazy_op(op: &str) -> CompiledExprWithLazyArgs {
 
             let matching_case = cases.chunks_exact(2).find_map(|chunk| match chunk {
                 [case_label_expr, case_elim_expr] => {
-                    let case_label = case_label_expr.execute(env).ok()?;
-                    if case_label.as_str() == *variant_label || case_label.as_str() == "_" {
+                    let case_label = case_label_expr.execute(env).ok()?.as_str();
+                    if case_label == *variant_label || case_label == "_" {
                         // We found a matching case (or a wildcard "_")
                         Some(case_elim_expr)
                     } else {
@@ -148,8 +147,8 @@ pub fn compile_lazy_op(op: &str) -> CompiledExprWithLazyArgs {
             match matching_case {
                 Some(case_elim_expr) => {
                     let case_elim = case_elim_expr.execute(env)?;
-                    let closure = case_elim.as_closure();
-                    closure(env, vec![variant_value.clone()])
+                    let mut closure = case_elim.as_closure();
+                    closure(env, vec![variant_value])
                 }
                 None => Err(QuintError::new(
                     "QNT505",
@@ -202,23 +201,22 @@ pub fn compile_lazy_op(op: &str) -> CompiledExprWithLazyArgs {
                 // Repeats the given action n times, stopping if the action evaluates to false.
                 let reps = args[0].execute(env).map(|r| r.as_int())?;
                 let action = &args[1];
-                let mut result = Value::Bool(true);
+                let mut result = true;
                 for i in 0..reps {
                     let closure = action.execute(env)?;
-                    result = closure.as_closure()(env, vec![Value::Int(i)])?;
-                    if !result.as_bool() {
+                    result = closure.as_closure()(env, vec![Value::Int(i)])?.as_bool();
+                    if !result {
                         return Err(QuintError::new(
                             "QNT513",
                             format!("Reps loop could not continue after iteration #{} evaluated to false", i+1).as_str(),
                         ));
                     }
-
                     // Don't shift the last one
                     if i < reps - 1 {
                         env.shift();
                     }
                 }
-                Ok(result)
+                Ok(Value::Bool(result))
             }
         }
         "expect" => {
@@ -271,16 +269,29 @@ pub fn compile_eager_op(op: &str) -> CompiledExprWithArgs {
         Ok(list[index as usize].clone())
     }
 
+    // Takes ownership of `args` and consumes it while binding individual
+    // arguments to their own variables.
+    macro_rules! with_args {
+        (($args:expr, $($arg:ident),+) $fn:tt) => {{
+            let mut args = $args.into_iter();
+            $(let $arg = args.next().expect("missing argument");)+
+            $fn
+        }};
+    }
+
     CompiledExprWithArgs::from_fn(match op {
         // Constructs a set from the given arguments.
         "Set" => |_env, args| Ok(Value::Set(args.into_iter().collect())),
         "Rec" => |_env, args| {
-            // Constructs a record from the given arguments. Arguments are lists like [key1, value1, key2, value2, ...]
-            Ok(Value::Record(
-                args.chunks_exact(2)
-                    .map(|chunk| (chunk[0].as_str(), chunk[1].clone()))
-                    .collect(),
-            ))
+            // Constructs a record from the given arguments. Arguments are lists
+            // like [key1, value1, key2, value2, ...]
+            let mut record = ImmutableMap::new();
+            for mut chunk in &args.into_iter().chunks(2) {
+                let key = chunk.next().expect("expected key");
+                let value = chunk.next().expect("expected value");
+                record.insert(key.as_str(), value);
+            }
+            Ok(Value::Record(record))
         },
         // Constructs a tuple from the given arguments.
         "Tup" => |_env, args| Ok(Value::Tuple(args.into_iter().collect())),
@@ -293,139 +304,210 @@ pub fn compile_eager_op(op: &str) -> CompiledExprWithArgs {
             ))
         },
         // Constructs a variant from the given arguments.
-        "variant" => |_env, args| Ok(Value::Variant(args[0].as_str(), Rc::new(args[1].clone()))),
+        "variant" => |_env, args| {
+            with_args!((args, a, b) {
+                Ok(Value::Variant(a.as_str(), Box::new(b)))
+            })
+        },
         // Logical negation
-        "not" => |_env, args| Ok(Value::Bool(!args[0].as_bool())),
+        "not" => |_env, args| {
+            with_args!((args, a) {
+                Ok(Value::Bool(!a.as_bool()))
+            })
+        },
         // Logical equivalence/bi-implication
-        "iff" => |_env, args| Ok(Value::Bool(args[0].as_bool() == args[1].as_bool())),
+        "iff" => |_env, args| {
+            with_args!((args, a, b) {
+                Ok(Value::Bool(a.as_bool() == b.as_bool()))
+            })
+        },
         // Equality
         "eq" => |_env, args| Ok(Value::Bool(args[0] == args[1])),
         // Inequality
         "neq" => |_env, args| Ok(Value::Bool(args[0] != args[1])),
         // Integer addition
-        "iadd" => |_env, args| Ok(Value::Int(args[0].as_int() + args[1].as_int())),
+        "iadd" => |_env, args| {
+            with_args!((args, a, b) {
+                Ok(Value::Int(a.as_int() + b.as_int()))
+            })
+        },
         // Integer subtraction
-        "isub" => |_env, args| Ok(Value::Int(args[0].as_int() - args[1].as_int())),
+        "isub" => |_env, args| {
+            with_args!((args, a, b) {
+                Ok(Value::Int(a.as_int() - b.as_int()))
+            })
+        },
         // Integer multiplication
-        "imul" => |_env, args| Ok(Value::Int(args[0].as_int() * args[1].as_int())),
+        "imul" => |_env, args| {
+            with_args!((args, a, b) {
+                Ok(Value::Int(a.as_int() * b.as_int()))
+            })
+        },
         // Integer division
         "idiv" => |_env, args| {
-            let divisor = args[1].as_int();
-            if divisor == 0 {
-                return Err(QuintError::new("QNT503", "Division by zero"));
-            }
-
-            Ok(Value::Int(args[0].as_int() / divisor))
+            with_args!((args, a, b) {
+                let divisor = b.as_int();
+                if divisor == 0 {
+                    return Err(QuintError::new("QNT503", "Division by zero"));
+                }
+                Ok(Value::Int(a.as_int() / divisor))
+            })
         },
         // Integer modulus
-        "imod" => |_env, args| Ok(Value::Int(args[0].as_int() % args[1].as_int())),
+        "imod" => |_env, args| {
+            with_args!((args, a, b) {
+                Ok(Value::Int(a.as_int() % b.as_int()))
+            })
+        },
         // Integer exponentiation
         "ipow" => |_env, args| {
-            let base = args[0].as_int();
-            let exp = args[1].as_int();
-            if base == 0 && exp == 0 {
-                return Err(QuintError::new("QNT503", "0^0 is undefined"));
-            }
-            if exp < 0 {
-                return Err(QuintError::new("QNT503", "i^j is undefined for j < 0"));
-            }
-
-            Ok(Value::Int(base.pow(exp as u32)))
+            with_args!((args, a, b) {
+                let base = a.as_int();
+                let exp = b.as_int();
+                if base == 0 && exp == 0 {
+                    return Err(QuintError::new("QNT503", "0^0 is undefined"));
+                }
+                if exp < 0 {
+                    return Err(QuintError::new("QNT503", "i^j is undefined for j < 0"));
+                }
+                Ok(Value::Int(base.pow(exp as u32)))
+            })
         },
         // Integer unary minus
-        "iuminus" => |_env, args| Ok(Value::Int(-args[0].as_int())),
+        "iuminus" => |_env, args| {
+            with_args!((args, a) {
+                Ok(Value::Int(-a.as_int()))
+            })
+        },
         // Integer less than
-        "ilt" => |_env, args| Ok(Value::Bool(args[0].as_int() < args[1].as_int())),
+        "ilt" => |_env, args| {
+            with_args!((args, a, b) {
+                Ok(Value::Bool(a.as_int() < b.as_int()))
+            })
+        },
         // Integer less than or equal to
-        "ilte" => |_env, args| Ok(Value::Bool(args[0].as_int() <= args[1].as_int())),
+        "ilte" => |_env, args| {
+            with_args!((args, a, b) {
+                Ok(Value::Bool(a.as_int() <= b.as_int()))
+            })
+        },
         // Integer greater than
-        "igt" => |_env, args| Ok(Value::Bool(args[0].as_int() > args[1].as_int())),
+        "igt" => |_env, args| {
+            with_args!((args, a, b) {
+                Ok(Value::Bool(a.as_int() > b.as_int()))
+            })
+        },
         // Integer greater than or equal to
-        "igte" => |_env, args| Ok(Value::Bool(args[0].as_int() >= args[1].as_int())),
-
+        "igte" => |_env, args| {
+            with_args!((args, a, b) {
+                Ok(Value::Bool(a.as_int() >= b.as_int()))
+            })
+        },
         // Access a tuple: tuples are 1-indexed, that is, _1, _2, etc.
-        "item" => |_env, args| at_index(args[0].as_list(), args[1].as_int() - 1),
+        "item" => |_env, args| {
+            with_args!((args, a, b){
+                at_index(&a.as_list(), b.as_int() - 1)
+            })
+        },
         // A set of all possible tuples from the elements of the respective given sets.
         "tuples" => |_env, args| Ok(Value::CrossProduct(args)),
 
         // Constructs a list of integers from start to end.
         "range" => |_env, args| {
-            let start = args[0].as_int();
-            let end = args[1].as_int();
-            Ok(Value::List((start..end).map(Value::Int).collect()))
+            with_args!((args, a, b){
+                let start = a.as_int();
+                let end = b.as_int();
+                Ok(Value::List((start..end).map(Value::Int).collect()))
+            })
         },
         // List access
-        "nth" => |_env, args| at_index(args[0].as_list(), args[1].as_int()),
+        "nth" => |_env, args| {
+            with_args!((args, a, b){
+                at_index(&a.as_list(), b.as_int())
+            })
+        },
         // Replace an element at a given index in a list.
         "replaceAt" => |_env, args| {
-            let mut list = args[0].as_list().clone();
-            let index = args[1].as_int();
+            with_args!((args, a, b, c) {
+                let mut list = a.as_list();
+                let index = b.as_int();
 
-            if index < 0 || index >= list.len().try_into().unwrap() {
-                return Err(QuintError::new(
-                    "QNT510",
-                    "Out of bounds, replaceAt(${index})",
-                ));
-            }
+                if index < 0 || index >= list.len().try_into().unwrap() {
+                    return Err(QuintError::new(
+                        "QNT510",
+                        "Out of bounds, replaceAt(${index})",
+                    ));
+                }
 
-            list[index as usize] = args[2].clone();
-            Ok(Value::List(list))
+                list[index as usize] = c;
+                Ok(Value::List(list))
+            })
         },
 
         // Get the first element of a list. Not allowed in empty lists.
         "head" => |_env, args| {
-            let list = args[0].as_list();
-            match list.head() {
-                Some(h) => Ok(h.clone()),
-                None => Err(QuintError::new("QNT505", "Called 'head' on an empty list")),
-            }
+            with_args!((args, a) {
+                let mut iter = a.as_list().into_iter();
+                match iter.next() {
+                    Some(h) => Ok(h),
+                    None => Err(QuintError::new("QNT505", "Called 'head' on an empty list")),
+                }
+            })
         },
 
         // Get the tail (all elements but the head) of a list. Not allowed in empty lists.
         "tail" => |_env, args| {
-            let list = args[0].as_list();
-            if !list.is_empty() {
-                Ok(Value::List(list.iter().skip(1).cloned().collect()))
-            } else {
-                Err(QuintError::new("QNT505", "Called 'tail' on an empty list"))
-            }
+            with_args!((args, a) {
+                let list = a.as_list();
+                if !list.is_empty() {
+                    Ok(Value::List(list.into_iter().skip(1).collect()))
+                } else {
+                    Err(QuintError::new("QNT505", "Called 'tail' on an empty list"))
+                }
+            })
         },
 
         // Get a sublist of a list from start to end.
         "slice" => |_env, args| {
-            let list = args[0].as_list();
-            let start = args[1].as_int();
-            let end = args[2].as_int() as usize;
+            with_args!((args, a, b, c){
+                let mut list = a.as_list();
+                let start = b.as_int();
+                let end = c.as_int() as usize;
 
-            if start >= 0 && end <= list.len() && start as usize <= end {
-                Ok(Value::List(list.clone().slice(start as usize..end)))
-            } else {
-                Err(QuintError::new(
-                    "QNT506",
-                    format!(
-                        "slice(..., {start}, {end}) applied to a list of size {size}",
-                        start = start,
-                        end = end,
-                        size = list.len()
-                    )
-                    .as_str(),
-                ))
-            }
+                if start >= 0 && end <= list.len() && start as usize <= end {
+                    Ok(Value::List(list.slice(start as usize..end)))
+                } else {
+                    Err(QuintError::new(
+                        "QNT506",
+                        format!(
+                            "slice(..., {start}, {end}) applied to a list of size {size}",
+                            start = start,
+                            end = end,
+                            size = list.len()
+                        )
+                        .as_str(),
+                    ))
+                }
+            })
         },
 
         // The length of a list.
         "length" => |_env, args| Ok(Value::Int(args[0].cardinality().try_into().unwrap())),
         // Append an element to a list.
         "append" => |_env, args| {
-            let mut list = args[0].as_list().clone();
-            list.push_back(args[1].clone());
-            Ok(Value::List(list))
+            with_args!((args, a, b) {
+                let mut list = a.as_list();
+                list.push_back(b);
+                Ok(Value::List(list))
+            })
         },
         // Concatenate two lists.
         "concat" => |_env, args| {
-            let mut list = args[0].as_list().clone();
-            list.extend(args[1].as_list().iter().cloned());
-            Ok(Value::List(list))
+            with_args!((args, a, b) {
+                let mut list = a.as_list();
+                list.extend(b.as_list().into_iter());
+                Ok(Value::List(list))
+            })
         },
         // A set with the indices of a list.
         "indices" => |_env, args| {
@@ -435,33 +517,42 @@ pub fn compile_eager_op(op: &str) -> CompiledExprWithArgs {
 
         // Access a field in a record.
         "field" => |_env, args| {
-            Ok(args[0]
-                .as_record_map()
-                .get(&args[1].as_str())
-                .unwrap()
-                .clone())
+            with_args!((args, a, b) {
+                Ok(a.as_record_map()
+                   .get(&b.as_str())
+                   .expect("invalid field record")
+                   .clone())
+            })
         },
 
         // A set with the field names of a record.
         "fieldNames" => |_env, args| {
-            Ok(Value::Set(
-                args[0]
-                    .as_record_map()
-                    .keys()
-                    .map(|s| Value::Str(s.clone()))
-                    .collect(),
-            ))
+            with_args!((args, a) {
+                Ok(Value::Set(
+                    a.as_record_map()
+                     .keys()
+                     .cloned()
+                     .map(Value::Str)
+                     .collect()
+                ))
+            })
         },
 
         // Replace a field value in a record.
         "with" => |_env, args| {
-            let mut record = args[0].as_record_map().clone();
-            record.insert(args[1].as_str(), args[2].clone());
-            Ok(Value::Record(record))
+            with_args!((args, a, b, c) {
+                let mut record = a.as_record_map();
+                record.insert(b.as_str(), c);
+                Ok(Value::Record(record))
+            })
         },
 
         // The powerset of a set.
-        "powerset" => |_env, args| Ok(Value::PowerSet(Rc::new(args[0].clone()))),
+        "powerset" => |_env, args| {
+            with_args!((args, a) {
+                Ok(Value::PowerSet(Box::new(a)))
+            })
+        },
         // Check if a set contains an element.
         "contains" => |_env, args| Ok(Value::Bool(args[0].contains(&args[1]))),
         // Check if an element is in a set.
@@ -470,30 +561,23 @@ pub fn compile_eager_op(op: &str) -> CompiledExprWithArgs {
         "subseteq" => |_env, args| Ok(Value::Bool(args[0].subseteq(&args[1]))),
         // Set difference.
         "exclude" => |_env, args| {
-            Ok(Value::Set(
-                args[0]
-                    .as_set()
-                    .into_owned()
-                    .relative_complement(args[1].as_set().into_owned()),
-            ))
+            with_args!((args, a, b) {
+                Ok(Value::Set(
+                    a.as_set().relative_complement(b.as_set()),
+                ))
+            })
         },
         // Set union.
         "union" => |_env, args| {
-            Ok(Value::Set(
-                args[0]
-                    .as_set()
-                    .into_owned()
-                    .union(args[1].as_set().into_owned()),
-            ))
+            with_args!((args, a, b) {
+                Ok(Value::Set(a.as_set().union(b.as_set())))
+            })
         },
         // Set intersection.
         "intersect" => |_env, args| {
-            Ok(Value::Set(
-                args[0]
-                    .as_set()
-                    .into_owned()
-                    .intersection(args[1].as_set().into_owned()),
-            ))
+            with_args!((args, a, b) {
+                Ok(Value::Set(a.as_set().intersection(b.as_set())))
+            })
         },
 
         // The size of a set.
@@ -506,259 +590,308 @@ pub fn compile_eager_op(op: &str) -> CompiledExprWithArgs {
         },
         // Construct a set of integers from a to b.
         "to" => |_env, args| {
-            let start = args[0].as_int();
-            let end = args[1].as_int();
-            if start > end {
-                // Avoid having different intervals that represent the same thing (empty set)
-                return Ok(Value::Set(ImmutableSet::default()));
-            }
-            Ok(Value::Interval(start, end))
+            with_args!((args, a, b) {
+                let start = a.as_int();
+                let end = b.as_int();
+                if start > end {
+                    // Avoid having different intervals that represent the same thing (empty set)
+                    return Ok(Value::Set(ImmutableSet::default()));
+                }
+                Ok(Value::Interval(start, end))
+            })
         },
 
         // Fold a set
         "fold" => |env, args| {
-            let reducer = args[2].as_closure();
-            fold_left(
-                args[0].as_set().iter().cloned(),
-                args[1].clone(),
-                |acc, arg| reducer(env, vec![acc, arg]),
-            )
+            with_args!((args, a, b, c) {
+                let mut reducer = c.as_closure();
+                fold_left(
+                    a.as_set().into_iter(),
+                    b,
+                    |acc, arg| reducer(env, vec![acc, arg]),
+                )
+            })
         },
 
         // Fold a list from left to right.
         "foldl" => |env, args| {
-            let reducer = args[2].as_closure();
-            fold_left(
-                args[0].as_list().iter().cloned(),
-                args[1].clone(),
-                |acc, arg| reducer(env, vec![acc, arg]),
-            )
+            with_args!((args, a, b, c) {
+                let mut reducer = c.as_closure();
+                fold_left(
+                    a.as_list().into_iter(),
+                    b,
+                    |acc, arg| reducer(env, vec![acc, arg]),
+                )
+            })
         },
 
         // Fold a list from right to left.
         "foldr" => |env, args| {
-            let reducer = args[2].as_closure();
-            fold_right(
-                args[0].as_list().iter().cloned(),
-                args[1].clone(),
-                |arg, acc| reducer(env, vec![arg, acc]),
-            )
+            with_args!((args, a, b, c) {
+                let mut reducer = c.as_closure();
+                fold_right(
+                    a.as_list().into_iter(),
+                    b,
+                    |arg, acc| reducer(env, vec![arg, acc]),
+                )
+            })
         },
 
         // Flatten a set of sets.
         "flatten" => |_env, args| {
-            Ok(Value::Set(
-                args[0]
-                    .as_set()
-                    .iter()
-                    .flat_map(|v| v.as_set().into_owned())
-                    .collect(),
-            ))
+            with_args!((args, a) {
+                Ok(Value::Set(
+                    a.as_set().into_iter().flat_map(|v| v.as_set()).collect(),
+                ))
+            })
         },
 
         // Get a value from a map.
         "get" => |_env, args| {
-            let map = args[0].as_map();
-            let key = args[1].clone().normalize();
-            match map.get(&key) {
-                Some(value) => Ok(value.clone()),
-                None => Err(QuintError::new(
-                    "QNT507",
-                    format!(
-                        "Called 'get' with a non-existing key. Key is {key}. Map has keys: {keys}",
-                        key = key,
-                        keys = map.keys().map(|k| k.to_string()).join(", ")
-                    )
-                    .as_str(),
-                )),
-            }
+            with_args!((args, a, b) {
+                let map = a.as_map();
+                let key = b.normalize();
+                match map.get(&key) {
+                    Some(value) => Ok(value.clone()),
+                    None => Err(QuintError::new(
+                        "QNT507",
+                        format!(
+                            "Called 'get' with a non-existing key. Key is {key}. Map has keys: {keys}",
+                            key = key,
+                            keys = map.keys().map(|k| k.to_string()).join(", ")
+                        )
+                            .as_str(),
+                    )),
+                }
+            })
         },
 
         // Set a value for an existing key in a map.
         "set" => |_env, args| {
-            let mut map = args[0].as_map().clone();
-            let key = args[1].clone().normalize();
+            with_args!((args, a, b, c) {
+                let mut map = a.as_map();
+                let key = b.normalize();
 
-            if !map.contains_key(&key) {
-                return Err(QuintError::new(
-                    "QNT507",
-                    "Called 'set' with a non-existing key",
-                ));
-            }
+                if !map.contains_key(&key) {
+                    return Err(QuintError::new(
+                        "QNT507",
+                        "Called 'set' with a non-existing key",
+                    ));
+                }
 
-            map.insert(key, args[2].clone());
-            Ok(Value::Map(map))
+                map.insert(key, c);
+                Ok(Value::Map(map))
+            })
         },
 
         // Set a value for any key in a map.
         "put" => |_env, args| {
-            let mut map = args[0].as_map().clone();
-            let key = args[1].clone().normalize();
-            let value = args[2].clone();
-            map.insert(key, value);
-            Ok(Value::Map(map))
+            with_args!((args, a, b, value) {
+                let mut map = a.as_map();
+                let key = b.normalize();
+                map.insert(key, value);
+                Ok(Value::Map(map))
+            })
         },
 
         // Set a value for an existing key in a map using a lambda over the current value.
         "setBy" => |env, args| {
-            let mut map = args[0].as_map().clone();
-            let key = args[1].clone().normalize();
-            match map.get(&key) {
-                Some(value) => {
-                    let new_value = args[2].as_closure()(env, vec![value.clone()])?;
-                    map.insert(key, new_value);
-                    Ok(Value::Map(map))
+            with_args!((args, a, b, c) {
+                let mut map = a.as_map();
+                let key = b.normalize();
+                match map.get(&key) {
+                    Some(value) => {
+                        let new_value = c.as_closure()(env, vec![value.clone()])?;
+                        map.insert(key, new_value);
+                        Ok(Value::Map(map))
+                    }
+                    None => Err(QuintError::new(
+                        "QNT507",
+                        format!("Called 'setBy' with a non- existing key {key}").as_str(),
+                    )),
                 }
-                None => Err(QuintError::new(
-                    "QNT507",
-                    format!("Called 'setBy' with a non- existing key {key}").as_str(),
-                )),
-            }
+            })
         },
 
         // A set with the keys of a map.
-        "keys" => |_env, args| Ok(Value::Set(args[0].as_map().keys().cloned().collect())),
+        "keys" => |_env, args| {
+            with_args!((args, a) {
+                Ok(Value::Set(a.as_map().keys().cloned().collect()))
+            })
+        },
         // Check if a predicate holds for some element in a set.
         "exists" => |env, args| {
-            for v in args[0].as_set().iter() {
-                let result = args[1].as_closure()(env, vec![v.clone()])?;
-                if result.as_bool() {
-                    return Ok(Value::Bool(true));
+            with_args!((args, a, b) {
+                let mut closure = b.as_closure();
+                for v in a.as_set() {
+                    let result = closure(env, vec![v])?;
+                    if result.as_bool() {
+                        return Ok(Value::Bool(true));
+                    }
                 }
-            }
-            Ok(Value::Bool(false))
+                Ok(Value::Bool(false))
+            })
         },
 
         "forall" => |env, args| {
-            for v in args[0].as_set().iter() {
-                let result = args[1].as_closure()(env, vec![v.clone()])?;
-                if !result.as_bool() {
-                    return Ok(Value::Bool(false));
+            with_args!((args, a, b) {
+                let mut closure = b.as_closure();
+                for v in a.as_set() {
+                    let result = closure(env, vec![v])?;
+                    if !result.as_bool() {
+                        return Ok(Value::Bool(false));
+                    }
                 }
-            }
-            Ok(Value::Bool(true))
+                Ok(Value::Bool(true))
+            })
         },
 
         // Map a lambda over a set.
         "map" => |env, args| {
-            Ok(Value::Set(
-                args[0]
-                    .as_set()
-                    .iter()
-                    .map(|v| args[1].as_closure()(env, vec![v.clone()]))
-                    .collect::<Result<_, _>>()?,
-            ))
+            with_args!((args, a, b) {
+                let mut closure = b.as_closure();
+                Ok(Value::Set(
+                    a.as_set()
+                     .into_iter()
+                     .map(|v| closure(env, vec![v]))
+                     .collect::<Result<_, _>>()?,
+                ))
+            })
         },
 
         // Filter a set using a lambda.
         "filter" => |env, args| {
-            Ok(Value::Set(args[0].as_set().iter().try_fold(
-                ImmutableSet::default(),
-                |mut acc, v| {
-                    if args[1].as_closure()(env, vec![v.clone()])?.as_bool() {
-                        acc.insert(v.clone());
-                    }
-                    Ok(acc)
-                },
-            )?))
+            with_args!((args, a, b) {
+                let mut closure = b.as_closure();
+                Ok(Value::Set(a.as_set().into_iter().try_fold(
+                    ImmutableSet::default(),
+                    |mut acc, v| {
+                        if closure(env, vec![v.clone()])?.as_bool() {
+                            acc.insert(v);
+                        }
+                        Ok(acc)
+                    },
+                )?))
+            })
         },
 
         // Filter a list using a lambda
         "select" => |env, args| {
-            Ok(Value::List(args[0].as_list().iter().try_fold(
-                ImmutableVec::new(),
-                |mut acc, v| {
-                    if args[1].as_closure()(env, vec![v.clone()])?.as_bool() {
-                        acc.push_back(v.clone());
-                    }
-                    Ok(acc)
-                },
-            )?))
+            with_args!((args, a, b) {
+                let mut closure = b.as_closure();
+                Ok(Value::List(a.as_list().into_iter().try_fold(
+                    ImmutableVec::new(),
+                    |mut acc, v| {
+                        if closure(env, vec![v.clone()])?.as_bool() {
+                            acc.push_back(v);
+                        }
+                        Ok(acc)
+                    },
+                )?))
+            })
         },
 
         // Construct a map by applying a lambda to the values of a set.
         "mapBy" => |env, args| {
-            let closure = args[1].as_closure();
-            let keys = args[0].as_set();
+            with_args!((args, a, b) {
+                let keys = a.as_set();
+                let mut closure = b.as_closure();
 
-            Ok(Value::Map(keys.iter().try_fold(
-                ImmutableMap::new(),
-                |mut acc, key| {
-                    let value = closure(env, vec![key.clone()])?;
-                    acc.insert(key.clone().normalize(), value);
-                    Ok(acc)
-                },
-            )?))
+                Ok(Value::Map(keys.into_iter().try_fold(
+                    ImmutableMap::new(),
+                    |mut acc, key| {
+                        let value = closure(env, vec![key.clone()])?;
+                        acc.insert(key.normalize(), value);
+                        Ok(acc)
+                    },
+                )?))
+            })
         },
         // Convert a set of key-value tuples to a map.
         "setToMap" => |_env, args| {
-            let set = args[0].as_set();
-            Ok(Value::Map(set.iter().map(|v| v.as_tuple2()).collect()))
+            with_args!((args, a) {
+                let set = a.as_set();
+                Ok(Value::Map(set.into_iter().map(|v| v.as_tuple2()).collect()))
+            })
         },
         // A set of all possible maps with keys and values from the given sets.
         "setOfMaps" => |_env, args| {
-            Ok(Value::MapSet(
-                Rc::new(args[0].clone()),
-                Rc::new(args[1].clone()),
-            ))
+            with_args!((args, a, b) {
+                Ok(Value::MapSet(
+                    Box::new(a),
+                    Box::new(b),
+                ))
+            })
         },
         // Expect a value to be false
-        "fail" => |_env, args| Ok(Value::Bool(!args[0].as_bool())),
+        "fail" => |_env, args| {
+            with_args!((args, a) {
+                Ok(Value::Bool(!a.as_bool()))
+            })
+        },
         // Expect a value to be true, returning a runtime error if it is not
         "assert" => |_env, args| {
-            if !args[0].as_bool() {
-                return Err(QuintError::new("QNT508", "Assertion failed"));
-            }
-            Ok(Value::Bool(true))
+            with_args!((args, a) {
+                if !a.as_bool() {
+                    return Err(QuintError::new("QNT508", "Assertion failed"));
+                }
+                Ok(Value::Bool(true))
+            })
         },
         // Generate all lists of length up to the given number, from a set
         "allListsUpTo" => |_env, args| {
-            let set = args[0].as_set();
-            let length = args[1].as_int();
-            let mut lists = FxHashSet::default();
-            let mut last_lists = FxHashSet::<ImmutableVec<Value>>::default();
-            lists.insert(ImmutableVec::default());
-            last_lists.insert(ImmutableVec::default());
-            for _ in 0..length {
-                let new_lists: FxHashSet<ImmutableVec<Value>> = set
-                    .iter()
-                    .flat_map(|value| {
-                        last_lists.iter().map(move |list| {
-                            let mut new_list = list.clone();
-                            new_list.push_back(value.clone());
-                            new_list
+            with_args!((args, a, b) {
+                let set = a.as_set();
+                let length = b.as_int();
+                let mut lists = FxHashSet::default();
+                let mut last_lists = FxHashSet::<ImmutableVec<Value>>::default();
+                lists.insert(ImmutableVec::default());
+                last_lists.insert(ImmutableVec::default());
+                for _ in 0..length {
+                    let new_lists: FxHashSet<ImmutableVec<Value>> = set
+                        .iter()
+                        .flat_map(|value| {
+                            last_lists.iter().map(move |list| {
+                                let mut new_list = list.clone();
+                                new_list.push_back(value.clone());
+                                new_list
+                            })
                         })
-                    })
-                    .collect();
-                lists.extend(new_lists.iter().cloned());
-                last_lists = new_lists;
-            }
+                        .collect();
+                    lists.extend(new_lists.clone());
+                    last_lists = new_lists;
+                }
 
-            Ok(Value::Set(lists.into_iter().map(Value::List).collect()))
+                Ok(Value::Set(lists.into_iter().map(Value::List).collect()))
+            })
         },
 
         // Get the only element of a set, or an error if the set is empty or has more than one element.
         "getOnlyElement" => |_env, args| {
-            let set = args[0].as_set();
-            let size = set.len();
-            if size != 1 {
-                return Err(QuintError::new(
-                    "QNT505",
-                    format!(
-                        "Called 'getOnlyElement' on a set with {size} elements.\
-                        Make sure the set has exactly one element."
-                    )
-                    .as_str(),
-                ));
-            }
+            with_args!((args, a) {
+                let set = a.as_set();
+                let size = set.len();
+                if size != 1 {
+                    return Err(QuintError::new(
+                        "QNT505",
+                        format!(
+                            "Called 'getOnlyElement' on a set with {size} elements.\
+                             Make sure the set has exactly one element."
+                        )
+                            .as_str(),
+                    ));
+                }
 
-            Ok(set.iter().next().cloned().unwrap())
+                Ok(set.into_iter().next().unwrap())
+            })
         },
 
         // Print a value to the console, and return it
         "q::debug" => |_env, args| {
-            println!("> {} {}", args[0].as_str(), args[1]);
-            Ok(args[1].clone())
+            with_args!((args, a, b) {
+                println!("> {} {}", a.as_str(), b);
+                Ok(b)
+            })
         },
 
         // `allLists` is not supported in the REPL, but we have `allListsUpTo`

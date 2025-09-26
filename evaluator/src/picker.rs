@@ -1,7 +1,7 @@
 //! Picking values out of sets without enumerating the elements.
 
 use crate::value::{powerset_at_index, ImmutableMap, Value};
-use std::{convert::TryInto, rc::Rc};
+use std::convert::TryInto;
 
 impl Value {
     /// Pick a value from the set, using the given indexes, without enumerating
@@ -32,7 +32,7 @@ impl Value {
                 let index = indexes
                     .next()
                     .expect("Internal error: too few positions. Report a bug");
-                powerset_at_index(&base_set.as_set(), index)
+                powerset_at_index(&base_set.clone().as_set(), index)
             }
             Value::MapSet(domain, range) => {
                 let domain_size = domain.cardinality();
@@ -46,16 +46,17 @@ impl Value {
 
                 assert!(range_size > 0, "Range can't be zero");
 
-                let range_to_pick = if let Value::MapSet(_, _) = **range {
-                    Rc::new(Value::Set(range.as_set().into_owned()))
+                let range = *range.clone();
+                let range_to_pick = if let Value::MapSet(_, _) = range {
+                    Value::Set(range.as_set())
                 } else {
-                    Rc::clone(range)
+                    range
                 };
 
-                let keys = domain.as_set();
-                let key_values = keys.iter().map(|key| {
+                let keys = domain.clone().as_set();
+                let key_values = keys.into_iter().map(|key| {
                     let value = range_to_pick.pick(indexes);
-                    (key.clone(), value)
+                    (key, value)
                 });
 
                 Value::Map(ImmutableMap::from_iter(key_values))
