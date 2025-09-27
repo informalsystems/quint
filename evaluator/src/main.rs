@@ -4,19 +4,23 @@
 //!  2. `simulate-from-stdin`: Reads input from standard input (STDIN) and
 //!     simulates based on that input, used in the integration with the `quint` typescript tool.
 
+use std::borrow::Cow;
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Instant;
 
 use argh::FromArgs;
 use eyre::bail;
-use quint_evaluator::evaluator::{Env, Interpreter};
-use quint_evaluator::ir::{QuintError, QuintEx, QuintOutput};
+use quint_evaluator::evaluator::{CompiledExpr, Env, EvalResult, Interpreter};
+use quint_evaluator::ir::{QuintError, QuintEx, QuintName, QuintOutput};
 use quint_evaluator::progress;
 use quint_evaluator::simulator::{ParsedQuint, SimulationResult, TraceStatistics};
-use quint_evaluator::value::Value;
+use quint_evaluator::value::*;
 use quint_evaluator::{helpers, log};
 use serde::{Deserialize, Serialize};
 
@@ -148,7 +152,21 @@ fn xxx() {
     let mut interpreter = Interpreter::new(&parsed.table);
     let mut env = Env::new(interpreter.var_storage.clone());
 
-    println!("=== DEBUG: {}", std::mem::size_of::<Value>());
+    dbg!(std::mem::size_of::<Value>());
+    dbg!(std::mem::size_of::<i64>());
+    dbg!(std::mem::size_of::<bool>());
+    dbg!(std::mem::size_of::<Str>());
+    dbg!(std::mem::size_of::<ImmutableSet<Value>>());
+    dbg!(std::mem::size_of::<ImmutableVec<Value>>());
+    dbg!(std::mem::size_of::<ImmutableMap<QuintName, Value>>());
+    dbg!(std::mem::size_of::<ImmutableMap<Value, Value>>());
+    dbg!(std::mem::size_of::<Vec<Rc<RefCell<EvalResult>>>>());
+    dbg!(std::mem::size_of::<CompiledExpr>());
+    dbg!(std::mem::size_of::<Box<Value>>());
+    dbg!(std::mem::size_of::<Rc<Value>>());
+    dbg!(std::mem::size_of::<Vec<Value>>());
+    dbg!(std::mem::size_of::<Vec<Value>>());
+    dbg!(std::mem::size_of::<Cow<HashMap<Value, Value>>>());
 
     println!("Running...");
     let value = interpreter.eval(&mut env, def.expr.clone());

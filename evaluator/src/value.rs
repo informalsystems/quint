@@ -51,7 +51,7 @@ pub enum Value {
     Bool(bool),
     Str(Str),
     Set(ImmutableSet<Value>),
-    Tuple(ImmutableVec<Value>),
+    Tuple(Vec<Value>),
     Record(ImmutableMap<QuintName, Value>),
     Map(ImmutableMap<Value, Value>),
     List(ImmutableVec<Value>),
@@ -287,20 +287,17 @@ impl Value {
             Value::Interval(start, end) => (start..=end).map(Value::Int).collect(),
             Value::CrossProduct(sets) => {
                 let mut inner_sets = Vec::with_capacity(sets.len());
-                for value in sets {
-                    if value.cardinality() == 0 {
-                        // an empty set produces the empty product
+                for set in sets {
+                    if set.cardinality() == 0 {
+                        // any empty set produces the empty product
                         return ImmutableSet::default();
                     }
-                    inner_sets.push(value.as_set());
+                    inner_sets.push(set.as_set());
                 }
                 inner_sets
                     .iter()
                     .multi_cartesian_product()
-                    .map(|product| {
-                        let iter = product.into_iter().cloned();
-                        Value::Tuple(ImmutableVec::from_iter(iter))
-                    })
+                    .map(|product| Value::Tuple(product.into_iter().cloned().collect()))
                     .collect::<ImmutableSet<_>>()
             }
 
@@ -359,8 +356,8 @@ impl Value {
     /// given, which should never happen as input expressions are type-checked.
     pub fn as_list(self) -> ImmutableVec<Value> {
         match self {
-            Value::Tuple(elems) => elems,
             Value::List(elems) => elems,
+            Value::Tuple(elems) => elems.into(),
             _ => panic!("Expected list, got {self:?}"),
         }
     }
