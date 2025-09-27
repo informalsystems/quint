@@ -17,3 +17,5 @@ pub mod rand;
 pub mod simulator;
 pub mod storage;
 pub mod value;
+
+pub mod nvalue;

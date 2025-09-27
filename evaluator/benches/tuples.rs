@@ -6,6 +6,7 @@ use std::{io::Write, time::Duration};
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use itertools::Itertools;
+use quint_evaluator::nvalue;
 use quint_evaluator::value::ImmutableSet;
 use quint_evaluator::value::ImmutableVec;
 use quint_evaluator::{evaluator::run, ir::QuintOutput};
@@ -103,14 +104,14 @@ enum AValue {
 }
 
 impl AValue {
-    fn as_set(self) -> HashSet<AValue, fxhash::FxBuildHasher> {
+    fn as_set(&self) -> HashSet<AValue, fxhash::FxBuildHasher> {
         match self {
             Self::Interval(start, end) => {
                 let mut res = HashSet::with_capacity_and_hasher(
                     (end - start) as usize,
                     fxhash::FxBuildHasher::default(),
                 );
-                res.extend((start..=end).map(AValue::Int));
+                res.extend((*start..=*end).map(AValue::Int));
                 res
             }
             Self::CrossProduct(sets) => {
@@ -190,6 +191,21 @@ pub fn experiment(c: &mut Criterion) {
                 AValue::Interval(0, 100),
             ]);
             value.as_set()
+        })
+    });
+    group.bench_function("new_value", |b| {
+        b.iter(|| {
+            let value = nvalue::Value::cross_product(vec![
+                nvalue::Value::interval(0, 100),
+                nvalue::Value::interval(0, 100),
+                nvalue::Value::interval(0, 100),
+            ]);
+            let mut res = HashSet::with_capacity_and_hasher(
+                value.cardinality(),
+                fxhash::FxBuildHasher::default(),
+            );
+            res.extend(value.as_set_iter());
+            res
         })
     });
     group.finish();
