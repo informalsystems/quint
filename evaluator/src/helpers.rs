@@ -107,6 +107,7 @@ pub fn parse_from_path(
             .expr
             .clone(),
         table: output.table,
+        modules: output.modules,
     })
 }
 

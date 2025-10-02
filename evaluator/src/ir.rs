@@ -85,7 +85,7 @@ impl LookupDefinition {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct QuintModule {
     pub name: QuintName,
     pub declarations: Vec<QuintDeclaration>,

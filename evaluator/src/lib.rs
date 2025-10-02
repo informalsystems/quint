@@ -17,3 +17,12 @@ pub mod rand;
 pub mod simulator;
 pub mod storage;
 pub mod value;
+
+#[allow(unused)]
+mod vm;
+
+use crate::simulator::ParsedQuint;
+
+pub fn run_with_vm(parsed: ParsedQuint) {
+    vm::run_with_vm(parsed)
+}

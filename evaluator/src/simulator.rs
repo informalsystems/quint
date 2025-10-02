@@ -2,7 +2,7 @@
 
 use crate::{
     evaluator::{Env, Interpreter},
-    ir::{LookupTable, QuintError, QuintEx},
+    ir::{LookupTable, QuintError, QuintEx, QuintModule},
     itf::Trace,
     progress::Reporter,
 };
@@ -15,6 +15,7 @@ pub struct ParsedQuint {
     pub step: QuintEx,
     pub invariant: QuintEx,
     pub table: LookupTable,
+    pub modules: Vec<QuintModule>,
 }
 
 /// Simulation output.

@@ -15,7 +15,7 @@ use eyre::bail;
 use quint_evaluator::ir::{QuintError, QuintEx};
 use quint_evaluator::progress;
 use quint_evaluator::simulator::{ParsedQuint, SimulationResult, TraceStatistics};
-use quint_evaluator::{helpers, log};
+use quint_evaluator::{helpers, log, run_with_vm};
 use serde::{Deserialize, Serialize};
 
 #[derive(FromArgs)]
@@ -149,6 +149,8 @@ fn run_simulation(args: RunArgs) -> eyre::Result<()> {
         args.main.as_deref(),
     )
     .unwrap();
+
+    run_with_vm(parsed.clone());
 
     let start = Instant::now();
     log!("Simulation", "Starting simulation");
