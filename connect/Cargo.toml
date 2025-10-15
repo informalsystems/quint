@@ -1,0 +1,3 @@
+[workspace]
+members = [ "connect", "connect-macros" ]
+resolver = "3"

@@ -155,8 +155,6 @@ module tictactoe {
   action step = any {
     MoveX,
     MoveO,
-    // If the game is over, we don't need to do anything
-    all { gameOver, board' = board, nextTurn' = nextTurn },
   }
 
   /* Invariants */
