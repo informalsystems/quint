@@ -571,11 +571,14 @@ export async function compile(typechecked: TypecheckedStage): Promise<CLIProcedu
     typechecked
   )
 
+  // Pick the main module
+  const flatMain = flattenedModules.find(m => m.name === mainName)!
+
   // Re-run type checking on flattened modules with enforceConstVarMonomorphism = true
   // This ensures vars/consts have precise, monomorphic types required by Apalache
   const [postFlatteningErrors, postFlatteningOutput] = analyzeModules(
     flattenedTable,
-    flattenedModules,
+    [flatMain],
     true // enforceConstVarMonomorphism
   )
 
@@ -583,9 +586,6 @@ export async function compile(typechecked: TypecheckedStage): Promise<CLIProcedu
     const errors = postFlatteningErrors.map(mkErrorMessage(typechecked.sourceMap))
     return cliErr('Type checking after flattening failed', { ...typechecked, errors })
   }
-
-  // Pick the main module
-  const flatMain = flattenedModules.find(m => m.name === mainName)!
 
   return right({
     ...typechecked,
