@@ -38,6 +38,7 @@ import { fileSourceResolver } from './parsing/sourceResolver'
 import { verify } from './quintVerifier'
 import { flattenModules } from './flattening/fullFlattener'
 import { AnalysisOutput, analyzeInc, analyzeModules } from './quintAnalyzer'
+import { inlineTypeAliases } from './types/aliasInliner'
 import { newTraceRecorder } from './runtime/trace'
 import { flow, isEqual, uniqWith } from 'lodash'
 import { Maybe, just, none } from '@sweet-monads/maybe'
@@ -587,11 +588,22 @@ export async function compile(typechecked: TypecheckedStage): Promise<CLIProcedu
     return cliErr('Type checking after flattening failed', { ...typechecked, errors })
   }
 
+  // After type checking, inline sum types for Apalache
+  // This is a second pass that inlines sum type aliases which were skipped during flattening
+  const { modules: finalModules, table: finalTable, analysisOutput: finalAnalysis } = inlineTypeAliases(
+    flattenedModules,
+    flattenedTable,
+    postFlatteningOutput,
+    true // inlineSumTypes
+  )
+
+  const finalMain = finalModules.find(m => m.name === mainName)!
+
   return right({
     ...typechecked,
-    ...postFlatteningOutput,
-    mainModule: flatMain,
-    table: flattenedTable,
+    ...finalAnalysis,
+    mainModule: finalMain,
+    table: finalTable,
     main: mainName,
     stage: 'compiling',
   })
