@@ -13,7 +13,7 @@
  * @module
  */
 
-import isEqual from 'lodash.isequal'
+import { isEqual } from '../util'
 import { qualifierToString } from '../ir/IRprinting'
 import { IRVisitor, walkDeclaration } from '../ir/IRVisitor'
 import { QuintError } from '../quintError'

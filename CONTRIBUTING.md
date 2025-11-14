@@ -1,6 +1,6 @@
 # Contributing
 
-Welcome to the Quint  repository! We are excited that you  want to contribute to
+Welcome to the Quint repository! We are excited that you want to contribute to
 Quint, whether it is by reporting issues, suggesting features, or writing code.
 
 ## Table of Contents
@@ -78,7 +78,7 @@ This repository hosts all Quint pieces:
 - [ADR002: Error
   codes](./docs/content/docs/development-docs/architecture-decision-records/adr002-errors.md)
 - [ADR003: Interface to visit Internal Representation
-   components](./docs/content/docs/development-docs/architecture-decision-records/adr003-visiting-ir-components.md)
+  components](./docs/content/docs/development-docs/architecture-decision-records/adr003-visiting-ir-components.md)
 - [ADR004: An Effect System for
   Quint](./docs/content/docs/development-docs/architecture-decision-records/adr004-effect-system.md)
 - [ADR005: A Type System for
@@ -280,14 +280,14 @@ ln -s $PWD/vscode/quint-vscode/ $HOME/.vscode/extensions/informal.quint-vscode-X
 
 We use `yalc` to manage unpublished packages. To install it, run
 
-``` sh
+```sh
 npm i yalc -g
 ```
 
 Then use the `local` make target to replace the published version of `quint`
 with the local one and build the extension:
 
-``` sh
+```sh
 make local
 ```
 
@@ -308,13 +308,13 @@ Write unit tests in [quint/test](./quint/test), add test data to
 [quint/testFixture](./quint/testFixture). To run the tests and check code
 coverage, run the following commands (in the [quint](./quint) folder):
 
- 1. Run unit tests:
+1.  Run unit tests:
 
     ```sh
     npm run test
     ```
 
- 1. Check code coverage with tests:
+1.  Check code coverage with tests:
 
     ```sh
     npm run coverage
@@ -326,7 +326,7 @@ When adding a new test fixture or updating an existing one, you might need to
 generate the `.json` and `.map.json` files used in test expectations. For that,
 run:
 
-``` sh
+```sh
 npm run update-fixtures
 ```
 
@@ -365,10 +365,10 @@ The files containing tests for `txm` are:
 
 Run integration tests:
 
-  ```sh
-  npm run compile && npm link && npm run integration
-  ```
-  
+```sh
+npm run compile && npm link && npm run integration
+```
+
 PS: this will not run the Apalache-related tests, as they usually won't break as
 consequences of changes in the Quint codebase. They are run in the CI, and you
 can run them locally by running `npm run apalache-integration` and `npm run
@@ -388,7 +388,7 @@ To [add a new dependency for integration tests or other development
 purposes](https://docs.npmjs.com/specifying-dependencies-and-devdependencies-in-a-package-json-file)
 run:
 
-``` sh
+```sh
 npm install <dep> --save-dev
 ```
 
@@ -402,7 +402,7 @@ To [add a new dependency for integration tests or other development
 purposes](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html)
 run:
 
-``` sh
+```sh
 cargo add <dep> --dev
 ```
 
@@ -436,7 +436,7 @@ lose the advantage of exhaustiveness checking. Here's an example:
 Assume we have a type `T`
 
 ```typescript
-type T = 'a' | 'b' | 'c'
+type T = "a" | "b" | "c";
 ```
 
 We should structure our program such that
@@ -445,7 +445,7 @@ We should structure our program such that
 - whenever a new alternative is added to this type, the type system will warn us
   about all the places we need to account for the new kind of data.
 
-If we use `T` with a `switch` or `if`/`then` statement that *returns values*,
+If we use `T` with a `switch` or `if`/`then` statement that _returns values_,
 this indispensable help is ensured. E.g., if we try to write the following:
 
 ```typescript
@@ -535,12 +535,12 @@ false
 false
 ```
 
-For this reason, we are using `isEqual` provided by the [lodash.isequal][]
+For this reason, we are using `isEqual` provided by the [node:util][]
 package:
 
 ```js
 > import { none, just } from '@sweet-monads/maybe'
-> import isEqual from 'lodash.isequal'
+> import { isEqual } from '../util'
 > isEqual(just(true), just(true))
 true
 > isEqual(none(), none())
@@ -569,12 +569,12 @@ type that can be used to represent a value that can either be a success or a
 failure.
 
 ```typescript
-import { left, right } from '@sweet-monads/either'
+import { left, right } from "@sweet-monads/either";
 
 if (all_good(expr)) {
-  return right(value)
+  return right(value);
 } else {
-  return left({ code: 'QNT500', message: `${expr} is not good!`, reference: expr.id })
+  return left({ code: "QNT500", message: `${expr} is not good!`, reference: expr.id });
 }
 ```
 
@@ -606,7 +606,7 @@ the Rust evaluator and the VSCode extension + the language server.
 
   This will trigger the release and publication of the package to npm and
   GitHub.
-  
+
 ### Evaluator
 
 The evaluator is the latest addition to the Quint repository, and it's release
