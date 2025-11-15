@@ -517,6 +517,33 @@ export async function compile(typechecked: TypecheckedStage): Promise<CLIProcedu
     return cliErr(`module ${mainName} does not exist`, { ...typechecked, errors: [], sourceCode: new Map() })
   }
 
+  const hasInit = typechecked.resolver.collector.getDefinition(args.init) !== undefined
+  const hasStep = typechecked.resolver.collector.getDefinition(args.step) !== undefined
+  const flattenRequested = args.flatten == true
+
+  const targetIsTla = args.target === 'tlaplus'
+
+  // check which core definitions are missing
+  let flattenRequires: string | null = null
+  if (!hasInit && !hasStep) flattenRequires = 'init and step'
+  else if (!hasInit) flattenRequires = 'init'
+  else if (!hasStep) flattenRequires = 'step'
+
+  let shouldFlatten = flattenRequested && !flattenRequires
+
+  // warn user if flattening was requested but dependencies are missing (except for TLA target)
+  if (flattenRequested && flattenRequires && !targetIsTla) {
+    console.warn(
+      chalk.yellow(`Warning: flattening requires ${flattenRequires}, which are not defined. Disabling flattening.`)
+    )
+  }
+
+  if (!shouldFlatten && targetIsTla) {
+    console.warn(chalk.yellow('Warning: flattening is required for TLA+ output, ignoring --flatten=false option.'))
+  } else if (!shouldFlatten) {
+    return right({ ...typechecked, mainModule: main, main: mainName, stage: 'compiling' })
+  }
+
   const extraDefsAsText = [`action q::init = ${args.init}`, `action q::step = ${args.step}`]
 
   const [invariantString, invariantsList] = getInvariants(typechecked.args)
@@ -546,21 +573,6 @@ export async function compile(typechecked: TypecheckedStage): Promise<CLIProcedu
 
   typechecked.table = resolutionResult.table
   analyzeInc(typechecked, typechecked.table, extraDefs)
-
-  // CANNOT be `if (!args.flatten)`, we need to make sure it's a boolean value
-  if (args.flatten === false) {
-    if (args.target === 'tlaplus') {
-      console.warn(chalk.yellow('Warning: flattening is required for TLA+ output, ignoring --flatten=false option.'))
-    } else {
-      // Early return with the original (unflattened) module and its fields
-      return right({
-        ...typechecked,
-        mainModule: main,
-        main: mainName,
-        stage: 'compiling',
-      })
-    }
-  }
 
   // Flatten modules, replacing instances, imports and exports with their definitions
   const { flattenedModules, flattenedTable, flattenedAnalysis } = flattenModules(
