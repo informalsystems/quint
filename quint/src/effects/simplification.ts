@@ -12,8 +12,7 @@
  * @module
  */
 
-import isEqual from 'lodash.isequal'
-import { unreachable } from '../util'
+import { isEqual, unreachable } from '../util'
 import { ConcreteEffect, Effect, Entity, StateVariable } from './base'
 
 /**
