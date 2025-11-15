@@ -519,33 +519,28 @@ export async function compile(typechecked: TypecheckedStage): Promise<CLIProcedu
 
   const hasInit = typechecked.resolver.collector.getDefinition(args.init) !== undefined
   const hasStep = typechecked.resolver.collector.getDefinition(args.step) !== undefined
-  const flattenRequested = Boolean(args.flatten)
+  const flattenRequested = args.flatten == true
 
   const targetIsTla = args.target === 'tlaplus'
 
   // check which core definitions are missing
-  let missingDependencies: string | null = null
-  if (!hasInit && !hasStep) missingDependencies = 'init and step'
-  else if (!hasInit) missingDependencies = 'init'
-  else if (!hasStep) missingDependencies = 'step'
+  let flattenRequires: string | null = null
+  if (!hasInit && !hasStep) flattenRequires = 'init and step'
+  else if (!hasInit) flattenRequires = 'init'
+  else if (!hasStep) flattenRequires = 'step'
 
-  let shouldFlatten = flattenRequested && !missingDependencies
+  let shouldFlatten = flattenRequested && !flattenRequires
 
   // warn user if flattening was requested but dependencies are missing (except for TLA target)
-  if (flattenRequested && missingDependencies && !targetIsTla) {
+  if (flattenRequested && flattenRequires && !targetIsTla) {
     console.warn(
-      chalk.yellow(`Warning: flattening requires ${missingDependencies}, which are not defined. Disabling flattening.`)
+      chalk.yellow(`Warning: flattening requires ${flattenRequires}, which are not defined. Disabling flattening.`)
     )
   }
 
-  // For TLA+, flattening is required even if user requested otherwise
   if (!shouldFlatten && targetIsTla) {
     console.warn(chalk.yellow('Warning: flattening is required for TLA+ output, ignoring --flatten=false option.'))
-    shouldFlatten = true
-  }
-
-  // if flattening is disabled, return early with original module
-  if (!shouldFlatten) {
+  } else if (!shouldFlatten) {
     return right({ ...typechecked, mainModule: main, main: mainName, stage: 'compiling' })
   }
 
