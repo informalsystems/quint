@@ -15,6 +15,7 @@
 import JSONbig from 'json-bigint'
 import lodash from 'lodash'
 import { Maybe, none } from '@sweet-monads/maybe'
+import { isDeepStrictEqual } from 'node:util'
 
 /** Add this at the end of a switch statement or if/then sequence to enforce exhaustiveness checking
  *
@@ -111,4 +112,12 @@ function findInsertionIndex<A>(array: A[], pred: (a: A) => boolean): number {
   }
 
   return low
+}
+
+/**
+ * This function replaces `lodash.isEqual` using the native Node.js implementation.
+ *
+ */
+export function isEqual<L, R>(left: L, right: R): boolean {
+  return isDeepStrictEqual(left, right)
 }
