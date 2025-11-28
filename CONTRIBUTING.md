@@ -569,7 +569,7 @@ type that can be used to represent a value that can either be a success or a
 failure.
 
 ```typescript
-import { left, right } from "@sweet-monads/either";
+import { left, right } from '@sweet-monads/either'
 
 if (all_good(expr)) {
   return right(value)
