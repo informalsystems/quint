@@ -436,7 +436,7 @@ lose the advantage of exhaustiveness checking. Here's an example:
 Assume we have a type `T`
 
 ```typescript
-type T = "a" | "b" | "c";
+type T = 'a' | 'b' | 'c';
 ```
 
 We should structure our program such that
