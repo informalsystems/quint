@@ -574,7 +574,7 @@ import { left, right } from '@sweet-monads/either'
 if (all_good(expr)) {
   return right(value)
 } else {
-  return left({ code: "QNT500", message: `${expr} is not good!`, reference: expr.id });
+  return left({ code: 'QNT500', message: `${expr} is not good!`, reference: expr.id })
 }
 ```
 
