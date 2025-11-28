@@ -113,7 +113,7 @@ export function applySubstitution(table: LookupTable, subs: Substitutions, t: Qu
   }
 
   const result = singleApplication()
-  if (isEqual(result, t)) {
+  if (isDeepStrictEqual(result, t)) {
     return t
   } else {
     return applySubstitution(table, subs, result)

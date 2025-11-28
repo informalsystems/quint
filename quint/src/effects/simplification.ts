@@ -99,7 +99,7 @@ function deduplicateEntity(entity: Entity): Entity {
       const nestedEntities = entity.entities.map(v => deduplicateEntity(v))
       const unique: Entity[] = []
       nestedEntities.forEach(entity => {
-        if (!unique.some(v => isEqual(v, entity))) {
+        if (!unique.some(v => isDeepStrictEqual(v, entity))) {
           unique.push(entity)
         }
       })

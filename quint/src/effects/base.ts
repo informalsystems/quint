@@ -17,7 +17,7 @@ import { Either, left, mergeInMany, right } from '@sweet-monads/either'
 import { Substitutions, applySubstitution, applySubstitutionToEntity, compose } from './substitutions'
 import { Error, ErrorTree, buildErrorLeaf, buildErrorTree } from '../errorTree'
 import { flattenUnions, simplify } from './simplification'
-import { isEqual } from '../util'
+import { isDeepStrictEqual } from 'node:util'
 import { differenceWith, intersectionWith } from 'lodash'
 
 /* Kinds for concrete effect components */
@@ -332,7 +332,7 @@ export function unifyEntities(va: Entity, vb: Entity): Either<ErrorTree, Substit
   const location = `Trying to unify entities [${entityToString(v1)}] and [${entityToString(v2)}]`
 
   if (v1.kind === 'concrete' && v2.kind === 'concrete') {
-    if (isEqual(new Set(v1.stateVariables.map(v => v.name)), new Set(v2.stateVariables.map(v => v.name)))) {
+    if (isDeepStrictEqual(new Set(v1.stateVariables.map(v => v.name)), new Set(v2.stateVariables.map(v => v.name)))) {
       return right([])
     } else {
       return left({
@@ -349,7 +349,7 @@ export function unifyEntities(va: Entity, vb: Entity): Either<ErrorTree, Substit
     return right(bindEntity(v1.name, v2))
   } else if (v2.kind === 'variable') {
     return right(bindEntity(v2.name, v1))
-  } else if (isEqual(v1, v2)) {
+  } else if (isDeepStrictEqual(v1, v2)) {
     return right([])
   } else if (v1.kind === 'union' && v2.kind === 'concrete') {
     return mergeInMany(v1.entities.map(v => unifyEntities(v, v2)))
@@ -358,10 +358,10 @@ export function unifyEntities(va: Entity, vb: Entity): Either<ErrorTree, Substit
   } else if (v1.kind === 'concrete' && v2.kind === 'union') {
     return unifyEntities(v2, v1)
   } else if (v1.kind === 'union' && v2.kind === 'union') {
-    const intersection = intersectionWith(v1.entities, v2.entities, isEqual)
+    const intersection = intersectionWith(v1.entities, v2.entities, isDeepStrictEqual)
     if (intersection.length > 0) {
-      const s1 = { ...v1, entities: differenceWith(v1.entities, intersection, isEqual) }
-      const s2 = { ...v2, entities: differenceWith(v2.entities, intersection, isEqual) }
+      const s1 = { ...v1, entities: differenceWith(v1.entities, intersection, isDeepStrictEqual) }
+      const s2 = { ...v2, entities: differenceWith(v2.entities, intersection, isDeepStrictEqual) }
 
       // There was an intersection, try to unify the remaining entities
       return unifyEntities(s1, s2)

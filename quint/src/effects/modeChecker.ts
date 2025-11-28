@@ -13,7 +13,7 @@
  * @module
  */
 
-import { isEqual } from '../util'
+import { isDeepStrictEqual } from 'node:util'
 import { qualifierToString } from '../ir/IRprinting'
 import { IRVisitor, walkDeclaration } from '../ir/IRVisitor'
 import { QuintError } from '../quintError'
@@ -248,7 +248,7 @@ function addedEntities(paramEntities: Entity[], resultEntity: Entity): Entity[] 
     case 'union':
       return resultEntity.entities.flatMap(entity => addedEntities(paramEntities, entity))
     case 'concrete': {
-      const vars = resultEntity.stateVariables.filter(v => !paramEntities.some(p => isEqual(p, v)))
+      const vars = resultEntity.stateVariables.filter(v => !paramEntities.some(p => isDeepStrictEqual(p, v)))
       if (vars.length === 0) {
         return []
       }
@@ -256,7 +256,7 @@ function addedEntities(paramEntities: Entity[], resultEntity: Entity): Entity[] 
       return [{ kind: 'concrete', stateVariables: vars }]
     }
     case 'variable':
-      return !paramEntities.some(p => isEqual(p, resultEntity)) ? [resultEntity] : []
+      return !paramEntities.some(p => isDeepStrictEqual(p, resultEntity)) ? [resultEntity] : []
   }
 }
 

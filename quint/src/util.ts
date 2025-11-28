@@ -57,7 +57,7 @@ export function zip<A, B>(a: A[], b: B[]): [A, B][] {
  *
  * ```
  * const result = findMap([1,2,3], (x) => x % 2 === 0 ? just(x) : none<int>())
- * lodash.isEqual(result, just(2))
+ * lodash.isDeepStrictEqual(result, just(2))
  * ```
  * */
 export function findMap<X, Y>(xs: Iterable<X>, f: (x: X) => Maybe<Y>): Maybe<Y> {

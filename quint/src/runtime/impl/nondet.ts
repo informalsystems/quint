@@ -92,7 +92,7 @@ export function evalNondet(
         }
 
         // Retry if condition is satisfied and we haven't exhausted all possible positions.
-      } while (shouldRetry && !isEqual(newPositions, originalPositions))
+      } while (shouldRetry && !isDeepStrictEqual(newPositions, originalPositions))
 
       // Reset the cache
       cache.value = undefined
