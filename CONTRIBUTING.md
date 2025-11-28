@@ -540,10 +540,10 @@ package:
 
 ```js
 > import { none, just } from '@sweet-monads/maybe'
-> import { isEqual } from '../util'
-> isEqual(just(true), just(true))
+> import { isDeepStrictEqual } from 'node:util'
+> isDeepStrictEqual(just(true), just(true))
 true
-> isEqual(none(), none())
+> isDeepStrictEqual(none(), none())
 true
 ```
 
