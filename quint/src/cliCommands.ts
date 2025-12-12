@@ -525,18 +525,18 @@ export async function compile(typechecked: TypecheckedStage): Promise<CLIProcedu
   const targetIsTla = args.target === 'tlaplus'
 
   // check which core definitions are missing
-  let flattenRequires: string | null = null
-  if (!hasInit && !hasStep) flattenRequires = 'init and step'
-  else if (!hasInit) flattenRequires = 'init'
-  else if (!hasStep) flattenRequires = 'step'
+  let missingFlattenDefs: string | null = null
+  if (!hasInit && !hasStep) missingFlattenDefs = 'init and step'
+  else if (!hasInit) missingFlattenDefs = 'init'
+  else if (!hasStep) missingFlattenDefs = 'step'
 
-  let shouldFlatten = flattenRequested && !flattenRequires
+  let shouldFlatten = flattenRequested && !missingFlattenDefs
 
   // For the JSON target, we can compile even if init/step are missing.
   // In this case, we just warn the user (if --flatten=true) and compile anyway.
-  if (flattenRequested && flattenRequires && !targetIsTla) {
+  if (flattenRequested && missingFlattenDefs && !targetIsTla) {
     console.warn(
-      chalk.yellow(`Warning: flattening requires ${flattenRequires}, which are not defined. Disabling flattening.`)
+      chalk.yellow(`Warning: flattening requires ${missingFlattenDefs}, which are not defined. Disabling flattening.`)
     )
   }
 
