@@ -532,7 +532,8 @@ export async function compile(typechecked: TypecheckedStage): Promise<CLIProcedu
 
   let shouldFlatten = flattenRequested && !flattenRequires
 
-  // warn user if flattening was requested but dependencies are missing (except for TLA target)
+  // For the JSON target, we can compile even if init/step are missing.
+  // In this case, we just warn the user (if --flatten=true) and compile anyway.
   if (flattenRequested && flattenRequires && !targetIsTla) {
     console.warn(
       chalk.yellow(`Warning: flattening requires ${flattenRequires}, which are not defined. Disabling flattening.`)
