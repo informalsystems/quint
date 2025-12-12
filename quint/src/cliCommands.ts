@@ -519,7 +519,8 @@ export async function compile(typechecked: TypecheckedStage): Promise<CLIProcedu
 
   const hasInit = typechecked.resolver.collector.getDefinition(args.init) !== undefined
   const hasStep = typechecked.resolver.collector.getDefinition(args.step) !== undefined
-  const flattenRequested = args.flatten == true
+  // CANNOT be `args.flatten`, we need to make sure it's a boolean value
+  const flattenRequested = !(args.flatten === false)
 
   const targetIsTla = args.target === 'tlaplus'
 
