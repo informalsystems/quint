@@ -541,6 +541,7 @@ export async function compile(typechecked: TypecheckedStage): Promise<CLIProcedu
   if (!shouldFlatten && targetIsTla) {
     console.warn(chalk.yellow('Warning: flattening is required for TLA+ output, ignoring --flatten=false option.'))
   } else if (!shouldFlatten) {
+    // Early return with the original (unflattened) module and its fields
     return right({ ...typechecked, mainModule: main, main: mainName, stage: 'compiling' })
   }
 
