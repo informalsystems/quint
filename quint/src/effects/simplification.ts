@@ -12,8 +12,9 @@
  * @module
  */
 
-import { isEqual, unreachable } from '../util'
+import { unreachable } from '../util'
 import { ConcreteEffect, Effect, Entity, StateVariable } from './base'
+import { isDeepStrictEqual } from 'node:util'
 
 /**
  * Simplifies a concrete effect by:
