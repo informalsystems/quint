@@ -120,6 +120,30 @@ describe('resolveNames', () => {
         'Could not find second a'
       )
     })
+
+    it('resolves assignment LHS to state variable even when nondet shadows it', () => {
+      const idGen = newIdGenerator()
+      const module = buildModuleWithDecls(
+        ['var bar: int', "action init = nondet bar = Set(1, 2, 3).oneOf() bar' = bar"],
+        undefined,
+        idGen
+      )
+
+      const result = resolveNames([module])
+
+      assert.isEmpty(result.errors)
+
+      const varDef = [...result.table.values()].find(def => def.kind === 'var' && def.name === 'bar')
+      assert.isDefined(varDef, 'Should find the state variable bar')
+
+      const nondetDef = [...result.table.values()].find(
+        def => def.kind === 'def' && def.name === 'bar' && def.shadowing === true
+      )
+      assert.isDefined(nondetDef, 'Should find the scoped nondet bar definition')
+
+      const assignmentLhsEntries = [...result.table.entries()].filter(([_, def]) => def.kind === 'var')
+      assert.isAtLeast(assignmentLhsEntries.length, 1, 'Assignment LHS should resolve to state variable')
+    })
   })
 
   describe('type aliases', () => {
