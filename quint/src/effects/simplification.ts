@@ -12,9 +12,9 @@
  * @module
  */
 
-import isEqual from 'lodash.isequal'
 import { unreachable } from '../util'
 import { ConcreteEffect, Effect, Entity, StateVariable } from './base'
+import { isDeepStrictEqual } from 'node:util'
 
 /**
  * Simplifies a concrete effect by:
@@ -100,7 +100,7 @@ function deduplicateEntity(entity: Entity): Entity {
       const nestedEntities = entity.entities.map(v => deduplicateEntity(v))
       const unique: Entity[] = []
       nestedEntities.forEach(entity => {
-        if (!unique.some(v => isEqual(v, entity))) {
+        if (!unique.some(v => isDeepStrictEqual(v, entity))) {
           unique.push(entity)
         }
       })
