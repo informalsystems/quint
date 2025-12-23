@@ -1075,5 +1075,39 @@ describe('compiling specs to runtime values', () => {
 
       assertResultAsString('strongFair(true, [])', undefined)
     })
+
+    it('nondet shadowing state variable assigns correctly', () => {
+      const input = dedent(
+        `var bar: int
+        |action init = nondet bar = Set(1, 2, 3).oneOf() bar' = bar
+        |run run1 = init
+        `
+      )
+
+      evalVarAfterRun('bar', 'run1', input)
+        .mapLeft(m => assert.fail(`Expected the run to succeed, found error: ${m}`))
+        .mapRight(output => {
+          assert.isTrue(['1', '2', '3'].includes(output), `Expected bar to be 1, 2, or 3 after init, found ${output}`)
+        })
+    })
+
+    it('nondet shadowing state variable works with step', () => {
+      const input = dedent(
+        `var bar: int
+        |action init = nondet bar = Set(1, 2, 3).oneOf() bar' = bar
+        |action step = bar' = bar + 1
+        |run run1 = init.then(step)
+        `
+      )
+
+      evalVarAfterRun('bar', 'run1', input)
+        .mapLeft(m => assert.fail(`Expected the run to succeed, found error: ${m}`))
+        .mapRight(output => {
+          assert.isTrue(
+            ['2', '3', '4'].includes(output),
+            `Expected bar to be 2, 3, or 4 after init.then(step), found ${output}`
+          )
+        })
+    })
   })
 })

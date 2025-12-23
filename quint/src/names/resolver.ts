@@ -54,6 +54,8 @@ export class NameResolver implements IRVisitor {
   // initialized to -1 here for that to work on all scenarios.
   definitionDepth: number = -1
 
+  private assignmentLhsIds: Set<bigint> = new Set()
+
   constructor() {
     this.collector = new NameCollector()
     // bind the errors so they are aggregated in the same array
@@ -115,12 +117,17 @@ export class NameResolver implements IRVisitor {
 
   enterName(nameExpr: QuintName): void {
     // Name expression, check that the name is defined
-    this.resolveName(nameExpr.name, nameExpr.id)
+    const isAssignmentLhs = this.assignmentLhsIds.has(nameExpr.id)
+    this.resolveName(nameExpr.name, nameExpr.id, isAssignmentLhs)
   }
 
   enterApp(appExpr: QuintApp): void {
     // Application, check that the operator being applied is defined
     this.resolveName(appExpr.opcode, appExpr.id)
+
+    if (appExpr.opcode === 'assign' && appExpr.args.length > 0 && appExpr.args[0].kind === 'name') {
+      this.assignmentLhsIds.add(appExpr.args[0].id)
+    }
   }
 
   enterConstType(type: QuintConstType): void {
@@ -142,12 +149,12 @@ export class NameResolver implements IRVisitor {
     })
   }
 
-  private resolveName(name: string, id: bigint) {
+  private resolveName(name: string, id: bigint, resolveToStateVar: boolean = false) {
     if (builtinNames.includes(name)) {
       return
     }
 
-    const def = this.collector.getDefinition(name)
+    const def = resolveToStateVar ? this.collector.getStateVarDefinition(name) : this.collector.getDefinition(name)
     if (!def || def.kind === 'typedef') {
       this.recordNameError('name', name, id)
       return
