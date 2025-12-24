@@ -20,6 +20,20 @@ import os from 'os'
 import { apalacheDistDir } from './config'
 import { ErrorMessage } from './ErrorMessage'
 
+// JVM configuration for TLC
+const JVM_MAX_HEAP = '-Xmx8G'
+const JVM_STACK_SIZE = '-Xss515m'
+
+// TLC exit codes (from tlc2.tool.EC)
+// See: https://github.com/tlaplus/tlaplus/blob/master/tlatools/org.lamport.tlatools/src/tlc2/tool/EC.java
+const TLC_EXIT_SUCCESS = 0
+const TLC_EXIT_VIOLATION_MIN = 10  // ExitStatus.VIOLATION_ASSUMPTION
+const TLC_EXIT_VIOLATION_MAX = 14  // ExitStatus.VIOLATION_ASSERT
+
+function isViolationExitCode(code: number): boolean {
+  return code >= TLC_EXIT_VIOLATION_MIN && code <= TLC_EXIT_VIOLATION_MAX
+}
+
 export interface TlcConfig {
   tlaCode: string
   moduleName: string
@@ -79,8 +93,8 @@ export async function verify(
 
   return new Promise(resolve => {
     const proc = spawn('java', [
-      '-Xmx8G',
-      '-Xss515m',
+      JVM_MAX_HEAP,
+      JVM_STACK_SIZE,
       '-cp',
       jarPath,
       'tlc2.TLC',
@@ -107,9 +121,9 @@ export async function verify(
     proc.on('close', code => {
       fs.rmSync(tmpDir, { recursive: true, force: true })
 
-      if (code === 0) {
+      if (code === TLC_EXIT_SUCCESS) {
         resolve(right(undefined))
-      } else if (code !== null && code >= 10 && code <= 14) {
+      } else if (code !== null && isViolationExitCode(code)) {
         resolve(left(tlcErr('Found an issue (see counterexample above)', true)))
       } else {
         resolve(left(tlcErr('TLC error (see output above)', false)))
