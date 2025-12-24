@@ -5,7 +5,7 @@
  * --------------------------------------------------------------------------------- */
 
 /**
- * CLI verification logic for all backends (Apalache, TLC)
+ * Quint wrapper for model checkers (Apalache, TLC)
  *
  * @author Yassine Boukhari, 2025
  *
@@ -37,15 +37,9 @@ import {
   PLACEHOLDERS,
 } from './cliHelpers'
 
-async function verifyWithApalache(
-  serverEndpoint: ServerEndpoint,
-  apalacheVersion: string,
-  config: any,
-  verbosityLevel: number
-): Promise<ApalacheResult<void>> {
-  const connectionResult = await connect(serverEndpoint, apalacheVersion, verbosityLevel)
-  return connectionResult.asyncChain(conn => conn.check(config))
-}
+// --------------------------------------------------------------------------------
+// TLC
+// --------------------------------------------------------------------------------
 
 export async function verifyWithTlcBackend(
   prev: CompiledStage,
@@ -92,6 +86,20 @@ export async function verifyWithTlcBackend(
   )
 
   return processTlcResult(tlcResult, startMs, verbosityLevel, verifying)
+}
+
+// --------------------------------------------------------------------------------
+// Apalache
+// --------------------------------------------------------------------------------
+
+async function verifyWithApalache(
+  serverEndpoint: ServerEndpoint,
+  apalacheVersion: string,
+  config: any,
+  verbosityLevel: number
+): Promise<ApalacheResult<void>> {
+  const connectionResult = await connect(serverEndpoint, apalacheVersion, verbosityLevel)
+  return connectionResult.asyncChain(conn => conn.check(config))
 }
 
 export async function verifyWithApalacheBackend(

@@ -45,7 +45,7 @@ import { NameResolver } from './names/resolver'
 import { QuintRustWrapper } from './quintRustWrapper'
 import { convertInit } from './ir/initToPredicate'
 import { compileToTlaplus } from './compileToTlaplus'
-import { verifyWithTlcBackend, verifyWithApalacheBackend } from './cliVerify'
+import { verifyWithTlcBackend, verifyWithApalacheBackend } from './quintMCWrapper'
 import {
   cliErr,
   findMainModule,
