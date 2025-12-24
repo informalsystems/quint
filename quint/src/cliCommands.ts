@@ -45,7 +45,7 @@ import { NameResolver } from './names/resolver'
 import { QuintRustWrapper } from './quintRustWrapper'
 import { convertInit } from './ir/initToPredicate'
 import { compileToTlaplus } from './compileToTlaplus'
-import { verifyWithTlcBackend, verifyWithApalacheBackend } from './quintMCWrapper'
+import { verifyWithApalacheBackend, verifyWithTlcBackend } from './quintMCWrapper'
 import {
   cliErr,
   findMainModule,
@@ -60,19 +60,10 @@ import {
   writeOutputToJson,
   writeToJson,
 } from './cliReporting'
-import {
-  deriveVerbosity,
-  getInvariants,
-  guessMainModule,
-  isMatchingTest,
-  loadApalacheConfig,
-  mkErrorMessage,
-  toExpr,
-} from './cliHelpers'
+import { deriveVerbosity, getInvariants, guessMainModule, isMatchingTest, mkErrorMessage, toExpr } from './cliHelpers'
 import { fail } from 'assert'
 import { newRng } from './rng'
 import { TestOptions } from './runtime/testing'
-import { createConfig } from './apalache'
 
 export type stage =
   | 'loading'

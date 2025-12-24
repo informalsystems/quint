@@ -15,14 +15,10 @@
 import chalk from 'chalk'
 import { QuintModule } from './ir/quintIr'
 import { ApalacheResult, ServerEndpoint, connect, createConfig } from './apalache'
-import { verify as runTlc, loadTlcConfig } from './tlc'
+import { loadTlcConfig, verify as runTlc } from './tlc'
 import { compileToTlaplus } from './compileToTlaplus'
 import { convertInit } from './ir/initToPredicate'
-import {
-  CLIProcedure,
-  CompiledStage,
-  TracingStage,
-} from './cliCommands'
+import { CLIProcedure, CompiledStage, TracingStage } from './cliCommands'
 import {
   cliErr,
   outputJson,
@@ -30,12 +26,7 @@ import {
   processApalacheResult,
   processTlcResult,
 } from './cliReporting'
-import {
-  getInvariants,
-  loadApalacheConfig,
-  mkErrorMessage,
-  PLACEHOLDERS,
-} from './cliHelpers'
+import { PLACEHOLDERS, getInvariants, loadApalacheConfig, mkErrorMessage } from './cliHelpers'
 
 // --------------------------------------------------------------------------------
 // TLC
