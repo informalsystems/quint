@@ -42,6 +42,7 @@ import { newTraceRecorder } from './runtime/trace'
 import { flow, isEqual, uniqWith } from 'lodash'
 import { Maybe, just, none } from '@sweet-monads/maybe'
 import { compileToTlaplus } from './compileToTlaplus'
+import { verify as verifyTlc } from './tlc'
 import { Evaluator } from './runtime/impl/evaluator'
 import { NameResolver } from './names/resolver'
 import { convertInit } from './ir/initToPredicate'
@@ -587,17 +588,90 @@ export async function compile(typechecked: TypecheckedStage): Promise<CLIProcedu
   })
 }
 
-/**
- * Verify a spec via Apalache.
- *
- * @param prev the procedure stage produced by `typecheck`
- */
-export async function verifySpec(prev: CompiledStage): Promise<CLIProcedure<TracingStage>> {
-  const verifying = { ...prev, stage: 'verifying' as stage }
-  const args = verifying.args
-  const verbosityLevel = deriveVerbosity(prev.args)
+async function verifyWithTlc(
+  prev: CompiledStage,
+  verifying: TracingStage,
+  verbosityLevel: number
+): Promise<CLIProcedure<TracingStage>> {
+  const args = prev.args
 
-  const itfFile: string | undefined = prev.args.outItf
+  // Convert init to predicate for TLA+ compatibility
+  const removeRuns = (module: QuintModule): QuintModule => {
+    return { ...module, declarations: module.declarations.filter(d => d.kind !== 'def' || d.qualifier !== 'run') }
+  }
+  const mainModule = convertInit(removeRuns(prev.mainModule), prev.table, prev.modes)
+  if (mainModule.isLeft()) {
+    return cliErr('Failed to convert init to predicate', {
+      ...verifying,
+      errors: mainModule.value.map(mkErrorMessage(prev.sourceMap)),
+    })
+  }
+
+  const verifyingFlat = { ...prev, modules: [mainModule.value] }
+  const parsedSpec = outputJson(verifyingFlat)
+
+  console.log(chalk.green('[TLC]') + ' Compiling to TLA+...')
+
+  const tlaResult = await compileToTlaplus(args.serverEndpoint, args.apalacheVersion, parsedSpec, verbosityLevel)
+
+  if (tlaResult.isLeft()) {
+    return cliErr('error', { ...verifying, errors: tlaResult.value.errors })
+  }
+
+  const [, invariantsList] = getInvariants(args)
+
+  console.log(chalk.green('[TLC]') + ' Running TLC model checker...\n')
+
+  const startMs = Date.now()
+  const tlcResult = await verifyTlc(
+    {
+      tlaCode: tlaResult.value,
+      moduleName: prev.main!,
+      hasInvariant: invariantsList.length > 0,
+      hasTemporal: !!args.temporal,
+    },
+    args.apalacheVersion
+  )
+
+  return processTlcResult(tlcResult, startMs, verbosityLevel, verifying)
+}
+
+function processTlcResult(
+  res: Either<{ explanation: string; errors: ErrorMessage[]; isViolation: boolean }, void>,
+  startMs: number,
+  verbosityLevel: number,
+  stage: TracingStage
+): CLIProcedure<TracingStage> {
+  const elapsedMs = Date.now() - startMs
+
+  return res
+    .map((): TracingStage => {
+      if (verbosity.hasResults(verbosityLevel)) {
+        console.log('\n' + chalk.green('[ok]') + ' No violation found ' + chalk.gray(`(${elapsedMs}ms).`))
+      }
+      return { ...stage, status: 'ok', errors: [] }
+    })
+    .mapLeft(err => {
+      const status = err.isViolation ? 'violation' : 'failure'
+      const summary = err.isViolation ? 'Found an issue' : 'TLC encountered an error'
+      if (verbosity.hasResults(verbosityLevel)) {
+        console.log('\n' + chalk.red(`[${status}]`) + ' ' + summary + ' ' + chalk.gray(`(${elapsedMs}ms).`))
+      }
+      return {
+        msg: err.explanation,
+        stage: { ...stage, status, errors: err.errors },
+      }
+    })
+}
+
+async function verifyWithApalache(
+  prev: CompiledStage,
+  verifying: TracingStage,
+  verbosityLevel: number
+): Promise<CLIProcedure<TracingStage>> {
+  const args = prev.args
+
+  const itfFile: string | undefined = args.outItf
   if (itfFile) {
     if (itfFile.includes(PLACEHOLDERS.test) || itfFile.includes(PLACEHOLDERS.seq)) {
       console.log(
@@ -608,19 +682,18 @@ export async function verifySpec(prev: CompiledStage): Promise<CLIProcedure<Trac
     }
   }
 
-  const loadedConfig = loadApalacheConfig(verifying, args.apalacheConfig)
+  const loadedConfig = loadApalacheConfig(prev, args.apalacheConfig)
 
-  const veryfiyingFlat = { ...prev, modules: [prev.mainModule] }
-  const parsedSpec = outputJson(veryfiyingFlat)
+  const verifyingFlat = { ...prev, modules: [prev.mainModule] }
+  const parsedSpec = outputJson(verifyingFlat)
 
-  const [invariantsString, invariantsList] = getInvariants(prev.args)
+  const [invariantsString, invariantsList] = getInvariants(args)
 
   if (args.inductiveInvariant) {
     const hasOrdinaryInvariant = invariantsList.length > 0
     const nPhases = hasOrdinaryInvariant ? 3 : 2
     const initConfig = createConfig(loadedConfig, parsedSpec, { ...args, maxSteps: 0 }, ['q::inductiveInv'])
 
-    // Checking whether the inductive invariant holds in the initial state(s)
     printInductiveInvariantProgress(verbosityLevel, args, 1, nPhases)
 
     const startMs = Date.now()
@@ -629,7 +702,6 @@ export async function verifySpec(prev: CompiledStage): Promise<CLIProcedure<Trac
         return processVerifyResult(res, startMs, verbosityLevel, verifying, [args.inductiveInvariant])
       }
 
-      // Checking whether the inductive invariant is preserved by the step
       printInductiveInvariantProgress(verbosityLevel, args, 2, nPhases)
 
       const stepConfig = createConfig(
@@ -645,7 +717,6 @@ export async function verifySpec(prev: CompiledStage): Promise<CLIProcedure<Trac
           return processVerifyResult(res, startMs, verbosityLevel, verifying, [args.inductiveInvariant])
         }
 
-        // Checking whether the inductive invariant implies the ordinary invariant
         printInductiveInvariantProgress(verbosityLevel, args, 3, nPhases, invariantsString)
 
         const propConfig = createConfig(
@@ -663,14 +734,22 @@ export async function verifySpec(prev: CompiledStage): Promise<CLIProcedure<Trac
     })
   }
 
-  // We need to insert the data form CLI args into their appropriate locations
-  // in the Apalache config
   const config = createConfig(loadedConfig, parsedSpec, args, invariantsList.length > 0 ? ['q::inv'] : [])
   const startMs = Date.now()
 
   return verify(args.serverEndpoint, args.apalacheVersion, config, verbosityLevel).then(res => {
     return processVerifyResult(res, startMs, verbosityLevel, verifying, invariantsList)
   })
+}
+
+export async function verifySpec(prev: CompiledStage): Promise<CLIProcedure<TracingStage>> {
+  const verifying = { ...prev, stage: 'verifying' as stage }
+  const verbosityLevel = deriveVerbosity(prev.args)
+
+  if (prev.args.backend === 'tlc') {
+    return verifyWithTlc(prev, verifying, verbosityLevel)
+  }
+  return verifyWithApalache(prev, verifying, verbosityLevel)
 }
 
 /** output a compiled spec in the format specified in the `compiled.args.target` to stdout

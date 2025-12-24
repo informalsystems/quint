@@ -380,6 +380,12 @@ const verifyCmd = {
         } else {
           return errorOrEndpoint.value
         }
+      })
+      .option('backend', {
+        desc: 'the backend to use for verification',
+        type: 'string',
+        choices: ['apalache', 'tlc'],
+        default: 'apalache',
       }),
   // Timeouts are postponed for:
   // https://github.com/informalsystems/quint/issues/633
