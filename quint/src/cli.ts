@@ -386,6 +386,10 @@ const verifyCmd = {
         type: 'string',
         choices: ['apalache', 'tlc'],
         default: 'apalache',
+      })
+      .option('tlc-config', {
+        desc: 'path to a TLC configuration file (in JSON)',
+        type: 'string',
       }),
   // Timeouts are postponed for:
   // https://github.com/informalsystems/quint/issues/633

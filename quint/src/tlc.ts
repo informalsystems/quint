@@ -14,21 +14,40 @@
 
 import { Either, left, right } from '@sweet-monads/either'
 import { spawn } from 'child_process'
-import fs from 'fs'
+import fs, { readFileSync } from 'fs'
 import path from 'path'
 import os from 'os'
 import { apalacheDistDir } from './config'
 import { ErrorMessage } from './ErrorMessage'
 
-// JVM configuration for TLC
+// Default JVM configuration for TLC
 const JVM_MAX_HEAP = '-Xmx8G'
 const JVM_STACK_SIZE = '-Xss515m'
+const DEFAULT_WORKERS: number | 'auto' = 'auto'
+
+export interface TlcRuntimeConfig {
+  maxHeap?: string
+  stackSize?: string
+  workers?: number | 'auto'
+}
+
+export function loadTlcConfig(configPath: string | undefined): TlcRuntimeConfig {
+  if (!configPath) {
+    return {}
+  }
+  try {
+    return JSON.parse(readFileSync(configPath, 'utf-8'))
+  } catch (err: any) {
+    console.warn(`Warning: failed to read TLC config: ${err.message}, using defaults`)
+    return {}
+  }
+}
 
 // TLC exit codes (from tlc2.tool.EC)
 // See: https://github.com/tlaplus/tlaplus/blob/master/tlatools/org.lamport.tlatools/src/tlc2/tool/EC.java
 const TLC_EXIT_SUCCESS = 0
-const TLC_EXIT_VIOLATION_MIN = 10  // ExitStatus.VIOLATION_ASSUMPTION
-const TLC_EXIT_VIOLATION_MAX = 14  // ExitStatus.VIOLATION_ASSERT
+const TLC_EXIT_VIOLATION_MIN = 10 // ExitStatus.VIOLATION_ASSUMPTION
+const TLC_EXIT_VIOLATION_MAX = 14 // ExitStatus.VIOLATION_ASSERT
 
 function isViolationExitCode(code: number): boolean {
   return code >= TLC_EXIT_VIOLATION_MIN && code <= TLC_EXIT_VIOLATION_MAX
@@ -76,13 +95,17 @@ function tlcErr(explanation: string, isViolation: boolean): TlcError {
 export async function verify(
   config: TlcConfig,
   apalacheVersion: string,
-  workers: number | 'auto' = 'auto'
+  runtimeConfig: TlcRuntimeConfig = {}
 ): Promise<TlcResult<void>> {
   const jarResult = findApalacheJar(apalacheVersion)
   if (jarResult.isLeft()) {
     return left(tlcErr(jarResult.value, false))
   }
   const jarPath = jarResult.value
+
+  const maxHeap = runtimeConfig.maxHeap ?? JVM_MAX_HEAP
+  const stackSize = runtimeConfig.stackSize ?? JVM_STACK_SIZE
+  const workers = runtimeConfig.workers ?? DEFAULT_WORKERS
 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'quint-tlc-'))
   const tlaFile = path.join(tmpDir, `${config.moduleName}.tla`)
@@ -93,8 +116,8 @@ export async function verify(
 
   return new Promise(resolve => {
     const proc = spawn('java', [
-      JVM_MAX_HEAP,
-      JVM_STACK_SIZE,
+      maxHeap,
+      stackSize,
       '-cp',
       jarPath,
       'tlc2.TLC',
@@ -104,18 +127,12 @@ export async function verify(
       tlaFile,
     ])
 
-    let output = ''
-
     proc.stdout.on('data', data => {
-      const str = data.toString()
-      output += str
-      process.stdout.write(str)
+      process.stdout.write(data.toString())
     })
 
     proc.stderr.on('data', data => {
-      const str = data.toString()
-      output += str
-      process.stderr.write(str)
+      process.stderr.write(data.toString())
     })
 
     proc.on('close', code => {
