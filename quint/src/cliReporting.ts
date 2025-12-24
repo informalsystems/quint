@@ -24,6 +24,7 @@ import { Either, left } from '@sweet-monads/either'
 import { cwd } from 'process'
 import { replacer } from './jsonHelper'
 import { ApalacheResult } from './apalache'
+import { TlcError } from './tlc'
 import { QuintError } from './quintError'
 import { TestResult } from './runtime/testing'
 import { createFinders, formatError } from './errorReporter'
@@ -102,60 +103,6 @@ export function printViolatedInvariants(state: QuintEx, invariants: string[], pr
       console.log(chalk.red(`  ❌ ${inv}`))
     }
   }
-}
-
-/**
- * Process the result of a verification call.
- *
- * @param res The result of the verification.
- * @param startMs The start time in milliseconds.
- * @param verbosityLevel The verbosity level.
- * @param verifying The current tracing stage.
- * @param invariantsList The list of invariants.
- * @param prev The previous stage context.
- * @returns The processed result.
- */
-export function processVerifyResult(
-  res: ApalacheResult<void>,
-  startMs: number,
-  verbosityLevel: number,
-  stage: TracingStage,
-  invariantsList: string[]
-): CLIProcedure<TracingStage> {
-  const elapsedMs = Date.now() - startMs
-
-  return res
-    .map((): TracingStage => {
-      if (verbosity.hasResults(verbosityLevel)) {
-        console.log(chalk.green('[ok]') + ' No violation found ' + chalk.gray(`(${elapsedMs}ms).`))
-        if (verbosity.hasHints(verbosityLevel)) {
-          console.log(chalk.gray('You may increase --max-steps.'))
-          console.log(chalk.gray('Use --verbosity to produce more (or less) output.'))
-        }
-      }
-      return { ...stage, status: 'ok', errors: [] }
-    })
-    .mapLeft(err => {
-      const trace: QuintEx[] | undefined = err.traces ? ofItfNormalized(err.traces[0]) : undefined
-      const status = trace !== undefined ? 'violation' : 'failure'
-
-      if (trace !== undefined) {
-        maybePrintCounterExample(verbosityLevel, trace, [], stage.args.hide || [])
-
-        if (verbosity.hasResults(verbosityLevel)) {
-          console.log(chalk.red(`[${status}]`) + ' Found an issue ' + chalk.gray(`(${elapsedMs}ms).`))
-          printViolatedInvariants(trace[trace.length - 1], invariantsList, stage)
-        }
-
-        if (stage.args.outItf && err.traces) {
-          writeToJson(stage.args.outItf, err.traces[0])
-        }
-      }
-      return {
-        msg: err.explanation,
-        stage: { ...stage, status, errors: err.errors, trace },
-      }
-    })
 }
 
 export function outputJson(stage: ProcedureStage): string {
@@ -380,4 +327,75 @@ export function printInductiveInvariantProgress(
         break
     }
   }
+}
+
+export function processTlcResult(
+  res: Either<TlcError, void>,
+  startMs: number,
+  verbosityLevel: number,
+  stage: TracingStage
+): CLIProcedure<TracingStage> {
+  const elapsedMs = Date.now() - startMs
+
+  return res
+    .map((): TracingStage => {
+      if (verbosity.hasResults(verbosityLevel)) {
+        console.log('\n' + chalk.green('[ok]') + ' No violation found ' + chalk.gray(`(${elapsedMs}ms).`))
+      }
+      return { ...stage, status: 'ok', errors: [] }
+    })
+    .mapLeft(err => {
+      const status = err.isViolation ? 'violation' : 'failure'
+      const summary = err.isViolation ? 'Found an issue' : 'TLC encountered an error'
+      if (verbosity.hasResults(verbosityLevel)) {
+        console.log('\n' + chalk.red(`[${status}]`) + ' ' + summary + ' ' + chalk.gray(`(${elapsedMs}ms).`))
+      }
+      return {
+        msg: err.explanation,
+        stage: { ...stage, status, errors: err.errors },
+      }
+    })
+}
+
+export function processApalacheResult(
+  res: ApalacheResult<void>,
+  startMs: number,
+  verbosityLevel: number,
+  stage: TracingStage,
+  invariantsList: string[]
+): CLIProcedure<TracingStage> {
+  const elapsedMs = Date.now() - startMs
+
+  return res
+    .map((): TracingStage => {
+      if (verbosity.hasResults(verbosityLevel)) {
+        console.log(chalk.green('[ok]') + ' No violation found ' + chalk.gray(`(${elapsedMs}ms).`))
+        if (verbosity.hasHints(verbosityLevel)) {
+          console.log(chalk.gray('You may increase --max-steps.'))
+          console.log(chalk.gray('Use --verbosity to produce more (or less) output.'))
+        }
+      }
+      return { ...stage, status: 'ok', errors: [] }
+    })
+    .mapLeft(err => {
+      const trace: QuintEx[] | undefined = err.traces ? ofItfNormalized(err.traces[0]) : undefined
+      const status = trace !== undefined ? 'violation' : 'failure'
+
+      if (trace !== undefined) {
+        maybePrintCounterExample(verbosityLevel, trace, [], stage.args.hide || [])
+
+        if (verbosity.hasResults(verbosityLevel)) {
+          console.log(chalk.red(`[${status}]`) + ' Found an issue ' + chalk.gray(`(${elapsedMs}ms).`))
+          printViolatedInvariants(trace[trace.length - 1], invariantsList, stage)
+        }
+
+        if (stage.args.outItf && err.traces) {
+          writeToJson(stage.args.outItf, err.traces[0])
+        }
+      }
+      return {
+        msg: err.explanation,
+        stage: { ...stage, status, errors: err.errors, trace },
+      }
+    })
 }
