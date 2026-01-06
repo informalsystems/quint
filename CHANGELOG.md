@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Error messages from `then` failures were improved (#1832)
+  - Error message text improved in both TypeScript and Rust evaluators
+  - Error reference improvement only in TypeScript evaluator (Rust would require significant refactoring)
 - Errors referring to an entire definition will now be shown at the definition's name location only (#1833)
 
 ### Deprecated
@@ -24,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a crash in the Rust backend when `--nthreads` exceeds `--max-samples` (#1825)
 - Fixed a problem where the REPL error reporting showed an incorrect location (#1835)
 - Fixed a problem where `expect` would add a stuttering state to the trace (#1836)
+  - Only applicable to TypeScript evaluator
+  - Rust evaluator doesn't have this issue as traces are only recorded during simulation, not during individual evaluations
 
 ### Security
 
