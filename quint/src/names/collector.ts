@@ -322,6 +322,22 @@ export class NameCollector implements IRVisitor {
     return defs[defs.length - 1]
   }
 
+  /**
+   * Returns the state variable definition for an identifier, ignoring
+   * any scoped definitions that shadow it. Used to resolve assignment LHS.
+   */
+  getStateVarDefinition(identifier: string): LookupDefinition | undefined {
+    const definitions = this.definitionsByName.get(identifier)
+    if (definitions === undefined || definitions.length === 0) {
+      return
+    }
+
+    const varDefinition = definitions.find(definition => definition.kind === 'var')
+    if (varDefinition) return varDefinition
+
+    return definitions[definitions.length - 1]
+  }
+
   private namespaces(decl: QuintImport | QuintInstance | QuintExport): string[] {
     if (decl.kind === 'instance') {
       return compact([decl.qualifiedName ?? decl.protoName, this.currentModuleName])
