@@ -15,7 +15,7 @@
 import { Either, right } from '@sweet-monads/either'
 import { EvalFunction } from './builder'
 import { RuntimeValue, rv } from './runtimeValue'
-import { isEqual } from 'lodash'
+import { isDeepStrictEqual } from 'node:util'
 import { QuintError } from '../../quintError'
 import { CachedValue } from './Context'
 import { Maybe } from '@sweet-monads/maybe'
@@ -92,7 +92,7 @@ export function evalNondet(
         }
 
         // Retry if condition is satisfied and we haven't exhausted all possible positions.
-      } while (shouldRetry && !isEqual(newPositions, originalPositions))
+      } while (shouldRetry && !isDeepStrictEqual(newPositions, originalPositions))
 
       // Reset the cache
       cache.value = undefined
