@@ -30,6 +30,7 @@ struct TopLevel {
 enum Command {
     Run(RunArgs),
     SimulateFromStdin(SimulateQuintArgs),
+    ReplFromStdin(ReplFromStdinArgs),
 }
 
 /// Run simulation with command-line arguments
@@ -77,6 +78,11 @@ struct RunArgs {
 #[derive(FromArgs)]
 #[argh(subcommand, name = "simulate-from-stdin")]
 struct SimulateQuintArgs {}
+
+/// Run REPL evaluator with input from STDIN
+#[derive(FromArgs)]
+#[argh(subcommand, name = "repl-from-stdin")]
+struct ReplFromStdinArgs {}
 
 /// Data expected on STDIN for simulation
 #[derive(Serialize, Deserialize)]
@@ -133,7 +139,15 @@ fn main() -> eyre::Result<()> {
     match top_level.command {
         Command::Run(args) => run_simulation(args),
         Command::SimulateFromStdin(_) => simulate_from_stdin(),
+        Command::ReplFromStdin(_) => repl_from_stdin(),
     }
+}
+
+/// Runs the REPL evaluator, reading commands from stdin and writing responses to stdout
+fn repl_from_stdin() -> eyre::Result<()> {
+    log::set_json(true);
+    quint_evaluator::repl::run_repl_from_stdin()?;
+    Ok(())
 }
 
 /// Utility to run the simulation with command-line arguments. Not meant to be
