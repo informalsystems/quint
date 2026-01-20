@@ -96,7 +96,7 @@ impl ReplEvaluator {
         // Create the interpreter with the table
         self.interpreter = Some(Interpreter::new(&table));
 
-        let storage = Rc::new(RefCell::new(Storage::default()));
+        let storage = self.interpreter.as_ref().unwrap().var_storage.clone();
         self.env = Some(if let Some(seed) = seed {
             Env::with_rand_state(storage, seed)
         } else {
