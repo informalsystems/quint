@@ -28,6 +28,7 @@ import { QuintError } from './quintError'
 import { TestResult } from './runtime/testing'
 import { createFinders, formatError } from './errorReporter'
 import { ErrorMessage } from './ErrorMessage'
+import { normalizeTypeSchemes } from './types/normalize'
 
 export type TraceHook = (index: number, status: string, vars: string[], states: QuintEx[], name?: string) => void
 
@@ -206,7 +207,7 @@ const pickOutputStage = ({
     warnings,
     modules,
     table,
-    types,
+    types: types ? normalizeTypeSchemes(types) : undefined,
     effects,
     errors,
     documentation,
