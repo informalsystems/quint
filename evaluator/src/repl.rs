@@ -172,10 +172,10 @@ impl ReplEvaluator {
         let mut missing_vars = Vec::new();
         let storage = env.var_storage.borrow();
 
-        for (name, register) in storage.next_vars.iter() {
+        for (_, register) in storage.next_vars.iter() {
             let reg = register.borrow();
             if reg.value.is_none() {
-                missing_vars.push(name.to_string());
+                missing_vars.push(reg.name.to_string());
             }
         }
 
