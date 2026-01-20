@@ -74,7 +74,7 @@ enum ReplResult {
 
 /// Stateful REPL evaluator
 pub struct ReplEvaluator {
-    table: Option<LookupTable>,
+    interpreter: Option<Interpreter>,
     env: Option<Env>,
     trace_states: Vec<Value>,
     verbosity: u8,
@@ -83,7 +83,7 @@ pub struct ReplEvaluator {
 impl ReplEvaluator {
     pub fn new() -> Self {
         Self {
-            table: None,
+            interpreter: None,
             env: None,
             trace_states: Vec::new(),
             verbosity: 0,
@@ -92,7 +92,9 @@ impl ReplEvaluator {
 
     fn initialize(&mut self, table: LookupTable, seed: Option<u64>, verbosity: u8) -> ReplResponse {
         self.verbosity = verbosity;
-        self.table = Some(table);
+
+        // Create the interpreter with the table
+        self.interpreter = Some(Interpreter::new(&table));
 
         let storage = Rc::new(RefCell::new(Storage::default()));
         self.env = Some(if let Some(seed) = seed {
@@ -107,13 +109,24 @@ impl ReplEvaluator {
     }
 
     fn update_table(&mut self, table: LookupTable) -> ReplResponse {
-        self.table = Some(table);
+        // Update the interpreter's table if it exists, otherwise error
+        match &mut self.interpreter {
+            Some(interpreter) => {
+                interpreter.update_table(&table);
+            }
+            None => {
+                return ReplResponse::Error {
+                    message: "Evaluator not initialized".to_string(),
+                }
+            }
+        }
+
         ReplResponse::TableUpdated { success: true }
     }
 
     fn evaluate(&mut self, expr: QuintEx) -> ReplResponse {
-        let table = match &self.table {
-            Some(t) => t,
+        let interpreter = match &mut self.interpreter {
+            Some(i) => i,
             None => {
                 return ReplResponse::Error {
                     message: "Evaluator not initialized".to_string(),
@@ -130,7 +143,6 @@ impl ReplEvaluator {
             }
         };
 
-        let mut interpreter = Interpreter::new(table);
         let compiled = interpreter.compile(&expr);
 
         match compiled.execute(env) {
