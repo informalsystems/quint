@@ -112,7 +112,7 @@ impl ReplEvaluator {
         // Update the interpreter's table if it exists, otherwise error
         match &mut self.interpreter {
             Some(interpreter) => {
-                interpreter.update_table(&table);
+                interpreter.update_table(table);
             }
             None => {
                 return ReplResponse::Error {

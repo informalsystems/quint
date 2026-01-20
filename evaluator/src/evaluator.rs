@@ -176,8 +176,8 @@ impl Interpreter {
     /// Update the lookup table.
     /// Assumes the new table is an extension of the old one,
     /// and therefore all caches are still valid
-    pub fn update_table(&mut self, table: &LookupTable) {
-        self.table = Rc::new(table.clone());
+    pub fn update_table(&mut self, table: LookupTable) {
+        self.table = Rc::new(table);
     }
 
     /// Shift the state, moving `next_vars` to `vars`.
