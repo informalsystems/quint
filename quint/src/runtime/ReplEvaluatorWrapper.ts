@@ -64,6 +64,7 @@ export class ReplEvaluatorWrapper {
   public recorder: TraceRecorder
   private verbosityLevel: number
   private statesCache: any[] = [] // ITF values from Rust
+  private commandQueue: Promise<any> = Promise.resolve() // Serialize commands
 
   constructor(table: LookupTable, recorder: TraceRecorder, rng: Rng) {
     this.recorder = recorder
@@ -107,7 +108,8 @@ export class ReplEvaluatorWrapper {
         // For now, simple handling - we'll improve this with request IDs if needed
         const handler = Array.from(this.pendingResponses.values())[0]
         if (handler) {
-          this.pendingResponses.delete(Array.from(this.pendingResponses.keys())[0])
+          const requestId = Array.from(this.pendingResponses.keys())[0]
+          this.pendingResponses.delete(requestId)
           handler(response)
         }
       } catch (err) {
@@ -128,30 +130,38 @@ export class ReplEvaluatorWrapper {
    * Send a command to the Rust evaluator and wait for response
    */
   private async sendCommand(command: ReplCommand): Promise<ReplResponse> {
-    if (!this.process || !this.process.stdin) {
-      throw new Error('Rust REPL evaluator process not initialized')
-    }
+    // Serialize all commands to avoid race conditions
+    const result = this.commandQueue.then(async () => {
+      if (!this.process || !this.process.stdin) {
+        throw new Error('Rust REPL evaluator process not initialized')
+      }
 
-    return new Promise((resolve, reject) => {
-      const requestId = this.nextRequestId++
-      this.pendingResponses.set(requestId, resolve)
+      return new Promise<ReplResponse>((resolve, reject) => {
+        const requestId = this.nextRequestId++
+        this.pendingResponses.set(requestId, resolve)
 
-      const commandJson = JSONbig.stringify(command, replacer)
-      this.process!.stdin!.write(commandJson + '\n', err => {
-        if (err) {
-          this.pendingResponses.delete(requestId)
-          reject(new Error(`Failed to send command: ${err.message}`))
-        }
+        const commandJson = JSONbig.stringify(command, replacer)
+        this.process!.stdin!.write(commandJson + '\n', err => {
+          if (err) {
+            this.pendingResponses.delete(requestId)
+            reject(new Error(`Failed to send command: ${err.message}`))
+          }
+        })
+
+        // Timeout after 30 seconds
+        setTimeout(() => {
+          if (this.pendingResponses.has(requestId)) {
+            this.pendingResponses.delete(requestId)
+            reject(new Error('Rust REPL evaluator command timeout'))
+          }
+        }, 30000)
       })
-
-      // Timeout after 30 seconds
-      setTimeout(() => {
-        if (this.pendingResponses.has(requestId)) {
-          this.pendingResponses.delete(requestId)
-          reject(new Error('Rust REPL evaluator command timeout'))
-        }
-      }, 30000)
     })
+
+    // Update the queue to wait for this command
+    this.commandQueue = result.catch(() => {}) // Swallow errors in queue chain
+
+    return result
   }
 
   /**

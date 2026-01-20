@@ -98,24 +98,39 @@ class ReplState {
   // Whether to use the Rust evaluator
   useRustEvaluator: boolean
 
-  constructor(verbosityLevel: number, rng: Rng, useRustEvaluator: boolean = false) {
+  constructor(
+    verbosityLevel: number,
+    rng: Rng,
+    useRustEvaluator: boolean = false,
+    existingEvaluator?: Evaluator | ReplEvaluatorWrapper,
+    existingNameResolver?: NameResolver
+  ) {
     const recorder = newTraceRecorder(verbosityLevel, rng)
     this.moduleHist = ''
     this.exprHist = []
     this.lastLoadedFileAndModule = [undefined, undefined]
     this.compilationState = newCompilationState()
     this.useRustEvaluator = useRustEvaluator
-    if (useRustEvaluator) {
+    if (existingEvaluator) {
+      // Reuse existing evaluator (important for Rust backend to avoid spawning multiple subprocesses)
+      this.evaluator = existingEvaluator
+    } else if (useRustEvaluator) {
       this.evaluator = new ReplEvaluatorWrapper(new Map(), recorder, rng)
     } else {
       this.evaluator = new Evaluator(new Map(), recorder, rng)
     }
-    this.nameResolver = new NameResolver()
+    this.nameResolver = existingNameResolver ?? new NameResolver()
     this.inputCounter = 0
   }
 
   clone() {
-    const copy = new ReplState(this.verbosity, newRng(this.rng.getState()), this.useRustEvaluator)
+    const copy = new ReplState(
+      this.verbosity,
+      newRng(this.rng.getState()),
+      this.useRustEvaluator,
+      this.evaluator, // Reuse evaluator
+      this.nameResolver // Reuse name resolver
+    )
     copy.moduleHist = this.moduleHist
     copy.exprHist = this.exprHist
     copy.lastLoadedFileAndModule = this.lastLoadedFileAndModule
@@ -297,7 +312,8 @@ export function quintRepl(
 
   // load the code from a filename and optionally import a module
   async function load(filename: string, moduleName: string | undefined) {
-    await state.clear()
+    // Note: we don't call state.clear() here because loadFromFile creates a new state anyway
+    // and for the Rust backend, clear() would spawn an unnecessary subprocess
 
     const newState = loadFromFile(out, state, filename)
     if (!newState) {
@@ -312,7 +328,7 @@ export function quintRepl(
       newState.addReplModule()
     }
 
-    if (tryEvalModule(out, newState, moduleNameToLoad ?? '__repl__')) {
+    if (await tryEvalModule(out, newState, moduleNameToLoad ?? '__repl__')) {
       state.lastLoadedFileAndModule[1] = moduleNameToLoad
     } else {
       out(chalk.yellow('Pick the right module name and import it (the file has been loaded)\n'))
@@ -473,8 +489,17 @@ export function quintRepl(
     }
   }
 
+  // Flag to prevent processing lines until initialization is complete
+  let initializationComplete = false
+  const lineQueue: string[] = []
+
   // the read-eval-print loop
   rl.on('line', async line => {
+    if (!initializationComplete) {
+      // Queue lines that arrive before initialization is complete
+      lineQueue.push(line)
+      return
+    }
     await consumeLine(line)
     rl.prompt()
   }).on('close', async () => {
@@ -505,6 +530,14 @@ export function quintRepl(
         }
       }
     }
+
+    // Mark initialization as complete and process any queued lines
+    initializationComplete = true
+    for (const queuedLine of lineQueue) {
+      await consumeLine(queuedLine)
+      rl.prompt()
+    }
+    lineQueue.length = 0
 
     rl.prompt()
   })().catch(err => {
@@ -554,7 +587,7 @@ function loadFromFile(out: writer, state: ReplState, filename: string): ReplStat
   }
 }
 
-function tryEvalModule(out: writer, state: ReplState, mainName: string): boolean {
+async function tryEvalModule(out: writer, state: ReplState, mainName: string): Promise<boolean> {
   const modulesText = state.moduleHist
   const mainPath = fileSourceResolver(state.compilationState.sourceCode).lookupPath(cwd(), 'repl.ts')
   state.compilationState.sourceCode.set(mainPath.toSourceName(), modulesText)
@@ -583,7 +616,12 @@ function tryEvalModule(out: writer, state: ReplState, mainName: string): boolean
   resolver.switchToModule(mainName)
   state.nameResolver = resolver
 
-  state.evaluator.updateTable(table)
+  // For Rust evaluator, we need to await the table update
+  if (state.evaluator instanceof ReplEvaluatorWrapper) {
+    await state.evaluator.updateTableAsync(table)
+  } else {
+    state.evaluator.updateTable(table)
+  }
 
   return true
 }
@@ -602,7 +640,7 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
 
   if (state.compilationState.modules.length === 0) {
     state.addReplModule()
-    tryEvalModule(out, state, '__repl__')
+    await tryEvalModule(out, state, '__repl__')
   }
 
   // Generate a unique source name for this input to avoid line number conflicts in the source map
