@@ -31,6 +31,7 @@ import { mkErrorMessage } from './cliHelpers'
 import { QuintError } from './quintError'
 import { ErrorMessage } from './ErrorMessage'
 import { Evaluator } from './runtime/impl/evaluator'
+import { ReplEvaluatorWrapper } from './runtime/ReplEvaluatorWrapper'
 import { walkDeclaration, walkExpression } from './ir/IRVisitor'
 import { AnalysisOutput, analyzeInc, analyzeModules } from './quintAnalyzer'
 import { NameResolver } from './names/resolver'
@@ -89,25 +90,32 @@ class ReplState {
   // The state of pre-compilation phases
   compilationState: CompilationState
   // The evaluator to be used
-  evaluator: Evaluator
+  evaluator: Evaluator | ReplEvaluatorWrapper
   // The name resolver to be used
   nameResolver: NameResolver
   // Counter for generating unique source names for each REPL input
   inputCounter: number
+  // Whether to use the Rust evaluator
+  useRustEvaluator: boolean
 
-  constructor(verbosityLevel: number, rng: Rng) {
+  constructor(verbosityLevel: number, rng: Rng, useRustEvaluator: boolean = false) {
     const recorder = newTraceRecorder(verbosityLevel, rng)
     this.moduleHist = ''
     this.exprHist = []
     this.lastLoadedFileAndModule = [undefined, undefined]
     this.compilationState = newCompilationState()
-    this.evaluator = new Evaluator(new Map(), recorder, rng)
+    this.useRustEvaluator = useRustEvaluator
+    if (useRustEvaluator) {
+      this.evaluator = new ReplEvaluatorWrapper(new Map(), recorder, rng)
+    } else {
+      this.evaluator = new Evaluator(new Map(), recorder, rng)
+    }
     this.nameResolver = new NameResolver()
     this.inputCounter = 0
   }
 
   clone() {
-    const copy = new ReplState(this.verbosity, newRng(this.rng.getState()))
+    const copy = new ReplState(this.verbosity, newRng(this.rng.getState()), this.useRustEvaluator)
     copy.moduleHist = this.moduleHist
     copy.exprHist = this.exprHist
     copy.lastLoadedFileAndModule = this.lastLoadedFileAndModule
@@ -123,14 +131,23 @@ class ReplState {
     this.moduleHist += moduleToString(replModule)
   }
 
-  clear() {
+  async clear() {
+    // Shutdown the previous evaluator if it's a Rust wrapper
+    if (this.evaluator instanceof ReplEvaluatorWrapper) {
+      await this.evaluator.shutdown()
+    }
+
     const rng = newRng(this.rng.getState())
     const recorder = newTraceRecorder(this.verbosity, rng)
 
     this.moduleHist = ''
     this.exprHist = []
     this.compilationState = newCompilationState()
-    this.evaluator = new Evaluator(new Map(), recorder, rng)
+    if (this.useRustEvaluator) {
+      this.evaluator = new ReplEvaluatorWrapper(new Map(), recorder, rng)
+    } else {
+      this.evaluator = new Evaluator(new Map(), recorder, rng)
+    }
     this.nameResolver = new NameResolver()
     this.inputCounter = 0
   }
@@ -173,6 +190,7 @@ export interface ReplOptions {
   importModule?: string
   replInput?: string[]
   verbosity: number
+  backend?: 'typescript' | 'rust'
 }
 
 // the entry point to the REPL
@@ -189,8 +207,13 @@ export function quintRepl(
   const prompt = (text: string) => {
     return verbosity.hasReplPrompt(options.verbosity) ? text : ''
   }
+  // Check if we should use the Rust evaluator
+  const useRustEvaluator = options.backend === 'rust'
   if (verbosity.hasReplBanners(options.verbosity)) {
     out(chalk.gray(`Quint REPL ${version}\n`))
+    if (useRustEvaluator) {
+      out(chalk.gray('Using Rust evaluator\n'))
+    }
     out(chalk.gray('Type ".exit" to exit, or ".help" for more information\n'))
   }
   // create a readline interface
@@ -201,7 +224,7 @@ export function quintRepl(
   })
 
   // the state
-  const state: ReplState = new ReplState(options.verbosity, newRng())
+  const state: ReplState = new ReplState(options.verbosity, newRng(), useRustEvaluator)
 
   // we let the user type a multiline string, which is collected here:
   let multilineText = ''
@@ -228,7 +251,7 @@ export function quintRepl(
   })
 
   // next line handler
-  function nextLine(line: string) {
+  async function nextLine(line: string) {
     const [nob, nop, noc] = countBraces(line)
     nOpenBraces += nob
     nOpenParen += nop
@@ -246,7 +269,7 @@ export function quintRepl(
         rl.setPrompt(prompt(settings.continuePrompt))
       } else {
         if (line.trim() !== '') {
-          tryEvalAndClearRecorder(out, state, line + '\n')
+          await tryEvalAndClearRecorder(out, state, line + '\n')
         }
       }
     } else {
@@ -259,7 +282,7 @@ export function quintRepl(
         // End the multiline mode.
         // If recycle own output, then the current line is, most likely,
         // older input. Ignore it.
-        tryEvalAndClearRecorder(out, state, multilineText)
+        await tryEvalAndClearRecorder(out, state, multilineText)
         multilineText = ''
         recyclingOwnOutput = false
         rl.setPrompt(prompt(settings.prompt))
@@ -273,8 +296,8 @@ export function quintRepl(
   }
 
   // load the code from a filename and optionally import a module
-  function load(filename: string, moduleName: string | undefined) {
-    state.clear()
+  async function load(filename: string, moduleName: string | undefined) {
+    await state.clear()
 
     const newState = loadFromFile(out, state, filename)
     if (!newState) {
@@ -300,7 +323,7 @@ export function quintRepl(
       const exprHist = newState.exprHist
       newState.exprHist = []
       if (exprHist.length > 0) {
-        replayExprHistory(newState, filename, exprHist)
+        await replayExprHistory(newState, filename, exprHist)
       }
     }
 
@@ -311,21 +334,21 @@ export function quintRepl(
     state.nameResolver = newState.nameResolver
   }
 
-  function replayExprHistory(state: ReplState, filename: string, exprHist: string[]) {
+  async function replayExprHistory(state: ReplState, filename: string, exprHist: string[]) {
     if (verbosity.hasReplBanners(options.verbosity)) {
       out(chalk.gray(`Evaluating expression history in ${filename}\n`))
     }
-    exprHist.forEach(expr => {
+    for (const expr of exprHist) {
       if (verbosity.hasReplPrompt(options.verbosity)) {
         out(settings.prompt)
         out(expr.replaceAll('\n', `\n${settings.continuePrompt}`))
         out('\n')
       }
-      tryEvalAndClearRecorder(out, state, expr)
-    })
+      await tryEvalAndClearRecorder(out, state, expr)
+    }
   }
 
-  function consumeLine(line: string) {
+  async function consumeLine(line: string) {
     const r = (s: string): string => {
       return chalk.red(s)
     }
@@ -336,7 +359,7 @@ export function quintRepl(
     // and paste from the reply itself.
     if (!line.startsWith('.') || line.startsWith(settings.continuePrompt)) {
       // an input to evaluate
-      nextLine(line)
+      await nextLine(line)
     } else {
       // a special command to REPL, extract the command name
       const m = line.match(/^\s*\.(\w+)/)
@@ -363,12 +386,16 @@ export function quintRepl(
             break
 
           case 'exit':
+            // Shutdown the evaluator if it's a Rust wrapper
+            if (state.evaluator instanceof ReplEvaluatorWrapper) {
+              await state.evaluator.shutdown()
+            }
             exit()
             break
 
           case 'clear':
             out('\n') // be nice to external programs
-            state.clear()
+            await state.clear()
             break
 
           case 'load':
@@ -378,14 +405,14 @@ export function quintRepl(
               if (!filename) {
                 out(r('.load requires a filename\n'))
               } else {
-                load(filename, moduleName)
+                await load(filename, moduleName)
               }
             }
             break
 
           case 'reload':
             if (state.lastLoadedFileAndModule[0] !== undefined) {
-              load(state.lastLoadedFileAndModule[0], state.lastLoadedFileAndModule[1])
+              await load(state.lastLoadedFileAndModule[0], state.lastLoadedFileAndModule[1])
             } else {
               out(r('Nothing to reload. Use: .load filename [moduleName].\n'))
             }
@@ -447,33 +474,44 @@ export function quintRepl(
   }
 
   // the read-eval-print loop
-  rl.on('line', line => {
-    consumeLine(line)
+  rl.on('line', async line => {
+    await consumeLine(line)
     rl.prompt()
-  }).on('close', () => {
+  }).on('close', async () => {
+    // Shutdown the evaluator if it's a Rust wrapper
+    if (state.evaluator instanceof ReplEvaluatorWrapper) {
+      await state.evaluator.shutdown()
+    }
     out('\n')
     exit()
   })
 
   // Everything is registered. Optionally, load a module.
-  if (options.preloadFilename) {
-    load(options.preloadFilename, options.importModule)
-  }
+  // Use an async IIFE to handle initialization before starting the interactive loop
+  ;(async () => {
+    if (options.preloadFilename) {
+      await load(options.preloadFilename, options.importModule)
+    }
 
-  // Evaluate the repl's command input before starting the interactive loop
-  if (options.replInput && options.replInput.length > 0) {
-    out(prompt(settings.prompt))
-    options.replInput.forEach(input =>
-      input.split('\n').forEach(part => {
-        const line = `${part}\n` // put \n back in
-        out(prompt(line))
-        consumeLine(line)
-        out(prompt(rl.getPrompt()))
-      })
-    )
-  }
+    // Evaluate the repl's command input before starting the interactive loop
+    if (options.replInput && options.replInput.length > 0) {
+      out(prompt(settings.prompt))
+      for (const input of options.replInput) {
+        for (const part of input.split('\n')) {
+          const line = `${part}\n` // put \n back in
+          out(prompt(line))
+          await consumeLine(line)
+          out(prompt(rl.getPrompt()))
+        }
+      }
+    }
 
-  rl.prompt()
+    rl.prompt()
+  })().catch(err => {
+    out(chalk.red(`Error during REPL initialization: ${err}\n`))
+    exit()
+  })
+
   return rl
 }
 
@@ -552,14 +590,14 @@ function tryEvalModule(out: writer, state: ReplState, mainName: string): boolean
 
 // Try to evaluate the expression in a string and print it, if successful.
 // After that, clear the recorded stack.
-function tryEvalAndClearRecorder(out: writer, state: ReplState, newInput: string): boolean {
-  const result = tryEval(out, state, newInput)
+async function tryEvalAndClearRecorder(out: writer, state: ReplState, newInput: string): Promise<boolean> {
+  const result = await tryEval(out, state, newInput)
   state.recorder.clear()
   return result
 }
 
 // try to evaluate the expression in a string and print it, if successful
-function tryEval(out: writer, state: ReplState, newInput: string): boolean {
+async function tryEval(out: writer, state: ReplState, newInput: string): Promise<boolean> {
   const columns = terminalWidth()
 
   if (state.compilationState.modules.length === 0) {
@@ -617,16 +655,23 @@ function tryEval(out: writer, state: ReplState, newInput: string): boolean {
     }
 
     state.exprHist.push(newInput.trim())
-    const evalResult = state.evaluator.evaluate(parseResult.expr)
+    const evalResult =
+      state.evaluator instanceof ReplEvaluatorWrapper
+        ? await state.evaluator.evaluateAsync(parseResult.expr)
+        : state.evaluator.evaluate(parseResult.expr)
 
-    evalResult.map(ex => {
+    if (evalResult.isRight()) {
+      const ex = evalResult.value
       out(format(columns, 0, prettyQuintEx(ex)))
       out('\n')
 
       if (ex.kind === 'bool' && ex.value) {
         // A Boolean expression may be an action or a run.
         // Save the state, if there were any updates to variables.
-        const [shifted, missing] = state.evaluator.shiftAndCheck()
+        const [shifted, missing] =
+          state.evaluator instanceof ReplEvaluatorWrapper
+            ? await state.evaluator.shiftAndCheckAsync()
+            : state.evaluator.shiftAndCheck()
         if (shifted && verbosity.hasDiffs(state.verbosity)) {
           console.log(state.evaluator.trace.renderDiff(terminalWidth(), { collapseThreshold: 2 }))
         }
@@ -634,8 +679,7 @@ function tryEval(out: writer, state: ReplState, newInput: string): boolean {
           out(chalk.yellow('[warning] some variables are undefined: ' + missing.join(', ') + '\n'))
         }
       }
-      return ex
-    })
+    }
 
     if (verbosity.hasUserOpTracking(state.verbosity)) {
       const trace = state.recorder.currentFrame
