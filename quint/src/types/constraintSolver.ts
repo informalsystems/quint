@@ -186,15 +186,23 @@ export function unifyRows(table: LookupTable, r1: Row, r2: Row): Either<ErrorTre
       // This call will fit in the above case of row unification
       const tailSubs = unifyRows(table, { ...ra, fields: uniqueFields1 }, { ...rb, fields: uniqueFields2 })
 
-      // Sort shared fields by field name, and get their types
-      const fieldTypes: [QuintType, QuintType][] = sharedFieldNames.map(n => {
-        const f1 = ra.fields.find(f => f.fieldName === n)!
-        const f2 = rb.fields.find(f => f.fieldName === n)!
-        return [f1.fieldType, f2.fieldType]
-      })
-
-      // Now, for each shared field, we need to unify the types
-      const fieldSubs = chainUnifications(table, ...(unzip(fieldTypes) as [QuintType[], QuintType[]]))
+      // Now, for each shared field, we need to unify the types with a field-specific location
+      const fieldSubs = sharedFieldNames.reduce((result: Either<Error, Substitutions>, fieldName) => {
+        return result.chain(subs => {
+          const f1 = ra.fields.find(f => f.fieldName === fieldName)!
+          const f2 = rb.fields.find(f => f.fieldName === fieldName)!
+          const leftType = applySubstitution(table, subs, f1.fieldType)
+          const rightType = applySubstitution(table, subs, f2.fieldType)
+          return unify(table, leftType, rightType)
+            .map(newSubs => compose(table, newSubs, subs))
+            .mapLeft(err =>
+              buildErrorTree(
+                `Field ${fieldName}: expected ${typeToString(leftType)}, found ${typeToString(rightType)}`,
+                err
+              )
+            )
+        })
+      }, right([]))
 
       // Return the composition of the two substitutions
       return tailSubs
