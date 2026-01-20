@@ -4,10 +4,33 @@
 use fxhash::FxBuildHasher;
 use hipstr::HipStr;
 use indexmap::IndexMap;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 
 pub type QuintId = u64;
+
+/// Custom deserializer for QuintId that accepts both strings and numbers
+/// This is needed because JSONbig serializes bigints as strings
+pub mod flexible_u64 {
+    use serde::{Deserialize, Deserializer};
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<u64, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum StringOrNumber {
+            String(String),
+            Number(u64),
+        }
+
+        match StringOrNumber::deserialize(deserializer)? {
+            StringOrNumber::String(s) => s.parse().map_err(serde::de::Error::custom),
+            StringOrNumber::Number(n) => Ok(n),
+        }
+    }
+}
 // NOTE: be aware of a bug in HipStr where a LocalHipStr is allowed to cross
 // thread boundaries by implementing Send, however, it causes a double free on
 // large heap-allocated strings.
@@ -46,7 +69,96 @@ pub struct QuintOutput {
     pub main: QuintName,
 }
 
-pub type LookupTable = IndexMap<QuintId, LookupDefinition, FxBuildHasher>;
+/// LookupTable with custom deserialization to handle string keys from JSONbig
+#[derive(Debug, Clone)]
+pub struct LookupTable(pub IndexMap<QuintId, LookupDefinition, FxBuildHasher>);
+
+impl LookupTable {
+    pub fn new() -> Self {
+        LookupTable(IndexMap::with_hasher(FxBuildHasher::default()))
+    }
+}
+
+impl Default for LookupTable {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl std::ops::Deref for LookupTable {
+    type Target = IndexMap<QuintId, LookupDefinition, FxBuildHasher>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for LookupTable {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl Serialize for LookupTable {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for LookupTable {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::{MapAccess, Visitor};
+        use std::fmt;
+
+        struct LookupTableVisitor;
+
+        impl<'de> Visitor<'de> for LookupTableVisitor {
+            type Value = LookupTable;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a map with string or numeric keys")
+            }
+
+            fn visit_map<M>(self, mut map: M) -> Result<LookupTable, M::Error>
+            where
+                M: MapAccess<'de>,
+            {
+                let mut table = IndexMap::with_hasher(FxBuildHasher::default());
+
+                while let Some(key) = map.next_key::<serde_json::Value>()? {
+                    let id: u64 = match key {
+                        serde_json::Value::String(s) => {
+                            s.parse().map_err(serde::de::Error::custom)?
+                        }
+                        serde_json::Value::Number(n) => {
+                            n.as_u64().ok_or_else(|| {
+                                serde::de::Error::custom("key must be a valid u64")
+                            })?
+                        }
+                        _ => {
+                            return Err(serde::de::Error::custom(
+                                "key must be a string or number",
+                            ))
+                        }
+                    };
+
+                    let value: LookupDefinition = map.next_value()?;
+                    table.insert(id, value);
+                }
+
+                Ok(LookupTable(table))
+            }
+        }
+
+        deserializer.deserialize_map(LookupTableVisitor)
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]

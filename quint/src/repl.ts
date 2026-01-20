@@ -741,6 +741,13 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
     state.compilationState.analysisOutput = analysisOutput
     state.moduleHist = state.moduleHist.slice(0, state.moduleHist.length - 1) + newInput + '\n}' // update the history
 
+    // Update the evaluator with the new definitions
+    if (state.evaluator instanceof ReplEvaluatorWrapper) {
+      await state.evaluator.updateTableAsync(state.nameResolver.table)
+    } else {
+      state.evaluator.updateTable(state.nameResolver.table)
+    }
+
     out('\n')
   }
 
