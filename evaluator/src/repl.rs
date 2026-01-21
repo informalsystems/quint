@@ -30,8 +30,8 @@ enum ReplCommand {
     UpdateTable { table: LookupTable },
     /// Evaluate a single expression
     Evaluate { expr: QuintEx },
-    /// Shift state variables and check for undefined vars
-    ShiftAndCheck {},
+    /// Shift state variables and check for undefined vars, returning old and new states
+    ReplShift {},
     /// Get the current trace states for rendering
     GetTraceStates {},
     /// Reset the evaluator state
@@ -51,10 +51,12 @@ enum ReplResponse {
         #[serde(flatten)]
         result: ReplResult,
     },
-    /// Result of state shift
-    ShiftResult {
+    /// Result of state shift with old and new states
+    ReplShiftResult {
         shifted: bool,
         missing_vars: Vec<String>,
+        old_state: Option<itf::Value>,
+        new_state: Option<itf::Value>,
     },
     /// Trace states in ITF format
     TraceStates { states: Vec<itf::Value> },
@@ -158,7 +160,7 @@ impl ReplEvaluator {
         }
     }
 
-    fn shift_and_check(&mut self) -> ReplResponse {
+    fn repl_shift(&mut self) -> ReplResponse {
         let env = match &mut self.env {
             Some(e) => e,
             None => {
@@ -180,30 +182,38 @@ impl ReplEvaluator {
         }
 
         // Check if anything actually changed
-        let any_changed = storage
-            .next_vars
-            .iter()
-            .any(|(_, reg)| reg.borrow().value.is_some());
+        // If all nextVars are empty, nothing was set
+        let total_next_vars = storage.next_vars.len();
+        let any_changed = total_next_vars > 0 && missing_vars.len() < total_next_vars;
 
         drop(storage);
 
         if !any_changed {
-            return ReplResponse::ShiftResult {
+            return ReplResponse::ReplShiftResult {
                 shifted: false,
                 missing_vars: vec![],
+                old_state: None,
+                new_state: None,
             };
         }
 
         // Save current state before shifting
-        let storage_before_shift = env.var_storage.borrow().as_record();
-        self.trace_states.push(storage_before_shift);
+        let old_state = env.var_storage.borrow().as_record();
+        let old_state_itf = old_state.to_itf();
+        self.trace_states.push(old_state);
 
         // Shift the state
         env.var_storage.borrow_mut().shift_vars();
 
-        ReplResponse::ShiftResult {
+        // Get new state after shifting
+        let new_state = env.var_storage.borrow().as_record();
+        let new_state_itf = new_state.to_itf();
+
+        ReplResponse::ReplShiftResult {
             shifted: true,
             missing_vars,
+            old_state: Some(old_state_itf),
+            new_state: Some(new_state_itf),
         }
     }
 
@@ -230,7 +240,7 @@ impl ReplEvaluator {
             } => self.initialize(table, seed, verbosity),
             ReplCommand::UpdateTable { table } => self.update_table(table),
             ReplCommand::Evaluate { expr } => self.evaluate(expr),
-            ReplCommand::ShiftAndCheck {} => self.shift_and_check(),
+            ReplCommand::ReplShift {} => self.repl_shift(),
             ReplCommand::GetTraceStates {} => self.get_trace_states(),
             ReplCommand::Reset {} => self.reset(),
         }

@@ -35,7 +35,7 @@ type ReplCommand =
   | { cmd: 'Initialize'; table: LookupTable; seed?: bigint; verbosity?: number }
   | { cmd: 'UpdateTable'; table: LookupTable }
   | { cmd: 'Evaluate'; expr: QuintEx }
-  | { cmd: 'ShiftAndCheck' }
+  | { cmd: 'ReplShift' }
   | { cmd: 'GetTraceStates' }
   | { cmd: 'Reset' }
 
@@ -46,7 +46,13 @@ type ReplResponse =
   | { response: 'Initialized'; success: boolean }
   | { response: 'TableUpdated'; success: boolean }
   | { response: 'EvaluationResult'; ok?: any; err?: QuintError }
-  | { response: 'ShiftResult'; shifted: boolean; missing_vars: string[] }
+  | {
+      response: 'ReplShiftResult'
+      shifted: boolean
+      missing_vars: string[]
+      old_state?: any
+      new_state?: any
+    }
   | { response: 'TraceStates'; states: any[] }
   | { response: 'ResetComplete' }
   | { response: 'Error'; message: string }
@@ -219,31 +225,34 @@ export class ReplEvaluatorWrapper {
   }
 
   /**
-   * Shift to next state and check for undefined variables
+   * Shift to next state and check for undefined variables.
+   * Returns [shifted, missing_vars, old_state, new_state].
    */
-  shiftAndCheck(): [boolean, string[]] {
+  replShift(): [boolean, string[], any, any] {
     // This needs to be synchronous - not ideal
     throw new Error(
-      'ReplEvaluatorWrapper.shiftAndCheck() is async but interface requires sync. Use shiftAndCheckAsync() instead.'
+      'ReplEvaluatorWrapper.replShift() is async but interface requires sync. Use replShiftAsync() instead.'
     )
   }
 
-  async shiftAndCheckAsync(): Promise<[boolean, string[]]> {
+  async replShiftAsync(): Promise<[boolean, string[], any, any]> {
     await this.initializationPromise
 
-    const response = await this.sendCommand({ cmd: 'ShiftAndCheck' })
+    const response = await this.sendCommand({ cmd: 'ReplShift' })
 
-    if (response.response === 'ShiftResult') {
+    if (response.response === 'ReplShiftResult') {
       // Update our cached states (keep as ITF values)
-      const statesResponse = await this.sendCommand({ cmd: 'GetTraceStates' })
-      if (statesResponse.response === 'TraceStates') {
-        this.statesCache = statesResponse.states
+      if (response.shifted) {
+        const statesResponse = await this.sendCommand({ cmd: 'GetTraceStates' })
+        if (statesResponse.response === 'TraceStates') {
+          this.statesCache = statesResponse.states
+        }
       }
 
-      return [response.shifted, response.missing_vars]
+      return [response.shifted, response.missing_vars, response.old_state, response.new_state]
     }
 
-    return [false, []]
+    return [false, [], undefined, undefined]
   }
 
   /**

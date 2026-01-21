@@ -35,6 +35,9 @@ import { ReplEvaluatorWrapper } from './runtime/ReplEvaluatorWrapper'
 import { walkDeclaration, walkExpression } from './ir/IRVisitor'
 import { AnalysisOutput, analyzeInc, analyzeModules } from './quintAnalyzer'
 import { NameResolver } from './names/resolver'
+import { diffRuntimeValueDoc } from './runtime/impl/runtimeValueDiff'
+import { rv } from './runtime/impl/runtimeValue'
+import { ofItf } from './itf'
 
 // tunable settings
 export const settings = {
@@ -706,12 +709,30 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
       if (ex.kind === 'bool' && ex.value) {
         // A Boolean expression may be an action or a run.
         // Save the state, if there were any updates to variables.
-        const [shifted, missing] =
+        const [shifted, missing, oldState, newState] =
           state.evaluator instanceof ReplEvaluatorWrapper
-            ? await state.evaluator.shiftAndCheckAsync()
-            : state.evaluator.shiftAndCheck()
+            ? await state.evaluator.replShiftAsync()
+            : state.evaluator.replShift()
         if (shifted && verbosity.hasDiffs(state.verbosity)) {
-          console.log(state.evaluator.trace.renderDiff(terminalWidth(), { collapseThreshold: 2 }))
+          // Convert ITF values to RuntimeValue for the wrapper, or use directly for evaluator
+          let oldRv, newRv
+          if (state.evaluator instanceof ReplEvaluatorWrapper) {
+            if (oldState && newState) {
+              // Convert ITF values to QuintEx then to RuntimeValue
+              const oldQuintEx = ofItf({ vars: [], states: [oldState] })[0]
+              const newQuintEx = ofItf({ vars: [], states: [newState] })[0]
+              oldRv = rv.fromQuintEx(oldQuintEx)
+              newRv = rv.fromQuintEx(newQuintEx)
+            }
+          } else {
+            oldRv = oldState
+            newRv = newState
+          }
+
+          if (oldRv && newRv) {
+            const diffDoc = diffRuntimeValueDoc(oldRv, newRv, { collapseThreshold: 2 })
+            console.log(format(terminalWidth(), 0, diffDoc))
+          }
         }
         if (missing.length > 0) {
           out(chalk.yellow('[warning] some variables are undefined: ' + missing.join(', ') + '\n'))
