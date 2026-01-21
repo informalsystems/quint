@@ -228,11 +228,11 @@ export function quintRepl(
   // Check if we should use the Rust evaluator
   const useRustEvaluator = options.backend === 'rust'
   if (verbosity.hasReplBanners(options.verbosity)) {
-    out(chalk.gray(`Quint REPL ${version}\n`))
+    out(chalk.gray(`Quint REPL ${version}`))
     if (useRustEvaluator) {
-      out(chalk.gray('Using Rust evaluator\n'))
+      out(chalk.gray(' (using the Rust backend)'))
     }
-    out(chalk.gray('Type ".exit" to exit, or ".help" for more information\n'))
+    out(chalk.gray('\nType ".exit" to exit, or ".help" for more information\n'))
   }
   // create a readline interface
   const rl = readline.createInterface({
@@ -495,6 +495,10 @@ export function quintRepl(
   // Flag to prevent processing lines until initialization is complete
   let initializationComplete = false
   const lineQueue: string[] = []
+  // Flag to track if we're processing command-line inputs (replInput)
+  let processingReplInput = false
+  // Flag to track if we should exit after processing replInput
+  let shouldExitAfterReplInput = false
 
   // the read-eval-print loop
   rl.on('line', async line => {
@@ -506,6 +510,16 @@ export function quintRepl(
     await consumeLine(line)
     rl.prompt()
   }).on('close', async () => {
+    // If we're processing replInput commands, or we have replInput pending
+    // and init hasn't completed, defer the exit. This prevents a race condition
+    // where piped stdin triggers 'close' before the async initialization completes.
+    // Only defer for replInput - if stdin has actual content (piped from echo),
+    // we should exit normally after processing it.
+    if (processingReplInput || (options.replInput && !initializationComplete)) {
+      shouldExitAfterReplInput = true
+      return
+    }
+
     // Shutdown the evaluator if it's a Rust wrapper
     if (state.evaluator instanceof ReplEvaluatorWrapper) {
       await state.evaluator.shutdown()
@@ -523,6 +537,7 @@ export function quintRepl(
 
     // Evaluate the repl's command input before starting the interactive loop
     if (options.replInput && options.replInput.length > 0) {
+      processingReplInput = true
       out(prompt(settings.prompt))
       for (const input of options.replInput) {
         for (const part of input.split('\n')) {
@@ -531,6 +546,18 @@ export function quintRepl(
           await consumeLine(line)
           out(prompt(rl.getPrompt()))
         }
+      }
+      processingReplInput = false
+
+      // If stdin closed while we were processing (e.g., piped stdin),
+      // and we should exit, do it now
+      if (shouldExitAfterReplInput) {
+        if (state.evaluator instanceof ReplEvaluatorWrapper) {
+          await state.evaluator.shutdown()
+        }
+        out('\n')
+        exit()
+        return
       }
     }
 
