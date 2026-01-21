@@ -60,17 +60,20 @@ type ReplResponse =
 /**
  * Wrapper for the Rust REPL evaluator.
  * Maintains a long-lived Rust subprocess and communicates via JSON.
+ *
+ * Communication is synchronous: send a command, wait for response, process it.
+ * The only async aspect is that the main process can handle Ctrl+C while waiting.
  */
 export class ReplEvaluatorWrapper {
   private process: ChildProcess | null = null
   private stdout: readline.Interface | null = null
-  private pendingResponses: Map<number, (response: ReplResponse) => void> = new Map()
-  private nextRequestId: number = 0
-  private initializationPromise: Promise<void> | null = null
+  private pendingResponse: ((response: ReplResponse) => void) | null = null
+  private processExited: boolean = false
   public recorder: TraceRecorder
   private verbosityLevel: number
   private statesCache: any[] = [] // ITF values from Rust
-  private commandQueue: Promise<any> = Promise.resolve() // Serialize commands
+
+  private initializationPromise: Promise<void>
 
   constructor(table: LookupTable, recorder: TraceRecorder, rng: Rng) {
     this.recorder = recorder
@@ -79,11 +82,11 @@ export class ReplEvaluatorWrapper {
   }
 
   /**
-   * Initialize the Rust evaluator process and send the initial configuration
+   * Initialize the Rust evaluator process and wait for it to be ready
    */
   private async initialize(table: LookupTable, seed: bigint): Promise<void> {
     // Get the path to the Rust evaluator
-    const evaluatorPath = await this.getRustEvaluatorPath()
+    const evaluatorPath = this.getRustEvaluatorPathSync()
 
     // Spawn the Rust process
     this.process = spawn(evaluatorPath, ['repl-from-stdin'], {
@@ -97,6 +100,14 @@ export class ReplEvaluatorWrapper {
 
     // Handle process exit
     this.process.on('close', code => {
+      this.processExited = true
+      if (this.pendingResponse) {
+        this.pendingResponse({
+          response: 'Error',
+          message: `Rust REPL evaluator exited with code ${code}`,
+        })
+        this.pendingResponse = null
+      }
       if (code !== 0 && code !== null) {
         console.error(`Rust REPL evaluator exited with code ${code}`)
       }
@@ -111,82 +122,74 @@ export class ReplEvaluatorWrapper {
     this.stdout.on('line', (line: string) => {
       try {
         const response: ReplResponse = JSONbig.parse(line)
-        // For now, simple handling - we'll improve this with request IDs if needed
-        const handler = Array.from(this.pendingResponses.values())[0]
-        if (handler) {
-          const requestId = Array.from(this.pendingResponses.keys())[0]
-          this.pendingResponses.delete(requestId)
-          handler(response)
+
+        if (this.pendingResponse) {
+          this.pendingResponse(response)
+          this.pendingResponse = null
         }
       } catch (err) {
         console.error('Failed to parse response from Rust evaluator:', err)
       }
     })
 
-    // Send initialization command
-    await this.sendCommand({
-      cmd: 'Initialize',
-      table,
-      seed,
-      verbosity: this.verbosityLevel,
-    })
+    // Send initialization command and WAIT for response
+    await this.sendCommand({ cmd: 'Initialize', table, seed, verbosity: this.verbosityLevel })
   }
 
   /**
    * Send a command to the Rust evaluator and wait for response
    */
   private async sendCommand(command: ReplCommand): Promise<ReplResponse> {
-    // Serialize all commands to avoid race conditions
-    const result = this.commandQueue.then(async () => {
-      if (!this.process || !this.process.stdin) {
-        throw new Error('Rust REPL evaluator process not initialized')
-      }
+    if (!this.process || !this.process.stdin || this.processExited) {
+      throw new Error('Rust REPL evaluator process not initialized or has exited')
+    }
 
-      return new Promise<ReplResponse>((resolve, reject) => {
-        const requestId = this.nextRequestId++
-        this.pendingResponses.set(requestId, resolve)
+    // CRITICAL: Check if we already have a pending response
+    // This should NEVER happen - it means multiple requests are in-flight
+    if (this.pendingResponse !== null) {
+      const error = new Error(
+        `CONCURRENT REQUEST DETECTED! Tried to send ${command.cmd} while another request is pending. ` +
+          `This violates the synchronous request-response protocol.`
+      )
+      console.error('========================================')
+      console.error('FATAL: CONCURRENT REQUEST VIOLATION')
+      console.error('========================================')
+      console.error(error.stack)
+      console.error('Current command:', command.cmd)
+      console.error('pendingResponse is set:', this.pendingResponse !== null)
+      console.error('========================================')
+      throw error
+    }
 
-        const commandJson = JSONbig.stringify(command, replacer)
-        this.process!.stdin!.write(commandJson + '\n', err => {
-          if (err) {
-            this.pendingResponses.delete(requestId)
-            reject(new Error(`Failed to send command: ${err.message}`))
-          }
-        })
+    return new Promise<ReplResponse>((resolve, reject) => {
+      // Store the response handler
+      this.pendingResponse = resolve
 
-        // Timeout after 30 seconds
-        setTimeout(() => {
-          if (this.pendingResponses.has(requestId)) {
-            this.pendingResponses.delete(requestId)
-            reject(new Error('Rust REPL evaluator command timeout'))
-          }
-        }, 30000)
+      // Write command to stdin
+      const commandJson = JSONbig.stringify(command, replacer)
+      this.process!.stdin!.write(commandJson + '\n', err => {
+        if (err) {
+          this.pendingResponse = null
+          reject(new Error(`Failed to send command: ${err.message}`))
+        }
       })
+
+      // Timeout after 30 seconds
+      setTimeout(() => {
+        if (this.pendingResponse) {
+          this.pendingResponse = null
+          reject(new Error('Rust REPL evaluator command timeout'))
+        }
+      }, 30000)
     })
-
-    // Update the queue to wait for this command
-    this.commandQueue = result.catch(() => {}) // Swallow errors in queue chain
-
-    return result
   }
 
-  /**
-   * Evaluate a Quint expression
-   */
-  evaluate(expr: QuintEx): Either<QuintError, QuintEx> {
-    // This needs to be synchronous to match the Evaluator interface
-    // We'll need to refactor this, but for now throw an error
-    throw new Error(
-      'ReplEvaluatorWrapper.evaluate() is async but interface requires sync. Use evaluateAsync() instead.'
-    )
-  }
 
   /**
    * Async version of evaluate (what we actually implement)
    */
   async evaluateAsync(expr: QuintEx): Promise<Either<QuintError, QuintEx>> {
     await this.initializationPromise
-
     const response = await this.sendCommand({ cmd: 'Evaluate', expr })
 
     if (response.response === 'EvaluationResult') {
@@ -237,7 +240,6 @@ export class ReplEvaluatorWrapper {
 
   async replShiftAsync(): Promise<[boolean, string[], any, any]> {
     await this.initializationPromise
-
     const response = await this.sendCommand({ cmd: 'ReplShift' })
 
     if (response.response === 'ReplShiftResult') {
@@ -277,9 +279,9 @@ export class ReplEvaluatorWrapper {
   }
 
   /**
-   * Get the path to the Rust evaluator executable
+   * Get the path to the Rust evaluator executable synchronously
    */
-  private async getRustEvaluatorPath(): Promise<string> {
+  private getRustEvaluatorPathSync(): string {
     const evaluatorDir = rustEvaluatorDir('v0.3.0')
     const platform = process.platform
     const executable = platform === 'win32' ? 'quint-evaluator.exe' : 'quint_evaluator'

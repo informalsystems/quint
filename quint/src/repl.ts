@@ -701,7 +701,13 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
       state.nameResolver.errors = []
       return false
     }
-    state.evaluator.updateTable(state.nameResolver.table)
+
+    // For Rust evaluator, we need to await the table update
+    if (state.evaluator instanceof ReplEvaluatorWrapper) {
+      await state.evaluator.updateTableAsync(state.nameResolver.table)
+    } else {
+      state.evaluator.updateTable(state.nameResolver.table)
+    }
 
     const [analysisErrors, _analysisOutput] = analyzeInc(
       state.compilationState.analysisOutput,
