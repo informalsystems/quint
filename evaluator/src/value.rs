@@ -480,12 +480,26 @@ impl Value {
     pub fn as_closure(&self) -> impl Fn(&mut Env, Vec<Value>) -> EvalResult + '_ {
         match self.0.as_ref() {
             ValueInner::Lambda(registers, body) => move |env: &mut Env, args: Vec<Value>| {
+                let previous = args
+                    .iter()
+                    .enumerate()
+                    .map(|(i, _)| registers[i].borrow().clone())
+                    .collect::<Vec<_>>();
+
                 args.into_iter().enumerate().for_each(|(i, arg)| {
                     *registers[i].borrow_mut() = Ok(arg);
                 });
 
-                body.execute(env)
-                // FIXME: restore previous values (#1560)
+                let result = body.execute(env);
+
+                previous
+                    .into_iter()
+                    .enumerate()
+                    .for_each(|(i, value)| {
+                        *registers[i].borrow_mut() = value;
+                    });
+
+                result
             },
             _ => panic!("Expected lambda"),
         }
