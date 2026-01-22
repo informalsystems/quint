@@ -41,13 +41,6 @@ const withIO = async (inputText: string): Promise<string> => {
 
   const rl = quintRepl(input, output, { verbosity: 2 }, () => {})
 
-  // Wait for REPL initialization to complete.
-  // The REPL has an async initialization phase that sets up the evaluator
-  // and processes any preloaded files. We need to wait for this to complete
-  // before sending input. We wait long enough to ensure the async
-  // initialization IIFE has completed and the REPL is ready to process lines.
-  await new Promise(resolve => setTimeout(resolve, 200))
-
   // Send input line-by-line to the REPL with small delays.
   // We emit 'data' events for each line, with a delay between each one
   // to give the REPL's async processing time to handle each line before
