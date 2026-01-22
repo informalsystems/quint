@@ -289,16 +289,21 @@ async function fetchEvaluator(version: string, assetName: string, executable: st
  * @throws Will throw an error if the asset format is unsupported.
  */
 async function extractAsset(executable: string, assetName: string, assetPath: string, evaluatorDir: string) {
-  const util = require('util')
-  const exec = util.promisify(require('child_process').exec)
+  const { promisify } = require('util')
+  const { execFile } = require('child_process')
+  const { chmod } = require('fs/promises')
+  const execFileAsync = promisify(execFile)
 
   console.log(chalk.gray(`  Extracting ${assetPath}...`))
 
   const executablePath = path.join(evaluatorDir, executable)
 
   if (assetName.endsWith('.tar.gz')) {
-    await exec(`tar -xzf ${assetPath} -C ${evaluatorDir} `)
-    await exec(`chmod +x ${executablePath}`)
+    // Use execFile with array arguments to prevent shell injection
+    // execFile does not spawn a shell, so metacharacters are safely passed as literal arguments
+    await execFileAsync('tar', ['-xzf', assetPath, '-C', evaluatorDir])
+    // Use fs.chmod instead of shell command for security
+    await chmod(executablePath, 0o755)
   } else if (assetName.endsWith('.zip')) {
     // For Windows, use a simple unzip command (requires unzip to be installed)
     // You might want to use a JavaScript unzip library for better compatibility
