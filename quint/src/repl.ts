@@ -865,7 +865,6 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
     })
     if (state.nameResolver.errors.length > 0) {
       printErrorMessages(out, state, 'static analysis error', state.nameResolver.errors)
-      out('\n')
 
       parseResult.decls.forEach(decl => {
         if (isDef(decl)) {

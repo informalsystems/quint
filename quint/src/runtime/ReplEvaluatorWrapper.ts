@@ -120,6 +120,13 @@ export class ReplEvaluatorWrapper {
     })
 
     this.stdout.on('line', (line: string) => {
+      // Check if this is debug output (starts with '>')
+      if (line.startsWith('>')) {
+        // Print debug output directly to stdout
+        console.log(line)
+        return
+      }
+
       try {
         const response: ReplResponse = JSONbig.parse(line)
 
