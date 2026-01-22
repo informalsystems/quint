@@ -523,6 +523,7 @@ export function quintRepl(
       if (state.evaluator instanceof ReplEvaluatorWrapper) {
         await state.evaluator.shutdown()
       }
+      out('\n')
       exit()
       return
     }
@@ -609,9 +610,13 @@ export function quintRepl(
 
     // Mark initialization as complete and process any queued lines
     initializationComplete = true
-    for (const queuedLine of lineQueue) {
-      await consumeLine(queuedLine)
+    if (lineQueue.length > 0) {
+      // Show initial prompt before processing queued lines
       rl.prompt()
+      for (const queuedLine of lineQueue) {
+        await consumeLine(queuedLine)
+        rl.prompt()
+      }
     }
     lineQueue.length = 0
 
