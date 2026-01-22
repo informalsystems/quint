@@ -240,10 +240,10 @@ pub fn compile_lazy_op(op: &str) -> CompiledExprWithLazyArgs {
 
                 let next_vars_snapshot = env.var_storage.borrow().take_snapshot();
                 env.shift();
+                let predicate_result = predicate.execute(env)?;
                 // Drop the state from the trace, as we don't want to include it
                 // (expect is checking a condition and then rolling back)
                 env.trace.pop();
-                let predicate_result = predicate.execute(env)?;
                 env.var_storage.borrow_mut().restore(&next_vars_snapshot);
 
                 if !predicate_result.as_bool() {
@@ -437,11 +437,17 @@ pub fn compile_eager_op(op: &str) -> CompiledExprWithArgs {
 
         // Access a field in a record.
         "field" => |_env, args| {
-            Ok(args[0]
+            let field_name = args[1].as_str();
+            args[0]
                 .as_record_map()
-                .get(&args[1].as_str())
-                .unwrap()
-                .clone())
+                .get(&field_name)
+                .cloned()
+                .ok_or_else(|| {
+                    QuintError::new(
+                        "QNT501",
+                        format!("Accessing a missing record field {field_name}").as_str(),
+                    )
+                })
         },
 
         // A set with the field names of a record.
