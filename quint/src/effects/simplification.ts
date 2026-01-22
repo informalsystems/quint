@@ -94,8 +94,17 @@ function deduplicateEntity(entity: Entity): Entity {
   switch (entity.kind) {
     case 'variable':
       return entity
-    case 'concrete':
-      return { kind: 'concrete', stateVariables: Array.from(new Set<StateVariable>(entity.stateVariables)) }
+    case 'concrete': {
+      // Deduplicate state variables using value equality (name + reference),
+      // not object reference equality which Set would use
+      const unique: StateVariable[] = []
+      entity.stateVariables.forEach(v => {
+        if (!unique.some(u => isEqual(u, v))) {
+          unique.push(v)
+        }
+      })
+      return { kind: 'concrete', stateVariables: unique }
+    }
     case 'union': {
       const nestedEntities = entity.entities.map(v => deduplicateEntity(v))
       const unique: Entity[] = []
