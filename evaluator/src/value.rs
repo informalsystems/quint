@@ -17,7 +17,7 @@
 //! should have the same hash).
 
 use crate::evaluator::{CompiledExpr, Env, EvalResult};
-use crate::ir::QuintName;
+use crate::ir::{QuintError, QuintName};
 use imbl::shared_ptr::RcK;
 use imbl::{GenericHashMap, GenericHashSet, GenericVector};
 use itertools::Itertools;
@@ -115,7 +115,7 @@ impl Hash for ValueInner {
                 }
             }
             ValueInner::Lambda(_, _) => {
-                panic!("Cannot hash lambda");
+                panic!("Cannot hash lambda: lambdas are not comparable or hashable in Quint");
             }
             ValueInner::Variant(label, value) => {
                 label.hash(state);
@@ -158,7 +158,9 @@ impl PartialEq for ValueInner {
             (Self::Record(a), Self::Record(b)) => *a == *b,
             (Self::Map(a), Self::Map(b)) => *a == *b,
             (Self::List(a), Self::List(b)) => *a == *b,
-            (Self::Lambda(_, _), Self::Lambda(_, _)) => panic!("Cannot compare lambdas"),
+            (Self::Lambda(_, _), Self::Lambda(_, _)) => {
+                panic!("Cannot compare lambdas: lambdas are not comparable or hashable in Quint")
+            }
             (Self::Variant(a_label, a_value), Self::Variant(b_label, b_value)) => {
                 a_label == b_label && a_value == b_value
             }
@@ -273,7 +275,7 @@ impl Value {
                     .cardinality()
                     .pow(domain.cardinality().try_into().unwrap())
             }
-            _ => panic!("Cardinality not implemented for {self:?}"),
+            _ => panic!("Cardinality not implemented for {} value", self.type_name()),
         }
     }
 
@@ -297,7 +299,11 @@ impl Value {
                 // Check if domains are equal and all map values are in the range set
                 map_domain == *domain && map.values().all(|v| range.contains(v))
             }
-            _ => panic!("contains not implemented for {self:?}"),
+            _ => panic!(
+                "contains not implemented for {} containing {}",
+                self.type_name(),
+                elem.type_name()
+            ),
         }
     }
 
@@ -331,27 +337,54 @@ impl Value {
     /// Convert an integer value to `i64`. Panics if the wrong type is given,
     /// which should never happen as input expressions are type-checked.
     pub fn as_int(&self) -> i64 {
+        self.try_as_int()
+            .unwrap_or_else(|e| panic!("{}", e.message))
+    }
+
+    /// Try to convert an integer value to `i64`, returning an error if the type is wrong.
+    pub fn try_as_int(&self) -> Result<i64, QuintError> {
         match self.0.as_ref() {
-            ValueInner::Int(n) => *n,
-            _ => panic!("Expected integer"),
+            ValueInner::Int(n) => Ok(*n),
+            _ => Err(QuintError::new(
+                "QNT500",
+                &format!("Expected integer, got {}", self.type_name()),
+            )),
         }
     }
 
     /// Convert a boolean value to `bool`. Panics if the wrong type is given,
     /// which should never happen as input expressions are type-checked.
     pub fn as_bool(&self) -> bool {
+        self.try_as_bool()
+            .unwrap_or_else(|e| panic!("{}", e.message))
+    }
+
+    /// Try to convert a boolean value to `bool`, returning an error if the type is wrong.
+    pub fn try_as_bool(&self) -> Result<bool, QuintError> {
         match self.0.as_ref() {
-            ValueInner::Bool(b) => *b,
-            _ => panic!("Expected boolean"),
+            ValueInner::Bool(b) => Ok(*b),
+            _ => Err(QuintError::new(
+                "QNT500",
+                &format!("Expected boolean, got {}", self.type_name()),
+            )),
         }
     }
 
     /// Convert a string value to `Str`. Panics if the wrong type is given,
     /// which should never happen as input expressions are type-checked.
     pub fn as_str(&self) -> Str {
+        self.try_as_str()
+            .unwrap_or_else(|e| panic!("{}", e.message))
+    }
+
+    /// Try to convert a string value to `Str`, returning an error if the type is wrong.
+    pub fn try_as_str(&self) -> Result<Str, QuintError> {
         match self.0.as_ref() {
-            ValueInner::Str(s) => s.clone(),
-            _ => panic!("Expected string"),
+            ValueInner::Str(s) => Ok(s.clone()),
+            _ => Err(QuintError::new(
+                "QNT500",
+                &format!("Expected string, got {}", self.type_name()),
+            )),
         }
     }
 
@@ -443,7 +476,7 @@ impl Value {
 
                 Cow::Owned(result_set)
             }
-            _ => panic!("Expected set"),
+            _ => panic!("Expected set, got {}", self.type_name()),
         }
     }
 
@@ -452,7 +485,18 @@ impl Value {
     pub fn as_map(&self) -> &ImmutableMap<Value, Value> {
         match self.0.as_ref() {
             ValueInner::Map(map) => map,
-            _ => panic!("Expected map"),
+            _ => panic!("Expected map, got {}", self.type_name()),
+        }
+    }
+
+    /// Try to convert a map value to a map, returning an error if the type is wrong.
+    pub fn try_as_map(&self) -> Result<&ImmutableMap<Value, Value>, QuintError> {
+        match self.0.as_ref() {
+            ValueInner::Map(map) => Ok(map),
+            _ => Err(QuintError::new(
+                "QNT500",
+                &format!("Expected map, got {}", self.type_name()),
+            )),
         }
     }
 
@@ -462,7 +506,19 @@ impl Value {
         match self.0.as_ref() {
             ValueInner::Tuple(elems) => elems,
             ValueInner::List(elems) => elems,
-            _ => panic!("Expected list, got {self:?}"),
+            _ => panic!("Expected list, got {}", self.type_name()),
+        }
+    }
+
+    /// Try to convert a list or tuple value to a vector, returning an error if the type is wrong.
+    pub fn try_as_list(&self) -> Result<&ImmutableVec<Value>, QuintError> {
+        match self.0.as_ref() {
+            ValueInner::Tuple(elems) => Ok(elems),
+            ValueInner::List(elems) => Ok(elems),
+            _ => Err(QuintError::new(
+                "QNT500",
+                &format!("Expected list, got {}", self.type_name()),
+            )),
         }
     }
 
@@ -471,7 +527,18 @@ impl Value {
     pub fn as_record_map(&self) -> &ImmutableMap<QuintName, Value> {
         match self.0.as_ref() {
             ValueInner::Record(fields) => fields,
-            _ => panic!("Expected record"),
+            _ => panic!("Expected record, got {}", self.type_name()),
+        }
+    }
+
+    /// Try to convert a record value to a map, returning an error if the type is wrong.
+    pub fn try_as_record_map(&self) -> Result<&ImmutableMap<QuintName, Value>, QuintError> {
+        match self.0.as_ref() {
+            ValueInner::Record(fields) => Ok(fields),
+            _ => Err(QuintError::new(
+                "QNT500",
+                &format!("Expected record, got {}", self.type_name()),
+            )),
         }
     }
 
@@ -487,7 +554,7 @@ impl Value {
                 body.execute(env)
                 // FIXME: restore previous values (#1560)
             },
-            _ => panic!("Expected lambda"),
+            _ => panic!("Expected lambda, got {}", self.type_name()),
         }
     }
 
@@ -497,7 +564,18 @@ impl Value {
     pub fn as_variant(&self) -> (&QuintName, &Value) {
         match self.0.as_ref() {
             ValueInner::Variant(label, value) => (label, value),
-            _ => panic!("Expected variant"),
+            _ => panic!("Expected variant, got {}", self.type_name()),
+        }
+    }
+
+    /// Try to convert a variant value to a tuple, returning an error if the type is wrong.
+    pub fn try_as_variant(&self) -> Result<(&QuintName, &Value), QuintError> {
+        match self.0.as_ref() {
+            ValueInner::Variant(label, value) => Ok((label, value)),
+            _ => Err(QuintError::new(
+                "QNT500",
+                &format!("Expected variant, got {}", self.type_name()),
+            )),
         }
     }
 
@@ -510,6 +588,26 @@ impl Value {
     pub fn as_tuple2(&self) -> (Value, Value) {
         let mut elems = self.as_list().iter();
         (elems.next().unwrap().clone(), elems.next().unwrap().clone())
+    }
+
+    /// Get the type name of this value for error messages.
+    pub fn type_name(&self) -> &'static str {
+        match self.0.as_ref() {
+            ValueInner::Int(_) => "integer",
+            ValueInner::Bool(_) => "boolean",
+            ValueInner::Str(_) => "string",
+            ValueInner::Set(_) => "set",
+            ValueInner::Interval(_, _) => "interval",
+            ValueInner::CrossProduct(_) => "cross product",
+            ValueInner::PowerSet(_) => "powerset",
+            ValueInner::MapSet(_, _) => "map set",
+            ValueInner::Map(_) => "map",
+            ValueInner::Tuple(_) => "tuple",
+            ValueInner::List(_) => "list",
+            ValueInner::Record(_) => "record",
+            ValueInner::Lambda(_, _) => "lambda",
+            ValueInner::Variant(_, _) => "variant",
+        }
     }
 }
 
