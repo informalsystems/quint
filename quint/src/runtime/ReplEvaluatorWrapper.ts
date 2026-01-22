@@ -268,6 +268,13 @@ export class ReplEvaluatorWrapper {
   }
 
   /**
+   * Wait for initialization to complete
+   */
+  async waitForInitialization(): Promise<void> {
+    await this.initializationPromise
+  }
+
+  /**
    * Shutdown the Rust evaluator process
    */
   async shutdown(): Promise<void> {

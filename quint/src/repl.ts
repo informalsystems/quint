@@ -510,12 +510,10 @@ export function quintRepl(
     await consumeLine(line)
     rl.prompt()
   }).on('close', async () => {
-    // If we're processing replInput commands, or we have replInput pending
-    // and init hasn't completed, defer the exit. This prevents a race condition
+    // If we're processing replInput commands, or initialization hasn't completed,
+    // or we have queued lines, defer the exit. This prevents a race condition
     // where piped stdin triggers 'close' before the async initialization completes.
-    // Only defer for replInput - if stdin has actual content (piped from echo),
-    // we should exit normally after processing it.
-    if (processingReplInput || (options.replInput && !initializationComplete)) {
+    if (processingReplInput || !initializationComplete || lineQueue.length > 0) {
       shouldExitAfterReplInput = true
       return
     }
@@ -531,6 +529,11 @@ export function quintRepl(
   // Everything is registered. Optionally, load a module.
   // Use an async IIFE to handle initialization before starting the interactive loop
   ;(async () => {
+    // Wait for Rust evaluator initialization if using rust backend
+    if (state.evaluator instanceof ReplEvaluatorWrapper) {
+      await state.evaluator.waitForInitialization()
+    }
+
     if (options.preloadFilename) {
       await load(options.preloadFilename, options.importModule)
     }
@@ -568,6 +571,17 @@ export function quintRepl(
       rl.prompt()
     }
     lineQueue.length = 0
+
+    // If stdin closed while we were initializing (e.g., piped stdin),
+    // and we should exit, do it now
+    if (shouldExitAfterReplInput) {
+      if (state.evaluator instanceof ReplEvaluatorWrapper) {
+        await state.evaluator.shutdown()
+      }
+      out('\n')
+      exit()
+      return
+    }
 
     rl.prompt()
   })().catch(err => {
