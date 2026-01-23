@@ -256,7 +256,10 @@ function addedEntities(paramEntities: Entity[], resultEntity: Entity): Entity[] 
     case 'union':
       return resultEntity.entities.flatMap(entity => addedEntities(paramEntities, entity))
     case 'concrete': {
-      const vars = resultEntity.stateVariables.filter(v => !paramEntities.some(p => isEqual(p, v)))
+      // Extract all state variables from parameter entities for proper comparison
+      // Previously compared StateVariable with Entity types, which always returned false
+      const paramStateVars = paramEntities.flatMap(p => stateVariables(p))
+      const vars = resultEntity.stateVariables.filter(v => !paramStateVars.some(pv => isEqual(pv, v)))
       if (vars.length === 0) {
         return []
       }
