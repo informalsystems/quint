@@ -96,6 +96,39 @@ function tlcErr(explanation: string, isViolation: boolean): TlcError {
 }
 
 /**
+ * Validates a module name to prevent path traversal attacks.
+ * Module names should only contain alphanumeric characters and underscores.
+ *
+ * @param moduleName - The module name to validate
+ * @returns Either an error message or the validated module name
+ */
+function validateModuleName(moduleName: string): Either<string, string> {
+  // Only allow alphanumeric characters, underscores, and must start with letter/underscore
+  const safePattern = /^[a-zA-Z_][a-zA-Z0-9_]*$/
+  if (!safePattern.test(moduleName)) {
+    return left(
+      `Invalid module name: "${moduleName}". ` +
+        `Module names must contain only alphanumeric characters and underscores, ` +
+        `and must start with a letter or underscore.`
+    )
+  }
+  return right(moduleName)
+}
+
+/**
+ * Safely removes a temporary directory, ignoring errors if it doesn't exist.
+ *
+ * @param tmpDir - The directory path to remove
+ */
+function cleanupTmpDir(tmpDir: string): void {
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true })
+  } catch {
+    // Ignore cleanup errors - directory may already be removed
+  }
+}
+
+/**
  * Validates a JVM memory argument (maxHeap or stackSize) against expected patterns.
  *
  * This function prevents JVM argument injection attacks by ensuring only valid
@@ -153,12 +186,22 @@ export async function verify(
   }
   const stackSize = stackSizeResult.value
 
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'quint-tlc-'))
-  const tlaFile = path.join(tmpDir, `${config.moduleName}.tla`)
-  const cfgFile = path.join(tmpDir, `${config.moduleName}.cfg`)
+  // Validate module name to prevent path traversal attacks
+  const moduleNameResult = validateModuleName(config.moduleName)
+  if (moduleNameResult.isLeft()) {
+    return left(tlcErr(moduleNameResult.value, false))
+  }
+  const safeModuleName = moduleNameResult.value
 
-  fs.writeFileSync(tlaFile, config.tlaCode)
-  fs.writeFileSync(cfgFile, generateCfg(config))
+  // Create temp directory with restrictive permissions (owner-only access)
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'quint-tlc-'))
+  const tlaFile = path.join(tmpDir, `${safeModuleName}.tla`)
+  const cfgFile = path.join(tmpDir, `${safeModuleName}.cfg`)
+
+  // Write files with restrictive permissions (0600 = owner read/write only)
+  // This prevents other users from reading potentially sensitive specification content
+  fs.writeFileSync(tlaFile, config.tlaCode, { mode: 0o600 })
+  fs.writeFileSync(cfgFile, generateCfg(config), { mode: 0o600 })
 
   return new Promise(resolve => {
     const proc = spawn('java', [
@@ -186,7 +229,7 @@ export async function verify(
     })
 
     proc.on('close', code => {
-      fs.rmSync(tmpDir, { recursive: true, force: true })
+      cleanupTmpDir(tmpDir)
 
       if (code === TLC_EXIT_SUCCESS) {
         resolve(right(undefined))
@@ -198,7 +241,7 @@ export async function verify(
     })
 
     proc.on('error', err => {
-      fs.rmSync(tmpDir, { recursive: true, force: true })
+      cleanupTmpDir(tmpDir)
       resolve(left(tlcErr(`Failed to spawn TLC: ${err.message}`, false)))
     })
   })
