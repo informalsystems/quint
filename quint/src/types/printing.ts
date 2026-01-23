@@ -52,7 +52,7 @@ export function canonicalTypeScheme(t: TypeScheme): [string[], QuintType] {
     return { kind: 'row', name: name, value: { kind: 'var', name: `r${i}` } }
   })
 
-  const subs = compose(new Map(), typeSubs, rowSubs)
+  const subs = compose(new Map(), typeSubs, rowSubs).unwrap()
   const type = applySubstitution(new Map(), subs, t.type)
 
   return [vars, type]

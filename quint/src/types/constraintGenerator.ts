@@ -438,7 +438,7 @@ export class ConstraintGeneratorVisitor implements IRVisitor {
       return { kind: 'row', name: name, value: { kind: 'var', name: this.freshVarGenerator.freshVar('_t') } }
     })
 
-    const subs = compose(this.table, typeSubs, rowSubs)
+    const subs = compose(this.table, typeSubs, rowSubs).unwrap()
     return applySubstitution(this.table, subs, t.type)
   }
 

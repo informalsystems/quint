@@ -33,7 +33,8 @@ describe('compose', () => {
 
     const result = compose(table, s1, s2)
 
-    assert.sameDeepMembers(result, [
+    assert.isTrue(result.isRight())
+    assert.sameDeepMembers(result.unwrap(), [
       { kind: 'type', name: 'a', value: parseTypeOrThrow('int') },
       { kind: 'row', name: 'b', value: row },
     ])
@@ -45,7 +46,8 @@ describe('compose', () => {
 
     const result = compose(table, s1, s2)
 
-    assert.sameDeepMembers(result, s1.concat([{ kind: 'type', name: 'q', value: parseTypeOrThrow('int') }]))
+    assert.isTrue(result.isRight())
+    assert.sameDeepMembers(result.unwrap(), s1.concat([{ kind: 'type', name: 'q', value: parseTypeOrThrow('int') }]))
   })
 })
 

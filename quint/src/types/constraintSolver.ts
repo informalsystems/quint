@@ -61,7 +61,15 @@ export function solveConstraint(
               e.forEach((error, id) => errors.set(id, error))
               return errors
             })
-            .chain(newSubs => result.map(s => compose(table, newSubs, s)))
+            .chain(newSubs =>
+              result.chain(s =>
+                compose(table, newSubs, s).mapLeft(err => {
+                  const sourceId = 'sourceId' in con ? con.sourceId : constraint.sourceId
+                  errors.set(sourceId, buildErrorTree('Composing substitutions', err))
+                  return errors
+                })
+              )
+            )
         }, right([]))
     }
     case 'isDefined': {
@@ -98,7 +106,7 @@ export function solveConstraint(
 export function unify(table: LookupTable, t1: QuintType, t2: QuintType): Either<ErrorTree, Substitutions> {
   const location = `Trying to unify ${typeToString(t1)} and ${typeToString(t2)}`
 
-  if (typeToString(t1) === typeToString(t2)) {
+  if (typesEqual(t1, t2)) {
     return right([])
   } else if (t1.kind === 'var') {
     return bindType(t1.name, t2).mapLeft(msg => buildErrorLeaf(location, msg))
@@ -116,7 +124,7 @@ export function unify(table: LookupTable, t1: QuintType, t2: QuintType): Either<
     const result = unify(table, t1.arg, t2.arg)
     return result.chain(subs => {
       const subs2 = unify(table, applySubstitution(table, subs, t1.res), applySubstitution(table, subs, t2.res))
-      return subs2.map(s => compose(table, subs, s))
+      return subs2.chain(s => compose(table, subs, s))
     })
   } else if (t1.kind === 'tup' && t2.kind === 'tup') {
     return unifyRows(table, t1.fields, t2.fields).mapLeft(error => buildErrorTree(location, error))
@@ -150,7 +158,7 @@ export function unifyRows(table: LookupTable, r1: Row, r2: Row): Either<ErrorTre
   const location = `Trying to unify ${rowToString(ra)} and ${rowToString(rb)}`
 
   // Standard comparison and variable binding
-  if (rowToString(ra) === rowToString(rb)) {
+  if (rowsEqual(ra, rb)) {
     return right([])
   } else if (ra.kind === 'var') {
     return bindRow(ra.name, rb).mapLeft(msg => buildErrorLeaf(location, msg))
@@ -165,10 +173,12 @@ export function unifyRows(table: LookupTable, r1: Row, r2: Row): Either<ErrorTre
       if (ra.other.kind === 'var' && rb.other.kind === 'var' && ra.other.name !== rb.other.name) {
         // The result should be { ra.fields + rb.fields, tailVar }
         const tailVar: Row = { kind: 'var', name: `$${ra.other.name}$${rb.other.name}` }
-        const s1 = bindRow(ra.other.name, { ...rb, other: tailVar })
-        const s2 = bindRow(rb.other.name, { ...ra, other: tailVar })
+        const s1 = bindRow(ra.other.name, { ...rb, other: tailVar }).mapLeft(msg => buildErrorLeaf(location, msg))
+        const s2 = bindRow(rb.other.name, { ...ra, other: tailVar }).mapLeft(msg => buildErrorLeaf(location, msg))
         // These bindings + composition should always succeed. I couldn't find a scenario where they don't.
-        return s1.chain(sa => s2.map(sb => compose(table, sa, sb))).mapLeft(msg => buildErrorLeaf(location, msg))
+        return s1
+          .chain(sa => s2.chain(sb => compose(table, sa, sb)))
+          .mapLeft(error => buildErrorTree(location, error))
       } else {
         return left(
           buildErrorLeaf(
@@ -186,19 +196,27 @@ export function unifyRows(table: LookupTable, r1: Row, r2: Row): Either<ErrorTre
       // This call will fit in the above case of row unification
       const tailSubs = unifyRows(table, { ...ra, fields: uniqueFields1 }, { ...rb, fields: uniqueFields2 })
 
-      // Sort shared fields by field name, and get their types
-      const fieldTypes: [QuintType, QuintType][] = sharedFieldNames.map(n => {
-        const f1 = ra.fields.find(f => f.fieldName === n)!
-        const f2 = rb.fields.find(f => f.fieldName === n)!
-        return [f1.fieldType, f2.fieldType]
-      })
-
-      // Now, for each shared field, we need to unify the types
-      const fieldSubs = chainUnifications(table, ...(unzip(fieldTypes) as [QuintType[], QuintType[]]))
+      // Now, for each shared field, we need to unify the types with a field-specific location
+      const fieldSubs = sharedFieldNames.reduce((result: Either<Error, Substitutions>, fieldName) => {
+        return result.chain(subs => {
+          const f1 = ra.fields.find(f => f.fieldName === fieldName)!
+          const f2 = rb.fields.find(f => f.fieldName === fieldName)!
+          const leftType = applySubstitution(table, subs, f1.fieldType)
+          const rightType = applySubstitution(table, subs, f2.fieldType)
+          return unify(table, leftType, rightType)
+            .chain(newSubs => compose(table, newSubs, subs))
+            .mapLeft(err =>
+              buildErrorTree(
+                `Field ${fieldName}: expected ${typeToString(leftType)}, found ${typeToString(rightType)}`,
+                err
+              )
+            )
+        })
+      }, right([]))
 
       // Return the composition of the two substitutions
       return tailSubs
-        .chain(subs => fieldSubs.map(s => compose(table, subs, s)))
+        .chain(subs => fieldSubs.chain(s => compose(table, subs, s)))
         .mapLeft(error => buildErrorTree(location, error))
     }
   } else {
@@ -207,23 +225,8 @@ export function unifyRows(table: LookupTable, r1: Row, r2: Row): Either<ErrorTre
 }
 
 function unifyWithAlias(table: LookupTable, t1: QuintConstType, t2: QuintType) {
-  const aliasValue = t1.id ? table.get(t1.id) : undefined
-  if (aliasValue?.kind !== 'typedef') {
-    return left(
-      buildErrorLeaf(`Trying to unify ${t1.name} and ${typeToString(t2)}`, `Couldn't find type alias ${t1.name}`)
-    )
-  }
-
-  if (!aliasValue.type) {
-    return left(
-      buildErrorLeaf(
-        `Trying to unify ${t1.name} and ${typeToString(t2)}`,
-        `Couldn't unify uninterpreted type ${t1.name} with different type`
-      )
-    )
-  }
-
-  return unify(table, aliasValue.type, t2)
+  const location = `Trying to unify ${t1.name} and ${typeToString(t2)}`
+  return resolveAliasType(table, t1, location).chain(resolved => unify(table, resolved, t2))
 }
 
 function bindType(name: string, type: QuintType): Either<string, Substitutions> {
@@ -249,7 +252,122 @@ function applySubstitutionsAndUnify(
   t2: QuintType
 ): Either<Error, Substitutions> {
   const newSubstitutions = unify(table, applySubstitution(table, subs, t1), applySubstitution(table, subs, t2))
-  return newSubstitutions.map(newSubs => compose(table, newSubs, subs))
+  return newSubstitutions.chain(newSubs => compose(table, newSubs, subs))
+}
+
+function resolveAliasType(
+  table: LookupTable,
+  alias: QuintConstType,
+  location: string
+): Either<ErrorTree, QuintType> {
+  const visited = new Set<string>()
+  let current: QuintConstType = alias
+
+  while (true) {
+    const key = current.id !== undefined ? `id:${current.id}` : `name:${current.name}`
+    if (visited.has(key)) {
+      return left(buildErrorLeaf(location, `Cyclical type alias detected involving ${current.name}`))
+    }
+    visited.add(key)
+
+    const aliasValue = current.id ? table.get(current.id) : undefined
+    if (aliasValue?.kind !== 'typedef') {
+      return left(buildErrorLeaf(location, `Couldn't find type alias ${current.name}`))
+    }
+
+    if (!aliasValue.type) {
+      return left(buildErrorLeaf(location, `Couldn't unify uninterpreted type ${current.name} with different type`))
+    }
+
+    if (aliasValue.type.kind === 'const') {
+      const next = aliasValue.type
+      const nextKey = next.id !== undefined ? `id:${next.id}` : `name:${next.name}`
+      if (visited.has(nextKey)) {
+        return left(buildErrorLeaf(location, `Cyclical type alias detected involving ${next.name}`))
+      }
+      if (next.id !== undefined) {
+        current = next
+        continue
+      }
+      return right(next)
+    }
+
+    return right(aliasValue.type)
+  }
+}
+
+function typesEqual(t1: QuintType, t2: QuintType): boolean {
+  if (t1.kind !== t2.kind) {
+    return false
+  }
+
+  switch (t1.kind) {
+    case 'bool':
+    case 'int':
+    case 'str':
+      return true
+    case 'var':
+      return t1.name === (t2 as typeof t1).name
+    case 'const':
+      return t1.name === (t2 as typeof t1).name
+    case 'set':
+    case 'list':
+      return typesEqual(t1.elem, (t2 as typeof t1).elem)
+    case 'fun':
+      return typesEqual(t1.arg, (t2 as typeof t1).arg) && typesEqual(t1.res, (t2 as typeof t1).res)
+    case 'oper': {
+      const other = t2 as typeof t1
+      return (
+        t1.args.length === other.args.length &&
+        t1.args.every((arg, index) => typesEqual(arg, other.args[index])) &&
+        typesEqual(t1.res, other.res)
+      )
+    }
+    case 'tup':
+    case 'rec':
+      return rowsEqual(t1.fields, (t2 as typeof t1).fields)
+    case 'sum':
+      return rowsEqual(t1.fields, (t2 as typeof t1).fields)
+    case 'app': {
+      const other = t2 as typeof t1
+      return (
+        typesEqual(other.ctor, t1.ctor) &&
+        t1.args.length === other.args.length &&
+        t1.args.every((arg, i) => typesEqual(arg, other.args[i]))
+      )
+    }
+  }
+
+  return false
+}
+
+function rowsEqual(r1: Row, r2: Row): boolean {
+  if (r1.kind !== r2.kind) {
+    return false
+  }
+
+  switch (r1.kind) {
+    case 'empty':
+      return true
+    case 'var':
+      return r1.name === (r2 as typeof r1).name
+    case 'row': {
+      const other = r2 as typeof r1
+      if (r1.fields.length !== other.fields.length) {
+        return false
+      }
+      for (let i = 0; i < r1.fields.length; i++) {
+        const leftField = r1.fields[i]
+        const rightField = other.fields[i]
+        if (leftField.fieldName !== rightField.fieldName || !typesEqual(leftField.fieldType, rightField.fieldType)) {
+          return false
+        }
+      }
+      return rowsEqual(r1.other, other.other)
+    }
+  }
+
+  return false
 }
 
 function checkSameLength(
