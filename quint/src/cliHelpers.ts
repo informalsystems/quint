@@ -105,17 +105,68 @@ export function loadApalacheConfig(stage: CompiledStage, apalacheConfig: string 
 }
 
 /**
+ * Checks if a regex pattern contains constructs that could cause catastrophic
+ * backtracking (ReDoS - Regular Expression Denial of Service).
+ *
+ * This is a heuristic check that catches the most common dangerous patterns:
+ * - Nested quantifiers: (a+)+ or (a*)*
+ * - Overlapping quantifiers with alternatives: (a|a)+
+ * - Multiple adjacent quantifiers: a++, a## (after expansion)
+ *
+ * @param pattern - The regex pattern to check
+ * @returns true if the pattern appears potentially unsafe
+ */
+function isPotentiallyUnsafeRegex(pattern: string): boolean {
+  // Check for nested quantifiers like (a+)+, (a*)+, (a+)*, (a?)+ etc.
+  // These can cause exponential backtracking
+  const nestedQuantifiers = /\([^)]*[+*][^)]*\)[+*?]|\([^)]*[+*?][^)]*\)\{/
+
+  // Check for repeated capturing groups with quantifiers
+  // e.g., (.+)+ or (.*)*
+  const repeatedCapture = /\(\.[+*]\)[+*]/
+
+  // Check for overlapping alternatives that could cause exponential matching
+  // e.g., (a|a)+ or (\w|\d)+ where \w includes \d
+  const overlappingAlternatives = /\([^)]*\|[^)]*\)[+*]/
+
+  // Check for multiple consecutive quantifiers (after potential expansion)
+  const consecutiveQuantifiers = /[+*?]{2,}/
+
+  return (
+    nestedQuantifiers.test(pattern) ||
+    repeatedCapture.test(pattern) ||
+    overlappingAlternatives.test(pattern) ||
+    consecutiveQuantifiers.test(pattern)
+  )
+}
+
+/**
  * Does a definition name match the expected test criteria.
  *
- * @param tests an optional array of test names
- * @param name the name of a definition to match
- * @returns whether the name matches the tests, if tests are not undefined,
- *          or name ends with 'Test'
- *
+ * @param match - an optional regex pattern to match test names against
+ * @param name - the name of a definition to match
+ * @returns whether the name matches the pattern (if provided),
+ *          or name ends with 'Test' (if no pattern provided)
+ * @throws Error if the regex pattern is invalid or potentially unsafe (ReDoS risk)
  */
-export function isMatchingTest(match: string | undefined, name: string) {
+export function isMatchingTest(match: string | undefined, name: string): boolean {
   if (match) {
-    return new RegExp(match).exec(name) !== null
+    // Security check: detect potentially dangerous regex patterns that could cause
+    // catastrophic backtracking (ReDoS attacks)
+    if (isPotentiallyUnsafeRegex(match)) {
+      throw new Error(
+        `Potentially unsafe regex pattern detected: "${match}". ` +
+          `Patterns with nested quantifiers (e.g., "(a+)+") can cause performance issues. ` +
+          `Please simplify your pattern or use a literal string match.`
+      )
+    }
+
+    try {
+      const regex = new RegExp(match)
+      return regex.test(name)
+    } catch (e) {
+      throw new Error(`Invalid regex pattern "${match}": ${e instanceof Error ? e.message : String(e)}`)
+    }
   } else {
     return name.endsWith('Test')
   }

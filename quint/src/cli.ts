@@ -80,6 +80,19 @@ function chainCmd<S, T>(
   return (prevResult: CLIProcedure<S>) => prevResult.asyncChain(nextCmd)
 }
 
+/**
+ * Global error handler for unhandled promise rejections in CLI commands.
+ * Ensures that unexpected errors are reported to the user and the process
+ * exits with an appropriate error code.
+ *
+ * @param err - The error that was thrown
+ */
+function handleFatalError(err: unknown): never {
+  const message = err instanceof Error ? err.message : String(err)
+  console.error(`Fatal error: ${message}`)
+  process.exit(1)
+}
+
 // construct parsing commands with yargs
 const parseCmd = {
   command: 'parse <input>',
@@ -89,7 +102,7 @@ const parseCmd = {
       desc: 'name of the source map',
       type: 'string',
     }),
-  handler: (args: any) => load(args).then(chainCmd(parse)).then(outputResult),
+  handler: (args: any) => load(args).then(chainCmd(parse)).then(outputResult).catch(handleFatalError),
 }
 
 // construct typecheck commands with yargs
@@ -97,7 +110,8 @@ const typecheckCmd = {
   command: 'typecheck <input>',
   desc: 'check types and effects of a Quint specification',
   builder: defaultOpts,
-  handler: (args: any) => load(args).then(chainCmd(parse)).then(chainCmd(typecheck)).then(outputResult),
+  handler: (args: any) =>
+    load(args).then(chainCmd(parse)).then(chainCmd(typecheck)).then(outputResult).catch(handleFatalError),
 }
 
 // construct the compile subcommand
@@ -146,7 +160,8 @@ const compileCmd = {
       .then(chainCmd(typecheck))
       .then(chainCmd(compile))
       .then(chainCmd(outputCompilationTarget))
-      .then(outputResult),
+      .then(outputResult)
+      .catch(handleFatalError),
 }
 
 // construct repl commands with yargs
@@ -225,7 +240,12 @@ const testCmd = {
       delete args.output
     }
 
-    load(args).then(chainCmd(parse)).then(chainCmd(typecheck)).then(chainCmd(runTests)).then(outputResult)
+    return load(args)
+      .then(chainCmd(parse))
+      .then(chainCmd(typecheck))
+      .then(chainCmd(runTests))
+      .then(outputResult)
+      .catch(handleFatalError)
   },
 }
 
@@ -322,7 +342,12 @@ const runCmd = {
   //        type: 'number',
   //      })
   handler: (args: any) =>
-    load(args).then(chainCmd(parse)).then(chainCmd(typecheck)).then(chainCmd(runSimulator)).then(outputResult),
+    load(args)
+      .then(chainCmd(parse))
+      .then(chainCmd(typecheck))
+      .then(chainCmd(runSimulator))
+      .then(outputResult)
+      .catch(handleFatalError),
 }
 
 // construct verify commands with yargs
@@ -404,7 +429,8 @@ const verifyCmd = {
       .then(chainCmd(typecheck))
       .then(chainCmd(compile))
       .then(chainCmd(verifySpec))
-      .then(outputResult),
+      .then(outputResult)
+      .catch(handleFatalError),
 }
 
 // construct documenting commands with yargs
@@ -412,7 +438,7 @@ const docsCmd = {
   command: 'docs <input>',
   desc: 'produces documentation from docstrings in a Quint specification',
   builder: defaultOpts,
-  handler: (args: any) => load(args).then(chainCmd(docs)).then(outputResult),
+  handler: (args: any) => load(args).then(chainCmd(docs)).then(outputResult).catch(handleFatalError),
 }
 
 // Perform parser input validation.
@@ -467,4 +493,4 @@ async function main() {
     .parse()
 }
 
-main()
+main().catch(handleFatalError)

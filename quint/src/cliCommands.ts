@@ -303,7 +303,11 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
     console.log(`\n  ${mainName}`)
   }
 
-  const testDefs = Array.from(prev.resolver.collector.definitionsByModule.get(mainName)!.values())
+  const moduleDefinitions = prev.resolver.collector.definitionsByModule.get(mainName)
+  if (!moduleDefinitions) {
+    return cliErr(`Module '${mainName}' not found in definitions map`, { ...prev, errors: [], sourceCode: new Map() })
+  }
+  const testDefs = Array.from(moduleDefinitions.values())
     .flat()
     .filter(d => d.kind === 'def' && options.testMatch(d.name))
 

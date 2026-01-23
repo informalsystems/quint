@@ -114,7 +114,11 @@ class Flattener implements IRVisitor {
   enterExport(decl: QuintExport) {
     // Find all top-level definitions in the exported module that are used somewhere
     // (not necessarily in the module itself)
-    const ids = this.modulesByName.get(decl.protoName)!.declarations.map(d => d.id)
+    const exportedModule = this.modulesByName.get(decl.protoName)
+    if (!exportedModule) {
+      throw new Error(`Internal error: exported module '${decl.protoName}' not found in modulesByName map`)
+    }
+    const ids = exportedModule.declarations.map(d => d.id)
     const definitions = [...this.lookupTable.values()].filter(d => ids.includes(d.id))
 
     definitions.forEach(def => {
