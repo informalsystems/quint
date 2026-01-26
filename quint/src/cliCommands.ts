@@ -323,20 +323,6 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
         throw new Error(`Expected test definition, got ${def.kind}: ${def.name}`)
       }
       const testName = nameWithNamespaces(def.name, List(def.namespaces))
-
-      // Debug: Check what's in the table for this test definition
-      if (testName.includes('decisionTest')) {
-        const tableEntry = prev.table.get(def.id)
-        console.error(`\nDEBUG table entry for test id=${def.id} (${testName}):`)
-        console.error(`  kind: ${tableEntry?.kind}`)
-        console.error(`  name: ${tableEntry?.name}`)
-        console.error(`  importedFrom: ${tableEntry?.importedFrom?.kind}`)
-        console.error(`  namespaces: ${JSON.stringify(tableEntry?.namespaces)}`)
-        if (tableEntry?.importedFrom?.kind === 'instance') {
-          console.error(`  instance has ${tableEntry.importedFrom.overrides.length} overrides`)
-        }
-      }
-
       const result = await quintRustWrapper.test(
         def.id,
         prev.table,
