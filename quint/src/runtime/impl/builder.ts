@@ -33,6 +33,7 @@ import { zerog } from '../../idGenerator'
 import { expressionToString } from '../../ir/IRprinting'
 import { format } from '../../prettierimp'
 import { prettyQuintEx } from '../../graphics'
+import { diffRuntimeValueDoc } from './runtimeValueDiff'
 
 /**
  * The type returned by the builder in its methods, which can be called to get the
@@ -450,15 +451,18 @@ function buildExprCore(builder: Builder, expr: QuintEx): EvalFunction {
             return ctx => {
               const nextValue = builder.traceToFollow!.get().at(0)!.toOrderedMap().get(varDef.name)!
               register.value = right(nextValue)
-              return rhsEval(ctx).map(rightValue => {
+              return rhsEval(ctx).chain(rightValue => {
                 const result = nextValue.equals(rightValue)
                 if (!result) {
                   // ctx.diffs.push(ctx.varStorage.snapshot())
-                  console.log(format(80, 0, prettyQuintEx(nextValue.toQuintEx(zerog))))
-                  console.log('vs')
-                  console.log(format(80, 0, prettyQuintEx(rightValue.toQuintEx(zerog))))
+                  const doc = diffRuntimeValueDoc(nextValue, rightValue)
+                  console.log(format(80, 0, doc))
+                  // console.log(format(80, 0, prettyQuintEx(nextValue.toQuintEx(zerog))))
+                  // console.log('vs')
+                  // console.log(format(80, 0, prettyQuintEx(rightValue.toQuintEx(zerog))))
+                  return left({ code: 'QNT000', message: `Failure replaying trace` })
                 }
-                return rv.mkBool(result)
+                return right(rv.mkBool(result))
               })
             }
           }

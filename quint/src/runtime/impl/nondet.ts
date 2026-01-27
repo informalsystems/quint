@@ -55,7 +55,7 @@ export function evalNondet(
       const pickToFollow = ctx.varStorage.nondetPicks.get(name)
       if (pickToFollow) {
         // An ITF trace was loaded, so we follow the picked value.
-        console.log('nondet', name, pickToFollow)
+        // console.log('nondet', name, pickToFollow)
         cache.value = right(pickToFollow)
         const result = bodyEval(ctx)
         cache.value = undefined
