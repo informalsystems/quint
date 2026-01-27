@@ -63,7 +63,9 @@ import {
 import { deriveVerbosity, getInvariants, guessMainModule, isMatchingTest, mkErrorMessage, toExpr } from './cliHelpers'
 import { fail } from 'assert'
 import { newRng } from './rng'
-import { TestOptions } from './runtime/testing'
+import { TestOptions, TestResult } from './runtime/testing'
+import { List } from 'immutable'
+import { nameWithNamespaces } from './runtime/impl/builder'
 
 export type stage =
   | 'loading'
@@ -307,8 +309,35 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
     .flat()
     .filter(d => d.kind === 'def' && options.testMatch(d.name))
 
-  const evaluator = new Evaluator(prev.table, newTraceRecorder(verbosityLevel, options.rng, 1), options.rng)
-  const results = testDefs.map((def, index) => evaluator.test(def, options.maxSamples, index, options.onTrace))
+  let results: TestResult[]
+  if (prev.args.backend === 'rust') {
+    const quintRustWrapper = new QuintRustWrapper(verbosityLevel)
+    // Add test definitions from definitionsByModule to the lookup table
+    // This ensures instance metadata (importedFrom, namespaces) is preserved
+    testDefs.forEach(def => {
+      prev.table.set(def.id, def)
+    })
+    results = []
+    for (const def of testDefs) {
+      if (def.kind !== 'def') {
+        throw new Error(`Expected test definition, got ${def.kind}: ${def.name}`)
+      }
+      const testName = nameWithNamespaces(def.name, List(def.namespaces))
+
+      const result = await quintRustWrapper.test(
+        def.id,
+        prev.table,
+        options.rng.getState(),
+        options.maxSamples,
+        testName,
+        options.onTrace
+      )
+      results.push(result)
+    }
+  } else {
+    const evaluator = new Evaluator(prev.table, newTraceRecorder(verbosityLevel, options.rng, 1), options.rng)
+    results = testDefs.map((def, index) => evaluator.test(def, options.maxSamples, index, options.onTrace))
+  }
 
   const elapsedMs = Date.now() - startMs
   outputTestResults(results, verbosityLevel, elapsedMs)
