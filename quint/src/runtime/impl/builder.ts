@@ -28,6 +28,12 @@ import { LookupDefinition, LookupTable } from '../../names/base'
 import { NamedRegister, VarStorage, initialRegisterValue } from './VarStorage'
 import { List } from 'immutable'
 import { evalNondet } from './nondet'
+import { Trace } from './trace'
+import { zerog } from '../../idGenerator'
+import { expressionToString } from '../../ir/IRprinting'
+import { format } from '../../prettierimp'
+import { prettyQuintEx } from '../../graphics'
+import { diffRuntimeValueDoc } from './runtimeValueDiff'
 
 /**
  * The type returned by the builder in its methods, which can be called to get the
@@ -51,6 +57,7 @@ export class Builder {
   memoByInstance: Map<bigint, Map<bigint, EvalFunction>> = new Map()
   namespaces: List<string> = List()
   varStorage: VarStorage
+  traceToFollow: Trace | undefined
 
   /**
    * Constructs a new Builder instance.
@@ -75,7 +82,6 @@ export class Builder {
     if (this.varStorage.vars.has(key)) {
       return
     }
-
     const varName = nameWithNamespaces(name, this.namespaces)
     const register: NamedRegister = { name: varName, value: initialRegisterValue(varName) }
     const nextRegister: NamedRegister = { name: varName, value: initialRegisterValue(varName) }
@@ -165,6 +171,7 @@ export function buildExpr(builder: Builder, expr: QuintEx): EvalFunction {
       return exprEval(ctx).mapLeft(err => (err.reference === undefined ? { ...err, reference: expr.id } : err))
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown error'
+      throw error
       return left({ code: 'QNT501', message: message, reference: expr.id })
     }
   }
@@ -438,6 +445,27 @@ function buildExprCore(builder: Builder, expr: QuintEx): EvalFunction {
           builder.discoverVar(varDef.id, varDef.name)
           const register = builder.getNextVar(varDef.id)
           const exprEval = buildExpr(builder, expr.args[1])
+
+          if (builder.traceToFollow) {
+            const rhsEval = buildExpr(builder, expr.args[1])
+            return ctx => {
+              const nextValue = builder.traceToFollow!.get().at(0)!.toOrderedMap().get(varDef.name)!
+              register.value = right(nextValue)
+              return rhsEval(ctx).chain(rightValue => {
+                const result = nextValue.equals(rightValue)
+                if (!result) {
+                  // ctx.diffs.push(ctx.varStorage.snapshot())
+                  const doc = diffRuntimeValueDoc(nextValue, rightValue)
+                  console.log(format(80, 0, doc))
+                  // console.log(format(80, 0, prettyQuintEx(nextValue.toQuintEx(zerog))))
+                  // console.log('vs')
+                  // console.log(format(80, 0, prettyQuintEx(rightValue.toQuintEx(zerog))))
+                  return left({ code: 'QNT000', message: `Failure replaying trace` })
+                }
+                return right(rv.mkBool(result))
+              })
+            }
+          }
 
           return ctx => {
             return exprEval(ctx).map(value => {

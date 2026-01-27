@@ -60,6 +60,8 @@ export class Context {
    */
   public varStorage: VarStorage
 
+  // public diffs: Snapshot[] = []
+
   /**
    * Constructs a new evaluation context.
    *

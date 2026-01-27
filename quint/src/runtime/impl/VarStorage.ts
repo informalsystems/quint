@@ -30,7 +30,7 @@ export interface NamedRegister extends Register {
 /**
  * A snapshot of the VarStorage at a given point in time. Stores only information that is needed to backtrack.
  */
-interface Snapshot {
+export interface Snapshot {
   nextVars: ImmutableMap<string, NamedRegister>
   nondetPicks: Map<string, RuntimeValue | undefined>
   actionTaken: string | undefined
@@ -133,8 +133,10 @@ export class VarStorage {
     return rv.mkRecord(map)
   }
 
-  fromRecord(record: RuntimeValue) {
-    this.reset()
+  fromRecord(record: RuntimeValue, reset: boolean = true) {
+    if (reset) {
+      this.reset()
+    }
 
     record.toOrderedMap().forEach((value, key) => {
       const regToSet = this.vars
@@ -146,7 +148,7 @@ export class VarStorage {
         regToSet.value = right(value)
       } else if (key === NONDET_PICKS && this.storeMetadata) {
         value.toOrderedMap().forEach((v, k) => {
-          this.nondetPicks.set(k, v.toVariant()[0] == 'None' ? undefined : v)
+          this.nondetPicks.set(k, v.toVariant()[0] == 'None' ? undefined : v.toVariant()[1])
         })
       } else if (key === ACTION_TAKEN && this.storeMetadata) {
         this.actionTaken = value.toStr()

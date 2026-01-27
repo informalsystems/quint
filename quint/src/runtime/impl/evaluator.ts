@@ -81,6 +81,7 @@ export class Evaluator {
    * and the trace is extended.
    */
   shift(): void {
+    this.builder.traceToFollow?.shift()
     this.ctx.shift()
   }
 
@@ -157,7 +158,8 @@ export class Evaluator {
     nruns: number,
     nsteps: number,
     ntraces: number,
-    onTrace?: TraceHook
+    onTrace?: TraceHook,
+    traceToFollow?: Trace
   ): Outcome {
     let errorsFound = 0
     let failure: QuintError | undefined = undefined
@@ -173,12 +175,15 @@ export class Evaluator {
     )
     progressBar.start(Number(nruns), 0, { speed: '0' })
 
+    this.builder.traceToFollow = traceToFollow
+
     const initEval = buildExpr(this.builder, init)
     const stepEval = buildExpr(this.builder, step)
     const invEval = buildExpr(this.builder, inv)
     const witnessesEvals = witnesses.map(w => buildExpr(this.builder, w))
     const witnessingTraces = new Array(witnesses.length).fill(0)
     const traceLengths: number[] = []
+    const otherErrors: QuintError[] = []
 
     let runNo = 0
     for (; errorsFound < ntraces && !failure && runNo < nruns; runNo++) {
@@ -189,11 +194,15 @@ export class Evaluator {
 
       this.recorder.onRunCall()
       this.reset()
+      if (traceToFollow) {
+        this.ctx.varStorage.fromRecord(traceToFollow!.get().at(0)!)
+      }
       // Mocked def for the trace recorder
       const initApp: QuintApp = { id: 0n, kind: 'app', opcode: 'q::initAndInvariant', args: [] }
       this.recorder.onUserOperatorCall(initApp)
 
       const initResult = initEval(this.ctx).mapLeft(error => (failure = error))
+      // console.log(initResult)
       if (!isTrue(initResult)) {
         traceLengths.push(0)
         this.recorder.onUserOperatorReturn(initApp, [], initResult)
@@ -208,6 +217,9 @@ export class Evaluator {
         } else {
           // check all { step, shift(), inv } in a loop
           for (let i = 0; errorsFound < ntraces && !failure && i < nsteps; i++) {
+            if (traceToFollow) {
+              this.ctx.varStorage.fromRecord(traceToFollow!.get().at(0)!, false)
+            }
             const stepApp: QuintApp = {
               id: 0n,
               kind: 'app',
@@ -217,6 +229,7 @@ export class Evaluator {
             this.recorder.onUserOperatorCall(stepApp)
 
             const stepResult = stepEval(this.ctx).mapLeft(error => (failure = error))
+            // console.log(stepResult)
             if (!isTrue(stepResult)) {
               traceLengths.push(this.trace.get().length)
 
@@ -226,6 +239,17 @@ export class Evaluator {
               // the run. Hence, do not report an error here, but simply
               // drop the run. Otherwise, we would have a lot of false
               // positives, which look like deadlocks but they are not.
+
+              // We actually want to flag an issue if we were following a specific trace
+              // if (traceToFollow) {
+              //   // If we are following a trace, we want to report an error
+              //   errorsFound++
+              //   otherErrors.push({
+              //     code: 'QNT512',
+              //     message: `Simulation run ${runNo} failed at step ${i}`,
+              //     reference: stepApp.id,
+              //   })
+              // }
 
               this.recorder.onUserOperatorReturn(stepApp, [], stepResult)
               this.recorder.onRunReturn(right(rv.mkBool(true)), this.trace.get())
@@ -289,7 +313,7 @@ export class Evaluator {
 
     return {
       status: failure ? 'error' : errorsFound == 0 ? 'ok' : 'violation',
-      errors: failure ? [failure, ...runtimeErrors] : runtimeErrors,
+      errors: failure ? [failure, ...runtimeErrors, ...otherErrors] : [...runtimeErrors, ...otherErrors],
       bestTraces: traces,
       witnessingTraces,
       samples: runNo,
