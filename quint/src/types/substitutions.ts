@@ -12,8 +12,8 @@
  * @module
  */
 
-import { Either } from '@sweet-monads/either'
-import { ErrorTree, errorTreeToString } from '../errorTree'
+import { Either, left, right } from '@sweet-monads/either'
+import { ErrorTree, buildErrorLeaf, buildErrorTree } from '../errorTree'
 import { LookupTable } from '../names/base'
 import { ConcreteFixedRow, QuintType, Row } from '../ir/quintTypes'
 import { Constraint } from './base'
@@ -36,9 +36,8 @@ type Substitution = { kind: 'type'; name: string; value: QuintType } | { kind: '
  *
  * @returns a new substitutions list containing the composition of given substitutions
  */
-export function compose(table: LookupTable, s1: Substitutions, s2: Substitutions): Substitutions {
-  const newS2 = applySubstitutionsToSubstitutions(table, s1, s2)
-  return newS2.concat(s1)
+export function compose(table: LookupTable, s1: Substitutions, s2: Substitutions): Either<ErrorTree, Substitutions> {
+  return applySubstitutionsToSubstitutions(table, s1, s2).map(newS2 => newS2.concat(s1))
 }
 
 /**
@@ -150,8 +149,13 @@ export function applySubstitutionToConstraint(table: LookupTable, subs: Substitu
   }
 }
 
-function applySubstitutionsToSubstitutions(table: LookupTable, s1: Substitutions, s2: Substitutions): Substitutions {
-  return s2.flatMap(s => {
+function applySubstitutionsToSubstitutions(
+  table: LookupTable,
+  s1: Substitutions,
+  s2: Substitutions
+): Either<ErrorTree, Substitutions> {
+  const composed: Substitutions = []
+  for (const s of s2) {
     const sub = s1.find(sub => s.name === sub.name)
     if (sub) {
       let result: Either<ErrorTree, Substitutions>
@@ -160,25 +164,33 @@ function applySubstitutionsToSubstitutions(table: LookupTable, s1: Substitutions
       } else if (sub.kind === 'row' && s.kind === 'row') {
         result = unifyRows(table, s.value, sub.value)
       } else {
-        throw new Error(
-          `Substitutions with same name (${s.name}) but incompatible kinds: ${substitutionsToString([sub, s])}`
+        return left(
+          buildErrorLeaf(
+            `Composing substitutions for ${s.name}`,
+            `Substitutions with same name (${s.name}) but incompatible kinds: ${substitutionsToString([sub, s])}`
+          )
         )
       }
 
       if (result.isLeft()) {
-        throw new Error(`Unifying substitutions with same name: ${s.name}, ${errorTreeToString(result.value)}`)
+        return left(buildErrorTree(`Composing substitutions for ${s.name}`, result.value))
       } else {
-        return result.value
+        composed.push(...result.value)
       }
+      continue
     }
 
     switch (s.kind) {
       case 'type':
-        return [{ kind: s.kind, name: s.name, value: applySubstitution(table, s1, s.value) }]
+        composed.push({ kind: s.kind, name: s.name, value: applySubstitution(table, s1, s.value) })
+        break
       case 'row':
-        return [{ kind: s.kind, name: s.name, value: applySubstitutionToRow(table, s1, s.value) }]
+        composed.push({ kind: s.kind, name: s.name, value: applySubstitutionToRow(table, s1, s.value) })
+        break
     }
-  })
+  }
+
+  return right(composed)
 }
 
 function applySubstitutionToRow(table: LookupTable, s: Substitutions, r: Row): Row {
