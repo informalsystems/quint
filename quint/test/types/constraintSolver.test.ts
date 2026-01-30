@@ -394,9 +394,14 @@ describe('unifyRows', () => {
           location: 'Trying to unify { f1: int } and { f1: str }',
           children: [
             {
-              message: "Couldn't unify int and str",
-              location: 'Trying to unify int and str',
-              children: [],
+              location: 'Field f1: expected int, found str',
+              children: [
+                {
+                  message: "Couldn't unify int and str",
+                  location: 'Trying to unify int and str',
+                  children: [],
+                },
+              ],
             },
           ],
         })
