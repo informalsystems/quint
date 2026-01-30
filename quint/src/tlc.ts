@@ -95,6 +95,68 @@ function tlcErr(explanation: string, isViolation: boolean): TlcError {
   return { explanation, errors: [], isViolation }
 }
 
+/**
+ * Validates a module name to prevent path traversal attacks.
+ * Module names should only contain alphanumeric characters and underscores.
+ *
+ * @param moduleName - The module name to validate
+ * @returns Either an error message or the validated module name
+ */
+function validateModuleName(moduleName: string): Either<string, string> {
+  // Only allow alphanumeric characters, underscores, and must start with letter/underscore
+  const safePattern = /^[a-zA-Z_][a-zA-Z0-9_]*$/
+  if (!safePattern.test(moduleName)) {
+    return left(
+      `Invalid module name: "${moduleName}". ` +
+        `Module names must contain only alphanumeric characters and underscores, ` +
+        `and must start with a letter or underscore.`
+    )
+  }
+  return right(moduleName)
+}
+
+/**
+ * Safely removes a temporary directory, ignoring errors if it doesn't exist.
+ *
+ * @param tmpDir - The directory path to remove
+ */
+function cleanupTmpDir(tmpDir: string): void {
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true })
+  } catch {
+    // Ignore cleanup errors - directory may already be removed
+  }
+}
+
+/**
+ * Validates a JVM memory argument (maxHeap or stackSize) against expected patterns.
+ *
+ * This function prevents JVM argument injection attacks by ensuring only valid
+ * memory configuration flags are passed to the Java process. Without validation,
+ * a malicious config file could inject arbitrary JVM arguments.
+ *
+ * @param arg - The JVM argument to validate (e.g., "-Xmx8G", "-Xss515m")
+ * @param argName - The name of the argument for error messages
+ * @param pattern - The regex pattern to validate against
+ * @returns Either an error message or the validated argument
+ */
+function validateJvmArg(arg: string, argName: string, pattern: RegExp): Either<string, string> {
+  if (!pattern.test(arg)) {
+    return left(
+      `Invalid ${argName} value: "${arg}". ` +
+        `Expected format: ${argName === 'maxHeap' ? '-Xmx<size>[G|M|K]' : '-Xss<size>[G|M|K]'} ` +
+        `(e.g., ${argName === 'maxHeap' ? '-Xmx8G' : '-Xss515m'})`
+    )
+  }
+  return right(arg)
+}
+
+// Patterns for valid JVM memory arguments
+// -Xmx: Maximum heap size (e.g., -Xmx8G, -Xmx1024M, -Xmx2048K)
+// -Xss: Thread stack size (e.g., -Xss515m, -Xss1M, -Xss512K)
+const JVM_MAX_HEAP_PATTERN = /^-Xmx\d+[GMKgmk]?$/
+const JVM_STACK_SIZE_PATTERN = /^-Xss\d+[GMKgmk]?$/
+
 export async function verify(
   config: TlcConfig,
   apalacheVersion: string,
@@ -107,16 +169,39 @@ export async function verify(
   }
   const jarPath = jarResult.value
 
-  const maxHeap = runtimeConfig.maxHeap ?? JVM_MAX_HEAP
-  const stackSize = runtimeConfig.stackSize ?? JVM_STACK_SIZE
+  const rawMaxHeap = runtimeConfig.maxHeap ?? JVM_MAX_HEAP
+  const rawStackSize = runtimeConfig.stackSize ?? JVM_STACK_SIZE
   const workers = runtimeConfig.workers ?? DEFAULT_WORKERS
 
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'quint-tlc-'))
-  const tlaFile = path.join(tmpDir, `${config.moduleName}.tla`)
-  const cfgFile = path.join(tmpDir, `${config.moduleName}.cfg`)
+  // Validate JVM arguments to prevent injection attacks via malicious config files
+  const maxHeapResult = validateJvmArg(rawMaxHeap, 'maxHeap', JVM_MAX_HEAP_PATTERN)
+  if (maxHeapResult.isLeft()) {
+    return left(tlcErr(maxHeapResult.value, false))
+  }
+  const maxHeap = maxHeapResult.value
 
-  fs.writeFileSync(tlaFile, config.tlaCode)
-  fs.writeFileSync(cfgFile, generateCfg(config))
+  const stackSizeResult = validateJvmArg(rawStackSize, 'stackSize', JVM_STACK_SIZE_PATTERN)
+  if (stackSizeResult.isLeft()) {
+    return left(tlcErr(stackSizeResult.value, false))
+  }
+  const stackSize = stackSizeResult.value
+
+  // Validate module name to prevent path traversal attacks
+  const moduleNameResult = validateModuleName(config.moduleName)
+  if (moduleNameResult.isLeft()) {
+    return left(tlcErr(moduleNameResult.value, false))
+  }
+  const safeModuleName = moduleNameResult.value
+
+  // Create temp directory with restrictive permissions (owner-only access)
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'quint-tlc-'))
+  const tlaFile = path.join(tmpDir, `${safeModuleName}.tla`)
+  const cfgFile = path.join(tmpDir, `${safeModuleName}.cfg`)
+
+  // Write files with restrictive permissions (0600 = owner read/write only)
+  // This prevents other users from reading potentially sensitive specification content
+  fs.writeFileSync(tlaFile, config.tlaCode, { mode: 0o600 })
+  fs.writeFileSync(cfgFile, generateCfg(config), { mode: 0o600 })
 
   return new Promise(resolve => {
     const proc = spawn('java', [
@@ -144,7 +229,7 @@ export async function verify(
     })
 
     proc.on('close', code => {
-      fs.rmSync(tmpDir, { recursive: true, force: true })
+      cleanupTmpDir(tmpDir)
 
       if (code === TLC_EXIT_SUCCESS) {
         resolve(right(undefined))
@@ -156,7 +241,7 @@ export async function verify(
     })
 
     proc.on('error', err => {
-      fs.rmSync(tmpDir, { recursive: true, force: true })
+      cleanupTmpDir(tmpDir)
       resolve(left(tlcErr(`Failed to spawn TLC: ${err.message}`, false)))
     })
   })

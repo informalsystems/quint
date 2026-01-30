@@ -134,6 +134,46 @@ type Apalache = {
   tla: (c: ApalacheConfig) => Promise<ApalacheResult<string>>
 }
 
+/**
+ * Type guard for Apalache error data with a message field.
+ * Validates that the parsed JSON has the expected structure before accessing properties.
+ */
+function isApalacheErrorData(obj: unknown): obj is { msg: string } {
+  return typeof obj === 'object' && obj !== null && 'msg' in obj && typeof obj.msg === 'string'
+}
+
+/**
+ * Type guard for Apalache verification failure data.
+ * Validates the structure before accessing checking_result and counterexamples.
+ */
+function isVerificationFailureData(
+  obj: unknown
+): obj is { checking_result: string; counterexamples?: ItfTrace[] } {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'checking_result' in obj &&
+    typeof obj.checking_result === 'string'
+  )
+}
+
+/**
+ * Safely parse JSON and validate its structure.
+ * Returns undefined if parsing fails or the result doesn't match the expected type.
+ *
+ * @param json - The JSON string to parse
+ * @param validator - A type guard function to validate the parsed result
+ * @returns The parsed and validated object, or undefined if validation fails
+ */
+function safeParseJson<T>(json: string, validator: (obj: unknown) => obj is T): T | undefined {
+  try {
+    const parsed: unknown = JSON.parse(json)
+    return validator(parsed) ? parsed : undefined
+  } catch {
+    return undefined
+  }
+}
+
 function handleVerificationFailure(failure: { pass_name: string; error_data: any }): ApalacheError {
   switch (failure.pass_name) {
     case 'SanyParser':
@@ -162,12 +202,21 @@ function handleVerificationFailure(failure: { pass_name: string; error_data: any
 
 async function handleResponse(response: RunResponse): Promise<ApalacheResult<any>> {
   if (response.result == 'success') {
-    const success = JSON.parse(response.success)
-    return right(success)
+    try {
+      const success = JSON.parse(response.success)
+      return right(success)
+    } catch (e) {
+      return err(`Failed to parse Apalache success response: ${e instanceof Error ? e.message : String(e)}`)
+    }
   } else {
     switch (response.failure.errorType) {
       case 'UNEXPECTED': {
-        const errData = JSON.parse(response.failure.data)
+        // Safely parse and validate the error data
+        const errData = safeParseJson(response.failure.data, isApalacheErrorData)
+        if (!errData) {
+          // Fallback if the error data doesn't match expected format
+          return err(`Apalache error (unexpected format): ${response.failure.data}`)
+        }
 
         // Check for the specific assignment error pattern
         const assignmentErrorMatch = errData.msg.match(
@@ -182,8 +231,18 @@ async function handleResponse(response: RunResponse): Promise<ApalacheResult<any
 
         return err(errData.msg)
       }
-      case 'PASS_FAILURE':
-        return left(handleVerificationFailure(JSON.parse(response.failure.data)))
+      case 'PASS_FAILURE': {
+        try {
+          const failureData = JSON.parse(response.failure.data)
+          // Validate the structure has required fields
+          if (typeof failureData !== 'object' || failureData === null || !('pass_name' in failureData)) {
+            return err(`Apalache verification failure (invalid format): ${response.failure.data}`)
+          }
+          return left(handleVerificationFailure(failureData))
+        } catch (e) {
+          return err(`Failed to parse Apalache failure data: ${e instanceof Error ? e.message : String(e)}`)
+        }
+      }
       default:
         // TODO handle other error cases
         return err(`${response.failure.errorType}: ${response.failure.data}`)

@@ -239,7 +239,11 @@ function buildUnderDefContext(
   // Pre-compute as much as possible for the overrides: find the registers and find the expressions to evaluate
   // so we don't need to look that up in runtime
   const overrides: [Register, EvalFunction][] = instance.overrides.map(([param, expr]) => {
-    const id = builder.table.get(param.id)!.id
+    const lookupDef = builder.table.get(param.id)
+    if (!lookupDef) {
+      throw new Error(`Internal error: parameter '${param.name}' (id: ${param.id}) not found in lookup table`)
+    }
+    const id = lookupDef.id
     const register = builder.registerForConst(id, param.name)
 
     // Build the expr as a pure val def so it gets properly cached
@@ -521,23 +525,24 @@ function buildExprCore(builder: Builder, expr: QuintEx): EvalFunction {
       }
 
       // First, we create a cached value (a register with optional value) for the definition in this let expression
-      let cachedValue = builder.scopedCachedValues.get(expr.opdef.id)
-      if (!cachedValue) {
+      // Get or create the cached value container for this let-definition
+      const existingCache = builder.scopedCachedValues.get(expr.opdef.id)
+      const cache = existingCache ?? { value: undefined }
+      if (!existingCache) {
         // TODO: check if either this is always the case or never the case.
-        cachedValue = { value: undefined }
-        builder.scopedCachedValues.set(expr.opdef.id, cachedValue)
+        builder.scopedCachedValues.set(expr.opdef.id, cache)
       }
       // Then, we build the expression for the let body. It will use the lookup table and, every time it needs the value
       // for the definition under the let, it will use the cached value (or eval a new value and store it).
       const bodyEval = buildExpr(builder, expr.expr)
       return ctx => {
-        const saved = cachedValue!.value
-        cachedValue!.value = undefined
+        const saved = cache.value
+        cache.value = undefined
 
         const result = bodyEval(ctx)
         // After evaluating the whole let expression, we clear the cached value, as it is no longer in scope.
         // The next time the whole let expression is evaluated, the definition will be re-evaluated.
-        cachedValue!.value = saved
+        cache.value = saved
         return result
       }
     }

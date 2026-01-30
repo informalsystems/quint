@@ -224,10 +224,18 @@ function modeForEffect(scheme: EffectScheme, annotatedMode: OpQualifier): [OpQua
         return ['puredef', parametersMessage]
       }
 
-      return [
-        modesForArrow.get(kind)!,
-        `${componentDescription.get(kind)} variables ${addedEntitiesByComponentKind.get(kind)!.map(entityToString)}`,
-      ]
+      // Get the mode and description for this component kind
+      // These maps are guaranteed to have entries for all ComponentKind values
+      const modeForKind = modesForArrow.get(kind)
+      const descriptionForKind = componentDescription.get(kind)
+      const entitiesForKind = addedEntitiesByComponentKind.get(kind)
+
+      // Defensive check: if any lookup fails, fall back to safe defaults
+      if (!modeForKind || !descriptionForKind || !entitiesForKind) {
+        return ['puredef', parametersMessage]
+      }
+
+      return [modeForKind, `${descriptionForKind} variables ${entitiesForKind.map(entityToString)}`]
     }
     case 'variable': {
       return ['pureval', "doesn't read or update any state variable"]
@@ -248,7 +256,10 @@ function addedEntities(paramEntities: Entity[], resultEntity: Entity): Entity[] 
     case 'union':
       return resultEntity.entities.flatMap(entity => addedEntities(paramEntities, entity))
     case 'concrete': {
-      const vars = resultEntity.stateVariables.filter(v => !paramEntities.some(p => isEqual(p, v)))
+      // Extract all state variables from parameter entities for proper comparison
+      // Previously compared StateVariable with Entity types, which always returned false
+      const paramStateVars = paramEntities.flatMap(p => stateVariables(p))
+      const vars = resultEntity.stateVariables.filter(v => !paramStateVars.some(pv => isEqual(pv, v)))
       if (vars.length === 0) {
         return []
       }

@@ -33,6 +33,26 @@ import { nameWithNamespaces } from './runtime/impl/builder'
 
 const QUINT_EVALUATOR_VERSION = 'v0.4.0'
 
+/**
+ * Type guard for progress messages from the Rust evaluator.
+ * Validates that the parsed JSON has the expected structure before use.
+ *
+ * @param obj - The parsed JSON object to validate
+ * @returns true if the object is a valid progress message
+ */
+function isProgressMessage(obj: unknown): obj is { type: 'progress'; current: number } {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'type' in obj &&
+    obj.type === 'progress' &&
+    'current' in obj &&
+    typeof obj.current === 'number' &&
+    Number.isFinite(obj.current) &&
+    obj.current >= 0
+  )
+}
+
 export type ParsedQuint = {
   modules: QuintModule[]
   table: LookupTable
@@ -120,15 +140,18 @@ export class QuintRustWrapper {
     // Handle progress updates from stderr
     stderr.on('line', (line: string) => {
       try {
-        const progress = JSON.parse(line)
+        const parsed: unknown = JSON.parse(line)
 
-        if (progress.type === 'progress') {
+        // Validate the parsed JSON against expected schema before use
+        // This prevents issues from malformed or unexpected data from the subprocess
+        if (isProgressMessage(parsed)) {
           const elapsedSeconds = (Date.now() - startTime) / 1000
-          const speed = Math.round(progress.current / elapsedSeconds)
-          progressBar.update(progress.current, { speed })
+          const speed = Math.round(parsed.current / elapsedSeconds)
+          progressBar.update(parsed.current, { speed })
         }
+        // Non-progress messages are silently ignored (e.g., debug output)
       } catch (_) {
-        // Ignore non-JSON lines
+        // Ignore non-JSON lines (e.g., plain text output)
       }
     })
 
@@ -392,16 +415,21 @@ async function fetchEvaluator(version: string, assetName: string, executable: st
  * @throws Will throw an error if the asset format is unsupported.
  */
 async function extractAsset(executable: string, assetName: string, assetPath: string, evaluatorDir: string) {
-  const util = require('util')
-  const exec = util.promisify(require('child_process').exec)
+  const { promisify } = require('util')
+  const { execFile } = require('child_process')
+  const { chmod } = require('fs/promises')
+  const execFileAsync = promisify(execFile)
 
   console.log(chalk.gray(`  Extracting ${assetPath}...`))
 
   const executablePath = path.join(evaluatorDir, executable)
 
   if (assetName.endsWith('.tar.gz')) {
-    await exec(`tar -xzf ${assetPath} -C ${evaluatorDir} `)
-    await exec(`chmod +x ${executablePath}`)
+    // Use execFile with array arguments to prevent shell injection
+    // execFile does not spawn a shell, so metacharacters are safely passed as literal arguments
+    await execFileAsync('tar', ['-xzf', assetPath, '-C', evaluatorDir])
+    // Use fs.chmod instead of shell command for security
+    await chmod(executablePath, 0o755)
   } else if (assetName.endsWith('.zip')) {
     // For Windows, use a simple unzip command (requires unzip to be installed)
     // You might want to use a JavaScript unzip library for better compatibility
