@@ -12,12 +12,16 @@ use std::time::Instant;
 
 use argh::FromArgs;
 use eyre::bail;
+use mimalloc::MiMalloc;
 use quint_evaluator::ir::{LookupDefinition, LookupTable, QuintError, QuintEx};
 use quint_evaluator::progress;
 use quint_evaluator::simulator::{ParsedQuint, SimulationResult, TraceStatistics};
 use quint_evaluator::tester::{TestCase, TestResult, TestStatus};
 use quint_evaluator::{helpers, log};
 use serde::{Deserialize, Serialize};
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 #[derive(FromArgs)]
 #[argh(description = "Quint simulator")]
