@@ -446,7 +446,7 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
     // Validate integer bounds before calling Rust evaluator
     const validationErrors = validateIntegerBounds(prev.modules, [init, step, invariantExpr.value, ...witnesses])
     if (validationErrors.length > 0) {
-      return cliErr('error', {
+      return cliErr('Runtime error', {
         ...simulator,
         errors: validationErrors.map(mkErrorMessage(prev.sourceMap)),
       })
@@ -455,7 +455,7 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
     const quintRustWrapper = new QuintRustWrapper(verbosityLevel)
     const nThreads = Math.min(prev.args.maxSamples, prev.args.nThreads)
     outcome = await quintRustWrapper.simulate(
-      { modules: prev.modules, table: prev.resolver.table, main: mainName, init, step, invariant: invariantExpr.value },
+      { modules: [], table: prev.resolver.table, main: mainName, init, step, invariant: invariantExpr.value },
       prev.path,
       witnesses,
       prev.args.maxSamples,

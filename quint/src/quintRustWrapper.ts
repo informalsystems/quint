@@ -286,6 +286,7 @@ export class QuintRustWrapper {
     onTrace?: TraceHook
   ): Promise<TestResult> {
     const testName = nameWithNamespaces(testDef.name, List(testDef.namespaces ?? []))
+
     const input = {
       name: testName,
       test_def: testDef,
