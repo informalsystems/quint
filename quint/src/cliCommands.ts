@@ -46,6 +46,9 @@ import { Evaluator } from './runtime/impl/evaluator'
 import { NameResolver } from './names/resolver'
 import { convertInit } from './ir/initToPredicate'
 import { QuintRustWrapper } from './quintRustWrapper'
+import { validateIntegerBounds } from './integerValidatorRust'
+import { nameWithNamespaces } from './runtime/impl/builder'
+import { List } from 'immutable'
 import {
   cliErr,
   findMainModule,
@@ -313,6 +316,24 @@ export async function runTests(prev: TypecheckedStage): Promise<CLIProcedure<Tes
     const quintRustWrapper = new QuintRustWrapper(verbosityLevel)
     results = []
     for (const [index, def] of testDefs.entries()) {
+      const testName = nameWithNamespaces(def.name, List(def.namespaces ?? []))
+
+      // Validate integer bounds before calling Rust evaluator
+      const testExpr = def.kind === 'def' && def.expr ? [def.expr] : []
+      const validationErrors = validateIntegerBounds([], testExpr, `test '${testName}'`)
+
+      if (validationErrors.length > 0) {
+        results.push({
+          name: testName,
+          status: 'failed',
+          seed: prev.args.seed ?? 0n,
+          errors: validationErrors,
+          frames: [],
+          nsamples: 0,
+        })
+        continue
+      }
+
       const result = await quintRustWrapper.test(
         def,
         prev.table,
@@ -422,10 +443,19 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
       })
     }
 
+    // Validate integer bounds before calling Rust evaluator
+    const validationErrors = validateIntegerBounds(prev.modules, [init, step, invariantExpr.value, ...witnesses])
+    if (validationErrors.length > 0) {
+      return cliErr('error', {
+        ...simulator,
+        errors: validationErrors.map(mkErrorMessage(prev.sourceMap)),
+      })
+    }
+
     const quintRustWrapper = new QuintRustWrapper(verbosityLevel)
     const nThreads = Math.min(prev.args.maxSamples, prev.args.nThreads)
     outcome = await quintRustWrapper.simulate(
-      { modules: [], table: prev.resolver.table, main: mainName, init, step, invariant: invariantExpr.value },
+      { modules: prev.modules, table: prev.resolver.table, main: mainName, init, step, invariant: invariantExpr.value },
       prev.path,
       witnesses,
       prev.args.maxSamples,
