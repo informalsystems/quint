@@ -21,6 +21,7 @@
 
 use crate::evaluator::{CompiledExprWithArgs, CompiledExprWithLazyArgs};
 use crate::ir::QuintError;
+use crate::itf::DebugMessage;
 use crate::value::{ImmutableMap, ImmutableSet, ImmutableVec, Value};
 use fxhash::FxHashSet;
 use itertools::Itertools;
@@ -758,9 +759,14 @@ pub fn compile_eager_op(op: &str) -> CompiledExprWithArgs {
             Ok(set.iter().next().cloned().unwrap())
         },
 
-        // Print a value to the console, and return it
-        "q::debug" => |_env, args| {
-            println!("> {} {}", args[0].as_str(), args[1]);
+        // Collect debug message when verbosity has debug output, and return the value
+        "q::debug" => |env, args| {
+            if env.verbosity.has_diagnostics() {
+                env.diagnostics.push(DebugMessage {
+                    label: args[0].as_str(),
+                    value: args[1].clone(),
+                });
+            }
             Ok(args[1].clone())
         },
 

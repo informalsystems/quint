@@ -2,6 +2,7 @@ use crate::evaluator::{Env, Interpreter};
 use crate::ir::{LookupDefinition, LookupTable, QuintError};
 use crate::itf::Trace;
 use crate::progress::Reporter;
+use crate::verbosity::Verbosity;
 use serde::Serialize;
 
 /// A test case that can be executed
@@ -43,13 +44,14 @@ impl TestCase {
         seed: Option<u64>,
         max_samples: usize,
         mut reporter: R,
+        verbosity: Verbosity,
     ) -> TestResult {
         let test_name = &self.name;
 
         let mut interpreter = Interpreter::new(&self.table);
         let mut env = match seed {
-            Some(s) => Env::with_rand_state(interpreter.var_storage.clone(), s),
-            None => Env::new(interpreter.var_storage.clone()),
+            Some(s) => Env::with_rand_state(interpreter.var_storage.clone(), s, verbosity),
+            None => Env::new(interpreter.var_storage.clone(), verbosity),
         };
 
         let seed = env.rand.get_state();
@@ -77,9 +79,9 @@ impl TestCase {
                         let error =
                             QuintError::new("QNT511", &format!("Test {test_name} returned false"))
                                 .with_reference(test_def_id);
-                        let states = std::mem::take(&mut env.trace);
+                        let steps = std::mem::take(&mut env.trace);
                         trace = Some(Trace {
-                            states,
+                            states: steps,
                             violation: true,
                             seed,
                         });
@@ -93,9 +95,9 @@ impl TestCase {
                         };
                     }
 
-                    let states = std::mem::take(&mut env.trace);
+                    let steps = std::mem::take(&mut env.trace);
                     trace = Some(Trace {
-                        states,
+                        states: steps,
                         violation: false,
                         seed,
                     });

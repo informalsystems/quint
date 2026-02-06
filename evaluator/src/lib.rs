@@ -18,3 +18,6 @@ pub mod simulator;
 pub mod storage;
 pub mod tester;
 pub mod value;
+mod verbosity;
+
+pub use verbosity::Verbosity;
