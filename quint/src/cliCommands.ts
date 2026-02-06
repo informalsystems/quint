@@ -407,10 +407,8 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
 
   let outcome: Outcome
   if (prev.args.backend == 'rust') {
-    if (prev.args.mbt || prev.args.witnesses.length > 0) {
-      console.warn(
-        chalk.yellow('Warning: --mbt and --witnesses are ignored when using the Rust backend (at this time).')
-      )
+    if (prev.args.mbt) {
+      console.warn(chalk.yellow('Warning: --mbt is ignored when using the Rust backend (at this time).'))
       console.warn(chalk.yellow('Use the typescript backend if you need that functionality.'))
     }
 
@@ -426,9 +424,16 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
     const quintRustWrapper = new QuintRustWrapper(verbosityLevel)
     const nThreads = Math.min(prev.args.maxSamples, prev.args.nThreads)
     outcome = await quintRustWrapper.simulate(
-      { modules: [], table: prev.resolver.table, main: mainName, init, step, invariant: invariantExpr.value },
+      {
+        modules: [],
+        table: prev.resolver.table,
+        main: mainName,
+        init,
+        step,
+        invariant: invariantExpr.value,
+        witnesses: witnesses,
+      },
       prev.path,
-      witnesses,
       prev.args.maxSamples,
       prev.args.maxSteps,
       prev.args.nTraces ?? 1,
