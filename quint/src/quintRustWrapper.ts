@@ -18,7 +18,7 @@ import { debugLog } from './verbosity'
 import JSONbig from 'json-bigint'
 import { LookupDefinition, LookupTable } from './names/base'
 import { replacer } from './jsonHelper'
-import { ofItf } from './itf'
+import { diagnosticsOfItf, ofItf } from './itf'
 import { Presets, SingleBar } from 'cli-progress'
 import path from 'path'
 import os from 'os'
@@ -201,6 +201,7 @@ export class QuintRustWrapper {
       ntraces: ntraces,
       nthreads: nthreads,
       seed: seed,
+      verbosity: this.verbosityLevel,
     }
 
     const result = await this.runRustEvaluator(
@@ -226,17 +227,16 @@ export class QuintRustWrapper {
     const output = result.value
 
     try {
-      const parsed = JSONbig.parse(output)
-      if (parsed.error) {
-        throw new Error(parsed.error)
-      }
+      const parsed: Outcome = JSONbig.parse(output)
 
-      // Convert traces to ITF and ensure seed is bigint
-      // Note: When a SimulationError occurs in Rust, the error trace is included in bestTraces with result=false
+      // Convert traces to ITF and ensure seed is bigint Note: When a
+      // SimulationError occurs in Rust, the error trace is included in
+      // bestTraces with result=false
       parsed.bestTraces = parsed.bestTraces.map((trace: any) => ({
         ...trace,
         seed: BigInt(trace.seed),
         states: ofItf(trace.states),
+        diagnostics: diagnosticsOfItf(trace.states),
       }))
 
       // Convert errors - these include errors from SimulationError
@@ -317,10 +317,7 @@ export class QuintRustWrapper {
     const output = result.value
 
     try {
-      const parsed = JSONbig.parse(output)
-      if (parsed.error) {
-        throw new Error(parsed.error)
-      }
+      const parsed: TestResult = JSONbig.parse(output)
 
       // Convert errors to proper format
       parsed.errors = parsed.errors.map(
@@ -338,6 +335,7 @@ export class QuintRustWrapper {
         parsed.traces = parsed.traces.map((trace: any) => ({
           ...trace,
           states: ofItf(trace.states),
+          diagnostics: diagnosticsOfItf(trace.states),
         }))
 
         // Call onTrace callback for each trace
