@@ -48,6 +48,7 @@ export class NameResolver implements IRVisitor {
   collector: NameCollector
   errors: QuintError[] = []
   table: LookupTable = new Map()
+  private assignLhsIds: Set<bigint> = new Set()
 
   // the current depth of operator definitions: top-level defs are depth 0
   // FIXME(#1279): The walk* functions update this value, but they need to be
@@ -115,11 +116,20 @@ export class NameResolver implements IRVisitor {
 
   enterName(nameExpr: QuintName): void {
     // Name expression, check that the name is defined
+    if (this.assignLhsIds.has(nameExpr.id)) {
+      this.assignLhsIds.delete(nameExpr.id)
+      this.resolveAssignmentTarget(nameExpr)
+      return
+    }
+
     this.resolveName(nameExpr.name, nameExpr.id)
   }
 
   enterApp(appExpr: QuintApp): void {
     // Application, check that the operator being applied is defined
+    if (appExpr.opcode === 'assign' && appExpr.args[0]?.kind === 'name') {
+      this.assignLhsIds.add(appExpr.args[0].id)
+    }
     this.resolveName(appExpr.opcode, appExpr.id)
   }
 
@@ -154,6 +164,29 @@ export class NameResolver implements IRVisitor {
     }
 
     this.table.set(id, def)
+  }
+
+  private resolveAssignmentTarget(nameExpr: QuintName) {
+    if (builtinNames.includes(nameExpr.name)) {
+      return
+    }
+
+    const defs = this.collector.definitionsByName.get(nameExpr.name)
+    if (!defs || defs.length === 0) {
+      this.recordNameError('name', nameExpr.name, nameExpr.id)
+      return
+    }
+
+    for (let i = defs.length - 1; i >= 0; i--) {
+      const def = defs[i]
+      if (def.kind === 'var') {
+        this.table.set(nameExpr.id, def)
+        return
+      }
+    }
+
+    // Fall back to the standard resolution for consistent error behavior.
+    this.resolveName(nameExpr.name, nameExpr.id)
   }
 
   private recordNameError(kind: 'name' | 'type', name: string, id: bigint) {
