@@ -20,9 +20,9 @@ export interface QuintError {
   code: ErrorCode
   /* The error explanation */
   message: string
-  /* The id of the component that caused the error */
+  /* The id of the expression where the error occurred (deprecated, use trace[0]) */
   reference?: bigint
-  /* Call stack trace: expression IDs from inner to outer call sites */
+  /* Call stack trace: expression IDs from innermost (error location) to outermost (caller) */
   trace?: bigint[]
   /* Additional data for the error */
   data?: QuintErrorData

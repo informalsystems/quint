@@ -15,14 +15,20 @@ import { cliErr } from './cliReporting'
 
 export function mkErrorMessage(sourceMap: SourceMap): (_: QuintError) => ErrorMessage {
   return error => {
-    const loc = error.reference ? sourceMap.get(error.reference) : undefined
-    const traceLocs = error.trace
-      ? error.trace.map(id => sourceMap.get(id)).filter((loc): loc is Loc => loc !== undefined)
+    // Prefer trace[0] (Rust backend), fall back to reference (TS backend)
+    const errorId = error.trace?.[0] ?? error.reference
+    const loc = errorId ? sourceMap.get(errorId) : undefined
+
+    // If using trace, skip first element (error location) and use rest as call stack
+    const traceRest = error.trace?.slice(1)
+    const traceLocs = traceRest && traceRest.length > 0
+      ? traceRest.map(id => sourceMap.get(id)).filter((loc): loc is Loc => loc !== undefined)
       : undefined
+
     return {
       explanation: quintErrorToString(error),
       locs: loc ? [loc] : [],
-      traceLocs: traceLocs && traceLocs.length > 0 ? traceLocs : undefined,
+      traceLocs,
     }
   }
 }

@@ -20,8 +20,9 @@ import { QuintError, quintErrorToString } from './quintError'
  */
 export interface ErrorMessage {
   explanation: string
+  /** Source locations where the error occurred (usually just one) */
   locs: Loc[]
-  /** Source locations for the call stack trace, from inner to outer call sites */
+  /** Optional call stack trace showing where user-defined functions were called, from innermost to outermost */
   traceLocs?: Loc[]
 }
 
@@ -49,14 +50,20 @@ export function sourceIdToLoc(sourceMap: Map<bigint, Loc>, id: bigint): Loc {
 
 export function fromQuintError(sourceMap: Map<bigint, Loc>): (_: QuintError) => ErrorMessage {
   return error => {
-    const loc = error.reference ? sourceMap.get(error.reference) : undefined
-    const traceLocs = error.trace
-      ? compact(error.trace.map(id => sourceMap.get(id)))
+    // Prefer trace[0] (Rust backend), fall back to reference (TS backend)
+    const errorId = error.trace?.[0] ?? error.reference
+    const loc = errorId ? sourceMap.get(errorId) : undefined
+
+    // If using trace, skip first element (error location) and use rest as call stack
+    const traceRest = error.trace?.slice(1)
+    const traceLocs = traceRest && traceRest.length > 0
+      ? compact(traceRest.map(id => sourceMap.get(id)))
       : undefined
+
     return {
       explanation: quintErrorToString(error),
       locs: compact([loc]),
-      traceLocs: traceLocs && traceLocs.length > 0 ? traceLocs : undefined,
+      traceLocs,
     }
   }
 }
