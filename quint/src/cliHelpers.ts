@@ -1,7 +1,7 @@
 import { basename } from 'path'
 
 import { SourceMap, parseExpressionOrDeclaration } from './parsing/quintParserFrontend'
-import { ErrorMessage } from './ErrorMessage'
+import { ErrorMessage, Loc } from './ErrorMessage'
 
 import { Either, left, right } from '@sweet-monads/either'
 import { QuintEx } from './ir/quintIr'
@@ -16,9 +16,13 @@ import { cliErr } from './cliReporting'
 export function mkErrorMessage(sourceMap: SourceMap): (_: QuintError) => ErrorMessage {
   return error => {
     const loc = error.reference ? sourceMap.get(error.reference) : undefined
+    const traceLocs = error.trace
+      ? error.trace.map(id => sourceMap.get(id)).filter((loc): loc is Loc => loc !== undefined)
+      : undefined
     return {
       explanation: quintErrorToString(error),
       locs: loc ? [loc] : [],
+      traceLocs: traceLocs && traceLocs.length > 0 ? traceLocs : undefined,
     }
   }
 }

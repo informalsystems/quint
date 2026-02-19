@@ -20,6 +20,8 @@ pub struct QuintError {
     pub code: String,
     pub message: String,
     pub reference: Option<QuintId>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub trace: Vec<QuintId>,
 }
 
 impl QuintError {
@@ -28,6 +30,7 @@ impl QuintError {
             code: code.to_string(),
             message: message.to_string(),
             reference: None,
+            trace: Vec::new(),
         }
     }
 
@@ -36,7 +39,13 @@ impl QuintError {
             code: self.code,
             message: self.message,
             reference: Some(reference),
+            trace: self.trace,
         }
+    }
+
+    pub fn push_trace(mut self, id: QuintId) -> Self {
+        self.trace.push(id);
+        self
     }
 }
 

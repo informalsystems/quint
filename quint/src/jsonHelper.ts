@@ -25,6 +25,7 @@ export function replacer(_key: String, value: any): any {
  *
  * This reviver ensures that:
  * - QuintError.reference fields are converted from numbers to bigint
+ * - QuintError.trace arrays have their elements converted from numbers to bigint
  *
  * @param key - The property key being parsed
  * @param value - The parsed value
@@ -36,6 +37,10 @@ export function reviver(key: string, value: any): any {
   // Convert QuintError.reference from number to bigint
   if (key === 'reference' && value !== null && value !== undefined) {
     return BigInt(value)
+  }
+  // Convert QuintError.trace elements from number to bigint
+  if (key === 'trace' && Array.isArray(value)) {
+    return value.map((v: any) => BigInt(v))
   }
   return value
 }

@@ -21,6 +21,8 @@ import { QuintError, quintErrorToString } from './quintError'
 export interface ErrorMessage {
   explanation: string
   locs: Loc[]
+  /** Source locations for the call stack trace, from inner to outer call sites */
+  traceLocs?: Loc[]
 }
 
 export interface Loc {
@@ -48,9 +50,13 @@ export function sourceIdToLoc(sourceMap: Map<bigint, Loc>, id: bigint): Loc {
 export function fromQuintError(sourceMap: Map<bigint, Loc>): (_: QuintError) => ErrorMessage {
   return error => {
     const loc = error.reference ? sourceMap.get(error.reference) : undefined
+    const traceLocs = error.trace
+      ? compact(error.trace.map(id => sourceMap.get(id)))
+      : undefined
     return {
       explanation: quintErrorToString(error),
       locs: compact([loc]),
+      traceLocs: traceLocs && traceLocs.length > 0 ? traceLocs : undefined,
     }
   }
 }

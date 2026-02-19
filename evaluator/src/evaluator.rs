@@ -681,12 +681,13 @@ impl Interpreter {
     pub fn compile_op(&mut self, id: &QuintId, op: &str) -> CompiledExprWithArgs {
         match self.table.get(id).cloned() {
             Some(def) => {
-                // A user-defined operator
+       
+                let call_site_id = *id;
                 let op = self.compile_def(&def);
                 CompiledExprWithArgs::new(move |env, args| {
                     let lambda = op.execute(env)?;
                     let closure = lambda.as_closure();
-                    closure(env, args)
+                    closure(env, args).map_err(|err| err.push_trace(call_site_id))
                 })
             }
             // A built-in. We already checked that this is not lazy before.
