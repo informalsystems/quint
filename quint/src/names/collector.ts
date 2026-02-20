@@ -109,9 +109,13 @@ export class NameCollector implements IRVisitor {
   }
 
   enterInstance(decl: QuintInstance): void {
-    // Copy defs from the module being instantiated
+    // Copy defs from the module being instantiated.
+    // Note: Multi-module circular dependencies (A imports B, B imports A) are detected
+    // during topological sort in quintParserFrontend.ts (Phase 2) which runs before
+    // name collection. This check only catches direct self-references for a more
+    // specific error message.
     if (decl.protoName === this.currentModuleName) {
-      // Importing current module
+      // Instantiating current module
       this.errors.push(selfReferenceError(decl))
       return
     }
@@ -158,6 +162,9 @@ export class NameCollector implements IRVisitor {
   }
 
   enterImport(decl: QuintImport): void {
+    // Note: Multi-module circular dependencies are detected during topological sort
+    // in quintParserFrontend.ts (Phase 2). This check catches direct self-imports
+    // for a more specific error message.
     if (decl.protoName === this.currentModuleName) {
       // Importing current module
       this.errors.push(selfReferenceError(decl))
@@ -202,6 +209,10 @@ export class NameCollector implements IRVisitor {
   // default. Exporting needs to turn those names into unhidden ones so, when
   // the current module is imported, the names are accessible. Note that it is
   // also possible to export names that were not previously imported via `import`.
+  //
+  // Note: Multi-module circular dependencies are detected during topological sort
+  // in quintParserFrontend.ts (Phase 2). This check catches direct self-exports
+  // for a more specific error message.
   enterExport(decl: QuintExport) {
     if (decl.protoName === this.currentModuleName) {
       // Exporting current module
