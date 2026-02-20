@@ -546,6 +546,36 @@ export async function compile(typechecked: TypecheckedStage): Promise<CLIProcedu
     return cliErr(`module ${mainName} does not exist`, { ...typechecked, errors: [], sourceCode: new Map() })
   }
 
+  const hasInit = typechecked.resolver.collector.getDefinition(args.init) !== undefined
+  const hasStep = typechecked.resolver.collector.getDefinition(args.step) !== undefined
+  // CANNOT be `args.flatten`, we need to make sure it's a boolean value
+  const flattenRequested = !(args.flatten === false)
+
+  const targetIsTla = args.target === 'tlaplus'
+
+  // check which core definitions are missing
+  let missingFlattenDefs: string | null = null
+  if (!hasInit && !hasStep) missingFlattenDefs = 'init and step'
+  else if (!hasInit) missingFlattenDefs = 'init'
+  else if (!hasStep) missingFlattenDefs = 'step'
+
+  let shouldFlatten = flattenRequested && !missingFlattenDefs
+
+  // For the JSON target, we can compile even if init/step are missing.
+  // In this case, we just warn the user (if --flatten=true) and compile anyway.
+  if (flattenRequested && missingFlattenDefs && !targetIsTla) {
+    console.warn(
+      chalk.yellow(`Warning: flattening requires ${missingFlattenDefs}, which are not defined. Disabling flattening.`)
+    )
+  }
+
+  if (!shouldFlatten && targetIsTla) {
+    console.warn(chalk.yellow('Warning: flattening is required for TLA+ output, ignoring --flatten=false option.'))
+  } else if (!shouldFlatten) {
+    // Early return with the original (unflattened) module and its fields
+    return right({ ...typechecked, mainModule: main, main: mainName, stage: 'compiling' })
+  }
+
   const extraDefsAsText = [`action q::init = ${args.init}`, `action q::step = ${args.step}`]
 
   const [invariantString, invariantsList] = getInvariants(typechecked.args)
@@ -575,21 +605,6 @@ export async function compile(typechecked: TypecheckedStage): Promise<CLIProcedu
 
   typechecked.table = resolutionResult.table
   analyzeInc(typechecked, typechecked.table, extraDefs)
-
-  // CANNOT be `if (!args.flatten)`, we need to make sure it's a boolean value
-  if (args.flatten === false) {
-    if (args.target === 'tlaplus') {
-      console.warn(chalk.yellow('Warning: flattening is required for TLA+ output, ignoring --flatten=false option.'))
-    } else {
-      // Early return with the original (unflattened) module and its fields
-      return right({
-        ...typechecked,
-        mainModule: main,
-        main: mainName,
-        stage: 'compiling',
-      })
-    }
-  }
 
   // Flatten modules, replacing instances, imports and exports with their definitions
   const { flattenedModules, flattenedTable, flattenedAnalysis } = flattenModules(
