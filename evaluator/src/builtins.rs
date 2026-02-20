@@ -285,8 +285,14 @@ pub fn compile_lazy_op(op: &str) -> CompiledExprWithLazyArgs {
                 Ok(Value::bool(true))
             }
         }
-        _ => {
-            panic!("Unknown lazy op: {op}")
+        unknown => {
+            let op_name = unknown.to_string();
+            return CompiledExprWithLazyArgs::new(move |_env, _args| {
+                Err(QuintError::new(
+                    "QNT500",
+                    &format!("Unknown lazy operator: {op_name}"),
+                ))
+            });
         }
     })
 }
@@ -910,7 +916,12 @@ pub fn compile_eager_op(op: &str) -> CompiledExprWithArgs {
                 ));
             }
 
-            Ok(set.iter().next().cloned().unwrap())
+            // Safe: we checked size == 1 above, so the set has exactly one element
+            Ok(set
+                .iter()
+                .next()
+                .cloned()
+                .expect("set should have exactly one element after size check"))
         },
 
         // Collect debug message when verbosity has debug output, and return the value
@@ -941,8 +952,14 @@ pub fn compile_eager_op(op: &str) -> CompiledExprWithArgs {
             ))
         },
 
-        _ => {
-            panic!("Unknown eager op: {op}")
+        unknown => {
+            let op_name = unknown.to_string();
+            return CompiledExprWithArgs::new(move |_env, _args| {
+                Err(QuintError::new(
+                    "QNT500",
+                    &format!("Unknown eager operator: {op_name}"),
+                ))
+            });
         }
     })
 }
