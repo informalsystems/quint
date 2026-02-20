@@ -274,6 +274,17 @@ function unifyArrows(location: string, e1: ArrowEffect, e2: ArrowEffect): Either
     })
 }
 
+/**
+ * Component kinds that can coexist in the same effect.
+ *
+ * - `['read', 'update']`: Actions can read and update state variables
+ * - `['read', 'temporal']`: Temporal formulas can read state and have temporal properties
+ *
+ * Note: `['update', 'temporal']` is NOT in this list because actions and temporal
+ * formulas are mutually exclusive by design. An action updates state (a transition
+ * relation), while a temporal formula expresses properties about execution traces
+ * without modifying state.
+ */
 const compatibleComponentKinds = [
   ['read', 'update'],
   ['read', 'temporal'],
@@ -283,6 +294,24 @@ function canCoexist(c1: EffectComponent, c2: EffectComponent): boolean {
   return compatibleComponentKinds.some(kinds => kinds.includes(c1.kind) && kinds.includes(c2.kind))
 }
 
+/**
+ * Determines if c1's kind dominates c2's kind during unification.
+ *
+ * When `Update` meets `Temporal` during unification, the `Temporal` component must be
+ * nullified (bound to an empty entity). This enforces the semantic constraint that
+ * actions (which update state) and temporal formulas (which reason about traces)
+ * are mutually exclusive.
+ *
+ * In practice, this means:
+ * - Unifying `Update['x']` with `Temporal['y']` will fail (both have concrete entities)
+ * - Unifying `Update['x']` with `Temporal[t]` constrains `t` to empty, then fails
+ *   because the unmatched `Update['x']` also needs to be nullified
+ * - Unifying `Update[u]` with `Temporal[t]` constrains both `u` and `t` to empty
+ *
+ * To use an action in a temporal context, explicit temporal operators like `orKeep`,
+ * `weakFair`, etc. must be used, which convert the action's effect signature from
+ * `Read[r] & Update[u]` to `Temporal[r, u, ...]`.
+ */
 function isDominant(c1: EffectComponent, c2: EffectComponent): boolean {
   return c1.kind === 'update' && c2.kind === 'temporal'
 }
