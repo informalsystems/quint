@@ -125,7 +125,8 @@ export function copyNames(
 
 /**
  * Add namespaces to a definition's `namespaces` field, if it doesn't already
- * have them on the last position or in the beginning of its name.
+ * have them. This checks for duplicates anywhere in the existing namespaces
+ * array and anywhere in the definition's name.
  *
  * @param def - The definition to add the namespaces to
  * @param namespaces - The namespaces to be added
@@ -133,20 +134,28 @@ export function copyNames(
  * @returns The definition with the namespaces added
  */
 export function addNamespacesToDef(def: LookupDefinition, namespaces: string[]): LookupDefinition {
-  // FIXME(#1111): This doesn't take care of some corner cases.
   return namespaces.reduce((def, namespace) => {
-    if (def.namespaces && def.namespaces[def.namespaces?.length - 1] === namespace) {
-      // If this is already the last namespace, don't add it again
+    if (!namespace) {
+      // Skip empty namespaces
       return def
     }
 
-    if (def.name.startsWith(`${namespace}::`)) {
-      // If the namespace is already in the beginning of the name, don't add it again
+    if (def.namespaces?.includes(namespace)) {
+      // If namespace already exists anywhere in the namespaces array, don't add it again
       return def
     }
 
-    const namespaces = namespace ? def.namespaces?.concat([namespace]) ?? [namespace] : []
-    return { ...def, namespaces }
+    // Check if the namespace already appears as a complete segment in the name.
+    // A name like "foo::bar::baz" has segments ["foo", "bar", "baz"].
+    // We need to check if `namespace` is one of these segments.
+    const nameSegments = def.name.split('::')
+    if (nameSegments.includes(namespace)) {
+      // If the namespace is already a segment of the name, don't add it again
+      return def
+    }
+
+    const newNamespaces = def.namespaces?.concat([namespace]) ?? [namespace]
+    return { ...def, namespaces: newNamespaces }
   }, def)
 }
 
