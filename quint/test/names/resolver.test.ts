@@ -2,6 +2,8 @@ import { describe, it } from 'mocha'
 import { assert } from 'chai'
 
 import { NameResolutionResult } from '../../src/names/base'
+import { IRVisitor, walkModule } from '../../src/ir/IRVisitor'
+import { QuintVar } from '../../src/ir/quintIr'
 import { resolveNames } from '../../src/names/resolver'
 import { buildModule, buildModuleWithDecls } from '../builders/ir'
 import { IdGenerator, newIdGenerator, zerog } from '../../src/idGenerator'
@@ -119,6 +121,91 @@ describe('resolveNames', () => {
         [...result.table.values()].some(def => def.name === 'a' && def.depth === 3 && def.shadowing === true),
         'Could not find second a'
       )
+    })
+
+    // Regression test for issue #1820: nondet binding shadowing state variable
+    // caused QNT502 "Variable not set" error because assignment LHS was resolved
+    // to the shadowing binding instead of the state variable.
+    it('resolves assignment lhs to state var when shadowed by nondet', () => {
+      const idGen = newIdGenerator()
+      const module = buildModuleWithDecls(
+        baseDefs.concat([
+          'var bar: int',
+          'action init = { nondet bar = Nat.oneOf() bar\' = bar }',
+          'action step = bar\' = bar + 1',
+        ]),
+        undefined,
+        idGen
+      )
+
+      const result = resolveNames([module])
+      assert.isEmpty(result.errors, 'should resolve without errors')
+
+      const varDecl = module.declarations.find(d => d.kind === 'var' && d.name === 'bar') as QuintVar
+      assert.isDefined(varDecl, 'var declaration should exist')
+
+      // Collect ALL assignment LHS ids to verify both assignments resolve correctly
+      const lhsIds: bigint[] = []
+      const visitor: IRVisitor = {
+        enterApp(app) {
+          if (app.opcode === 'assign' && app.args[0]?.kind === 'name') {
+            lhsIds.push(app.args[0].id)
+          }
+        },
+      }
+      walkModule(visitor, module)
+
+      // There should be two assignments: bar' = bar (in init) and bar' = bar + 1 (in step)
+      assert.equal(lhsIds.length, 2, 'should have two assignments')
+
+      // BOTH assignment LHS should resolve to the state variable, not the nondet binding
+      for (const lhsId of lhsIds) {
+        const def = result.table.get(lhsId)
+        assert.equal(def?.kind, 'var', 'assignment LHS should resolve to var')
+        assert.equal(def?.id, varDecl.id, 'assignment LHS should resolve to the state var declaration')
+      }
+    })
+
+    // Verify that RHS of assignment still resolves to the shadowing binding
+    it('resolves assignment rhs to shadowing binding while lhs resolves to state var', () => {
+      const idGen = newIdGenerator()
+      const module = buildModuleWithDecls(
+        baseDefs.concat([
+          'var bar: int',
+          'action init = { nondet bar = Nat.oneOf() bar\' = bar }',
+        ]),
+        undefined,
+        idGen
+      )
+
+      const result = resolveNames([module])
+      assert.isEmpty(result.errors)
+
+      // Find the assignment in init action
+      let lhsId: bigint | undefined
+      let rhsId: bigint | undefined
+      const visitor: IRVisitor = {
+        enterApp(app) {
+          if (app.opcode === 'assign' && app.args[0]?.kind === 'name' && app.args[1]?.kind === 'name') {
+            lhsId = app.args[0].id
+            rhsId = app.args[1].id
+          }
+        },
+      }
+      walkModule(visitor, module)
+
+      assert.isDefined(lhsId, 'should find assignment LHS')
+      assert.isDefined(rhsId, 'should find assignment RHS')
+
+      const lhsDef = result.table.get(lhsId!)
+      const rhsDef = result.table.get(rhsId!)
+
+      // LHS should resolve to state var
+      assert.equal(lhsDef?.kind, 'var', 'LHS should be state var')
+
+      // RHS should resolve to the nondet binding (which shadows the state var)
+      // The nondet binding has kind 'def' with qualifier 'nondet'
+      assert.notEqual(lhsDef?.id, rhsDef?.id, 'LHS and RHS should resolve to different definitions')
     })
   })
 
