@@ -49,11 +49,11 @@ describe('inferEffects', () => {
     assert.isEmpty(errors, `Should find no errors, found: ${[...errors.values()].map(errorTreeToString)}`)
     assert.deepEqual(
       effectForDef(defs, effects, 'a'),
-      "∀ v0, v1 . (Read[v0] & Temporal[v1]) => Read[v0, 'x'] & Temporal[v1]"
+      "∀ v0, v1, v2 . (Read[v0] & Temporal[v1] & Update[v2]) => Read[v0, 'x'] & Temporal[v1] & Update[v2]"
     )
     assert.deepEqual(
       effectForDef(defs, effects, 'b'),
-      '∀ v0, v1 . (Read[v0] & Temporal[v1]) => Read[v0] & Temporal[v1]'
+      '∀ v0, v1, v2 . (Read[v0] & Temporal[v1] & Update[v2]) => Read[v0] & Temporal[v1] & Update[v2]'
     )
   })
 
