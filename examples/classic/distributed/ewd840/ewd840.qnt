@@ -122,10 +122,6 @@ module ewd840 {
   // FIXME(#630): OrKeep takes an arbitrary type for now
   val vars = (active, color, tpos, tcolor)
 
-  // The full specification: initial state, always-valid transitions, and weak fairness for System.
-  // Equivalent to TLA+: Init /\ [][Next]_vars /\ WF_vars(System)
-  // temporal Spec = init and always(step.orKeep(vars) and System.weakFair(vars))
-
   //-----------------------------------------------------------------------------
 
   /* Non-properties, useful for validating the specification with `run` and `verify`. */
@@ -160,17 +156,13 @@ module ewd840 {
   // computations. However, this property is verified if the fairness condition
   // WF_vars(step) is used instead of only WF_vars(System) that requires fairness
   // of the actions controlled by termination detection.
-  //
-  // Stronger specification using weak fairness for the full step action.
-  // Equivalent to TLA+: Init /\ [][Next]_vars /\ WF_vars(Next)
-  // temporal SpecWFstep = always(step.orKeep(vars) and step.weakFair(vars)) and init
 
   // Not expressible in quint (for now), as it negates an action
-  // temporal AllNodesTerminateIfNoMessages = (
-  //   eventually(always(
-  //       Node.forall(i => not(SendMsg(i))).orKeep(vars)
-  //   )) implies eventually(Node.forall(i => not(active.get(i))))
-  // )
+  // temporal AllNodesTerminateIfNoMessages =
+  //   step.orKeep(vars) and step.weakFair(vars) implies
+  //     eventually(always(
+  //         Node.forall(i => not(SendMsg(i))).orKeep(vars)
+  //     )) implies eventually(Node.forall(i => not(active.get(i))))
 
   /// Dijkstra's inductive invariant
   /// Check that it is indeed inductive (together with TypeOK) with:

@@ -280,6 +280,46 @@ describe('inferEffects', () => {
     })
   })
 
+  it('infers temporal effect for weakFair with an action that updates variables', () => {
+    const defs = ["action myStep = x' = x + 1", 'val myVars = x', 'temporal a = myStep.weakFair(myVars)']
+
+    const [errors, effects] = inferEffectsForDefs(defs)
+
+    assert.isEmpty(errors, `Should find no errors, found: ${[...errors.values()].map(errorTreeToString)}`)
+    assert.deepEqual(effectForDef(defs, effects, 'a'), "Temporal['x']")
+  })
+
+  it('infers temporal effect for strongFair with an action that updates variables', () => {
+    const defs = ["action myStep = x' = x + 1", 'val myVars = x', 'temporal a = myStep.strongFair(myVars)']
+
+    const [errors, effects] = inferEffectsForDefs(defs)
+
+    assert.isEmpty(errors, `Should find no errors, found: ${[...errors.values()].map(errorTreeToString)}`)
+    assert.deepEqual(effectForDef(defs, effects, 'a'), "Temporal['x']")
+  })
+
+  it('infers temporal effect for leadsTo', () => {
+    const defs = ['temporal a = always(x > 0) leadsTo eventually(x > 5)']
+
+    const [errors, effects] = inferEffectsForDefs(defs)
+
+    assert.isEmpty(errors, `Should find no errors, found: ${[...errors.values()].map(errorTreeToString)}`)
+    assert.deepEqual(effectForDef(defs, effects, 'a'), "Temporal['x']")
+  })
+
+  it('infers temporal effect for weakFair implies leadsTo pattern', () => {
+    const defs = [
+      "action myStep = x' = x + 1",
+      'val myVars = x',
+      'temporal a = myStep.weakFair(myVars) implies (x > 0 leadsTo x > 5)',
+    ]
+
+    const [errors, effects] = inferEffectsForDefs(defs)
+
+    assert.isEmpty(errors, `Should find no errors, found: ${[...errors.values()].map(errorTreeToString)}`)
+    assert.deepEqual(effectForDef(defs, effects, 'a'), "Temporal['x']")
+  })
+
   it('differentiates variables from different instances', () => {
     const baseDefs = ['const N: int', 'const S: Set[int]', 'var x: int']
 
