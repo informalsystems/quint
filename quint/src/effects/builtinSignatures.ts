@@ -220,61 +220,25 @@ const temporalOperators = [
   // weakFair and strongFair accept temporal expressions in both arguments (more permissive than
   // requiring only actions), to support patterns like `forall(i, step(i)).weakFair(vars)` where
   // the first argument has a temporal effect from a higher-order operator.
-  // Effect: (Read[r] & Update[u] & Temporal[t1], Read[v] & Temporal[t2]) => Temporal[r, u, v, t1, t2]
-  { name: 'weakFair', effect: buildFairnessEffect() },
-  { name: 'strongFair', effect: buildFairnessEffect() },
+  {
+    name: 'weakFair',
+    effect: parseAndQuantify(
+      '(Read[r] & Update[u] & Temporal[t1], Read[v] & Temporal[t2]) => Temporal[r, u, v, t1, t2]'
+    ),
+  },
+  {
+    name: 'strongFair',
+    effect: parseAndQuantify(
+      '(Read[r] & Update[u] & Temporal[t1], Read[v] & Temporal[t2]) => Temporal[r, u, v, t1, t2]'
+    ),
+  },
   // leadsTo(p, q) is the TLA+ leads-to operator p ~> q, equivalent to always(p implies eventually(q)).
   // It is expanded to that form before verification.
-  { name: 'leadsTo', effect: parseAndQuantify('(Read[r1] & Temporal[t1], Read[r2] & Temporal[t2]) => Temporal[r1, t1, r2, t2]') },
+  {
+    name: 'leadsTo',
+    effect: parseAndQuantify('(Read[r1] & Temporal[t1], Read[r2] & Temporal[t2]) => Temporal[r1, t1, r2, t2]'),
+  },
 ]
-
-/**
- * Builds the effect for weakFair and strongFair:
- * (Read[r] & Update[u] & Temporal[t1], Read[v] & Temporal[t2]) => Temporal[r, u, v, t1, t2]
- *
- * The grammar-based parser only supports two-way component combinations, so we build this
- * three-way first-argument effect manually.
- */
-function buildFairnessEffect(): EffectScheme {
-  // First arg: Read[r] & Update[u] & Temporal[t1]
-  const param1: Effect = {
-    kind: 'concrete',
-    components: [
-      { kind: 'read', entity: { kind: 'variable', name: 'r' } },
-      { kind: 'update', entity: { kind: 'variable', name: 'u' } },
-      { kind: 'temporal', entity: { kind: 'variable', name: 't1' } },
-    ],
-  }
-  // Second arg: Read[v] & Temporal[t2]
-  const param2: Effect = {
-    kind: 'concrete',
-    components: [
-      { kind: 'read', entity: { kind: 'variable', name: 'v' } },
-      { kind: 'temporal', entity: { kind: 'variable', name: 't2' } },
-    ],
-  }
-  // Result: Temporal[r, u, v, t1, t2]
-  const result: Effect = {
-    kind: 'concrete',
-    components: [
-      {
-        kind: 'temporal',
-        entity: {
-          kind: 'union',
-          entities: [
-            { kind: 'variable', name: 'r' },
-            { kind: 'variable', name: 'u' },
-            { kind: 'variable', name: 'v' },
-            { kind: 'variable', name: 't1' },
-            { kind: 'variable', name: 't2' },
-          ],
-        },
-      },
-    ],
-  }
-  const effect: Effect = { kind: 'arrow', params: [param1, param2], result }
-  return { effect, ...effectNames(effect) }
-}
 
 const otherOperators = [
   { name: 'assign', effect: parseAndQuantify('(Read[r1], Read[r2]) => Read[r2] & Update[r1]') },
