@@ -43,8 +43,8 @@ import { AndContext } from "./QuintParser";
 import { OrExprContext } from "./QuintParser";
 import { OrContext } from "./QuintParser";
 import { IffContext } from "./QuintParser";
-import { ImpliesContext } from "./QuintParser";
 import { LeadsToContext } from "./QuintParser";
+import { ImpliesContext } from "./QuintParser";
 import { MatchContext } from "./QuintParser";
 import { ActionAllContext } from "./QuintParser";
 import { ActionAnyContext } from "./QuintParser";
@@ -403,20 +403,20 @@ export interface QuintVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitIff?: (ctx: IffContext) => Result;
 
 	/**
-	 * Visit a parse tree produced by the `implies`
-	 * labeled alternative in `QuintParser.expr`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitImplies?: (ctx: ImpliesContext) => Result;
-
-	/**
 	 * Visit a parse tree produced by the `leadsTo`
 	 * labeled alternative in `QuintParser.expr`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
 	visitLeadsTo?: (ctx: LeadsToContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `implies`
+	 * labeled alternative in `QuintParser.expr`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitImplies?: (ctx: ImpliesContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by the `match`

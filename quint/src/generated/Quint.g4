@@ -188,8 +188,8 @@ expr:           // apply a built-in operator via the dot notation
         |       'or'  '{' expr (',' expr)* ','? '}'                 # orExpr
         |       expr OR expr                                        # or
         |       expr IFF expr                                       # iff
-        |       expr IMPLIES expr                                   # implies
         |       expr LEADS_TO expr                                 # leadsTo
+        |       expr IMPLIES expr                                   # implies
         |       matchSumExpr                                        # match
         |       'all' '{' expr (',' expr)* ','? '}'                 # actionAll
         |       'any' '{' expr (',' expr)* ','? '}'                 # actionAny

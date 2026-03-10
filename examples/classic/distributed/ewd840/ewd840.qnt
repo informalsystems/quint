@@ -146,24 +146,13 @@ module ewd840 {
 
   /// Liveness property: termination is eventually detected.
   /// Once all nodes are inactive, termination will eventually be detected.
-  temporal Liveness =
-    always(Nodes.forall(i => not(active.get(i))) implies eventually(terminationDetected))
-
-  /// Same as Liveness, expressed using the leadsTo (leads-to, ~>) operator.
-  /// Equivalent to the TLA+ property: (\A i \in Node : ~active[i]) ~> terminationDetected
-  temporal LivenessLeadsTo =
-    Nodes.forall(i => not(active.get(i))) leadsTo terminationDetected
+  temporal liveness =
+    System.weakFair(vars) implies (Nodes.forall(i => not(active.get(i))) leadsTo terminationDetected)
 
   /// The following property asserts that when every process always eventually
   /// terminates then eventually termination will be detected. It does not hold
-  /// since processes can wake up each other.
-  temporal FalseLiveness =
-    always(Nodes.forall(i => always(eventually(not(active.get(i)))))
-           implies eventually(terminationDetected))
-
-  /// Same as FalseLiveness using leadsTo. Also does not hold.
-  temporal FalseLivenessLeadsTo =
-    Nodes.forall(i => always(eventually(not(active.get(i))))) leadsTo terminationDetected
+  temporal falseLiveness =
+    System.weakFair(vars) implies Nodes.forall(i => always(eventually(not(active.get(i))))) leadsTo terminationDetected
 
   // The property `AllNodesTerminateIfNoMessages` says that eventually all nodes
   // will terminate assuming that from some point onwards no messages are sent.
