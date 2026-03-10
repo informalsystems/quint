@@ -122,8 +122,8 @@ module ewd840 {
   // FIXME(#630): OrKeep takes an arbitrary type for now
   val vars = (active, color, tpos, tcolor)
 
-  // FIXME(#1236): we cannot add `init` to this property since, in quint, it is an
-  // action - not a predicate
+  // The full specification: initial state, always-valid transitions, and weak fairness for System.
+  // Equivalent to TLA+: Init /\ [][Next]_vars /\ WF_vars(System)
   // temporal Spec = init and always(step.orKeep(vars) and System.weakFair(vars))
 
   //-----------------------------------------------------------------------------
@@ -145,8 +145,14 @@ module ewd840 {
     terminationDetected implies Nodes.forall(i => not(active.get(i)))
 
   /// Liveness property: termination is eventually detected.
+  /// Once all nodes are inactive, termination will eventually be detected.
   temporal Liveness =
     always(Nodes.forall(i => not(active.get(i))) implies eventually(terminationDetected))
+
+  /// Same as Liveness, expressed using the leadsTo (leads-to, ~>) operator.
+  /// Equivalent to the TLA+ property: (\A i \in Node : ~active[i]) ~> terminationDetected
+  temporal LivenessLeadsTo =
+    Nodes.forall(i => not(active.get(i))) leadsTo terminationDetected
 
   /// The following property asserts that when every process always eventually
   /// terminates then eventually termination will be detected. It does not hold
@@ -155,6 +161,10 @@ module ewd840 {
     always(Nodes.forall(i => always(eventually(not(active.get(i)))))
            implies eventually(terminationDetected))
 
+  /// Same as FalseLiveness using leadsTo. Also does not hold.
+  temporal FalseLivenessLeadsTo =
+    Nodes.forall(i => always(eventually(not(active.get(i))))) leadsTo terminationDetected
+
   // The property `AllNodesTerminateIfNoMessages` says that eventually all nodes
   // will terminate assuming that from some point onwards no messages are sent.
   // It is not supposed to hold: any node may indefinitely perform local
@@ -162,8 +172,8 @@ module ewd840 {
   // WF_vars(step) is used instead of only WF_vars(System) that requires fairness
   // of the actions controlled by termination detection.
   //
-  // FIXME(#1236): we cannot add `init` to this property since, in quint, it is an
-  // action - not a predicate
+  // Stronger specification using weak fairness for the full step action.
+  // Equivalent to TLA+: Init /\ [][Next]_vars /\ WF_vars(Next)
   // temporal SpecWFstep = always(step.orKeep(vars) and step.weakFair(vars)) and init
 
   // Not expressible in quint (for now), as it negates an action
