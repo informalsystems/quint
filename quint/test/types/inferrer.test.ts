@@ -447,6 +447,7 @@ module B {
     const actualErrors = [...errors.entries()].map(e => errorTreeToString(e[1]))
     const expectedError = `Couldn't unify bool and int
 Trying to unify bool and int
+Field Ok: expected bool, found int
 Trying to unify { Ok: bool, Err: _t5 } and { Ok: int, Err: _t5 }
 Trying to unify (Ok(bool) | Err(_t5)) and (Ok(int) | Err(_t5))
 Trying to unify ((Ok(bool) | Err(_t5))) => (Ok(bool) | Err(_t5)) and ((Ok(bool) | Err(_t5))) => (Ok(int) | Err(_t5))
