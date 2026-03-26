@@ -5,11 +5,12 @@
  * --------------------------------------------------------------------------------- */
 
 import * as path from 'path'
-import { ExtensionContext, workspace } from 'vscode'
+import { commands, ExtensionContext, Terminal, window, workspace } from 'vscode'
 
 import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient/node'
 
 let client: LanguageClient
+let testTerminal: Terminal | undefined
 
 export function activate(context: ExtensionContext) {
   // The server is implemented in node
@@ -42,6 +43,27 @@ export function activate(context: ExtensionContext) {
 
   // Create the language client and start the client.
   client = new LanguageClient('quintLspClient', 'Quint Language Server', serverOptions, clientOptions)
+
+  context.subscriptions.push(
+    commands.registerCommand('quint.runTest', (filePath: string, testName: string) => {
+      if (testTerminal?.exitStatus !== undefined) {
+        testTerminal = undefined
+      }
+      if (!testTerminal) {
+        testTerminal = window.createTerminal('Quint Test')
+      }
+      testTerminal.show()
+      testTerminal.sendText(`quint test '${filePath}' --match '^${testName}$'`)
+    })
+  )
+
+  context.subscriptions.push(
+    window.onDidCloseTerminal(t => {
+      if (t === testTerminal) {
+        testTerminal = undefined
+      }
+    })
+  )
 
   // Start the client. This will also launch the server
   client.start()
