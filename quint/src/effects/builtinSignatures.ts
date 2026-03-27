@@ -232,8 +232,6 @@ const temporalOperators = [
       '(Read[r] & Update[u] & Temporal[t1], Read[v] & Temporal[t2]) => Temporal[r, u, v, t1, t2]'
     ),
   },
-  // leadsTo(p, q) is the TLA+ leads-to operator p ~> q, equivalent to always(p implies eventually(q)).
-  // It is expanded to that form before verification.
   {
     name: 'leadsTo',
     effect: parseAndQuantify('(Read[r1] & Temporal[t1], Read[r2] & Temporal[t2]) => Temporal[r1, t1, r2, t2]'),

@@ -1,3 +1,4 @@
+// -*- mode: Bluespec; -*-
 module strongFairness {
   type KettleState = RoomTemperature | Heating | Cooling | HundredDegrees
 
