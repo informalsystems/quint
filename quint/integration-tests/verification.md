@@ -655,27 +655,54 @@ quint verify --backend tlc --temporal zeroLeadsToTwoNoFairness ./testFixture/apa
 error: found a counterexample
 ```
 
-### TLC: `weakFair` implies `leadsTo` holds
+### `weakFair` implies `leadsTo` holds
 
 With weak fairness for `finish`, `not(done) leadsTo done` holds because
 `finish` is continuously enabled when `done=false` and must eventually fire.
 
-<!-- !test check TLC weakFair leadsTo holds -->
+<!-- !test check weakFair leadsTo holds -->
 ```
-quint verify --backend tlc --temporal notDoneLeadsToDone ./testFixture/apalache/tlcFairness.qnt 2>&1 | grep '\[ok\]'
+quint verify --backend tlc --temporal notDoneLeadsToDone ../examples/language-features/weakFairness.qnt 2>&1 | grep '\[ok\]'
 ```
 
-### TLC: `leadsTo` without fairness is a violation (non-deterministic spec)
+### `leadsTo` without fairness is a violation (non-deterministic spec)
 
-In a non-deterministic spec, TLC can always choose the stuttering branch forever.
+In a non-deterministic spec, the stuttering branch can be chosen forever.
 
-<!-- !test in TLC leadsTo non-det no fairness violation -->
+<!-- !test in leadsTo non-det no fairness violation -->
 ```
-quint verify --backend tlc --temporal notDoneLeadsToDoneNoFairness ./testFixture/apalache/tlcFairness.qnt
+quint verify --backend tlc --temporal notDoneLeadsToDoneNoFairness ../examples/language-features/weakFairness.qnt
 ```
 
 <!-- !test exit 1 -->
-<!-- !test err TLC leadsTo non-det no fairness violation -->
+<!-- !test err leadsTo non-det no fairness violation -->
+```
+error: found a counterexample
+```
+
+### TLC: `eventuallyHundredDegrees` holds with weak and strong fairness
+
+With weak fairness over `step` and strong fairness on `turnOffBySensor`, the kettle
+eventually reaches `HundredDegrees`. `turnOffBySensor` is infinitely often enabled,
+but not constantly, so it needs strong fairness.
+
+<!-- !test check TLC kettle eventuallyHundredDegrees holds -->
+```
+quint verify --backend tlc --temporal eventuallyHundredDegrees ../examples/language-features/strongFairness.qnt 2>&1 | grep '\[ok\]'
+```
+
+### TLC: `eventuallyHundredDegrees` is a violation with weak fairness only
+
+With weak fairness alone, TLC can choose `turnOff` instead of `turnOffBySensor`
+every single time, so the kettle never reaches `HundredDegrees`.
+
+<!-- !test in TLC kettle eventuallyHundredDegrees weak only violation -->
+```
+quint verify --backend tlc --temporal eventuallyHundredDegreesWeakOnly ../examples/language-features/strongFairness.qnt
+```
+
+<!-- !test exit 1 -->
+<!-- !test err TLC kettle eventuallyHundredDegrees weak only violation -->
 ```
 error: found a counterexample
 ```

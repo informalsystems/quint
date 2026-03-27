@@ -1,10 +1,10 @@
 // A non-deterministic spec used to test weak fairness with leadsTo.
 //
 // `step` can either finish (set done=true) or stutter. Without fairness,
-// TLC can keep choosing the stutter branch forever, so liveness doesn't hold.
+// the stutter branch can be chosen forever, so liveness doesn't hold.
 // With weak fairness for `finish`, since finish is continuously enabled when
 // done=false, it must eventually fire.
-module tlcFairness {
+module weakFairness {
   var done: bool
 
   action init = done' = false
@@ -19,13 +19,13 @@ module tlcFairness {
 
   val vars = done
 
-  // Holds with fairness: finish is enabled when done=false, so weak fairness
-  // forces it to eventually fire.
-  temporal eventuallyDone = finish.weakFair(vars) implies eventually(done)
+  // Holds with fairness: finish is constantly enabled when done=false, so weak
+  // fairness forces it to eventually fire.
+  temporal eventuallyDone = weakFair(finish, vars) implies eventually(done)
 
   // Holds with fairness: not(done) always leads to done
-  temporal notDoneLeadsToDone = finish.weakFair(vars) implies (not(done) leadsTo done)
+  temporal notDoneLeadsToDone = weakFair(finish, vars) implies (not(done) leadsTo done)
 
-  // Does NOT hold without fairness: TLC finds an infinite stutter path
+  // Does NOT hold without fairness: there is an infinite stutter path
   temporal notDoneLeadsToDoneNoFairness = not(done) leadsTo done
 }
