@@ -8,11 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## UNRELEASED
 
 ### Added
+
+- Added `leadsTo` temporal operator (#1932)
+
 ### Changed
 ### Deprecated
 ### Removed
 ### Fixed
 
+- Fixed a bug in fairness operators where the effect system would report an error (#1932)
 - Fixed TLC backend failing when multiple instances run in parallel (#1949)
 - Fixed an issue where the rust evaluator failed to launch on Windows (#1945) 
 - Fixed an import issue affecting yargs on node 27 (#1926)
