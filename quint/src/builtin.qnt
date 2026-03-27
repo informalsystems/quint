@@ -737,7 +737,7 @@ module builtin {
   /// var active: int -> bool
   /// var terminationDetected: bool
   ///
-  /// temporal Liveness = (forall(i => not(active.get(i))) leadsTo terminationDetected)
+  /// temporal Property = NODES.forall(i => not(active.get(i))) leadsTo terminationDetected
   /// ```
   temporal leadsTo(p, q): (bool, bool) => bool
 
