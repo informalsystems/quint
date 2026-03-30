@@ -323,8 +323,11 @@ export class CommandWrapper {
       spawnError = err
     })
 
-    // Suppress EPIPE errors on stdin — these occur when the child process
-    // exits before we finish writing. We handle the exit code below.
+    // Register a no-op error handler on stdin to prevent Node.js from crashing
+    // on EPIPE errors. EPIPE occurs when the child process exits before we finish
+    // writing. We can't return a QuintError from this event handler since it's
+    // outside the async control flow — the actual error is captured via the
+    // process close event and returned as a proper left() below.
     process.stdin.on('error', () => {})
 
     // Write the input to stdin
