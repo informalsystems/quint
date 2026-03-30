@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 ### Changed
+
+- TLC backend now ensures Apalache distribution is available locally before running TLC
+
 ### Deprecated
 ### Removed
 ### Fixed
