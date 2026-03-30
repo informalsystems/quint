@@ -312,19 +312,24 @@ export class CommandWrapper {
     const startTime = Date.now()
 
     // Spawn the Rust evaluator in subprocess
+    let spawnError: Error | undefined
     const process = spawn(exe, args, {
       shell: false,
       stdio: ['pipe', 'pipe', 'pipe'],
     })
 
+    // Capture spawn errors (e.g., binary not found) instead of throwing
+    process.on('error', (err: Error) => {
+      spawnError = err
+    })
+
+    // Suppress EPIPE errors on stdin — these occur when the child process
+    // exits before we finish writing. We handle the exit code below.
+    process.stdin.on('error', () => {})
+
     // Write the input to stdin
     process.stdin.write(inputStr)
     process.stdin.end()
-
-    // Handle error on launch
-    process.on('error', (err: Error) => {
-      throw new Error(`Failed to launch Rust evaluator: ${err.message}`)
-    })
 
     // Collect output from stdout
     const stdout = readline.createInterface({
@@ -374,6 +379,14 @@ export class CommandWrapper {
     progressBar?.stop()
 
     const stderrOutput = stderrLines.join('\n')
+
+    // Handle spawn errors (e.g., binary not found, permission denied)
+    if (spawnError) {
+      return left({
+        code: 'QNT516',
+        message: `Failed to launch Rust evaluator: ${spawnError.message}${stderrOutput ? `\n${stderrOutput}` : ''}`,
+      })
+    }
 
     if (signal === 'SIGKILL') {
       return left({
