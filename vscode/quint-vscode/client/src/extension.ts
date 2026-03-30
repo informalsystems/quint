@@ -5,7 +5,7 @@
  * --------------------------------------------------------------------------------- */
 
 import * as path from 'path'
-import { commands, ExtensionContext, Terminal, window, workspace } from 'vscode'
+import { ExtensionContext, Terminal, commands, window, workspace } from 'vscode'
 
 import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient/node'
 
