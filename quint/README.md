@@ -232,9 +232,7 @@ Cosmos in 2023.
 - Join the [Quint discussions on GitHub](https://github.com/informalsystems/quint/discussions)
 - [Contribute your spell](https://github.com/informalsystems/quint/blob/main/examples/spells/contribute-your-spell.md) to the collection of Quint spells
 - [Contribute](https://github.com/informalsystems/quint/blob/main/CONTRIBUTING.md) to the development of Quint
-- Join or co-design meetings: We hold fortnightly meetings with users and those
-  interested in contributing to the design and development of Quint. Contact us if
-  you would like an invitation.
+
 
 
 ## Documentation
@@ -253,8 +251,11 @@ possible to transmute specifications into executable assets and empower ideas to
 become referenced artifacts.
 
 ## Acknowledgments
+Quint is currently developed and maintained by the Quint core team at Informal Systems:
+[Erick Pintor](https://github.com/erickpintor), [Gabriela Moreira](https://bugarela.com),
+ [Jasmina Malicevic](https://www.linkedin.com/in/jmalicevic/) and [Yassine Boukhari](https://www.linkedin.com/in/myassineboukhari/). 💜
 
-Quint has been designed and developed by the [Apalache][] team: [Gabriela
+Quint was initially designed and developed by the [Apalache][] team: [Gabriela
 Moreira](https://bugarela.com), [Igor Konnov](https://konnov.github.io/),
 [Jure Kukovec](https://github.com/Kukovec), [Shon Feder](http://shonfeder.net),
 and [Thomas Pani](https://thpani.net/). :heart:
@@ -267,6 +268,5 @@ and, [Ranadeep Biswas](https://ranadeep.in/).
 
 Quint is developed at [Informal Systems](https://informal.systems/).
 
-Supported by the Vienna Business Agency.<br />[<img alt="Vienna Business Agency"
-src="https://raw.githubusercontent.com/informalsystems/quint/main/logos/vienna-business-agency.png"
-width="100">](https://viennabusinessagency.at/)
+
+We are grateful to Vienna Business Agency for their past financial support (2021).
