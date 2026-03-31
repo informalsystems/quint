@@ -14,6 +14,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 ### Security
 
+## v0.20.0 -- 2026-03-31
+
+### Added
+
+- Added support for "find all references" (#1904)
+
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security
+
 ## v0.19.0 -- 2026-02-27
 
 ### Added
