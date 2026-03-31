@@ -17,7 +17,7 @@ Let's look into each of these concepts in more detail.
 
 ## Models
 
-Models are transitions systems - more popularly called **state machines**. To define a model, one needs to define **states** and **transitions**. Quint is a language to do that in a powerful way. For instance, if I want to define a state machine where states are numbers from 1 to 5, and there are transitions from each number to it's successor, I could write something like this:
+Models are transitions systems - more popularly called **state machines**. To define a model, one needs to define **states** and **transitions**. Quint is a language to do that in a powerful way. For instance, if I want to define a state machine where states are numbers from 1 to 5, and there are transitions from each number to its successor, I could write something like this:
 ```
 States = {1, 2, 3, 4, 5}
 Transitions = {1 -> 2, 2 -> 3, 3 -> 4, 4 -> 5}
@@ -83,8 +83,8 @@ And that's it, this is the invariant! We can write more interesting invariants f
 Once you have a model and a property, you can use either the model checker or the simulator to check that property against the model. Model checkers explore *all* possible states of a model, guaranteeing that the property holds for that model, while a simulator will only check a certain number of samples and doesn't provide a guarantee. Even though, the simulator is a great tool to find bugs, and it often provides a faster feedback cycle than a model checker.
 
 There are two model checkers that can be used with Quint:
-- Apalache, seamless integrated on `quint verify` calls
-- TLC, to be integrated. Using TLC at this point requires transpiling Quint into TLA+ (through `quint compile`).
+- Apalache, the default model checker, seamlessly integrated on `quint verify` calls.
+- TLC, supported via the `--backend=tlc` flag on `quint verify`.
 
 For more details on these tools, their constraints and the type of guarantees they can provide, see [Model Checkers](./model-checkers.mdx)
 
