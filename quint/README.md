@@ -226,19 +226,14 @@ Cosmos in 2023.
 
 [TLA+]: https://lamport.azurewebsites.net/tla/tla.html
 
-## Tools built for Quint
+### Tools built for Quint
 
-### [Quint LLM Kit](https://github.com/informalsystems/quint-llm-kit)
-
-AI agents and commands that help you generate and iterate on Quint specs. Run `/spec:next` to get guided suggestions at any point in your journey.
-
-### [Quint Connect](https://github.com/informalsystems/quint-connect)
-
-Model-based testing framework for Rust. Automatically validate your implementation against your Quint spec by replaying generated test traces.
-
-### [Quint Trace Explorer](https://github.com/informalsystems/quint-trace-explorer)
-
-Terminal UI for navigating execution traces. Highlights state changes to make it easy to understand what has happened.
+- [Quint LLM Kit:](https://github.com/informalsystems/quint-llm-kit)
+  AI agents and commands that help you generate and iterate on Quint specs.
+- [Quint Connect:](https://github.com/informalsystems/quint-connect)
+  Model-based testing framework for Rust. Automatically validate your implementation against your Quint spec by replaying generated test traces.
+- [Quint Trace Explorer:](https://github.com/informalsystems/quint-trace-explorer)
+  Terminal UI for navigating execution traces. Highlights state changes to make it easy to understand what has happened.
 
 ## Community
 
@@ -265,7 +260,7 @@ possible to transmute specifications into executable assets and empower ideas to
 become referenced artifacts.
 
 ## Acknowledgments
-Quint is currently developed and maintained by the Quint core team at Informal Systems:
+Quint is currently developed and maintained by the Quint core team at [Informal Systems](https://informal.systems/):
 [Erick Pintor](https://github.com/erickpintor), [Gabriela Moreira](https://bugarela.com),
  [Jasmina Malicevic](https://www.linkedin.com/in/jmalicevic/) and [Yassine Boukhari](https://www.linkedin.com/in/myassineboukhari/). 💜
 
@@ -279,8 +274,4 @@ Thanks for notable contributions goes to [Romain Ruetschi](https://romac.me/),
 and, [Ranadeep Biswas](https://ranadeep.in/).
 
 ---
-
-Quint is developed at [Informal Systems](https://informal.systems/).
-
-
 We are grateful to the Vienna Business Agency for their past financial support (2021).
