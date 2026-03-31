@@ -226,6 +226,20 @@ Cosmos in 2023.
 
 [TLA+]: https://lamport.azurewebsites.net/tla/tla.html
 
+## Tools built for Quint
+
+### [Quint LLM Kit](https://github.com/informalsystems/quint-llm-kit)
+
+AI agents and commands that help you generate and iterate on Quint specs. Run `/spec:next` to get guided suggestions at any point in your journey.
+
+### [Quint Connect](https://github.com/informalsystems/quint-connect)
+
+Model-based testing framework for Rust. Automatically validate your implementation against your Quint spec by replaying generated test traces.
+
+### [Quint Trace Explorer](https://github.com/informalsystems/quint-trace-explorer)
+
+Terminal UI for navigating execution traces. Highlights state changes to make it easy to understand what has happened.
+
 ## Community
 
 - Join the chat in the [Telegram group](https://t.me/quint_lang) or in the [Zulip stream](https://informal-systems.zulipchat.com/#narrow/stream/378959-quint)
