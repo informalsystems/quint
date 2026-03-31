@@ -45,7 +45,17 @@ export function activate(context: ExtensionContext) {
   client = new LanguageClient('quintLspClient', 'Quint Language Server', serverOptions, clientOptions)
 
   context.subscriptions.push(
-    commands.registerCommand('quint.runTest', (filePath: string, testName: string) => {
+    commands.registerCommand('quint.runTest', async (filePath: string, testName: string) => {
+      const input = await window.showInputBox({
+        prompt: 'Max samples (leave empty for default)',
+        placeHolder: '10000',
+        validateInput: v => {
+          if (v === '') return null
+          if (!/^\d+$/.test(v) || Number(v) < 1) return 'Enter a positive integer'
+          return null
+        },
+      })
+      if (input === undefined) return
       if (testTerminal?.exitStatus !== undefined) {
         testTerminal = undefined
       }
@@ -53,7 +63,8 @@ export function activate(context: ExtensionContext) {
         testTerminal = window.createTerminal('Quint Test')
       }
       testTerminal.show()
-      testTerminal.sendText(`quint test '${filePath}' --match '^${testName}$'`)
+      const maxSamples = input ? ` --max-samples=${input}` : ''
+      testTerminal.sendText(`quint test '${filePath}' --match '^${testName}$'${maxSamples}`)
     })
   )
 
