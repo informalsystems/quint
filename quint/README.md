@@ -269,4 +269,4 @@ and, [Ranadeep Biswas](https://ranadeep.in/).
 Quint is developed at [Informal Systems](https://informal.systems/).
 
 
-We are grateful to Vienna Business Agency for their past financial support (2021).
+We are grateful to the Vienna Business Agency for their past financial support (2021).
