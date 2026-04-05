@@ -11,6 +11,7 @@ import { Button } from '../atomic-ui-elements/button'
 import { NewsletterSignupBanner } from '../NewsletterSignupBanner'
 import { HeroSection } from './HeroSection'
 import { TrustSection } from './TrustSection'
+import { ProductSection } from './ProductSection'
 import { ProjectsGridCompact } from './ProjectsGridCompact'
 import { projects } from '../../data/projects'
 import { ToolCards } from '../ToolCards'
@@ -31,6 +32,7 @@ export function Home() {
     <div className="overflow-x-hidden home-page">
       <HeroSection />
       <TrustSection />
+      <ProductSection />
       <section className="relative">
         <div className="mx-auto max-w-8xl px-4">
           <div className="relative z-20 mx-auto max-w-8xl grid grid-cols-1 py-8 gap-y-4 gap-x-8 lg:mt-8 lg:items-start lg:grid-cols-3 xl:grid-cols-3">
