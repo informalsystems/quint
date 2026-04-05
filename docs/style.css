@@ -123,6 +123,10 @@ article:has(.home-page) {
   max-width: 100% !important;
 }
 
+article:has(.home-page) > .x\:mt-12.x\:text-xs.x\:text-end {
+  display: none !important;
+}
+
 div:has(> article:has(.home-page)),
 div:has(> div > article:has(.home-page)) {
   max-width: 100% !important;
