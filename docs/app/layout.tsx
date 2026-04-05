@@ -1,12 +1,15 @@
-import { Footer, Layout, Navbar } from 'nextra-theme-docs'
+import { Layout } from 'nextra-theme-docs'
 import Script from 'next/script'
 import { Head } from 'nextra/components'
 import { getPageMap } from 'nextra/page-map'
-import { InformalSystemsLogo } from '../components/home/InformalSystemsLogo'
+import { Instrument_Sans, Inter } from 'next/font/google'
+
+const instrumentSans = Instrument_Sans({ subsets: ['latin'], variable: '--font-instrument-sans' })
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 import '../style.css'
-import { LogoSwitcher } from '../components/LogoSwitcher'
 import { SITE_CONFIG } from '../config/site'
-import { AnnouncementBanner } from '../components/AnnouncementBanner'
+import { CustomNavbar } from '../components/CustomNavbar'
+import { CustomFooter } from '../components/CustomFooter'
 
 export const metadata = {
   title: SITE_CONFIG.title,
@@ -23,62 +26,13 @@ export const metadata = {
   },
 }
 
-const navbar = (
-  <Navbar
-    logo={<LogoSwitcher />}
-    logoLink="/"
-    projectLink="https://github.com/informalsystems/quint"
-    chatLink="https://t.me/quint_lang"
-    chatIcon={
-      <svg width="24" height="24" viewBox="0 0 50 50">
-        <path
-          fill="currentColor"
-          d="M46.137,6.552c-0.75-0.636-1.928-0.727-3.146-0.238l-0.002,0C41.708,6.828,6.728,21.832,5.304,22.445	c-0.259,0.09-2.521,0.934-2.288,2.814c0.208,1.695,2.026,2.397,2.248,2.478l8.893,3.045c0.59,1.964,2.765,9.21,3.246,10.758	c0.3,0.965,0.789,2.233,1.646,2.494c0.752,0.29,1.5,0.025,1.984-0.355l5.437-5.043l8.777,6.845l0.209,0.125	c0.596,0.264,1.167,0.396,1.712,0.396c0.421,0,0.825-0.079,1.211-0.237c1.315-0.54,1.841-1.793,1.896-1.935l6.556-34.077	C47.231,7.933,46.675,7.007,46.137,6.552z M22,32l-3,8l-3-10l23-17L22,32z"
-        />
-      </svg>
-    }
-  >
-    <a
-      href="https://x.com/quint_lang"
-      target="_blank"
-      rel="noreferrer"
-      aria-label="Quint on X"
-      className="x:text-current"
-    >
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-      </svg>
-    </a>
-  </Navbar>
-)
+const navbar = <CustomNavbar />
 
-const footer = (
-  <Footer>
-    <div className="flex w-full flex-col sm:flex-row gap-6 items-center justify-between">
-      <div className="flex flex-col sm:items-start items-center">
-        <InformalSystemsLogo />
-        <p className="mt-6 text-xs">© {new Date().getFullYear()} Informal Systems.</p>
-      </div>
-
-      <div className="flex gap-6">
-        <a href="https://www.iubenda.com/privacy-policy/80583341" title="Privacy Policy" data-iub-container={true}>
-          Privacy Policy
-        </a>
-        <a
-          href="https://www.iubenda.com/privacy-policy/80583341/cookie-policy"
-          title="Cookie Policy"
-          data-iub-container={true}
-        >
-          Cookie Policy
-        </a>
-      </div>
-    </div>
-  </Footer>
-)
+const footer = <CustomFooter />
 
 export default async function RootLayout({ children }) {
   return (
-    <html lang="en" dir="ltr" suppressHydrationWarning>
+    <html lang="en" dir="ltr" suppressHydrationWarning className={`${instrumentSans.variable} ${inter.variable}`}>
       <Head
         color={{
           hue: { dark: 264, light: 264 },
@@ -94,9 +48,9 @@ export default async function RootLayout({ children }) {
         <Layout
           navbar={navbar}
           footer={footer}
-          banner={<AnnouncementBanner />}
           pageMap={await getPageMap()}
           docsRepositoryBase="https://github.com/informalsystems/quint/blob/main/docs"
+          search={false}
           sidebar={{
             defaultMenuCollapseLevel: 1,
             toggleButton: true,

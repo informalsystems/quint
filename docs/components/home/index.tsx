@@ -2,39 +2,18 @@
 
 import { Code, Pre } from 'nextra/components'
 import Link from 'next/link'
-import Image from 'next/image'
 
-import { faCheckCircle } from '@fortawesome/free-solid-svg-icons'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import CodeSample from './code_sample.mdx'
 import ViolationSample from './violation_sample.mdx'
 
 import { Button } from '../atomic-ui-elements/button'
 import { NewsletterSignupBanner } from '../NewsletterSignupBanner'
-import { classNames } from './classNames'
-import { ProsOrConsList } from './ProsOrConsList'
+import { HeroSection } from './HeroSection'
+import { TrustSection } from './TrustSection'
 import { ProjectsGridCompact } from './ProjectsGridCompact'
 import { projects } from '../../data/projects'
 import { ToolCards } from '../ToolCards'
-
-const benefits = [
-  [
-    'Executable',
-    ['Quint', ['checked names and types', 'executable']],
-    ['English & Markdown', ['not checked', 'not executable']],
-  ],
-  [
-    'Abstract',
-    ['Quint', ['define only what matters']],
-    ['Programming Languages', ['define how things happen, in detail']],
-  ],
-  [
-    'Modern',
-    ['Quint', ['familiar syntax', 'CLI and your editor']],
-    ['Existing Spec Languages', ['math-y syntax', 'old GUI tools']],
-  ],
-] as const
 
 const components = {
   pre: Pre,
@@ -48,82 +27,12 @@ export function Home() {
     setViolationVisible(!isViolationVisible)
   }
 
-  useEffect(() => {
-    // Add gradient class to body on mount
-    document.body.classList.add('gradient-bg')
-
-    // Cleanup on unmount
-    return () => {
-      document.body.classList.remove('gradient-bg')
-    }
-  }, [])
-
   return (
-    <div className="overflow-x-hidden">
-      <section className="relative py-12 sm:py-16 lg:pb-1">
+    <div className="overflow-x-hidden home-page">
+      <HeroSection />
+      <TrustSection />
+      <section className="relative">
         <div className="mx-auto max-w-8xl px-4">
-          <div className="grid items-start gap-10 lg:grid-cols-1">
-            <div className="relative z-10">
-              <h1 className="text-4xl/tight sm:text-5xl/tight font-extrabold tracking-tight">Quint</h1>
-              <h2 className="text-2xl sm:text-3xl font-bold text-primary-700 dark:text-primary-400">
-                Executable specs for reliable systems
-              </h2>
-              <p className="mt-4 max-w-prose text-lg text-zinc-600 dark:text-zinc-300">
-                Feel more confident about your code (human written or AI-generated)
-              </p>
-
-              <div className="mt-6 flex flex-wrap items-center gap-4">
-                <Link
-                  href="/docs/getting-started"
-                  className="relative inline-flex items-center gap-3 rounded-xl px-6 py-3 text-base font-semibold
-                             text-white shadow-lg transition active:scale-[0.99]
-                             bg-gradient-to-r from-quint-purple/50 to-quint-purple
-                             hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-                >
-                  Get Started
-                  <span className="rounded-full bg-white/20 px-2 py-1 text-xs">5‑min guide</span>
-                </Link>
-              </div>
-            </div>
-          </div>
-          <div className="grid items-center mx-auto max-w-6xl gap-5 mt-6 xl:mt-1 xl:grid-cols-7">
-            <div className="xl:col-span-2 mx-auto my-auto max-lg:hidden">
-              <Image
-                src="/logo-dark.svg"
-                alt="Quint logo"
-                width={300}
-                height={300}
-                className="opacity-80 dark:hidden"
-              />
-              <Image
-                src="/logo-light.svg"
-                alt="Quint logo"
-                width={300}
-                height={300}
-                className="opacity-80 hidden dark:block"
-              />
-            </div>
-
-            <div className="xl:col-span-5 ml-auto">
-              <div className={classNames.container}>
-                {benefits.map(([label, [prosLabel, pros], [consLabel, cons]]) => (
-                  <div key={label} className={classNames.benefitContainer}>
-                    <h1 className={classNames.benefitTitle}>
-                      <div className={classNames.benefitIcon}>
-                        <FontAwesomeIcon icon={faCheckCircle} />
-                      </div>
-                      {label}
-                    </h1>
-
-                    <div className={classNames.prosAndConsContainer}>
-                      <ProsOrConsList items={pros} label={prosLabel} type="pro" />
-                      <ProsOrConsList items={cons} label={consLabel} type="con" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
           <div className="relative z-20 mx-auto max-w-8xl grid grid-cols-1 py-8 gap-y-4 gap-x-8 lg:mt-8 lg:items-start lg:grid-cols-3 xl:grid-cols-3">
             <div className="xl:col-span-2 text-lg">
               <CodeSample components={components} />

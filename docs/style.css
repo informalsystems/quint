@@ -6,6 +6,8 @@
   --color-quint-purple: #9d6ce5;
   --color-quint-dark: #2d0075;
   --color-quint-orange: #ffab70;
+  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-inter: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 dl {
@@ -114,6 +116,22 @@ dd {
 }
 
 /* New Badge Styling */
+article:has(.home-page) {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-top: 0 !important;
+  max-width: 100% !important;
+}
+
+div:has(> article:has(.home-page)),
+div:has(> div > article:has(.home-page)) {
+  max-width: 100% !important;
+}
+
+.x\:max-w-\(--nextra-content-width\):has(.home-page) {
+  max-width: 100% !important;
+}
+
 .badge-new::after {
   content: "NEW";
   background: var(--color-quint-purple);
