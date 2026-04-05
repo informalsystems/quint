@@ -25,7 +25,7 @@ const products = [
 export const ProductSection = () => {
   return (
     <section className="bg-white">
-      <div className="mx-auto max-w-7xl px-6 py-20">
+      <div className="mx-auto max-w-7xl px-6 pt-18 pb-24">
         <h2 className="text-4xl sm:text-5xl md:text-[54px] leading-tight font-semibold font-[family-name:var(--font-instrument-sans)]">
           <span className="text-quint-dark">One Product. </span>
           <span className="text-quint-purple">Continued Confidence.</span>
