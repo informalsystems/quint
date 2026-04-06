@@ -22,12 +22,11 @@ dd {
   padding-left: 1rem;
 }
 
-
 .x\:text-primary-600 {
   color: hsl(var(--nextra-primary-hue), var(--nextra-primary-saturation), 57%);
 }
 
-:is(html[class~="dark"] .x\:text-primary-600) {
+:is(html[class~='dark'] .x\:text-primary-600) {
   color: hsl(var(--nextra-primary-hue), var(--nextra-primary-saturation), 57%);
 }
 
@@ -45,12 +44,12 @@ dd {
   border-top-left-radius: var(--radius-xl);
 }
 
-:is(html[class~="dark"] .nextra-code div) {
+:is(html[class~='dark'] .nextra-code div) {
   background-color: hsl(var(--nextra-primary-hue), var(--nextra-primary-saturation), 15%);
   border-color: transparent;
 }
 
-:is(html[class~="dark"] .nextra-code pre) {
+:is(html[class~='dark'] .nextra-code pre) {
   background-color: hsl(var(--nextra-primary-hue), var(--nextra-primary-saturation), 12%);
   --tw-ring-color: transparent;
 }
@@ -66,7 +65,7 @@ dd {
   color: #4c1d95;
 }
 
-:is(html[class~="dark"] .nextra-callout.x\:dark\:border-orange-400\/30) {
+:is(html[class~='dark'] .nextra-callout.x\:dark\:border-orange-400\/30) {
   border-color: rgba(157, 108, 229, 0.3);
   background-color: rgba(157, 108, 229, 0.2);
   color: #c4b5fd;
@@ -74,23 +73,23 @@ dd {
 
 /* Nextra Tabs generates hidden h3 elements for each tab panel, which
    incorrectly increment the Steps component's counter. Prevent that. */
-.nextra-steps h3[style*="visibility:hidden"] {
+.nextra-steps h3[style*='visibility:hidden'] {
   counter-increment: var(--counter-id) 0;
 }
 
 /* Nextra component is adding the margin twice, so I cancel it here */
-[role="tabpanel"].x\:mt-6 {
+[role='tabpanel'].x\:mt-6 {
   margin-top: -1.5rem !important;
 }
 
 .gradient-bg {
-  background: #FFF;
-  background: linear-gradient(90deg,rgba(206, 182, 242, 1) 0%, rgba(255, 255, 255, 1) 20%);
+  background: #fff;
+  background: linear-gradient(90deg, rgba(206, 182, 242, 1) 0%, rgba(255, 255, 255, 1) 20%);
   min-height: 100vh;
   width: 100%;
 }
 
-:is(html[class~="dark"] .gradient-bg) {
+:is(html[class~='dark'] .gradient-bg) {
   background: #000;
   background: linear-gradient(90deg, rgba(79, 54, 115, 1) 0%, rgba(0, 0, 0, 1) 20%);
   min-height: 100vh;
@@ -99,7 +98,7 @@ dd {
 
 /* Nextra Banner Customization */
 .nextra-banner {
-  background: linear-gradient(90deg, #9d6ce5 0%,  #6428bf 100%);
+  background: linear-gradient(90deg, #9d6ce5 0%, #6428bf 100%);
   border: none;
   color: white;
   font-weight: 500;
@@ -137,7 +136,7 @@ div:has(> div > article:has(.home-page)) {
 }
 
 .badge-new::after {
-  content: "NEW";
+  content: 'NEW';
   background: var(--color-quint-purple);
   color: white;
   font-size: 0.5rem;
@@ -149,4 +148,3 @@ div:has(> div > article:has(.home-page)) {
   vertical-align: super;
   line-height: 1;
 }
-
