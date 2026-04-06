@@ -6,6 +6,7 @@ import { ProductSection } from './ProductSection'
 import { AuditsSection } from './AuditsSection'
 import { TeamsSection } from './TeamsSection'
 import { TestimonialsSection } from './TestimonialsSection'
+import { AsSeenOnSection } from './AsSeenOnSection'
 
 export function Home() {
   return (
@@ -16,6 +17,7 @@ export function Home() {
       <AuditsSection />
       <TeamsSection />
       <TestimonialsSection />
+      <AsSeenOnSection />
     </div>
   )
 }

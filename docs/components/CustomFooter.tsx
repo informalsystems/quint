@@ -8,8 +8,8 @@ import { LinkButton } from './LinkButton'
 export const CustomFooter = () => {
   return (
     <footer className="w-full">
-      <div className="relative bg-[url('/bg-footer.png')] bg-cover bg-center bg-no-repeat">
-        <div className="relative mx-auto max-w-6xl px-6 py-23 text-center">
+      <div className="relative overflow-hidden bg-[url('/bg-footer.png')] bg-cover bg-center bg-no-repeat">
+        <div className="relative mx-auto max-w-6xl px-6 py-30 text-center">
           <h2 className="text-3xl sm:text-4xl md:text-[56px] font-semibold text-quint-dark font-[family-name:var(--font-instrument-sans)]">
             Ready to ship with <span className="text-quint-purple">confidence?</span>
           </h2>
@@ -26,7 +26,7 @@ export const CustomFooter = () => {
           </div>
         </div>
 
-        <div className="absolute bottom-[-30px] z-10 overflow-visible left-4 sm:left-12 lg:left-24 w-40 sm:w-52 lg:w-60">
+        <div className="absolute bottom-[-28px] z-0 overflow-visible left-4 sm:left-12 lg:left-24 w-40 sm:w-52 lg:w-60">
           <Image src="/quint-footer.png" alt="Quint robot mascot" width={196} height={222} className="w-full h-auto" />
         </div>
 

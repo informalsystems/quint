@@ -119,6 +119,7 @@ article:has(.home-page) {
   padding-left: 0 !important;
   padding-right: 0 !important;
   padding-top: 0 !important;
+  padding-bottom: 0 !important;
   max-width: 100% !important;
 }
 
@@ -133,6 +134,14 @@ div:has(> div > article:has(.home-page)) {
 
 .x\:max-w-\(--nextra-content-width\):has(.home-page) {
   max-width: 100% !important;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
 
 .badge-new::after {

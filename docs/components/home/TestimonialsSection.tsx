@@ -1,6 +1,8 @@
 'use client'
 
 import Image from 'next/image'
+import React, { useCallback, useRef, useState } from 'react'
+import { ArrowLeft, ArrowRight } from '../atomic-ui-elements/arrows'
 
 const testimonials = [
   {
@@ -37,6 +39,39 @@ const QuoteIcon = () => (
 )
 
 export const TestimonialsSection = () => {
+  const trackRef = useRef<HTMLDivElement>(null)
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const canScrollLeft = currentIndex > 0
+  const canScrollRight = currentIndex < testimonials.length - 1
+
+  const getOffset = useCallback(() => {
+    const track = trackRef.current
+    if (!track) return 0
+    const card = track.children[currentIndex] as HTMLElement | undefined
+    if (!card) return 0
+    return card.offsetLeft
+  }, [currentIndex])
+
+  const touchStartX = useRef(0)
+
+  const scroll = (direction: 'left' | 'right') => {
+    setCurrentIndex(prev => {
+      if (direction === 'left') return Math.max(0, prev - 1)
+      return Math.min(testimonials.length - 1, prev + 1)
+    })
+  }
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const delta = touchStartX.current - e.changedTouches[0].clientX
+    if (Math.abs(delta) > 50) {
+      scroll(delta > 0 ? 'right' : 'left')
+    }
+  }
+
   return (
     <section className="bg-white pt-5 pb-20">
       <div className="mx-auto max-w-7xl px-6">
@@ -51,10 +86,36 @@ export const TestimonialsSection = () => {
               Quint is a working ecosystem with years of research and real-world use behind it, deployed by teams at
               Monad BFT, Namada, and Cardano.
             </p>
+            <div className="mt-6 flex items-center gap-4">
+              <button
+                onClick={() => scroll('left')}
+                disabled={!canScrollLeft}
+                className="text-quint-purple transition-opacity disabled:opacity-30 cursor-pointer disabled:cursor-default"
+                aria-label="Previous testimonial"
+              >
+                <ArrowLeft />
+              </button>
+              <button
+                onClick={() => scroll('right')}
+                disabled={!canScrollRight}
+                className="text-quint-purple transition-opacity disabled:opacity-30 cursor-pointer disabled:cursor-default"
+                aria-label="Next testimonial"
+              >
+                <ArrowRight />
+              </button>
+            </div>
           </div>
 
-          <div className=" overflow-x-auto overflow-y-visible pt-10 lg:-mr-[calc((100vw-1280px)/2+24px)] lg:pr-0">
-            <div className="flex gap-6 pr-6 lg:pr-12">
+          <div
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            className="overflow-x-hidden overflow-y-visible pt-10 md:-mr-6 lg:-mr-[calc((100vw-1280px)/2+24px)] lg:pr-0 touch-pan-y"
+          >
+            <div
+              ref={trackRef}
+              className="flex gap-6 pr-6 lg:pr-24 transition-transform duration-500 ease-in-out"
+              style={{ transform: `translateX(-${getOffset()}px)` }}
+            >
               {testimonials.map((testimonial, i) => (
                 <div
                   key={i}
@@ -68,7 +129,7 @@ export const TestimonialsSection = () => {
                     {testimonial.quote}
                   </p>
 
-                  <div className="mt-5 md:mt-10 flex items-center justify-end gap-3">
+                  <div className="mt-5 md:mt-10 flex items-center justify-start gap-3">
                     <Image
                       src={testimonial.avatar}
                       alt={testimonial.name}
@@ -77,10 +138,10 @@ export const TestimonialsSection = () => {
                       className="w-10 h-10 rounded-full object-cover"
                     />
                     <div>
-                      <p className="text-xl font-semibold text-quint-dark font-[family-name:var(--font-instrument-sans)]">
+                      <p className="text-2xl font-semibold text-quint-dark font-[family-name:var(--font-instrument-sans)]">
                         {testimonial.name},
                       </p>
-                      <p className="text-base text-quint-purple font-semibold tracking-wider font-[family-name:var(--font-inter)]">
+                      <p className="text-xl text-quint-purple font-semibold tracking-wider font-[family-name:var(--font-inter)]">
                         {testimonial.title}
                       </p>
                     </div>
