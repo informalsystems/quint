@@ -2,6 +2,7 @@
 
 import { HeroSection } from './HeroSection'
 import { TrustSection } from './TrustSection'
+import { ExecutableSpecSection } from './ExecutableSpecSection'
 import { ProductSection } from './ProductSection'
 import { AuditsSection } from './AuditsSection'
 import { TeamsSection } from './TeamsSection'
@@ -13,6 +14,7 @@ export function Home() {
     <div className="overflow-x-hidden home-page">
       <HeroSection />
       <TrustSection />
+      <ExecutableSpecSection />
       <ProductSection />
       <AuditsSection />
       <TeamsSection />
