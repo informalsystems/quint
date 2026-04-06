@@ -8,6 +8,7 @@ import { AuditsSection } from './AuditsSection'
 import { TeamsSection } from './TeamsSection'
 import { TestimonialsSection } from './TestimonialsSection'
 import { AsSeenOnSection } from './AsSeenOnSection'
+import { CTASection } from './CTASection'
 
 export function Home() {
   return (
@@ -20,6 +21,7 @@ export function Home() {
       <TeamsSection />
       <TestimonialsSection />
       <AsSeenOnSection />
+      <CTASection />
     </div>
   )
 }
