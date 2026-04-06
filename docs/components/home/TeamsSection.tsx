@@ -24,7 +24,7 @@ const teams = [
 export const TeamsSection = () => {
   return (
     <section className="bg-white">
-      <div className="mx-auto max-w-7xl px-6 pb-20">
+      <div className="mx-auto max-w-7xl pt-10 lg:pt-0 px-6 pb-20">
         <h2 className="text-4xl sm:text-5xl md:text-[54px] leading-tight font-semibold font-[family-name:var(--font-instrument-sans)]">
           <span className="text-quint-dark">Built for Teams Where </span>
           <span className="text-quint-purple">Correctness Matters</span>

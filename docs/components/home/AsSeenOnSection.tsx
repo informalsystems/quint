@@ -60,17 +60,17 @@ export const AsSeenOnSection = () => {
   }
 
   return (
-    <section className="bg-quint-purple/10 py-24">
+    <section className="bg-quint-purple/10 py-10 md:py-24">
       <div className="mx-auto max-w-7xl px-6">
-        <div className="flex items-center justify-between mb-10">
-          <h2 className="text-4xl sm:text-[54px] font-semibold text-quint-dark font-[family-name:var(--font-instrument-sans)]">
+        <div className="flex flex-wrap gap-10 items-center justify-between mb-6 md:mb-16">
+          <h2 className="text-3xl sm:text-4xl md:text-[54px] font-semibold text-quint-dark font-[family-name:var(--font-instrument-sans)]">
             As Seen On
           </h2>
           <div className="flex items-center gap-4">
             <button
               onClick={() => scroll('left')}
               disabled={!canScrollLeft}
-              className="text-quint-purple transition-opacity disabled:opacity-30 hover:text-quint-dark cursor-pointer disabled:cursor-default"
+              className="w-10 h-10 md:h-auto md:w-auto text-quint-purple transition-opacity disabled:opacity-30 hover:text-quint-dark cursor-pointer disabled:cursor-default"
               aria-label="Previous talk"
             >
               <ArrowLeft />
@@ -78,7 +78,7 @@ export const AsSeenOnSection = () => {
             <button
               onClick={() => scroll('right')}
               disabled={!canScrollRight}
-              className="text-quint-purple transition-opacity disabled:opacity-30 hover:text-quint-dark cursor-pointer disabled:cursor-default"
+              className="w-10 h-10 md:h-auto md:w-auto text-quint-purple transition-opacity disabled:opacity-30 hover:text-quint-dark cursor-pointer disabled:cursor-default"
               aria-label="Next talk"
             >
               <ArrowRight />
@@ -89,11 +89,11 @@ export const AsSeenOnSection = () => {
         <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} className="overflow-x-hidden touch-pan-y">
           <div
             ref={trackRef}
-            className="flex flex-wrap gap-6 transition-transform duration-500 ease-in-out"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 transition-transform duration-500 ease-in-out"
             style={{ transform: `translateX(-${getOffset()}px)` }}
           >
             {talks.map((talk, i) => (
-              <div key={i} className="shrink-0 w-[300px] md:w-[350px]">
+              <div key={i}>
                 <div className="rounded-lg overflow-hidden aspect-video relative">
                   <Image src={talk.thumbnail} alt={talk.title} fill className="object-cover" />
                 </div>
