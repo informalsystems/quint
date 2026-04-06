@@ -9,6 +9,7 @@ let highlighter
 
 const withNextra = nextra({
   latex: true,
+  defaultShowCopyCode: true,
   mdxOptions: {
     rehypePrettyCodeOptions: {
       theme: {
