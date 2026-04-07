@@ -52,7 +52,7 @@ the details, check [coin.qnt](https://github.com/informalsystems/quint/tree/main
         </block>
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>16</line>
+        <line>22</line>
       </step>
       <step>
         <title>Declare a single module</title>
@@ -66,7 +66,7 @@ with a single module and introduce multiple modules only if you are going to
 reuse various parts of your protocol.
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>17</line>
+        <line>23</line>
       </step>
       <step>
         <title>Declare types</title>
@@ -92,7 +92,7 @@ with the types on the right-hand sides of `type`. For example, it does not disti
 different kinds of "integers", when they are referred to via different type aliases.
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>28</line>
+        <line>34</line>
       </step>
       <step>
         <title>Declare pure functions</title>
@@ -139,7 +139,7 @@ annotations will help you in figuring out the issue.
             </block>
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>37</line>
+        <line>43</line>
       </step>
       <step>
         <title>Declare the protocol parameters</title>
@@ -176,7 +176,7 @@ At the moment, we simply declare the value for a small set of addresses `ADDR`,
 in order to be able to iterate on the protocol specification quickly.
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>46</line>
+        <line>52</line>
       </step>
       <step>
         <title>Declare the protocol state</title>
@@ -208,7 +208,7 @@ of Solidity:
 ```    
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>51</line>
+        <line>57</line>
       </step>
       <step>
         <title>Declare operators over states</title>
@@ -234,7 +234,7 @@ do that a few steps later.
             </block>
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>53</line>
+        <line>59</line>
       </step>
       <step>
         <title>Declare `require` and `totalSupply`</title>
@@ -273,7 +273,7 @@ pieces:
 
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>59</line>
+        <line>65</line>
       </step>
       <step>
         <title>Declare an initializer `init`</title>
@@ -322,7 +322,7 @@ in the reference manual.
 
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>65</line>
+        <line>71</line>
       </step>
       <step>
         <title>Assign initial values to the state variables</title>
@@ -355,7 +355,7 @@ Hint: use `if (cond) value1 else value2`.
 
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>70</line>
+        <line>76</line>
       </step>
       <step>
         <title>Defining the action `send`</title>
@@ -398,7 +398,7 @@ Do you understand what happened in this case?
 
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>87</line>
+        <line>93</line>
       </step>
       <step>
         <title>Defining the action `send`</title>
@@ -414,7 +414,7 @@ Play with `mint` and `send` in REPL! The simplest scenario would be:
 
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>113</line>
+        <line>119</line>
       </step>
       <step>
         <title>Defining a protocol step</title>
@@ -441,7 +441,7 @@ Although you should definitely play with the protocol at this point, we urge you
 not to stop here! In the next steps, we show you the real magic of Quint.
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>125</line>
+        <line>131</line>
       </step>
       <step>
         <title>Expected properties</title>
@@ -453,7 +453,7 @@ protocol invariants and temporal properties.
 
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>127</line>
+        <line>133</line>
       </step>
       <step>
         <title>Defining the most basic invariant</title>
@@ -482,7 +482,7 @@ whereas the latter are actually called *invariants*.
 
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>133</line>
+        <line>139</line>
       </step>
       <step>
         <title>Defining the total supply invariant</title>
@@ -497,7 +497,7 @@ initialize it with 0 and increase it in `mint` with the `amount` passed to `mint
 
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>140</line>
+        <line>146</line>
       </step>
       <step>
         <title>Temporal properties</title>
@@ -512,7 +512,7 @@ with the qualifier `temporal`.
 
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>148</line>
+        <line>154</line>
       </step>
       <step>
         <title>Tests</title>
@@ -545,7 +545,7 @@ prior minting. What is this value?
             </block>
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>156</line>
+        <line>162</line>
       </step>
       <step>
         <title>A single data point test</title>
@@ -570,7 +570,7 @@ see the next step.
 
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>168</line>
+        <line>174</line>
       </step>
       <step>
         <title>Testing with non-deterministic inputs</title>
@@ -622,7 +622,7 @@ better with Quint.
             </block>
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>192</line>
+        <line>198</line>
       </step>
       <step>
         <title>Testing with non-deterministic inputs and control</title>
@@ -656,7 +656,7 @@ runs and steps can be tuned. Check the options of `run`:
 
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>197</line>
+        <line>203</line>
       </step>
       <step>
         <title>Does random testing always find bugs?</title>
@@ -687,11 +687,11 @@ if it has not found any.
 
         </description>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>198</line>
+        <line>204</line>
       </step>
       <step>
         <file>lesson3-anatomy/coin.qnt</file>
-        <line>199</line>
+        <line>205</line>
         <title>Suming it up</title>
         <description>
 
