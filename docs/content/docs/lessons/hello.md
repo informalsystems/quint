@@ -332,7 +332,7 @@ after executing the run called `writeReadTest`.
 We have covered all the aspects of our "Hello, world!" example.
 Actually, we could have written a much shorter example, but it would not
 demonstrate the distinctive features of Quint. If you look at the
-source code of [hello.qnt](./hello.qnt), it is not scary long.
+source code of [hello.qnt](https://github.com/informalsystems/quint/blob/main/examples/tutorials/hello.qnt), it is not scary long.
 
 We are experimenting with different kinds of tutorials.
 It would be great to learn, whether you liked this tutorial format, or not.
