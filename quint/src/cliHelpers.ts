@@ -25,7 +25,11 @@ export function mkErrorMessage(sourceMap: SourceMap): (_: QuintError) => ErrorMe
   }
 }
 
-export function toExpr(prev: TypecheckedStage, input: string): Either<QuintError, QuintEx> {
+export function toExpr(
+  prev: TypecheckedStage,
+  input: string,
+  expectedRole?: { kind: 'action'; flag: string }
+): Either<QuintError, QuintEx> {
   const mainName = guessMainModule(prev)
   const parseResult = parseExpressionOrDeclaration(input, '<input>', prev.idGen, prev.sourceMap)
   if (parseResult.kind !== 'expr') {
@@ -36,6 +40,21 @@ export function toExpr(prev: TypecheckedStage, input: string): Either<QuintError
   walkExpression(prev.resolver, parseResult.expr)
   if (prev.resolver.errors.length > 0) {
     return left(prev.resolver.errors[0])
+  }
+
+  // When used as --init or --step, the resolved name must be an action, not a state variable.
+  // A variable named 'step' or 'init' shadows the default action name, causing confusing
+  // runtime errors or silently wrong results.
+  if (expectedRole?.kind === 'action' && parseResult.expr.kind === 'name') {
+    const def = prev.resolver.table.get(parseResult.expr.id)
+    if (def && def.kind === 'var') {
+      return left({
+        code: 'QNT501',
+        message:
+          `'${input}' resolves to a state variable, not an action. ` +
+          `Rename the variable or use --${expectedRole.flag} to specify a different action name.`,
+      })
+    }
   }
 
   return right(parseResult.expr)
