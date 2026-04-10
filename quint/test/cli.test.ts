@@ -32,7 +32,6 @@ describe('the typecheck CLI routine', () =>
   }))
 
 // Module where a state variable named 'step' shadows the default --step action name.
-// Used by tests for both 'step' and 'init' shadowing (the init case has its own module below).
 const stepVarModule = `
 module stepVarModule {
   var x: int
@@ -52,6 +51,25 @@ const stepVarLoaded = {
   warnings: [],
 }
 
+// Module where a val named 'step' shadows the default --step action name.
+const stepValModule = `
+module stepValModule {
+  var x: int
+  val step = 42
+
+  action init = all { x' = 0 }
+  action doStep = all { x' = x + 1 }
+}
+`
+
+const stepValLoaded = {
+  args: {},
+  path: 'mocked/stepVal',
+  sourceCode: new Map([['mocked/stepVal', stepValModule]]),
+  stage: 'loading' as stage,
+  warnings: [],
+}
+
 describe('toExpr with expectedRole', () => {
   it('rejects a state variable when expectedRole is action', async () => {
     const parsed = await parse(stepVarLoaded)
@@ -61,7 +79,21 @@ describe('toExpr with expectedRole', () => {
       const result = toExpr(tc, 'step', { kind: 'action', flag: 'step' })
       assert.isTrue(result.isLeft(), 'expected toExpr to return Left for var named step')
       result.mapLeft(err => {
-        assert.include(err.message, 'resolves to a state variable')
+        assert.include(err.message, 'not an action')
+        assert.include(err.message, '--step')
+      })
+    })
+  })
+
+  it('rejects a val when expectedRole is action', async () => {
+    const parsed = await parse(stepValLoaded)
+    const typechecked = await parsed.asyncChain(typecheck)
+
+    typechecked.map(tc => {
+      const result = toExpr(tc, 'step', { kind: 'action', flag: 'step' })
+      assert.isTrue(result.isLeft(), 'expected toExpr to return Left for val named step')
+      result.mapLeft(err => {
+        assert.include(err.message, 'not an action')
         assert.include(err.message, '--step')
       })
     })
@@ -111,7 +143,7 @@ module initVarModule {
       const result = toExpr(tc, 'init', { kind: 'action', flag: 'init' })
       assert.isTrue(result.isLeft(), 'expected toExpr to return Left for var named init')
       result.mapLeft(err => {
-        assert.include(err.message, 'resolves to a state variable')
+        assert.include(err.message, 'not an action')
         assert.include(err.message, '--init')
       })
     })

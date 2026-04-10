@@ -42,17 +42,18 @@ export function toExpr(
     return left(prev.resolver.errors[0])
   }
 
-  // When used as --init or --step, the resolved name must be an action, not a state variable.
-  // A variable named 'step' or 'init' shadows the default action name, causing confusing
+  // When used as --init or --step, the resolved name must be an action.
+  // A non-action definition (var, val, const, etc.) with the same name causes confusing
   // runtime errors or silently wrong results.
   if (expectedRole?.kind === 'action' && parseResult.expr.kind === 'name') {
     const def = prev.resolver.table.get(parseResult.expr.id)
-    if (def && def.kind === 'var') {
+    if (def && (def.kind !== 'def' || def.qualifier !== 'action')) {
+      const defKind = def.kind === 'def' ? def.qualifier : def.kind
       return left({
         code: 'QNT501',
         message:
-          `'${input}' resolves to a state variable, not an action. ` +
-          `Rename the variable or use --${expectedRole.flag} to specify a different action name.`,
+          `'${input}' is a ${defKind}, not an action. ` +
+          `Use --${expectedRole.flag} to specify an action name.`,
       })
     }
   }
