@@ -79,7 +79,7 @@ describe('toExpr with expectedRole', () => {
       const result = toExpr(tc, 'step', { kind: 'action', flag: 'step' })
       assert.isTrue(result.isLeft(), 'expected toExpr to return Left for var named step')
       result.mapLeft(err => {
-        assert.include(err.message, 'not an action')
+        assert.include(err.message, 'is used by a')
         assert.include(err.message, '--step')
       })
     })
@@ -93,7 +93,7 @@ describe('toExpr with expectedRole', () => {
       const result = toExpr(tc, 'step', { kind: 'action', flag: 'step' })
       assert.isTrue(result.isLeft(), 'expected toExpr to return Left for val named step')
       result.mapLeft(err => {
-        assert.include(err.message, 'not an action')
+        assert.include(err.message, 'is used by a')
         assert.include(err.message, '--step')
       })
     })
@@ -143,7 +143,7 @@ module initVarModule {
       const result = toExpr(tc, 'init', { kind: 'action', flag: 'init' })
       assert.isTrue(result.isLeft(), 'expected toExpr to return Left for var named init')
       result.mapLeft(err => {
-        assert.include(err.message, 'not an action')
+        assert.include(err.message, 'is used by a')
         assert.include(err.message, '--init')
       })
     })

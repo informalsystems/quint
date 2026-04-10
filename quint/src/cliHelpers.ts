@@ -51,9 +51,7 @@ export function toExpr(
       const defKind = def.kind === 'def' ? def.qualifier : def.kind
       return left({
         code: 'QNT501',
-        message:
-          `'${input}' is a ${defKind}, not an action. ` +
-          `Use --${expectedRole.flag} to specify an action name.`,
+        message: `default --${expectedRole.flag} action name '${input}' is used by a ${defKind} declaration`,
       })
     }
   }
