@@ -122,6 +122,7 @@ export async function verify(
     const proc = spawn('java', [
       maxHeap,
       stackSize,
+      `-Djava.io.tmpdir=${tmpDir}`,
       '-cp',
       jarPath,
       'tlc2.TLC',
