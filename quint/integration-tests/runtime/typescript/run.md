@@ -427,12 +427,12 @@ error: Invariant violated
 
 <!-- !test in run itf -->
 ```
-quint run --backend=typescript --out-itf=out-itf-example.itf.json --max-steps=5 --seed=123 \
+quint run --backend=typescript --out-itf=run-itf.itf.json --max-steps=5 --seed=123 \
   --invariant=totalSupplyDoesNotOverflowInv \
   --verbosity=0 \
   ../examples/tutorials/coin.qnt
-cat out-itf-example.itf.json | jq '.states[0]."balances"."#map"[0]'
-rm out-itf-example.itf.json
+cat run-itf.itf.json | jq '.states[0]."balances"."#map"[0]'
+rm run-itf.itf.json
 ```
 
 <!-- !test out run itf -->
@@ -449,12 +449,12 @@ rm out-itf-example.itf.json
 
 <!-- !test in run itf with metadata -->
 ```
-quint run --backend=typescript --out-itf=out-itf-mbt-example.itf.json --max-steps=5 --seed=123 \
+quint run --backend=typescript --out-itf=run-itf-with-metadata.itf.json --max-steps=5 --seed=123 \
   --invariant=totalSupplyDoesNotOverflowInv --mbt\
   --verbosity=0 \
   ../examples/tutorials/coin.qnt
-cat out-itf-mbt-example.itf.json | jq '.states[1]'
-rm out-itf-mbt-example.itf.json
+cat run-itf-with-metadata.itf.json | jq '.states[1]'
+rm run-itf-with-metadata.itf.json
 ```
 
 <!-- !test out run itf with metadata -->
@@ -522,9 +522,9 @@ rm out-itf-mbt-example.itf.json
 
 <!-- !test in successful run itf -->
 ```
-quint run --backend=typescript --out-itf=out-itf-example.itf.json --max-steps=5 --seed=123  --verbosity=0 ../examples/tutorials/coin.qnt
-cat out-itf-example.itf.json | jq '.states[0]."balances"."#map"[0]'
-rm out-itf-example.itf.json
+quint run --backend=typescript --out-itf=successful-run-itf.itf.json --max-steps=5 --seed=123  --verbosity=0 ../examples/tutorials/coin.qnt
+cat successful-run-itf.itf.json | jq '.states[0]."balances"."#map"[0]'
+rm successful-run-itf.itf.json
 ```
 
 <!-- !test out successful run itf -->
@@ -541,10 +541,10 @@ rm out-itf-example.itf.json
 
 <!-- !test in run with n-traces itf -->
 ```
-quint run --backend=typescript --out-itf=out-itf-example.itf.json --n-traces=3 --mbt --max-steps=5 --seed=123 --verbosity=0 --max-samples=10000 ../examples/tutorials/coin.qnt
-cat out-itf-example0.itf.json | jq '.["#meta"].status'
-cat out-itf-example1.itf.json | jq '.states[0]["mbt::actionTaken"]'
-rm out-itf-example*.itf.json
+quint run --backend=typescript --out-itf=run-with-n-traces-itf.itf.json --n-traces=3 --mbt --max-steps=5 --seed=123 --verbosity=0 --max-samples=10000 ../examples/tutorials/coin.qnt
+cat run-with-n-traces-itf0.itf.json | jq '.["#meta"].status'
+cat run-with-n-traces-itf1.itf.json | jq '.states[0]["mbt::actionTaken"]'
+rm run-with-n-traces-itf*.itf.json
 ```
 
 <!-- !test out run with n-traces itf -->
@@ -557,12 +557,12 @@ rm out-itf-example*.itf.json
 
 <!-- !test in run with n-traces itf violation -->
 ```
-quint run --backend=typescript --out-itf=out-itf-example.itf.json --n-traces=3 --max-steps=5 --seed=123 --verbosity=0 --max-samples=10000 ../examples/tutorials/coin.qnt \
+quint run --backend=typescript --out-itf=run-with-n-traces-itf-violation.itf.json --n-traces=3 --max-steps=5 --seed=123 --verbosity=0 --max-samples=10000 ../examples/tutorials/coin.qnt \
    --invariant=totalSupplyDoesNotOverflowInv 
-cat out-itf-example0.itf.json | jq '.["#meta"].status'
-cat out-itf-example1.itf.json | jq '.["#meta"].status'
-cat out-itf-example2.itf.json | jq '.["#meta"].status'
-rm out-itf-example*.itf.json
+cat run-with-n-traces-itf-violation0.itf.json | jq '.["#meta"].status'
+cat run-with-n-traces-itf-violation1.itf.json | jq '.["#meta"].status'
+cat run-with-n-traces-itf-violation2.itf.json | jq '.["#meta"].status'
+rm run-with-n-traces-itf-violation*.itf.json
 ```
 
 <!-- !test out run with n-traces itf violation -->
@@ -651,11 +651,11 @@ Use --seed=0x2b442ab439177 --backend=typescript to reproduce.
 <!-- !test exit 1 -->
 <!-- !test in run itf default verbosity -->
 ```
-output=$(quint run --backend=typescript --out-itf=out.itf.json --max-steps=5 --seed=123 \
+output=$(quint run --backend=typescript --out-itf=run-itf-default-verbosity.itf.json --max-steps=5 --seed=123 \
   --invariant=totalSupplyDoesNotOverflowInv \
   ../examples/tutorials/coin.qnt 2>&1)
 exit_code=$?
-rm out.itf.json
+rm run-itf-default-verbosity.itf.json
 echo "$output" | head
 exit $exit_code
 ```
@@ -700,10 +700,10 @@ when using `quint run` with `--out-itf`.
 
 <!-- !test in expect no duplicate states in run -->
 ```
-quint run --backend=typescript --out-itf=expect-run.itf.json --max-steps=20 --seed=42 --verbosity=0 \
+quint run --backend=typescript --out-itf=expect-no-duplicate-states-in-run.itf.json --max-steps=20 --seed=42 --verbosity=0 \
   ./testFixture/expectNoStateDuplication.qnt
-cat expect-run.itf.json | jq '.states | length'
-rm expect-run.itf.json
+cat expect-no-duplicate-states-in-run.itf.json | jq '.states | length'
+rm expect-no-duplicate-states-in-run.itf.json
 ```
 
 <!-- !test out expect no duplicate states in run -->
@@ -754,11 +754,11 @@ Traces are identical
 <!-- !test in itf output -->
 ```
 quint run --backend=typescript \
-  --out-itf=ts-out.itf.json \
+  --out-itf=itf-output.itf.json \
   --max-steps=5 \
   ./testFixture/simulator/gettingStarted.qnt > /dev/null
-cat ts-out.itf.json | jq '.vars'
-rm ts-out.itf.json
+cat itf-output.itf.json | jq '.vars'
+rm itf-output.itf.json
 ```
 
 <!-- !test out itf output -->
