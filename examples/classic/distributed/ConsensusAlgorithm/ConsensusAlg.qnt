@@ -85,7 +85,7 @@ module ConsensusAlg {
     })
   })
 
-  // /// If all processes have the same initial value v, then this must be the only decision value
+  /// If all processes have the same initial value v, then this must be the only decision value
   val validity = {
     val allXValues = Procs.map(p => procState.get(p).x)
 
