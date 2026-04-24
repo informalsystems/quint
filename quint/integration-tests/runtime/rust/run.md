@@ -278,12 +278,12 @@ Use --seed=0x1d4c5 --backend=rust to reproduce.
 
 <!-- !test in run itf -->
 ```
-quint run --backend=rust --out-itf=out-itf-example.itf.json --max-steps=5 --seed=123 \
+quint run --backend=rust --out-itf=run-itf.itf.json --max-steps=5 --seed=123 \
   --invariant=no_negatives \
   --verbosity=0 \
   ./testFixture/simulator/gettingStarted.qnt
-cat out-itf-example.itf.json | jq '.states[0]."balances"."#map"[0]'
-rm out-itf-example.itf.json
+cat run-itf.itf.json | jq '.states[0]."balances"."#map"[0]'
+rm run-itf.itf.json
 ```
 
 <!-- !test out run itf -->
@@ -300,9 +300,9 @@ rm out-itf-example.itf.json
 
 <!-- !test in successful run itf -->
 ```
-quint run --backend=rust --out-itf=out-itf-example.itf.json --max-steps=5 --seed=123  --verbosity=0 ./testFixture/simulator/gettingStarted.qnt
-cat out-itf-example.itf.json | jq '.states[0]."balances"."#map"[0]'
-rm out-itf-example.itf.json
+quint run --backend=rust --out-itf=successful-run-itf.itf.json --max-steps=5 --seed=123  --verbosity=0 ./testFixture/simulator/gettingStarted.qnt
+cat successful-run-itf.itf.json | jq '.states[0]."balances"."#map"[0]'
+rm successful-run-itf.itf.json
 ```
 
 <!-- !test out successful run itf -->
@@ -319,12 +319,12 @@ rm out-itf-example.itf.json
 
 <!-- !test in run with n-traces itf violation -->
 ```
-quint run --backend=rust --out-itf=out-itf-example.itf.json --n-traces=3 --max-steps=5 --max-samples=10000 --seed=123 --verbosity=0  ./testFixture/simulator/gettingStarted.qnt \
+quint run --backend=rust --out-itf=run-with-n-traces-itf-violation.itf.json --n-traces=3 --max-steps=5 --max-samples=10000 --seed=123 --verbosity=0  ./testFixture/simulator/gettingStarted.qnt \
    --invariant=no_negatives 
-cat out-itf-example0.itf.json | jq '.["#meta"].status'
-cat out-itf-example1.itf.json | jq '.["#meta"].status'
-cat out-itf-example2.itf.json | jq '.["#meta"].status'
-rm out-itf-example*.itf.json
+cat run-with-n-traces-itf-violation0.itf.json | jq '.["#meta"].status'
+cat run-with-n-traces-itf-violation1.itf.json | jq '.["#meta"].status'
+cat run-with-n-traces-itf-violation2.itf.json | jq '.["#meta"].status'
+rm run-with-n-traces-itf-violation*.itf.json
 ```
 
 <!-- !test out run with n-traces itf violation -->
@@ -508,10 +508,10 @@ when using `quint run` with `--out-itf`.
 
 <!-- !test in expect no duplicate states in run -->
 ```
-quint run --backend=rust --out-itf=expect-run.itf.json --max-steps=20 --seed=42 --verbosity=0 \
+quint run --backend=rust --out-itf=expect-no-duplicate-states-in-run.itf.json --max-steps=20 --seed=42 --verbosity=0 \
   ./testFixture/expectNoStateDuplication.qnt
-cat expect-run.itf.json | jq '.states | length'
-rm expect-run.itf.json
+cat expect-no-duplicate-states-in-run.itf.json | jq '.states | length'
+rm expect-no-duplicate-states-in-run.itf.json
 ```
 
 <!-- !test out expect no duplicate states in run -->
@@ -565,11 +565,11 @@ Traces are identical
 ```
 quint run \
   --backend=rust \
-  --out-itf=rust-out.itf.json \
+  --out-itf=rust-backend-itf-output.itf.json \
   --max-steps=5 \
   ./testFixture/simulator/gettingStarted.qnt > /dev/null
-cat rust-out.itf.json | jq '.vars'
-rm rust-out.itf.json
+cat rust-backend-itf-output.itf.json | jq '.vars'
+rm rust-backend-itf-output.itf.json
 ```
 
 <!-- !test out rust backend itf output -->
