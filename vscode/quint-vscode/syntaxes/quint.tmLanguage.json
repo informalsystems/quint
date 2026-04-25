@@ -62,7 +62,11 @@
 				},
 				{
 					"name": "storage.type.quint",
-					"match": "\\b(Tup|Rec|Set|List|int|str|bool)\\b"
+					"match": "\\b(Set|List|int|str|bool)\\b"
+				},
+				{
+					"name": "support.type.quint",
+					"match": "\\b(Map|Tup|Rec)\\b"
 				}
 			]
 		},
