@@ -1,3 +1,5 @@
+import { QuintError } from './quintError'
+
 // Preprocess troublesome types so they are represented in JSON.
 //
 // We need it particularly because, by default, serialization of Map and Set
@@ -18,28 +20,16 @@ export function replacer(_key: String, value: any): any {
 }
 
 /**
- * Reviver function for JSON.parse to ensure proper type conversions during deserialization.
+ * Convert a QuintError parsed from the Rust evaluator's wire format into the
+ * TS-internal shape: rename `#trace` to `trace` and convert each id to bigint.
  *
- * A "reviver" is the standard JavaScript term for the optional second parameter to JSON.parse(),
- * which is called for each key-value pair during parsing, allowing transformation of values.
- *
- * This reviver ensures that:
- * - QuintError.reference fields are converted from numbers to bigint
- *
- * @param key - The property key being parsed
- * @param value - The parsed value
- * @returns The potentially transformed value
- *
- * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/parse#the_reviver_parameter
+ * Rust serializes the trace field as `#trace` so it cannot collide with user
+ * record fields named `trace` in the simulator output.
  */
-export function reviver(key: string, value: any): any {
-  // Convert QuintError.reference from number to bigint (TS backend compatibility)
-  if (key === 'reference' && value !== null && value !== undefined) {
-    return BigInt(value)
+export function reviveQuintError(err: any): QuintError {
+  const { ['#trace']: trace, ...rest } = err
+  if (Array.isArray(trace)) {
+    return { ...rest, trace: trace.map((v: any) => BigInt(v)) }
   }
-  // Convert QuintError.trace elements from number to bigint (Rust backend)
-  if (key === 'trace' && Array.isArray(value)) {
-    return value.map((v: any) => BigInt(v))
-  }
-  return value
+  return rest
 }

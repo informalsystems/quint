@@ -19,6 +19,8 @@ pub type QuintName = HipStr<'static>;
 pub struct QuintError {
     pub code: String,
     pub message: String,
+    // Serialized as "#trace" so it cannot collide with user record fields.
+    #[serde(rename = "#trace")]
     pub trace: Vec<QuintId>,
 }
 
