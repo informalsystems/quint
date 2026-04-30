@@ -100,6 +100,16 @@ Tests that `quint run` works with nested setOfMaps and oneOf.
 <!-- !test check 1736 -->
     quint run --backend=rust testFixture/bug1736setOfMaps.qnt
 
+### OK on run 1981
+
+Regression test for [#1981](https://github.com/informalsystems/quint/issues/1981).
+Tests that `quint run` works when user record fields are named `reference` or
+`trace`, which used to collide with the Rust evaluator's QuintError JSON keys
+and crash deserialization.
+
+<!-- !test check 1981 -->
+    quint run --backend=rust testFixture/bug1981fieldNameCollision.qnt
+
 ### Run finds an invariant violation
 
 The command `run` finds an invariant violation.
