@@ -87,7 +87,7 @@ A type is one of the following:
   and result type `R`.
 
 - Sum Types: `type T = L_1(T_1) | ... | L_n(T_n) ` for `n >= 1`, argument types
-  `T_1`, ..., `T_n`, and a type alais `T`.
+  `T_1`, ..., `T_n`, and a type alias `T`.
 
 - Type in parentheses: `(T)` for a type `T`.
 

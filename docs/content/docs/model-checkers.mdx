@@ -8,14 +8,14 @@ There are different types of model checkers that use different strategies to ach
 
 ## TLC
 
-TLC (no acronym defined!) is the first model checker for TLA+, and can be used for Quint by transpiling Quint specs into TLA+. TLC is an **explicit-state model checker**, which means it enumerates all possible states and individually checks each one of them by keeping a reachability graph and a queue of states to check next.
+TLC (no acronym defined!) is the first model checker for TLA+, and is provided as an alternative backend for `quint verify` by passing the `--backend=tlc` flag. TLC is an **explicit-state model checker**, which means it enumerates all possible states and individually checks each one of them by keeping a reachability graph and a queue of states to check next.
 
 This is arguably the most straightforward model checking approach, making it easier to predict than more complex approaches: the time spent to check a model depends directly on the size of the state-space and the computational complexity of the definitions in the model.
 
 When using TLC, it is not possible to pick a number from the set of all integers, as that is infinite. So it is always necessary to define a constrained set from which to pick numbers, such as `nondet amount = Set(1, 2, 100, 999).oneOf()`.
 
 ### TLC Outline
-- Not integrated with Quint, requires transpilation into TLA+
+- Alternative backend for `quint verify` runs
 - Enumerates all possible states, state-space needs to be small enough
 - Checks executions of any length
 - Checks invariants and temporal properties

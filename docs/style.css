@@ -72,7 +72,7 @@ dd {
 
 /* Nextra Tabs generates hidden h3 elements for each tab panel, which
    incorrectly increment the Steps component's counter. Prevent that. */
-.nextra-steps h3[style*="visibility:hidden"] {
+.nextra-steps h3[style*="visibility"][style*="hidden"] {
   counter-increment: var(--counter-id) 0;
 }
 
