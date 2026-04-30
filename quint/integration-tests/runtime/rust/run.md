@@ -334,6 +334,24 @@ rm run-with-n-traces-itf-violation*.itf.json
 "violation"
 ```
 
+### Run to generate multiple ITF traces without violation
+
+<!-- !test in run with n-traces itf -->
+```
+quint run --backend=rust --out-itf=run-with-n-traces-itf.itf.json --n-traces=3 --max-steps=5 --max-samples=10000 --seed=123 --verbosity=0 ./testFixture/simulator/gettingStarted.qnt
+cat run-with-n-traces-itf0.itf.json | jq '.["#meta"].status'
+cat run-with-n-traces-itf1.itf.json | jq '.["#meta"].status'
+cat run-with-n-traces-itf2.itf.json | jq '.["#meta"].status'
+rm run-with-n-traces-itf*.itf.json
+```
+
+<!-- !test out run with n-traces itf -->
+```
+"ok"
+"ok"
+"ok"
+```
+
 ### run fails on invalid seed
 
 <!-- !test exit 1 -->
