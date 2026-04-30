@@ -5,7 +5,7 @@
 //!     simulates based on that input, used in the integration with the `quint` typescript tool.
 
 use std::fs::{self, File};
-use std::io::{self, BufWriter};
+use std::io::{self, BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
@@ -125,6 +125,10 @@ struct SimulateInput {
     #[serde(default)]
     mbt: bool,
     verbosity: Verbosity,
+    /// When true, emit all traces so quint can write each one as an ITF file.
+    /// When false, emit only the first trace for counterexample display.
+    #[serde(default)]
+    out_itf: bool,
 }
 
 #[derive(Eq, PartialEq, Serialize)]
@@ -157,6 +161,32 @@ struct SimulationTrace {
     result: bool,
     #[serde(skip)]
     has_diagnostics: bool,
+}
+
+/// One trace line in the NDJSON output for simulate-from-stdin
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct NdjsonTrace {
+    #[serde(rename = "type")]
+    kind: &'static str,
+    index: usize,
+    seed: usize,
+    states: itf::Trace<itf::Value>,
+    result: bool,
+}
+
+/// Final summary line in the NDJSON output for simulate-from-stdin
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct NdjsonSummary {
+    #[serde(rename = "type")]
+    kind: &'static str,
+    status: SimulationStatus,
+    errors: Vec<QuintError>,
+    trace_statistics: TraceStatistics,
+    witnessing_traces: Vec<usize>,
+    samples: usize,
+    violated_invariants: Vec<usize>,
 }
 
 impl TraceQuality for SimulationTrace {
@@ -321,7 +351,7 @@ fn simulate_from_stdin() -> eyre::Result<()> {
         seed,
         mbt,
         verbosity,
-        ..
+        out_itf,
     } = serde_json::from_reader(io::stdin())?;
 
     let source = Arc::new(source);
@@ -336,15 +366,74 @@ fn simulate_from_stdin() -> eyre::Result<()> {
         verbosity,
     };
     let outcome = if nthreads > 1 && seed.is_none() {
-        simulate_in_parallel(source, parsed, config, nthreads)
+        simulate_in_parallel(Arc::clone(&source), parsed, config, nthreads)
     } else {
         let reporter = progress::json_std_err_report(nruns);
         let result = parsed.simulate(config, reporter);
-        to_sim_output(source, result)
+        to_sim_output(Arc::clone(&source), result)
     };
 
-    // Serialize the outcome to JSON and print it to STDOUT
-    serde_json::to_writer(io::stdout(), &outcome)?;
+    let SimOutput {
+        status,
+        errors,
+        best_traces,
+        trace_statistics,
+        witnessing_traces,
+        samples,
+        violated_invariants,
+    } = outcome;
+
+    let stdout = io::stdout();
+    let mut writer = BufWriter::new(stdout.lock());
+
+    // When --out-itf is set, emit all traces so quint can write each ITF file
+    // via the onTrace callback. Otherwise emit only the first trace for 
+    // counterexample display.
+    //
+    // Note: individual traces can be hundreds of MB; if a single trace exceeds
+    // readLines' MAX_LINE_BYTES threshold it will be skipped. For now this is
+    // acceptable; a state-by-state streaming protocol can be added if needed.
+    if out_itf {
+        for (index, trace) in best_traces.into_iter().enumerate() {
+            serde_json::to_writer(
+                &mut writer,
+                &NdjsonTrace {
+                    kind: "trace",
+                    index,
+                    seed: trace.seed,
+                    states: trace.states,
+                    result: trace.result,
+                },
+            )?;
+            writeln!(writer)?;
+        }
+    } else if let Some(trace) = best_traces.into_iter().next() {
+        serde_json::to_writer(
+            &mut writer,
+            &NdjsonTrace {
+                kind: "trace",
+                index: 0,
+                seed: trace.seed,
+                states: trace.states,
+                result: trace.result,
+            },
+        )?;
+        writeln!(writer)?;
+    }
+
+    serde_json::to_writer(
+        &mut writer,
+        &NdjsonSummary {
+            kind: "result",
+            status,
+            errors,
+            trace_statistics,
+            witnessing_traces,
+            samples,
+            violated_invariants,
+        },
+    )?;
+    writeln!(writer)?;
 
     Ok(())
 }

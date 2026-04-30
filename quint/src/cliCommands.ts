@@ -440,7 +440,8 @@ export async function runSimulator(prev: TypecheckedStage): Promise<CLIProcedure
       nThreads,
       prev.args.seed,
       prev.args.mbt,
-      options.onTrace
+      options.onTrace,
+      prev.args.outItf
     )
   } else {
     // Use the typescript simulator

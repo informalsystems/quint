@@ -14,7 +14,7 @@
  * @module
  */
 
-import { Either, left, mergeInMany, right } from '@sweet-monads/either'
+import { Either, left, right } from '@sweet-monads/either'
 import { QuintApp, QuintEx } from '../../ir/quintIr'
 import { LookupDefinition, LookupTable } from '../../names/base'
 import { QuintError } from '../../quintError'
@@ -276,29 +276,32 @@ export class Evaluator {
     }
     progressBar.stop()
 
-    const results: Either<QuintError[], SimulationTrace[]> = mergeInMany(
-      this.recorder.bestTraces.map((trace, index) => {
-        const maybeEvalResult = trace.frame.result
-        if (maybeEvalResult.isLeft()) {
-          return left(maybeEvalResult.value)
-        }
-        const quintExResult = maybeEvalResult.value.toQuintEx(zerog)
-        assert(quintExResult.kind === 'bool', 'invalid simulation produced non-boolean value ')
-        const simulationSucceeded = quintExResult.value
-        const status = simulationSucceeded ? 'ok' : 'violation'
-        const states = trace.frame.args.map(e => e.toQuintEx(zerog))
+    // Process traces one at a time so each states array can be GC'd after
+    // onTrace writes the file — avoids holding all n-traces × max-steps QuintEx arrays
+    // simultaneously, which causes OOM with large --n-traces and --max-steps.
+    const runtimeErrors: QuintError[] = []
+    const traces: SimulationTrace[] = []
 
-        if (onTrace !== undefined) {
-          onTrace(index, status, this.varNames(), states)
-        }
+    for (const [index, trace] of this.recorder.bestTraces.entries()) {
+      const maybeEvalResult = trace.frame.result
+      if (maybeEvalResult.isLeft()) {
+        runtimeErrors.push(maybeEvalResult.value)
+        continue
+      }
+      const quintExResult = maybeEvalResult.value.toQuintEx(zerog)
+      assert(quintExResult.kind === 'bool', 'invalid simulation produced non-boolean value ')
+      const simulationSucceeded = quintExResult.value as boolean
+      const status = simulationSucceeded ? 'ok' : 'violation'
+      const states = trace.frame.args.map(e => e.toQuintEx(zerog))
 
-        return right({ states, result: simulationSucceeded, seed: trace.seed })
-      })
-    )
+      if (onTrace !== undefined) {
+        onTrace(index, status, this.varNames(), states)
+      }
 
-    const runtimeErrors = results.isLeft() ? results.value : []
-
-    let traces = results.isRight() ? results.value : []
+      // Only the first trace is used for terminal display; drop states from
+      // the rest so they are eligible for GC immediately after onTrace returns.
+      traces.push({ states: index === 0 ? states : [], result: simulationSucceeded, seed: trace.seed })
+    }
 
     return {
       status: failure ? 'error' : errorsFound == 0 ? 'ok' : 'violation',

@@ -21,7 +21,6 @@ import { LookupDefinition, LookupTable } from '../names/base'
 import { reviver } from '../jsonHelper'
 import { ItfState, ItfValue, diagnosticsOfItf, ofItf, pendingDiagnosticsOfItf } from '../itf'
 import { Presets, SingleBar } from 'cli-progress'
-import readline from 'readline'
 import { spawn } from 'child_process'
 import { QuintError, isQuintError } from '../quintError'
 import { TestResult } from '../runtime/testing'
@@ -30,6 +29,73 @@ import { nameWithNamespaces } from '../runtime/impl/builder'
 import { Either, left, right } from '@sweet-monads/either'
 import { getRustEvaluatorPath } from './binaryManager'
 import { bigintCheckerReplacer } from './helpers'
+
+// Conservative limit: 256 MB of UTF-8 bytes per line.
+// V8's hard string limit is 0x1fffffe8 chars (~512 MB for ASCII), but a
+// single MBT trace with many steps can exceed that. Lines over this limit
+// are skipped and reported via the onOversizedLine callback.
+const MAX_LINE_BYTES = 256 * 1024 * 1024
+
+/**
+ * Process a readable stream line-by-line using raw Buffer operations.
+ *
+ * Unlike readline, this never concatenates via `+=` — it accumulates Buffer
+ * slices (zero-copy views), checks the accumulated byte count against
+ * MAX_LINE_BYTES before calling toString(), and calls onOversizedLine for
+ * lines that would exceed V8's string-length limit.
+ */
+function readLines(
+  stream: NodeJS.ReadableStream,
+  onLine: (line: string) => void,
+  onOversizedLine?: () => void
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const pending: Buffer[] = []
+    let pendingSize = 0
+
+    const flushLine = () => {
+      if (pendingSize <= MAX_LINE_BYTES) {
+        onLine(Buffer.concat(pending).toString('utf8'))
+      } else {
+        onOversizedLine?.()
+      }
+      pending.length = 0
+      pendingSize = 0
+    }
+
+    stream.on('data', (chunk: Buffer | string) => {
+      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string)
+      let start = 0
+      for (let i = 0; i < buf.length; i++) {
+        if (buf[i] === 0x0a /* '\n' */) {
+          // Only buffer this slice if we haven't already exceeded the limit
+          if (pendingSize <= MAX_LINE_BYTES) {
+            pending.push(buf.subarray(start, i))
+          }
+          pendingSize += i - start
+          flushLine()
+          start = i + 1
+        }
+      }
+      if (start < buf.length) {
+        const remaining = buf.subarray(start)
+        if (pendingSize <= MAX_LINE_BYTES) {
+          pending.push(remaining)
+        }
+        pendingSize += remaining.length
+      }
+    })
+
+    stream.on('end', () => {
+      if (pendingSize > 0) {
+        flushLine()
+      }
+      resolve()
+    })
+
+    stream.on('error', reject)
+  })
+}
 
 export type ParsedQuint = {
   modules: QuintModule[]
@@ -78,8 +144,19 @@ export class CommandWrapper {
     nthreads: number,
     seed?: bigint,
     mbt?: boolean,
-    onTrace?: TraceHook
+    onTrace?: TraceHook,
+    outItf?: string
   ): Promise<Outcome> {
+    const errorOutcome = (error: QuintError): Outcome => ({
+      status: 'error',
+      errors: [error],
+      bestTraces: [],
+      witnessingTraces: [],
+      samples: 0,
+      traceStatistics: { averageTraceLength: 0, minTraceLength: 0, maxTraceLength: 0 },
+      violatedInvariants: [],
+    })
+
     const input = {
       parsed: parsed,
       source: source,
@@ -90,60 +167,91 @@ export class CommandWrapper {
       seed: seed,
       mbt: mbt ?? false,
       verbosity: this.verbosityLevel,
+      out_itf: outItf !== undefined,
     }
 
-    const result = await this.runRustEvaluator('simulate-from-stdin', input, {
-      format: 'Running... [{bar}] {percentage}% | ETA: {eta}s | {value}/{total} samples | {speed} samples/s',
-      total: nruns,
-    })
+    // Rust emits NDJSON: one {"type":"trace",...} line per trace, then a
+    // {"type":"result",...} summary. Use readLines (Buffer-based, no readline +=)
+    // so individual large traces don't hit V8's max string length.
+    let vars: string[] | null = null
+    let displayTrace: any = null
+    let summary: any = null
 
-    // Handle errors from rust processes failing, where we don't manage to get output from rust
+    const result = await this.runRustEvaluator(
+      'simulate-from-stdin',
+      input,
+      {
+        format: 'Running... [{bar}] {percentage}% | ETA: {eta}s | {value}/{total} samples | {speed} samples/s',
+        total: nruns,
+      },
+      () => {
+        // Trace line exceeded MAX_LINE_BYTES — too large to display in terminal.
+        // The summary line will still arrive and the run completes normally.
+        debugLog(
+          this.verbosityLevel,
+          'Trace too large for terminal display (> 256 MB). Consider reducing --max-steps.'
+        )
+      }
+    )
+
     if (result.isLeft()) {
-      const error = result.value
-      return {
-        status: 'error',
-        errors: [error],
-        bestTraces: [],
-        witnessingTraces: [],
-        samples: 0,
-        traceStatistics: { averageTraceLength: 0, minTraceLength: 0, maxTraceLength: 0 },
-        violatedInvariants: [],
+      return errorOutcome(result.value)
+    }
+
+    for (const line of result.value) {
+      if (line.length === 0 || line.trimStart()[0] !== '{') {
+        if (line.length > 0) console.log(line)
+        continue
+      }
+      try {
+        const msg = JSONbig.parse(line, reviver)
+        if (msg.type === 'trace') {
+          const itfStates = msg.states
+          const states = ofItf(itfStates)
+
+          if (vars === null && states.length > 0) {
+            const firstState = states[0] as QuintApp
+            vars = []
+            for (let i = 0; i < firstState.args.length; i += 2) {
+              vars.push((firstState.args[i] as QuintStr).value)
+            }
+          }
+
+          if (onTrace && vars !== null && states.length > 0) {
+            const status = msg.result ? 'ok' : 'violation'
+            onTrace(msg.index, status, vars, states)
+          }
+
+          // Keep first trace for counterexample display; prefer violations
+          if (displayTrace === null || (!msg.result && displayTrace.result !== false)) {
+            displayTrace = {
+              seed: BigInt(msg.seed),
+              states,
+              diagnostics: diagnosticsOfItf(itfStates),
+              pendingDiagnostics: pendingDiagnosticsOfItf(itfStates),
+              result: msg.result,
+            }
+          }
+        } else if (msg.type === 'result') {
+          summary = msg
+        }
+      } catch (_) {
+        // non-JSON or malformed line — ignore
       }
     }
 
-    const output = result.value
+    if (!summary) {
+      return errorOutcome({ code: 'QNT516', message: 'Rust evaluator produced no result' })
+    }
 
-    try {
-      const parsed: Outcome = JSONbig.parse(output, reviver)
-
-      // Convert traces to ITF and ensure seed is bigint Note: When a
-      // SimulationError occurs in Rust, the error trace is included in
-      // bestTraces with result=false
-      parsed.bestTraces = parsed.bestTraces.map((trace: any) => ({
-        ...trace,
-        seed: BigInt(trace.seed),
-        states: ofItf(trace.states),
-        diagnostics: diagnosticsOfItf(trace.states),
-        pendingDiagnostics: pendingDiagnosticsOfItf(trace.states),
-      }))
-
-      // Call onTrace callback for each trace
-      if (onTrace && parsed.bestTraces.length > 0 && parsed.bestTraces[0].states.length > 0) {
-        const firstState = parsed.bestTraces[0].states[0] as QuintApp
-        const vars: string[] = []
-        for (let i = 0; i < firstState.args.length; i += 2) {
-          vars.push((firstState.args[i] as QuintStr).value)
-        }
-
-        parsed.bestTraces.forEach((trace: any, index: number) => {
-          const status = trace.result ? 'ok' : 'violation'
-          onTrace(index, status, vars, trace.states)
-        })
-      }
-
-      return parsed
-    } catch (error) {
-      throw new Error(`Failed to parse data from Rust evaluator: ${error} ${JSONbig.stringify(error)}`)
+    return {
+      status: summary.status,
+      errors: summary.errors,
+      bestTraces: displayTrace ? [displayTrace] : [],
+      traceStatistics: summary.traceStatistics,
+      witnessingTraces: summary.witnessingTraces,
+      samples: summary.samples,
+      violatedInvariants: summary.violatedInvariants,
     }
   }
 
@@ -185,19 +293,19 @@ export class CommandWrapper {
 
     // Handle process errors
     if (result.isLeft()) {
-      const error = result.value
       return {
         name: testName,
         status: 'failed',
         seed: seed ?? 0n,
-        errors: [error],
+        errors: [result.value],
         frames: [],
         nsamples: 0,
       }
     }
 
-    const output = result.value
-
+    const output = [...result.value]
+      .reverse()
+      .find((line: string) => line.trimStart()[0] === '{') ?? ''
     try {
       const parsed: TestResult = JSONbig.parse(output, reviver)
 
@@ -254,8 +362,11 @@ export class CommandWrapper {
       return left(result.value)
     }
 
+    const output = [...result.value]
+      .reverse()
+      .find((line: string) => line.trimStart()[0] === '{') ?? ''
     try {
-      const parsed = JSONbig.parse(result.value, reviver)
+      const parsed = JSONbig.parse(output, reviver)
       const values: ItfValue[] = []
       for (const r of parsed.results) {
         if (r.error) {
@@ -271,13 +382,16 @@ export class CommandWrapper {
 
   /**
    * Run the Rust evaluator with the given command and input.
-   * Optionally displays a progress bar driven by stderr JSON events.
+   * Reads stdout line-by-line via the Buffer-based `readLines` (safe for lines
+   * up to MAX_LINE_BYTES) and returns all lines. Optionally displays a progress
+   * bar driven by stderr JSON events.
    */
   private async runRustEvaluator(
     command: string,
     input: any,
-    progress?: { format: string; total: number }
-  ): Promise<Either<QuintError, string>> {
+    progress?: { format: string; total: number },
+    onOversizedLine?: () => void
+  ): Promise<Either<QuintError, string[]>> {
     const exe = await getRustEvaluatorPath()
     const args = [command]
 
@@ -334,33 +448,19 @@ export class CommandWrapper {
     process.stdin.write(inputStr)
     process.stdin.end()
 
-    // Collect output from stdout
-    const stdout = readline.createInterface({
-      input: process.stdout,
-      terminal: false,
-    })
-
-    let output = ''
-    stdout.on('line', (line: string) => {
-      if (line.trimStart()[0] !== '{') {
-        console.log(line)
-      } else {
-        output = line
-      }
-    })
+    const lines: string[] = []
+    const stdoutDone = readLines(
+      process.stdout,
+      (line: string) => lines.push(line),
+      onOversizedLine
+    )
 
     // Always capture stderr for error reporting
     const stderrLines: string[] = []
-    const stderr = readline.createInterface({
-      input: process.stderr,
-      terminal: false,
-    })
-
-    stderr.on('line', (line: string) => {
+    const stderrDone = readLines(process.stderr, (line: string) => {
       if (progressBar) {
         try {
           const progress = JSON.parse(line)
-
           if (progress.type === 'progress') {
             const elapsedSeconds = (Date.now() - startTime) / 1000
             const speed = Math.round(progress.current / elapsedSeconds)
@@ -378,6 +478,8 @@ export class CommandWrapper {
     const [exitCode, signal] = await new Promise<[number | null, string | null]>(resolve => {
       process.on('close', (code, signal) => resolve([code, signal]))
     })
+
+    await Promise.all([stdoutDone, stderrDone])
 
     progressBar?.stop()
 
@@ -413,6 +515,6 @@ export class CommandWrapper {
       })
     }
 
-    return right(output)
+    return right(lines)
   }
 }
