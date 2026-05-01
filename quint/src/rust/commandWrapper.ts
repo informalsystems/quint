@@ -303,11 +303,8 @@ export class CommandWrapper {
       }
     }
 
-    const output = [...result.value]
-      .reverse()
-      .find((line: string) => line.trimStart()[0] === '{') ?? ''
     try {
-      const parsed: TestResult = JSONbig.parse(output, reviver)
+      const parsed: TestResult = JSONbig.parse(result.value[0] ?? '', reviver)
 
       // Convert seed to bigint
       parsed.seed = BigInt(parsed.seed)
@@ -362,11 +359,8 @@ export class CommandWrapper {
       return left(result.value)
     }
 
-    const output = [...result.value]
-      .reverse()
-      .find((line: string) => line.trimStart()[0] === '{') ?? ''
     try {
-      const parsed = JSONbig.parse(output, reviver)
+      const parsed = JSONbig.parse(result.value[0] ?? '', reviver)
       const values: ItfValue[] = []
       for (const r of parsed.results) {
         if (r.error) {
