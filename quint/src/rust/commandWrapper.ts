@@ -144,8 +144,7 @@ export class CommandWrapper {
     nthreads: number,
     seed?: bigint,
     mbt?: boolean,
-    onTrace?: TraceHook,
-    outItf?: string
+    onTrace?: TraceHook
   ): Promise<Outcome> {
     const errorOutcome = (error: QuintError): Outcome => ({
       status: 'error',
@@ -167,7 +166,6 @@ export class CommandWrapper {
       seed: seed,
       mbt: mbt ?? false,
       verbosity: this.verbosityLevel,
-      out_itf: outItf !== undefined,
     }
 
     // Rust emits NDJSON: one {"type":"trace",...} line per trace, then a
