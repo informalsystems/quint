@@ -125,10 +125,6 @@ struct SimulateInput {
     #[serde(default)]
     mbt: bool,
     verbosity: Verbosity,
-    /// When true, emit all traces so quint can write each one as an ITF file.
-    /// When false, emit only the first trace for counterexample display.
-    #[serde(default)]
-    out_itf: bool,
 }
 
 #[derive(Eq, PartialEq, Serialize)]
@@ -351,7 +347,6 @@ fn simulate_from_stdin() -> eyre::Result<()> {
         seed,
         mbt,
         verbosity,
-        out_itf,
     } = serde_json::from_reader(io::stdin())?;
 
     let source = Arc::new(source);
@@ -386,33 +381,12 @@ fn simulate_from_stdin() -> eyre::Result<()> {
     let stdout = io::stdout();
     let mut writer = BufWriter::new(stdout.lock());
 
-    // When --out-itf is set, emit all traces so quint can write each ITF file
-    // via the onTrace callback. Otherwise emit only the first trace for 
-    // counterexample display.
-    //
-    // Note: individual traces can be hundreds of MB; if a single trace exceeds
-    // readLines' MAX_LINE_BYTES threshold it will be skipped. For now this is
-    // acceptable; a state-by-state streaming protocol can be added if needed.
-    if out_itf {
-        for (index, trace) in best_traces.into_iter().enumerate() {
-            serde_json::to_writer(
-                &mut writer,
-                &NdjsonTrace {
-                    kind: "trace",
-                    index,
-                    seed: trace.seed,
-                    states: trace.states,
-                    result: trace.result,
-                },
-            )?;
-            writeln!(writer)?;
-        }
-    } else if let Some(trace) = best_traces.into_iter().next() {
+    for (index, trace) in best_traces.into_iter().enumerate() {
         serde_json::to_writer(
             &mut writer,
             &NdjsonTrace {
                 kind: "trace",
-                index: 0,
+                index,
                 seed: trace.seed,
                 states: trace.states,
                 result: trace.result,
