@@ -76,6 +76,20 @@ true
 ```
 
 
+### Repl resolves imports relative to the loaded file
+
+<!-- !test in repl resolves imports relative to the loaded file -->
+```
+quint --backend=typescript -r testFixture/replRelativeImport.qnt::replRelativeImport pair .exit 2>&1 | tail -n 3
+```
+
+<!-- !test out repl resolves imports relative to the loaded file -->
+```
+>>> pair
+(1, 2)
+>>> .exit
+```
+
 ### Repl loads a file with .load
 
 <!-- !test in repl loads a file with .load -->
@@ -293,6 +307,27 @@ static analysis error:
   at <input-0>:0:1
   inexisting_name
   ^^^^^^^^^^^^^^^
+
+2
+
+```
+
+### REPL continues to work after unknown type alias errors
+
+<!-- !test in repl works after unknown type alias error -->
+
+```
+echo -e 'val z: Foo[int] = 1\n1 + 1' | quint --backend=typescript -q
+```
+
+<!-- !test out repl works after unknown type alias error -->
+```
+static analysis error: 
+ Error [QNT404]: Type alias 'Foo' not found
+
+  at <input-0>:0:8
+  val z: Foo[int] = 1
+         ^^^^^^^^
 
 2
 

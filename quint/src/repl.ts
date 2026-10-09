@@ -25,6 +25,7 @@ import { Rng, newRng } from './rng'
 import { version } from './version'
 import { fileSourceResolver } from './parsing/sourceResolver'
 import { cwd } from 'process'
+import { dirname, resolve } from 'path'
 import { IdGenerator, newIdGenerator } from './idGenerator'
 import { moduleToString } from './ir/IRprinting'
 import { mkErrorMessage } from './cliHelpers'
@@ -658,7 +659,10 @@ function loadFromFile(out: writer, state: ReplState, filename: string): ReplStat
 
 async function tryEvalModule(out: writer, state: ReplState, mainName: string): Promise<boolean> {
   const modulesText = state.moduleHist
-  const mainPath = fileSourceResolver(state.compilationState.sourceCode).lookupPath(cwd(), 'repl.ts')
+  // Resolve imports relative to the loaded file, not to the working directory
+  const loadedFile = state.lastLoadedFileAndModule[0]
+  const baseDir = loadedFile ? dirname(resolve(loadedFile)) : cwd()
+  const mainPath = fileSourceResolver(state.compilationState.sourceCode).lookupPath(baseDir, 'repl.ts')
   state.compilationState.sourceCode.set(mainPath.toSourceName(), modulesText)
 
   // FIXME(#1052): We should build a proper sourceCode map from the files we previously loaded
