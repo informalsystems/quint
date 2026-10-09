@@ -73,6 +73,8 @@ true
 
 ### Repl resolves imports relative to the loaded file
 
+Regression for https://github.com/quint-co/quint/issues/1449
+
 <!-- !test in repl resolves imports relative to the loaded file -->
 ```
 quint --backend=rust -r testFixture/replRelativeImport.qnt::replRelativeImport pair .exit 2>&1 | tail -n 3
