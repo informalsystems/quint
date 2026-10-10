@@ -36,6 +36,7 @@ import { ReplServerWrapper } from './rust/replServerWrapper'
 import { walkDeclaration, walkExpression } from './ir/IRVisitor'
 import { AnalysisOutput, analyzeInc, analyzeModules } from './quintAnalyzer'
 import { NameResolver } from './names/resolver'
+import { LookupTable } from './names/base'
 import { diffRuntimeValueDoc } from './runtime/impl/runtimeValueDiff'
 
 // tunable settings
@@ -733,10 +734,12 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
   }
   // evaluate the input, depending on its type
   if (parseResult.kind === 'expr') {
+    const tableSnapshot = new Map(state.nameResolver.table)
     walkExpression(state.nameResolver, parseResult.expr)
     if (state.nameResolver.errors.length > 0) {
       printErrorMessages(out, state, 'static analysis error', state.nameResolver.errors)
       state.nameResolver.errors = []
+      restoreTable(state.nameResolver.table, tableSnapshot)
       return false
     }
 
@@ -758,6 +761,7 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
 
     if (analysisErrors.length > 0) {
       printErrorMessages(out, state, 'static analysis error', analysisErrors)
+      restoreTable(state.nameResolver.table, tableSnapshot)
       return false
     }
 
@@ -805,6 +809,7 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
     return true
   }
   if (parseResult.kind === 'declaration') {
+    const tableSnapshot = new Map(state.nameResolver.table)
     parseResult.decls.forEach(decl => {
       walkDeclaration(state.nameResolver.collector, decl)
       walkDeclaration(state.nameResolver, decl)
@@ -819,6 +824,7 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
       })
 
       state.nameResolver.errors = []
+      restoreTable(state.nameResolver.table, tableSnapshot)
       return false
     }
 
@@ -837,7 +843,7 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
           state.compilationState.analysisOutput.modes.delete(decl.id)
         }
       })
-
+      restoreTable(state.nameResolver.table, tableSnapshot)
       return false
     }
 
@@ -850,6 +856,13 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
   }
 
   return true
+}
+
+// Undo the lookup table entries added by an input that was rejected, so that
+// later analysis passes, which walk the whole table, don't see its definitions
+function restoreTable(table: LookupTable, snapshot: LookupTable) {
+  table.clear()
+  snapshot.forEach((def, id) => table.set(id, def))
 }
 
 // print error messages with proper colors

@@ -78,12 +78,8 @@ export class TypeApplicationResolver implements IRTransformer {
     )
 
     const typeDef = this.table.get(t.ctor.id)
-    // NOTE: Early exit on error
-    // The constructor is unknown, which name resolution has already reported.
-    // This happens in the REPL, which keeps analyzing code with name errors.
-    if (!typeDef) {
-      return t
-    }
+    // Ensured by name resolution
+    assert(typeDef, `invalid IR reference: type constructor ${t.ctor.name} with id ${t.ctor.id} has no type definition`)
     // Ensured by the grammar and by name resolution
     assert(
       typeDef.kind === 'typedef' && typeDef.type,

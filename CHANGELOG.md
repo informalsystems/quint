@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - The REPL now resolves `import ... from` paths relative to the loaded file instead of the working directory, so `quint -r dir/spec.qnt` works when `spec.qnt` imports other files (#1449)
-- The REPL no longer crashes with `invalid IR reference: type constructor ... has no type definition` after an unknown type alias is used in an input
+- The REPL now discards definitions from inputs rejected by static analysis. Before, they stayed in the lookup table and made the REPL crash with `invalid IR reference: type constructor ... has no type definition` after an unknown type alias was used, or repeat a type application error on every later input
 
 ### Security
 
