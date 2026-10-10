@@ -18,13 +18,19 @@ import { format } from './prettierimp'
 import { FlatModule, QuintModule, isDef } from './ir/quintIr'
 import { createFinders, formatError } from './errorReporter'
 import { TraceRecorder, newTraceRecorder } from './runtime/trace'
-import { SourceMap, parse, parseExpressionOrDeclaration } from './parsing/quintParserFrontend'
+import {
+  ExpressionOrDeclarationParseResult,
+  SourceMap,
+  parse,
+  parseExpressionOrDeclaration,
+} from './parsing/quintParserFrontend'
 import { prettyQuintEx, printExecutionFrameRec, terminalWidth } from './graphics'
 import { verbosity } from './verbosity'
 import { Rng, newRng } from './rng'
 import { version } from './version'
 import { fileSourceResolver } from './parsing/sourceResolver'
 import { cwd } from 'process'
+import { dirname, resolve } from 'path'
 import { IdGenerator, newIdGenerator } from './idGenerator'
 import { moduleToString } from './ir/IRprinting'
 import { mkErrorMessage } from './cliHelpers'
@@ -32,9 +38,10 @@ import { QuintError } from './quintError'
 import { ErrorMessage } from './ErrorMessage'
 import { Evaluator } from './runtime/impl/evaluator'
 import { ReplServerWrapper } from './rust/replServerWrapper'
-import { walkDeclaration, walkExpression } from './ir/IRVisitor'
+import { IRVisitor, walkDeclaration, walkExpression } from './ir/IRVisitor'
 import { AnalysisOutput, analyzeInc, analyzeModules } from './quintAnalyzer'
 import { NameResolver } from './names/resolver'
+import { LookupTable } from './names/base'
 import { diffRuntimeValueDoc } from './runtime/impl/runtimeValueDiff'
 
 // tunable settings
@@ -658,7 +665,10 @@ function loadFromFile(out: writer, state: ReplState, filename: string): ReplStat
 
 async function tryEvalModule(out: writer, state: ReplState, mainName: string): Promise<boolean> {
   const modulesText = state.moduleHist
-  const mainPath = fileSourceResolver(state.compilationState.sourceCode).lookupPath(cwd(), 'repl.ts')
+  // Resolve imports relative to the loaded file, not to the working directory
+  const loadedFile = state.lastLoadedFileAndModule[0]
+  const baseDir = loadedFile ? dirname(resolve(loadedFile)) : cwd()
+  const mainPath = fileSourceResolver(state.compilationState.sourceCode).lookupPath(baseDir, 'repl.ts')
   state.compilationState.sourceCode.set(mainPath.toSourceName(), modulesText)
 
   // FIXME(#1052): We should build a proper sourceCode map from the files we previously loaded
@@ -733,6 +743,7 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
     if (state.nameResolver.errors.length > 0) {
       printErrorMessages(out, state, 'static analysis error', state.nameResolver.errors)
       state.nameResolver.errors = []
+      forgetInput(state.nameResolver.table, parseResult)
       return false
     }
 
@@ -754,6 +765,7 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
 
     if (analysisErrors.length > 0) {
       printErrorMessages(out, state, 'static analysis error', analysisErrors)
+      forgetInput(state.nameResolver.table, parseResult)
       return false
     }
 
@@ -815,6 +827,7 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
       })
 
       state.nameResolver.errors = []
+      forgetInput(state.nameResolver.table, parseResult)
       return false
     }
 
@@ -833,7 +846,7 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
           state.compilationState.analysisOutput.modes.delete(decl.id)
         }
       })
-
+      forgetInput(state.nameResolver.table, parseResult)
       return false
     }
 
@@ -846,6 +859,28 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
   }
 
   return true
+}
+
+// Removes the lookup table entries added for an input that was rejected, so
+// that later analysis passes, which walk the whole table, don't see its
+// definitions. Name resolution only adds entries keyed by the input's own ids.
+function forgetInput(table: LookupTable, input: ExpressionOrDeclarationParseResult) {
+  const forgetter: IRVisitor = {
+    enterExpr: expr => table.delete(expr.id),
+    enterDef: def => table.delete(def.id),
+    enterType: type => {
+      if (type.id !== undefined) {
+        table.delete(type.id)
+      }
+    },
+    enterInstance: decl => decl.overrides.forEach(([param, _]) => table.delete(param.id)),
+  }
+
+  if (input.kind === 'expr') {
+    walkExpression(forgetter, input.expr)
+  } else if (input.kind === 'declaration') {
+    input.decls.forEach(decl => walkDeclaration(forgetter, decl))
+  }
 }
 
 // print error messages with proper colors

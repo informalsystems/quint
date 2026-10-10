@@ -76,6 +76,22 @@ true
 ```
 
 
+### Repl resolves imports relative to the loaded file
+
+Regression for https://github.com/quint-co/quint/issues/1449
+
+<!-- !test in repl resolves imports relative to the loaded file -->
+```
+quint --backend=typescript -r testFixture/replRelativeImport.qnt::replRelativeImport pair .exit 2>&1 | tail -n 3
+```
+
+<!-- !test out repl resolves imports relative to the loaded file -->
+```
+>>> pair
+(1, 2)
+>>> .exit
+```
+
 ### Repl loads a file with .load
 
 <!-- !test in repl loads a file with .load -->
@@ -293,6 +309,63 @@ static analysis error:
   at <input-0>:0:1
   inexisting_name
   ^^^^^^^^^^^^^^^
+
+2
+
+```
+
+### REPL continues to work after unknown type alias errors
+
+<!-- !test in repl works after unknown type alias error -->
+
+```
+echo -e 'val z: Foo[int] = 1\n1 + 1' | quint --backend=typescript -q
+```
+
+<!-- !test out repl works after unknown type alias error -->
+```
+static analysis error: 
+ Error [QNT404]: Type alias 'Foo' not found
+
+  at <input-0>:0:8
+  val z: Foo[int] = 1
+         ^^^^^^^^
+
+2
+
+```
+
+### REPL continues to work after type errors in type applications
+
+A rejected definition must not stay in the lookup table, or its error is
+reported again on every later input.
+
+<!-- !test in repl works after type application arity error -->
+
+```
+echo -e 'type Foo[a] = Set[a]\nval z: Foo[int, int] = Set()\n1 + 1' | quint --backend=typescript -q
+```
+
+<!-- !test out repl works after type application arity error -->
+```
+
+static analysis error: 
+ Error [QNT000]: Couldn't unify set and app
+Trying to unify Set[_t0] and Foo[int, int]
+
+
+  at <input-1>:0:5
+  val z: Foo[int, int] = Set()
+      ^
+
+static analysis error: 
+ Error [QNT000]: too many arguments supplied: Foo only accepts 1 parameters
+applying type constructor Foo to arguments int, int
+
+
+  at <input-1>:0:8
+  val z: Foo[int, int] = Set()
+         ^^^^^^^^^^^^^
 
 2
 
