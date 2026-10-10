@@ -18,7 +18,12 @@ import { format } from './prettierimp'
 import { FlatModule, QuintModule, isDef } from './ir/quintIr'
 import { createFinders, formatError } from './errorReporter'
 import { TraceRecorder, newTraceRecorder } from './runtime/trace'
-import { SourceMap, parse, parseExpressionOrDeclaration } from './parsing/quintParserFrontend'
+import {
+  ExpressionOrDeclarationParseResult,
+  SourceMap,
+  parse,
+  parseExpressionOrDeclaration,
+} from './parsing/quintParserFrontend'
 import { prettyQuintEx, printExecutionFrameRec, terminalWidth } from './graphics'
 import { verbosity } from './verbosity'
 import { Rng, newRng } from './rng'
@@ -33,7 +38,7 @@ import { QuintError } from './quintError'
 import { ErrorMessage } from './ErrorMessage'
 import { Evaluator } from './runtime/impl/evaluator'
 import { ReplServerWrapper } from './rust/replServerWrapper'
-import { walkDeclaration, walkExpression } from './ir/IRVisitor'
+import { IRVisitor, walkDeclaration, walkExpression } from './ir/IRVisitor'
 import { AnalysisOutput, analyzeInc, analyzeModules } from './quintAnalyzer'
 import { NameResolver } from './names/resolver'
 import { LookupTable } from './names/base'
@@ -734,12 +739,11 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
   }
   // evaluate the input, depending on its type
   if (parseResult.kind === 'expr') {
-    const tableSnapshot = new Map(state.nameResolver.table)
     walkExpression(state.nameResolver, parseResult.expr)
     if (state.nameResolver.errors.length > 0) {
       printErrorMessages(out, state, 'static analysis error', state.nameResolver.errors)
       state.nameResolver.errors = []
-      restoreTable(state.nameResolver.table, tableSnapshot)
+      forgetInput(state.nameResolver.table, parseResult)
       return false
     }
 
@@ -761,7 +765,7 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
 
     if (analysisErrors.length > 0) {
       printErrorMessages(out, state, 'static analysis error', analysisErrors)
-      restoreTable(state.nameResolver.table, tableSnapshot)
+      forgetInput(state.nameResolver.table, parseResult)
       return false
     }
 
@@ -809,7 +813,6 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
     return true
   }
   if (parseResult.kind === 'declaration') {
-    const tableSnapshot = new Map(state.nameResolver.table)
     parseResult.decls.forEach(decl => {
       walkDeclaration(state.nameResolver.collector, decl)
       walkDeclaration(state.nameResolver, decl)
@@ -824,7 +827,7 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
       })
 
       state.nameResolver.errors = []
-      restoreTable(state.nameResolver.table, tableSnapshot)
+      forgetInput(state.nameResolver.table, parseResult)
       return false
     }
 
@@ -843,7 +846,7 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
           state.compilationState.analysisOutput.modes.delete(decl.id)
         }
       })
-      restoreTable(state.nameResolver.table, tableSnapshot)
+      forgetInput(state.nameResolver.table, parseResult)
       return false
     }
 
@@ -858,11 +861,26 @@ async function tryEval(out: writer, state: ReplState, newInput: string): Promise
   return true
 }
 
-// Undo the lookup table entries added by an input that was rejected, so that
-// later analysis passes, which walk the whole table, don't see its definitions
-function restoreTable(table: LookupTable, snapshot: LookupTable) {
-  table.clear()
-  snapshot.forEach((def, id) => table.set(id, def))
+// Removes the lookup table entries added for an input that was rejected, so
+// that later analysis passes, which walk the whole table, don't see its
+// definitions. Name resolution only adds entries keyed by the input's own ids.
+function forgetInput(table: LookupTable, input: ExpressionOrDeclarationParseResult) {
+  const forgetter: IRVisitor = {
+    enterExpr: expr => table.delete(expr.id),
+    enterDef: def => table.delete(def.id),
+    enterType: type => {
+      if (type.id !== undefined) {
+        table.delete(type.id)
+      }
+    },
+    enterInstance: decl => decl.overrides.forEach(([param, _]) => table.delete(param.id)),
+  }
+
+  if (input.kind === 'expr') {
+    walkExpression(forgetter, input.expr)
+  } else if (input.kind === 'declaration') {
+    input.decls.forEach(decl => walkDeclaration(forgetter, decl))
+  }
 }
 
 // print error messages with proper colors
