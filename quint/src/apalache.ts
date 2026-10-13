@@ -105,7 +105,7 @@ export function serverEndpointToConnectionString(endpoint: ServerEndpoint): stri
   return `${endpoint.hostname}:${endpoint.port}`
 }
 
-export const DEFAULT_APALACHE_VERSION_TAG = '0.62.1'
+export const DEFAULT_APALACHE_VERSION_TAG = '0.62.4'
 // TODO: used by GitHub api approach: https://github.com/informalsystems/quint/issues/1124
 // const APALACHE_TGZ = 'apalache.tgz'
 
