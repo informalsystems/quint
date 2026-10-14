@@ -5,8 +5,8 @@ set -euo pipefail
 usage() {
   echo "Usage: $0 [--publish] <repository> <version>"
   echo "Examples:"
-  echo "  $0 informalsystems/quint v0.22.2"
-  echo "  $0 --publish informalsystems/quint v0.22.2"
+  echo "  $0 quint-co/quint v0.22.2"
+  echo "  $0 --publish quint-co/quint v0.22.2"
   exit 1
 }
 
@@ -65,10 +65,12 @@ for target_config in "${TARGETS[@]}"; do
   IFS=":" read -r TARGET SUFFIX <<< "$target_config"
 
   echo "Compiling for target: $TARGET"
+  # --min-dep-age=0: Deno refuses npm versions younger than 24h by default,
+  # and we compile the version that was just published.
   deno compile \
+    --min-dep-age=0 \
     --allow-all \
     --node-modules-dir=auto \
-    --allow-scripts \
     --target "$TARGET" \
     --output "quint-$SUFFIX" \
     "npm:@informalsystems/quint@$VERSION"

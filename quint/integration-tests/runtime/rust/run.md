@@ -110,6 +110,15 @@ and crash deserialization.
 <!-- !test check 1981 -->
     quint run --backend=rust testFixture/bug1981fieldNameCollision.qnt
 
+### OK on run 2027
+
+Regression test for [#2027](https://github.com/quint-co/quint/issues/2027).
+Tests that `quint run` works when the right-hand side of an assignment to an
+instance variable reads a variable of the enclosing module.
+
+<!-- !test check 2027 -->
+    quint run --backend=rust testFixture/bug2027instanceAssignRhs.qnt --invariant=inv
+
 ### Run finds an invariant violation
 
 The command `run` finds an invariant violation.

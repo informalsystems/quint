@@ -434,10 +434,11 @@ function buildExprCore(builder: Builder, expr: QuintEx): EvalFunction {
         // We need to build things under the context of the variable being assigned, as it may come from an instance,
         // and that changed everything
         const varDef = builder.table.get(expr.args[0].id)!
+        // The RHS must be built in the caller's context, not the target variable's
+        const exprEval = buildExpr(builder, expr.args[1])
         return buildUnderDefContext(builder, varDef, () => {
           builder.discoverVar(varDef.id, varDef.name)
           const register = builder.getNextVar(varDef.id)
-          const exprEval = buildExpr(builder, expr.args[1])
 
           return ctx => {
             return exprEval(ctx).map(value => {

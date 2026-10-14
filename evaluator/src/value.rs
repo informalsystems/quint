@@ -26,7 +26,7 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::ops::Deref;
+use std::marker::PhantomData;
 use std::rc::Rc;
 
 /// Quint values that hold sets are immutable, use `GenericHashSet` immutable
@@ -44,18 +44,53 @@ pub type ImmutableMap<K, V> = GenericHashMap<K, V, fxhash::FxBuildHasher, RcK>;
 /// for longer strings.
 pub type Str = hipstr::HipStr<'static>;
 
-/// A Quint value produced by evaluation of a Quint expression.
-/// Values are immutable and reference-counted for cheap cloning.
-#[derive(Clone, Debug)]
-pub struct Value(pub Rc<ValueInner>);
+const TAG_BITS: u32 = 3;
+const TAG_MASK: usize = (1 << TAG_BITS) - 1;
 
-/// The actual value enum wrapped in Rc for cheap cloning.
+/// Low-bit tag of a [`Value`] word. The discriminant is the in-word tag and
+/// `Value::tag` transmutes it back, so 0..=4 must stay the only discriminants.
+/// Every other match on `Tag` is exhaustive.
+#[repr(usize)]
+#[derive(Clone, Copy, PartialEq)]
+enum Tag {
+    Heap = 0b000,
+    Int = 0b001,
+    Bool = 0b010,
+    InfInt = 0b011,
+    InfNat = 0b100,
+}
+
+/// A Quint value produced by evaluation of a Quint expression.
+///
+/// One 64-bit word. The low `TAG_BITS` of its address are the `Tag`; for
+/// `Tag::Heap` the word is `Rc::into_raw` of a `HeapValue` owned by this
+/// `Value` (its low bits are zero because `HeapValue` is at least 8-aligned,
+/// asserted below). For the other tags the word is a provenance-free address
+/// whose payload sits above the tag bits and nothing is allocated, so `Int`
+/// (when it fits in i61), `Bool` and the infinite sets clone and drop without
+/// touching memory.
+///
+/// The representation is private: callers pattern-match on [`Value::view`]
+/// or use the `as_*` accessors.
+///
+/// `PhantomData<Rc<..>>` keeps `Value: !Send + !Sync`.
+pub struct Value(*const HeapValue, PhantomData<Rc<HeapValue>>);
+
+// We've seen considerable performance improvements from reducing the size of the
+// `Value` representation. This compile time assertion serves as feedback to
+// developers that, if changing the size of the `Value` structure, need to make
+// sure that benchmarks don't regress.
+const _: () = assert!(std::mem::size_of::<Value>() == 8);
+
+/// Heap-resident payloads, behind the `Rc` a `Tag::Heap` word points to.
 /// Can be seen as a normal form of the expression, except for the intermediate
 /// values that enable lazy evaluation of some potentially expensive expressions.
-#[derive(Debug, Clone)]
-pub enum ValueInner {
+///
+/// `Int` only for n outside the i61 range [-2^60, 2^60), which the tagged word
+/// cannot hold; ints inside it are always inline, so the two forms never
+/// coexist for the same integer.
+enum HeapValue {
     Int(i64),
-    Bool(bool),
     Str(Str),
     Set(ImmutableSet<Value>),
     Tuple(ImmutableVec<Value>),
@@ -64,84 +99,200 @@ pub enum ValueInner {
     List(ImmutableVec<Value>),
     Lambda(Vec<Rc<RefCell<EvalResult>>>, CompiledExpr),
     Variant(QuintName, Value),
-    // "Intermediate" values using during evaluation to avoid expensive computations
+    // "Intermediate" values used during evaluation to avoid expensive computations
     Interval(i64, i64),
     CrossProduct(Vec<Value>),
     PowerSet(Value),
     MapSet(Value, Value),
+}
+
+// The tagging scheme needs the low TAG_BITS of every `Rc<HeapValue>` pointer free.
+const _: () = assert!(std::mem::align_of::<HeapValue>() >= 1 << TAG_BITS);
+
+/// Borrowed view of a [`Value`]; the enum callers pattern-match on.
+///
+/// Variant order is load-bearing: `Hash for Value` hashes this enum's
+/// discriminant, and FxHash set/map iteration order (hence seeded picks and
+/// trace snapshots) depends on those hashes.
+#[derive(Debug)]
+pub enum ValueRef<'a> {
+    Int(i64),
+    Bool(bool),
+    Str(&'a Str),
+    Set(&'a ImmutableSet<Value>),
+    Tuple(&'a ImmutableVec<Value>),
+    Record(&'a ImmutableMap<QuintName, Value>),
+    Map(&'a ImmutableMap<Value, Value>),
+    List(&'a ImmutableVec<Value>),
+    Lambda(&'a [Rc<RefCell<EvalResult>>], &'a CompiledExpr),
+    Variant(&'a QuintName, &'a Value),
+    // "Intermediate" values used during evaluation to avoid expensive computations
+    Interval(i64, i64),
+    CrossProduct(&'a [Value]),
+    PowerSet(&'a Value),
+    MapSet(&'a Value, &'a Value),
     // Infinite sets
     InfiniteInt, // represents the set of all integers
     InfiniteNat, // represents the set of all natural numbers (>= 0)
 }
 
-impl Hash for Value {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.as_ref().hash(state);
+impl Value {
+    #[inline]
+    fn tag(&self) -> Tag {
+        let t = self.0.addr() & TAG_MASK;
+        debug_assert!(t <= Tag::InfNat as usize, "corrupt Value tag");
+        // SAFETY: `Tag` is `repr(usize)` with discriminants 0..=4. `heap` and
+        // `immediate` are the only writers of a word: the former stores an
+        // 8-aligned pointer (low bits 0 == Heap), the latter ORs in a `Tag`.
+        unsafe { std::mem::transmute::<usize, Tag>(t) }
+    }
+
+    #[inline]
+    fn heap(v: HeapValue) -> Self {
+        Value(Rc::into_raw(Rc::new(v)), PhantomData)
+    }
+
+    /// A non-heap word: `payload` above the tag bits, no provenance.
+    #[inline]
+    fn immediate(tag: Tag, payload: usize) -> Self {
+        Value(
+            std::ptr::without_provenance((payload << TAG_BITS) | tag as usize),
+            PhantomData,
+        )
+    }
+
+    /// Payload of a non-heap word; sign-extends so `Tag::Int` reads back an i61.
+    #[inline]
+    fn payload(&self) -> i64 {
+        (self.0.addr() as i64) >> TAG_BITS
+    }
+
+    /// # Safety
+    /// The caller checked `self.tag() == Tag::Heap`.
+    #[inline]
+    unsafe fn heap_ref(&self) -> &HeapValue {
+        &*self.0
+    }
+
+    /// The borrowed view of this value, for pattern matching.
+    #[inline]
+    pub fn view(&self) -> ValueRef<'_> {
+        match self.tag() {
+            Tag::Int => ValueRef::Int(self.payload()),
+            Tag::Bool => ValueRef::Bool(self.payload() != 0),
+            Tag::InfInt => ValueRef::InfiniteInt,
+            Tag::InfNat => ValueRef::InfiniteNat,
+            // SAFETY: tag just decoded as Heap.
+            Tag::Heap => match unsafe { self.heap_ref() } {
+                HeapValue::Int(n) => ValueRef::Int(*n),
+                HeapValue::Str(s) => ValueRef::Str(s),
+                HeapValue::Set(set) => ValueRef::Set(set),
+                HeapValue::Tuple(elems) => ValueRef::Tuple(elems),
+                HeapValue::Record(fields) => ValueRef::Record(fields),
+                HeapValue::Map(map) => ValueRef::Map(map),
+                HeapValue::List(elems) => ValueRef::List(elems),
+                HeapValue::Lambda(registers, body) => ValueRef::Lambda(registers, body),
+                HeapValue::Variant(label, value) => ValueRef::Variant(label, value),
+                HeapValue::Interval(start, end) => ValueRef::Interval(*start, *end),
+                HeapValue::CrossProduct(sets) => ValueRef::CrossProduct(sets),
+                HeapValue::PowerSet(value) => ValueRef::PowerSet(value),
+                HeapValue::MapSet(domain, range) => ValueRef::MapSet(domain, range),
+            },
+        }
     }
 }
 
-impl Hash for ValueInner {
+impl Clone for Value {
+    #[inline]
+    fn clone(&self) -> Self {
+        if self.tag() == Tag::Heap {
+            // SAFETY: heap-tagged words are live `Rc::into_raw` pointers owned
+            // by `self`; the new Value takes ownership of the added count.
+            unsafe { Rc::increment_strong_count(self.0) };
+        }
+        Value(self.0, PhantomData)
+    }
+}
+
+impl Drop for Value {
+    #[inline]
+    fn drop(&mut self) {
+        if self.tag() == Tag::Heap {
+            // SAFETY: as in Clone; this Value's strong count is released
+            // exactly once, here.
+            unsafe { drop(Rc::from_raw(self.0)) };
+        }
+    }
+}
+
+impl fmt::Debug for Value {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.view().fmt(f)
+    }
+}
+
+impl Hash for Value {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // First, hash the discriminant, as we want hashes of Set(1, 2, 3) and
         // List(1, 2, 3) to be different.
-        let discr = core::mem::discriminant(self);
-        discr.hash(state);
+        let view = self.view();
+        core::mem::discriminant(&view).hash(state);
 
-        match self {
-            ValueInner::Int(n) => n.hash(state),
-            ValueInner::Bool(b) => b.hash(state),
-            ValueInner::Str(s) => s.hash(state),
-            ValueInner::Set(set) => {
+        match view {
+            ValueRef::Int(n) => n.hash(state),
+            ValueRef::Bool(b) => b.hash(state),
+            ValueRef::Str(s) => s.hash(state),
+            ValueRef::Set(set) => {
                 for elem in set {
                     elem.hash(state);
                 }
             }
-            ValueInner::Tuple(elems) => {
+            ValueRef::Tuple(elems) => {
                 for elem in elems {
                     elem.hash(state);
                 }
             }
-            ValueInner::Record(fields) => {
+            ValueRef::Record(fields) => {
                 for (name, value) in fields {
                     name.hash(state);
                     value.hash(state);
                 }
             }
-            ValueInner::Map(map) => {
+            ValueRef::Map(map) => {
                 for (key, value) in map {
                     key.hash(state);
                     value.hash(state);
                 }
             }
-            ValueInner::List(elems) => {
+            ValueRef::List(elems) => {
                 for elem in elems {
                     elem.hash(state);
                 }
             }
-            ValueInner::Lambda(_, _) => {
+            ValueRef::Lambda(_, _) => {
                 panic!("Cannot hash lambda");
             }
-            ValueInner::Variant(label, value) => {
+            ValueRef::Variant(label, value) => {
                 label.hash(state);
                 value.hash(state);
             }
-            ValueInner::Interval(start, end) => {
+            ValueRef::Interval(start, end) => {
                 start.hash(state);
                 end.hash(state);
             }
-            ValueInner::CrossProduct(sets) => {
+            ValueRef::CrossProduct(sets) => {
                 for value in sets {
                     value.hash(state);
                 }
             }
-            ValueInner::PowerSet(value) => {
+            ValueRef::PowerSet(value) => {
                 value.hash(state);
             }
-            ValueInner::MapSet(a, b) => {
+            ValueRef::MapSet(a, b) => {
                 a.hash(state);
                 b.hash(state);
             }
-            ValueInner::InfiniteInt | ValueInner::InfiniteNat => {
+            ValueRef::InfiniteInt | ValueRef::InfiniteNat => {
                 // The discriminant is already hashed, which is sufficient
                 // for distinguishing between Int and Nat
             }
@@ -151,145 +302,131 @@ impl Hash for ValueInner {
 
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
-        self.0.as_ref() == other.0.as_ref()
-    }
-}
-
-impl PartialEq for ValueInner {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Int(a), Self::Int(b)) => a == b,
-            (Self::Bool(a), Self::Bool(b)) => a == b,
-            (Self::Str(a), Self::Str(b)) => a == b,
-            (Self::Set(a), Self::Set(b)) => *a == *b,
-            (Self::Tuple(a), Self::Tuple(b)) => *a == *b,
-            (Self::Record(a), Self::Record(b)) => *a == *b,
-            (Self::Map(a), Self::Map(b)) => *a == *b,
-            (Self::List(a), Self::List(b)) => *a == *b,
-            (Self::Lambda(_, _), Self::Lambda(_, _)) => panic!("Cannot compare lambdas"),
-            (Self::Variant(a_label, a_value), Self::Variant(b_label, b_value)) => {
+        use ValueRef::*;
+        match (self.view(), other.view()) {
+            (Int(a), Int(b)) => a == b,
+            (Bool(a), Bool(b)) => a == b,
+            (Str(a), Str(b)) => a == b,
+            (Set(a), Set(b)) => *a == *b,
+            (Tuple(a), Tuple(b)) => *a == *b,
+            (Record(a), Record(b)) => *a == *b,
+            (Map(a), Map(b)) => *a == *b,
+            (List(a), List(b)) => *a == *b,
+            (Lambda(_, _), Lambda(_, _)) => panic!("Cannot compare lambdas"),
+            (Variant(a_label, a_value), Variant(b_label, b_value)) => {
                 a_label == b_label && a_value == b_value
             }
-            (Self::Interval(a_start, a_end), Self::Interval(b_start, b_end)) => {
+            (Interval(a_start, a_end), Interval(b_start, b_end)) => {
                 a_start == b_start && a_end == b_end
             }
-            (Self::CrossProduct(a), Self::CrossProduct(b)) => *a == *b,
-            (Self::PowerSet(a), Self::PowerSet(b)) => *a == *b,
-            (Self::MapSet(a1, b1), Self::MapSet(a2, b2)) => a1 == a2 && b1 == b2,
-            (Self::InfiniteInt, Self::InfiniteInt) => true,
-            (Self::InfiniteNat, Self::InfiniteNat) => true,
+            (CrossProduct(a), CrossProduct(b)) => *a == *b,
+            (PowerSet(a), PowerSet(b)) => *a == *b,
+            (MapSet(a1, b1), MapSet(a2, b2)) => a1 == a2 && b1 == b2,
+            (InfiniteInt, InfiniteInt) => true,
+            (InfiniteNat, InfiniteNat) => true,
             // Infinite sets are not equal to any other set (including each other)
-            (Self::InfiniteInt, _) | (Self::InfiniteNat, _) => false,
-            (_, Self::InfiniteInt) | (_, Self::InfiniteNat) => false,
+            (InfiniteInt, _) | (InfiniteNat, _) => false,
+            (_, InfiniteInt) | (_, InfiniteNat) => false,
             // To compare two sets represented in different ways, we need to enumerate them both
             _ => {
-                let self_value = Value(Rc::new(self.clone()));
-                let other_value = Value(Rc::new(other.clone()));
-                if self_value.is_set() && other_value.is_set() {
-                    let self_set = self_value
+                self.is_set()
+                    && other.is_set()
+                    && self
                         .as_set()
-                        .expect("can't enumerate left set for equality check");
-                    let other_set = other_value
-                        .as_set()
-                        .expect("can't enumerate right set for equality check");
-                    self_set == other_set
-                } else {
-                    false
-                }
+                        .expect("can't enumerate left set for equality check")
+                        == other
+                            .as_set()
+                            .expect("can't enumerate right set for equality check")
             }
         }
     }
 }
 
 impl Eq for Value {}
-impl Eq for ValueInner {}
-
-impl Deref for Value {
-    type Target = ValueInner;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
 
 impl Value {
     // Constructor functions for Value
     pub fn int(n: i64) -> Self {
-        Value(Rc::new(ValueInner::Int(n)))
+        // fits in i61 iff shifting the top TAG_BITS out and back is lossless
+        if (n << TAG_BITS) >> TAG_BITS == n {
+            Value::immediate(Tag::Int, n as usize)
+        } else {
+            Value::heap(HeapValue::Int(n))
+        }
     }
 
     pub fn bool(b: bool) -> Self {
-        Value(Rc::new(ValueInner::Bool(b)))
+        Value::immediate(Tag::Bool, b as usize)
     }
 
     pub fn str(s: Str) -> Self {
-        Value(Rc::new(ValueInner::Str(s)))
+        Value::heap(HeapValue::Str(s))
     }
 
     pub fn set(s: ImmutableSet<Value>) -> Self {
-        Value(Rc::new(ValueInner::Set(s)))
+        Value::heap(HeapValue::Set(s))
     }
 
     pub fn tuple(t: ImmutableVec<Value>) -> Self {
-        Value(Rc::new(ValueInner::Tuple(t)))
+        Value::heap(HeapValue::Tuple(t))
     }
 
     pub fn record(r: ImmutableMap<QuintName, Value>) -> Self {
-        Value(Rc::new(ValueInner::Record(r)))
+        Value::heap(HeapValue::Record(r))
     }
 
     pub fn map(m: ImmutableMap<Value, Value>) -> Self {
-        Value(Rc::new(ValueInner::Map(m)))
+        Value::heap(HeapValue::Map(m))
     }
 
     pub fn list(l: ImmutableVec<Value>) -> Self {
-        Value(Rc::new(ValueInner::List(l)))
+        Value::heap(HeapValue::List(l))
     }
 
     pub fn lambda(registers: Vec<Rc<RefCell<EvalResult>>>, body: CompiledExpr) -> Self {
-        Value(Rc::new(ValueInner::Lambda(registers, body)))
+        Value::heap(HeapValue::Lambda(registers, body))
     }
 
     pub fn variant(name: QuintName, value: Value) -> Self {
-        Value(Rc::new(ValueInner::Variant(name, value)))
+        Value::heap(HeapValue::Variant(name, value))
     }
 
     pub fn interval(start: i64, end: i64) -> Self {
-        Value(Rc::new(ValueInner::Interval(start, end)))
+        Value::heap(HeapValue::Interval(start, end))
     }
 
     pub fn cross_product(values: Vec<Value>) -> Self {
-        Value(Rc::new(ValueInner::CrossProduct(values)))
+        Value::heap(HeapValue::CrossProduct(values))
     }
 
     pub fn power_set(value: Value) -> Self {
-        Value(Rc::new(ValueInner::PowerSet(value)))
+        Value::heap(HeapValue::PowerSet(value))
     }
 
     pub fn map_set(a: Value, b: Value) -> Self {
-        Value(Rc::new(ValueInner::MapSet(a, b)))
+        Value::heap(HeapValue::MapSet(a, b))
     }
 
     pub fn infinite_int() -> Self {
-        Value(Rc::new(ValueInner::InfiniteInt))
+        Value::immediate(Tag::InfInt, 0)
     }
 
     pub fn infinite_nat() -> Self {
-        Value(Rc::new(ValueInner::InfiniteNat))
+        Value::immediate(Tag::InfNat, 0)
     }
 
     /// Calculate the cardinality of the value without having to enumerate it
     /// (i.e. without calling `as_set`).
     pub fn cardinality(&self) -> Result<u64, crate::ir::QuintError> {
-        match self.0.as_ref() {
-            ValueInner::Set(set) => Ok(set.len() as u64),
-            ValueInner::Tuple(elems) => Ok(elems.len() as u64),
-            ValueInner::Record(fields) => Ok(fields.len() as u64),
-            ValueInner::Map(map) => Ok(map.len() as u64),
-            ValueInner::List(elems) => Ok(elems.len() as u64),
-            ValueInner::Interval(start, end) => {
+        match self.view() {
+            ValueRef::Set(set) => Ok(set.len() as u64),
+            ValueRef::Tuple(elems) => Ok(elems.len() as u64),
+            ValueRef::Record(fields) => Ok(fields.len() as u64),
+            ValueRef::Map(map) => Ok(map.len() as u64),
+            ValueRef::List(elems) => Ok(elems.len() as u64),
+            ValueRef::Interval(start, end) => {
                 // Check for overflow when computing interval size
-                end.checked_sub(*start)
+                end.checked_sub(start)
                     .and_then(|diff| diff.checked_add(1))
                     .and_then(|size| u64::try_from(size).ok())
                     .ok_or_else(|| {
@@ -299,7 +436,7 @@ impl Value {
                         )
                     })
             }
-            ValueInner::CrossProduct(sets) => sets.iter().try_fold(1_u64, |acc, set| {
+            ValueRef::CrossProduct(sets) => sets.iter().try_fold(1_u64, |acc, set| {
                 let set_card = set.cardinality()?;
                 acc.checked_mul(set_card).ok_or_else(|| {
                     QuintError::new(
@@ -308,7 +445,7 @@ impl Value {
                     )
                 })
             }),
-            ValueInner::PowerSet(value) => {
+            ValueRef::PowerSet(value) => {
                 // 2^(cardinality of value)
                 let base_size = value.cardinality()?;
                 let exp = base_size.try_into().map_err(|_| {
@@ -328,7 +465,7 @@ impl Value {
                     )
                 })
             }
-            ValueInner::MapSet(domain, range) => {
+            ValueRef::MapSet(domain, range) => {
                 // (cardinality of range)^(cardinality of domain)
                 let range_size = range.cardinality()?;
                 let domain_size = domain.cardinality()?;
@@ -349,13 +486,13 @@ impl Value {
                     )
                 })
             }
-            ValueInner::InfiniteInt => {
+            ValueRef::InfiniteInt => {
                 Err(QuintError::new(
                     "QNT501",
                     "Infinite set Int is non-enumerable",
                 ))
             }
-            ValueInner::InfiniteNat => {
+            ValueRef::InfiniteNat => {
                 Err(QuintError::new(
                     "QNT501",
                     "Infinite set Nat is non-enumerable",
@@ -368,10 +505,10 @@ impl Value {
     /// Check for membership of a value in a set, without having to enumerate
     /// the set.
     pub fn contains(&self, elem: &Value) -> Result<bool, QuintError> {
-        Ok(match (self.0.as_ref(), elem.0.as_ref()) {
-            (ValueInner::Set(elems), _) => elems.contains(elem),
-            (ValueInner::Interval(start, end), ValueInner::Int(n)) => start <= n && n <= end,
-            (ValueInner::CrossProduct(sets), ValueInner::Tuple(elems)) => {
+        Ok(match (self.view(), elem.view()) {
+            (ValueRef::Set(elems), _) => elems.contains(elem),
+            (ValueRef::Interval(start, end), ValueRef::Int(n)) => start <= n && n <= end,
+            (ValueRef::CrossProduct(sets), ValueRef::Tuple(elems)) => {
                 if sets.len() != elems.len() {
                     false
                 } else {
@@ -380,7 +517,7 @@ impl Value {
                         .try_fold(true, |acc, (set, elem)| Ok(acc && set.contains(elem)?))?
                 }
             }
-            (ValueInner::PowerSet(base), ValueInner::Set(elems)) => {
+            (ValueRef::PowerSet(base), ValueRef::Set(elems)) => {
                 let base_elems = base.as_set()?;
                 if elems.len() > base_elems.len() {
                     false
@@ -390,7 +527,7 @@ impl Value {
                         .try_fold(true, |acc, elem| Ok(acc && base_elems.contains(elem)))?
                 }
             }
-            (ValueInner::MapSet(domain, range), ValueInner::Map(map)) => {
+            (ValueRef::MapSet(domain, range), ValueRef::Map(map)) => {
                 let map_domain = Value::set(map.keys().cloned().collect::<ImmutableSet<_>>());
                 // Check if domains are equal and all map values are in the range set
                 if map_domain != *domain {
@@ -400,10 +537,10 @@ impl Value {
                         .try_fold(true, |acc, v| Ok(acc && range.contains(v)?))?
                 }
             }
-            (ValueInner::InfiniteInt, ValueInner::Int(_)) => true,
-            (ValueInner::InfiniteInt, _) => false,
-            (ValueInner::InfiniteNat, ValueInner::Int(n)) => *n >= 0,
-            (ValueInner::InfiniteNat, _) => false,
+            (ValueRef::InfiniteInt, ValueRef::Int(_)) => true,
+            (ValueRef::InfiniteInt, _) => false,
+            (ValueRef::InfiniteNat, ValueRef::Int(n)) => n >= 0,
+            (ValueRef::InfiniteNat, _) => false,
             _ => panic!("contains not implemented for {self:?}"),
         })
     }
@@ -411,7 +548,7 @@ impl Value {
     /// Check if this is a large powerset (base set >= 64 elements)
     /// Large powersets require special handling to avoid overflow
     pub fn is_large_powerset(&self) -> bool {
-        if let ValueInner::PowerSet(base_set) = self.0.as_ref() {
+        if let ValueRef::PowerSet(base_set) = self.view() {
             if let Ok(card) = base_set.cardinality() {
                 return card >= u64::BITS as u64;
             }
@@ -421,13 +558,13 @@ impl Value {
 
     /// Check if a set is a subset of another set, avoiding enumeration when possible
     pub fn subseteq(&self, superset: &Value) -> Result<bool, QuintError> {
-        Ok(match (self.0.as_ref(), superset.0.as_ref()) {
-            (ValueInner::Set(subset), ValueInner::Set(superset)) => subset.is_subset(superset),
+        Ok(match (self.view(), superset.view()) {
+            (ValueRef::Set(subset), ValueRef::Set(superset)) => subset.is_subset(superset),
             (
-                ValueInner::Interval(subset_start, subset_end),
-                ValueInner::Interval(superset_start, superset_end),
+                ValueRef::Interval(subset_start, subset_end),
+                ValueRef::Interval(superset_start, superset_end),
             ) => subset_start >= superset_start && subset_end <= superset_end,
-            (ValueInner::CrossProduct(subsets), ValueInner::CrossProduct(supersets)) => {
+            (ValueRef::CrossProduct(subsets), ValueRef::CrossProduct(supersets)) => {
                 if subsets.len() != supersets.len() {
                     false
                 } else {
@@ -439,27 +576,27 @@ impl Value {
                         })?
                 }
             }
-            (ValueInner::PowerSet(subset), ValueInner::PowerSet(superset)) => {
+            (ValueRef::PowerSet(subset), ValueRef::PowerSet(superset)) => {
                 subset.subseteq(superset)?
             }
             (
-                ValueInner::MapSet(subset_domain, subset_range),
-                ValueInner::MapSet(superset_domain, superset_range),
+                ValueRef::MapSet(subset_domain, subset_range),
+                ValueRef::MapSet(superset_domain, superset_range),
             ) => subset_domain == superset_domain && subset_range.subseteq(superset_range)?,
             // Infinite set relationships
-            (ValueInner::InfiniteNat, ValueInner::InfiniteNat) => true,
-            (ValueInner::InfiniteNat, ValueInner::InfiniteInt) => true,
-            (ValueInner::InfiniteInt, ValueInner::InfiniteInt) => true,
-            (ValueInner::InfiniteInt, ValueInner::InfiniteNat) => false,
+            (ValueRef::InfiniteNat, ValueRef::InfiniteNat) => true,
+            (ValueRef::InfiniteNat, ValueRef::InfiniteInt) => true,
+            (ValueRef::InfiniteInt, ValueRef::InfiniteInt) => true,
+            (ValueRef::InfiniteInt, ValueRef::InfiniteNat) => false,
             // Use the `contains` definition for infinite sets
-            (_, ValueInner::InfiniteNat | ValueInner::InfiniteInt) if self.is_set() => {
+            (_, ValueRef::InfiniteNat | ValueRef::InfiniteInt) if self.is_set() => {
                 let self_set = self.as_set()?;
                 self_set
                     .iter()
                     .try_fold(true, |acc, v| Ok(acc && superset.contains(v)?))?
             }
             // Infinite sets can't be subsets of finite sets
-            (ValueInner::InfiniteInt, _) | (ValueInner::InfiniteNat, _) => false,
+            (ValueRef::InfiniteInt, _) | (ValueRef::InfiniteNat, _) => false,
             // Fall back to the native implementation (`is_subset`) if no optimization is possible
             (_, _) => {
                 let self_set = self.as_set()?;
@@ -472,8 +609,12 @@ impl Value {
     /// Convert an integer value to `i64`. Panics if the wrong type is given,
     /// which should never happen as input expressions are type-checked.
     pub fn as_int(&self) -> i64 {
-        match self.0.as_ref() {
-            ValueInner::Int(n) => *n,
+        // Hot path: no `ValueRef` construction for the inline case.
+        if self.tag() == Tag::Int {
+            return self.payload();
+        }
+        match self.view() {
+            ValueRef::Int(n) => n,
             _ => panic!("Expected integer"),
         }
     }
@@ -481,8 +622,11 @@ impl Value {
     /// Convert a boolean value to `bool`. Panics if the wrong type is given,
     /// which should never happen as input expressions are type-checked.
     pub fn as_bool(&self) -> bool {
-        match self.0.as_ref() {
-            ValueInner::Bool(b) => *b,
+        if self.tag() == Tag::Bool {
+            return self.payload() != 0;
+        }
+        match self.view() {
+            ValueRef::Bool(b) => b,
             _ => panic!("Expected boolean"),
         }
     }
@@ -490,8 +634,8 @@ impl Value {
     /// Convert a string value to `Str`. Panics if the wrong type is given,
     /// which should never happen as input expressions are type-checked.
     pub fn as_str(&self) -> Str {
-        match self.0.as_ref() {
-            ValueInner::Str(s) => s.clone(),
+        match self.view() {
+            ValueRef::Str(s) => s.clone(),
             _ => panic!("Expected string"),
         }
     }
@@ -500,14 +644,14 @@ impl Value {
     /// that are also sets, just not enumerated yet.
     pub fn is_set(&self) -> bool {
         matches!(
-            self.0.as_ref(),
-            ValueInner::Set(_)
-                | ValueInner::Interval(_, _)
-                | ValueInner::CrossProduct(_)
-                | ValueInner::PowerSet(_)
-                | ValueInner::MapSet(_, _)
-                | ValueInner::InfiniteInt
-                | ValueInner::InfiniteNat
+            self.view(),
+            ValueRef::Set(_)
+                | ValueRef::Interval(_, _)
+                | ValueRef::CrossProduct(_)
+                | ValueRef::PowerSet(_)
+                | ValueRef::MapSet(_, _)
+                | ValueRef::InfiniteInt
+                | ValueRef::InfiniteNat
         )
     }
 
@@ -519,12 +663,10 @@ impl Value {
     /// clone-on-write (Cow) pointer, avoiding unnecessary clones that would be
     /// required if we always wanted to return Owned data.
     pub fn as_set(&self) -> Result<Cow<'_, ImmutableSet<Value>>, QuintError> {
-        Ok(match self.0.as_ref() {
-            ValueInner::Set(set) => Cow::Borrowed(set),
-            ValueInner::Interval(start, end) => {
-                Cow::Owned((*start..=*end).map(Value::int).collect())
-            }
-            ValueInner::CrossProduct(sets) => {
+        Ok(match self.view() {
+            ValueRef::Set(set) => Cow::Borrowed(set),
+            ValueRef::Interval(start, end) => Cow::Owned((start..=end).map(Value::int).collect()),
+            ValueRef::CrossProduct(sets) => {
                 let size = self.cardinality()?;
                 if size == 0 {
                     // an empty set produces the empty product
@@ -547,7 +689,7 @@ impl Value {
                 Cow::Owned(product_sets)
             }
 
-            ValueInner::PowerSet(value) => {
+            ValueRef::PowerSet(value) => {
                 let base = value.as_set()?;
                 let size: u64 = self.cardinality()?;
                 Cow::Owned(
@@ -557,7 +699,7 @@ impl Value {
                 )
             }
 
-            ValueInner::MapSet(domain, range) => {
+            ValueRef::MapSet(domain, range) => {
                 if domain.cardinality()? == 0 {
                     // To reflect the behaviour of TLC, an empty domain needs to give Set(Map())
                     return Ok(Cow::Owned(
@@ -598,11 +740,11 @@ impl Value {
 
                 Cow::Owned(result_set)
             }
-            ValueInner::InfiniteInt => Err(QuintError::new(
+            ValueRef::InfiniteInt => Err(QuintError::new(
                 "QNT501",
                 "Infinite set Int is non-enumerable",
             ))?,
-            ValueInner::InfiniteNat => Err(QuintError::new(
+            ValueRef::InfiniteNat => Err(QuintError::new(
                 "QNT501",
                 "Infinite set Nat is non-enumerable",
             ))?,
@@ -613,8 +755,8 @@ impl Value {
     /// Convert a map value to a map. Panics if the wrong type is given, which
     /// should never happen as input expressions are type-checked.
     pub fn as_map(&self) -> &ImmutableMap<Value, Value> {
-        match self.0.as_ref() {
-            ValueInner::Map(map) => map,
+        match self.view() {
+            ValueRef::Map(map) => map,
             _ => panic!("Expected map"),
         }
     }
@@ -622,9 +764,9 @@ impl Value {
     /// Convert a list or a tuple value to a vector. Panics if the wrong type is
     /// given, which should never happen as input expressions are type-checked.
     pub fn as_list(&self) -> &ImmutableVec<Value> {
-        match self.0.as_ref() {
-            ValueInner::Tuple(elems) => elems,
-            ValueInner::List(elems) => elems,
+        match self.view() {
+            ValueRef::Tuple(elems) => elems,
+            ValueRef::List(elems) => elems,
             _ => panic!("Expected list, got {self:?}"),
         }
     }
@@ -632,8 +774,8 @@ impl Value {
     /// Convert a record value to a map. Panics if the wrong type is given,
     /// which should never happen as input expressions are type-checked.
     pub fn as_record_map(&self) -> &ImmutableMap<QuintName, Value> {
-        match self.0.as_ref() {
-            ValueInner::Record(fields) => fields,
+        match self.view() {
+            ValueRef::Record(fields) => fields,
             _ => panic!("Expected record"),
         }
     }
@@ -641,8 +783,8 @@ impl Value {
     /// Convert a lambda value to a closure. Panics if the wrong type is given,
     /// which should never happen as input expressions are type-checked.
     pub fn as_closure(&self) -> impl Fn(&mut Env, Vec<Value>) -> EvalResult + '_ {
-        match self.0.as_ref() {
-            ValueInner::Lambda(registers, body) => move |env: &mut Env, args: Vec<Value>| {
+        match self.view() {
+            ValueRef::Lambda(registers, body) => move |env: &mut Env, args: Vec<Value>| {
                 args.into_iter().enumerate().for_each(|(i, arg)| {
                     *registers[i].borrow_mut() = Ok(arg);
                 });
@@ -658,8 +800,8 @@ impl Value {
     /// wrong type is given, which should never happen as input expressions are
     /// type-checked.
     pub fn as_variant(&self) -> (&QuintName, &Value) {
-        match self.0.as_ref() {
-            ValueInner::Variant(label, value) => (label, value),
+        match self.view() {
+            ValueRef::Variant(label, value) => (label, value),
             _ => panic!("Expected variant"),
         }
     }
@@ -716,15 +858,15 @@ pub fn powerset_at_index_large(base: &ImmutableSet<Value>, i: &BigUint) -> Value
 /// Display implementation, used for debugging only. Users should not need to see a [`Value`].
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.0.as_ref() {
-            ValueInner::Int(n) => write!(f, "{n}"),
-            ValueInner::Bool(b) => write!(f, "{b}"),
-            ValueInner::Str(s) => write!(f, "{s:?}"),
-            ValueInner::Set(_)
-            | ValueInner::Interval(_, _)
-            | ValueInner::CrossProduct(_)
-            | ValueInner::PowerSet(_)
-            | ValueInner::MapSet(_, _) => {
+        match self.view() {
+            ValueRef::Int(n) => write!(f, "{n}"),
+            ValueRef::Bool(b) => write!(f, "{b}"),
+            ValueRef::Str(s) => write!(f, "{s:?}"),
+            ValueRef::Set(_)
+            | ValueRef::Interval(_, _)
+            | ValueRef::CrossProduct(_)
+            | ValueRef::PowerSet(_)
+            | ValueRef::MapSet(_, _) => {
                 write!(f, "Set(")?;
                 let set = self.as_set().expect("can't enumerate set for display");
                 for (i, elem) in set.iter().enumerate() {
@@ -735,9 +877,9 @@ impl fmt::Display for Value {
                 }
                 write!(f, ")")
             }
-            ValueInner::InfiniteInt => write!(f, "Int"),
-            ValueInner::InfiniteNat => write!(f, "Nat"),
-            ValueInner::Tuple(elems) => {
+            ValueRef::InfiniteInt => write!(f, "Int"),
+            ValueRef::InfiniteNat => write!(f, "Nat"),
+            ValueRef::Tuple(elems) => {
                 write!(f, "(")?;
                 for (i, elem) in elems.iter().enumerate() {
                     if i > 0 {
@@ -747,7 +889,7 @@ impl fmt::Display for Value {
                 }
                 write!(f, ")")
             }
-            ValueInner::Record(fields) => {
+            ValueRef::Record(fields) => {
                 write!(f, "{{ ")?;
                 for (i, (name, value)) in fields.iter().enumerate() {
                     if i > 0 {
@@ -757,7 +899,7 @@ impl fmt::Display for Value {
                 }
                 write!(f, " }}")
             }
-            ValueInner::Map(map) => {
+            ValueRef::Map(map) => {
                 write!(f, "Map(")?;
                 for (i, (key, value)) in map.iter().enumerate() {
                     if i > 0 {
@@ -767,7 +909,7 @@ impl fmt::Display for Value {
                 }
                 write!(f, ")")
             }
-            ValueInner::List(elems) => {
+            ValueRef::List(elems) => {
                 write!(f, "List(")?;
                 for (i, elem) in elems.iter().enumerate() {
                     if i > 0 {
@@ -777,9 +919,9 @@ impl fmt::Display for Value {
                 }
                 write!(f, ")")
             }
-            ValueInner::Lambda(_, _) => write!(f, "<lambda>"),
-            ValueInner::Variant(label, value) => {
-                if let ValueInner::Tuple(elems) = value.0.as_ref() {
+            ValueRef::Lambda(_, _) => write!(f, "<lambda>"),
+            ValueRef::Variant(label, value) => {
+                if let ValueRef::Tuple(elems) = value.view() {
                     if elems.is_empty() {
                         return write!(f, "{label}");
                     }
@@ -790,17 +932,75 @@ impl fmt::Display for Value {
     }
 }
 
-// NOTE: The `Value` data structure is used within immutable containers from the
-// `imbl` crate. Those containers have optimizations that are well suited for
-// small datas structures. For example, vectors are represented as RRB trees but,
-// the space that an RRB tree would occupy in the stack is first used by an
-// array that can hold a portion of the vector elements inline before promoting
-// them to a RRB tree. This means that the larger the `Value` structure is, the
-// quicker the RRB tree promotion needs to happen, which requires additional
-// heap allocations.
-//
-// We've seem cosiderable performance improvements from reducing the size of the
-// `Value` representation. This compile time assertion serves as feedback to
-// developers that, if changing the size of the `Value` structure, need to make
-// sure that benchmarks don't regress.
-const _: [bool; std::mem::size_of::<Value>()] = [false; 8];
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn iset(ints: &[i64]) -> Value {
+        Value::set(ints.iter().map(|&i| Value::int(i)).collect())
+    }
+
+    fn fxhash(v: &Value) -> u64 {
+        let mut h = fxhash::FxHasher::default();
+        v.hash(&mut h);
+        h.finish()
+    }
+
+    const I61_MAX: i64 = (1 << 60) - 1;
+
+    #[test]
+    fn int_roundtrip_across_inline_heap_boundary() {
+        for n in [
+            0,
+            1,
+            -1,
+            I61_MAX,
+            -I61_MAX,
+            1 << 60,
+            -(1 << 60),
+            i64::MIN,
+            i64::MAX,
+        ] {
+            assert_eq!(Value::int(n).as_int(), n, "roundtrip of {n}");
+            assert!(matches!(Value::int(n).view(), ValueRef::Int(m) if m == n));
+        }
+    }
+
+    #[test]
+    fn heap_and_inline_ints_hash_and_compare_as_ints() {
+        let heap = Value::int(1 << 60);
+        let inline = Value::int(I61_MAX);
+        assert_ne!(heap, inline);
+        assert_ne!(fxhash(&heap), fxhash(&inline));
+
+        let a = Value::int(i64::MAX);
+        let b = Value::int(i64::MAX);
+        assert_eq!(a, b);
+        assert_eq!(fxhash(&a), fxhash(&b));
+    }
+
+    #[test]
+    fn tags_distinguish_zero_payloads() {
+        assert_ne!(Value::bool(true), Value::bool(false));
+        assert_ne!(Value::infinite_int(), Value::infinite_nat());
+        assert_ne!(Value::int(0), Value::bool(false));
+        assert_ne!(fxhash(&Value::int(0)), fxhash(&Value::bool(false)));
+        assert!(Value::bool(true).as_bool());
+        assert!(!Value::bool(false).as_bool());
+    }
+
+    /// Clones and drops of a heap value must balance the refcount; miri
+    /// reports a leak or use-after-free if they do not.
+    #[test]
+    fn set_clone_drop_balances_refcount() {
+        let ints: Vec<i64> = (0..1000).collect();
+        let set = iset(&ints);
+        let clones: Vec<Value> = (0..10).map(|_| set.clone()).collect();
+        drop(clones);
+        let again = set.clone();
+        drop(set);
+        assert_eq!(again.cardinality().unwrap(), 1000);
+        assert!(again.contains(&Value::int(999)).unwrap());
+        assert!(!again.contains(&Value::int(1000)).unwrap());
+    }
+}

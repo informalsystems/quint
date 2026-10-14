@@ -1,64 +1,29 @@
-use std::path::Path;
+mod workloads;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use quint_evaluator::evaluator::{Env, Interpreter};
-use quint_evaluator::helpers;
-use quint_evaluator::simulator::ParsedQuint;
-use quint_evaluator::Verbosity;
-
-fn simulate(
-    parsed: &ParsedQuint,
-    steps: usize,
-    samples: usize,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let mut interpreter = Interpreter::new(parsed.table.clone());
-    let mut env = Env::with_rand_state(interpreter.var_storage.clone(), 0x42, Verbosity::default());
-
-    let init = interpreter.compile(&parsed.init);
-    let step = interpreter.compile(&parsed.step);
-    let invariant = interpreter.compile(&parsed.invariants[0]);
-
-    for _ in 1..=samples {
-        init.execute(&mut env)?;
-
-        for _ in 1..=steps {
-            interpreter.shift();
-            invariant.execute(&mut env)?;
-            step.execute(&mut env)?;
-        }
-    }
-
-    Ok(())
-}
-
-fn run(parsed: &ParsedQuint, steps: usize) -> Result<(), Box<dyn std::error::Error>> {
-    let result = simulate(parsed, steps, 1);
-
-    match result {
-        Ok(()) => Ok(()),
-        Err(e) => panic!("Error in simulation: {e}"),
-    }
-}
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("evaluator");
 
-    {
-        let path = Path::new("fixtures/tictactoe.qnt");
-        let parsed = helpers::parse_from_path(path, "init", "step", Some("inv"), None).unwrap();
-        group.bench_function("tictactoe", |b| {
-            b.iter(|| run(black_box(&parsed), 10).unwrap())
+    let parsed = workloads::parse_tictactoe();
+    group.bench_function("tictactoe", |b| {
+        b.iter(|| workloads::simulate(black_box(&parsed), 10))
+    });
+
+    let parsed = workloads::parse_jmt();
+    group.bench_function("JMT", |b| {
+        b.iter(|| workloads::simulate(black_box(&parsed), 3))
+    });
+
+    group.finish();
+
+    let mut group = c.benchmark_group("values");
+    for (name, expr) in workloads::WORKLOADS {
+        let parsed = workloads::parse_expr(expr);
+        group.bench_function(name, |b| {
+            b.iter(|| workloads::eval_input(black_box(&parsed)))
         });
     }
-
-    {
-        let path = Path::new("fixtures/jmt/apply_state_machine.qnt");
-        let parsed =
-            helpers::parse_from_path(path, "init", "step_fancy", Some("allInvariants"), None)
-                .unwrap();
-        group.bench_function("JMT", |b| b.iter(|| run(black_box(&parsed), 3).unwrap()));
-    }
-
     group.finish();
 }
 

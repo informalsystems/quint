@@ -14,9 +14,16 @@ pub type QuintId = u64;
 // large heap-allocated strings.
 pub type QuintName = HipStr<'static>;
 
-#[derive(Debug, Clone, Error, PartialEq, Serialize)]
-#[error("[{code}] {message}")]
-pub struct QuintError {
+/// An evaluation error. Boxed so the type is one word and `EvalResult`
+/// (`Result<Value, QuintError>`) is two; the error path is cold.
+#[derive(Clone, Error, PartialEq, Serialize)]
+#[error("[{}] {}", .0.code, .0.message)]
+#[serde(transparent)]
+pub struct QuintError(Box<QuintErrorData>);
+
+/// The fields of a [`QuintError`], reachable through `Deref`/`DerefMut`.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct QuintErrorData {
     pub code: String,
     pub message: String,
     // Serialized as "#trace" so it cannot collide with user record fields.
@@ -24,25 +31,48 @@ pub struct QuintError {
     pub trace: Vec<QuintId>,
 }
 
+impl std::ops::Deref for QuintError {
+    type Target = QuintErrorData;
+
+    fn deref(&self) -> &QuintErrorData {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for QuintError {
+    fn deref_mut(&mut self) -> &mut QuintErrorData {
+        &mut self.0
+    }
+}
+
+// Prints the same text as a derived `Debug` on the unboxed struct would, so
+// `{:?}` output does not expose the box.
+impl std::fmt::Debug for QuintError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("QuintError")
+            .field("code", &self.code)
+            .field("message", &self.message)
+            .field("trace", &self.trace)
+            .finish()
+    }
+}
+
 impl QuintError {
     pub fn new(code: &str, message: &str) -> Self {
-        QuintError {
+        QuintError(Box::new(QuintErrorData {
             code: code.to_string(),
             message: message.to_string(),
             trace: Vec::new(),
-        }
+        }))
     }
 
-    pub fn with_reference(self, reference: QuintId) -> Self {
+    pub fn with_reference(mut self, reference: QuintId) -> Self {
         debug_assert!(
             self.trace.is_empty(),
             "with_reference called on an error that already has a stack trace"
         );
-        QuintError {
-            code: self.code,
-            message: self.message,
-            trace: vec![reference],
-        }
+        self.trace = vec![reference];
+        self
     }
 
     pub fn push_trace(mut self, id: QuintId) -> Self {

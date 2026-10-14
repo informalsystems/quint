@@ -6,7 +6,7 @@
 //! viewer extension on VSCode.
 
 use crate::trace_quality::TraceQuality;
-use crate::value::{Str, Value, ValueInner};
+use crate::value::{Str, Value, ValueRef};
 use chrono;
 use itf;
 use std::collections::BTreeMap;
@@ -68,7 +68,7 @@ impl Trace {
         if let Some(state) = self.states.first() {
             // Find the variable names by taking the fields from the first
             // state (which should be a record).
-            let ValueInner::Record(rec) = &*state.value else {
+            let ValueRef::Record(rec) = state.value.view() else {
                 panic!("Expected a record, got {}", state.value);
             };
             vars.extend(rec.keys().map(|key| key.to_string()));
@@ -188,40 +188,38 @@ impl Value {
     }
 
     pub fn to_itf(&self) -> itf::Value {
-        match self.0.as_ref() {
-            ValueInner::Int(i) => itf::Value::Number(*i),
-            ValueInner::Bool(b) => itf::Value::Bool(*b),
-            ValueInner::Str(s) => itf::Value::String(s.to_string()),
-            ValueInner::InfiniteInt => itf::Value::Unserializable(
+        match self.view() {
+            ValueRef::Int(i) => itf::Value::Number(i),
+            ValueRef::Bool(b) => itf::Value::Bool(b),
+            ValueRef::Str(s) => itf::Value::String(s.to_string()),
+            ValueRef::InfiniteInt => itf::Value::Unserializable(
                 serde_json::from_value(serde_json::json!({"#unserializable": "Int"})).unwrap(),
             ),
-            ValueInner::InfiniteNat => itf::Value::Unserializable(
+            ValueRef::InfiniteNat => itf::Value::Unserializable(
                 serde_json::from_value(serde_json::json!({"#unserializable": "Nat"})).unwrap(),
             ),
-            ValueInner::Set(_)
-            | ValueInner::Interval(_, _)
-            | ValueInner::CrossProduct(_)
-            | ValueInner::PowerSet(_)
-            | ValueInner::MapSet(_, _) => {
+            ValueRef::Set(_)
+            | ValueRef::Interval(_, _)
+            | ValueRef::CrossProduct(_)
+            | ValueRef::PowerSet(_)
+            | ValueRef::MapSet(_, _) => {
                 let set = self
                     .as_set()
                     .expect("can't convert value to set for ITF conversion");
                 itf::Value::Set(set.iter().map(|v| v.to_itf()).collect())
             }
-            ValueInner::Tuple(elems) => {
-                itf::Value::Tuple(elems.iter().map(|v| v.to_itf()).collect())
-            }
-            ValueInner::Record(fields) => itf::Value::Record(
+            ValueRef::Tuple(elems) => itf::Value::Tuple(elems.iter().map(|v| v.to_itf()).collect()),
+            ValueRef::Record(fields) => itf::Value::Record(
                 fields
                     .iter()
                     .map(|(k, v)| (k.to_string(), v.to_itf()))
                     .collect(),
             ),
-            ValueInner::Map(map) => {
+            ValueRef::Map(map) => {
                 itf::Value::Map(map.iter().map(|(k, v)| (k.to_itf(), v.to_itf())).collect())
             }
-            ValueInner::List(elems) => itf::Value::List(elems.iter().map(|v| v.to_itf()).collect()),
-            ValueInner::Variant(label, value) => itf::Value::Record(
+            ValueRef::List(elems) => itf::Value::List(elems.iter().map(|v| v.to_itf()).collect()),
+            ValueRef::Variant(label, value) => itf::Value::Record(
                 vec![
                     ("tag".to_string(), itf::Value::String(label.to_string())),
                     ("value".to_string(), value.to_itf()),
@@ -229,7 +227,7 @@ impl Value {
                 .into_iter()
                 .collect(),
             ),
-            ValueInner::Lambda(_, _) => panic!("Cannot convert Lambda to ITF"),
+            ValueRef::Lambda(_, _) => panic!("Cannot convert Lambda to ITF"),
         }
     }
 }

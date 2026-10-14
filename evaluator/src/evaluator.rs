@@ -18,6 +18,9 @@ use std::rc::Rc;
 
 /// The result of evaluating a Quint expression: either a [`Value`] or an error.
 pub type EvalResult = Result<Value, QuintError>;
+// Two words: `Value` is one and `QuintError` boxes its fields. Every compiled
+// closure returns one of these, so its size is on the hot path.
+const _: () = assert!(std::mem::size_of::<EvalResult>() == 16);
 
 /// A compiled expression that can be executed in a given environment.
 #[derive(Clone)]
@@ -38,6 +41,12 @@ pub struct CompiledExprWithLazyArgs(
 impl CompiledExpr {
     pub fn new(closure: impl Fn(&mut Env) -> EvalResult + 'static) -> Self {
         CompiledExpr(Rc::new(closure))
+    }
+
+    /// An expression that always evaluates to `value`. Each evaluation clones
+    /// it, which for heap-resident values is a refcount bump, not an allocation.
+    pub fn constant(value: Value) -> Self {
+        CompiledExpr::new(move |_| Ok(value.clone()))
     }
 
     pub fn execute(&self, env: &mut Env) -> EvalResult {
@@ -532,20 +541,11 @@ impl Interpreter {
 
     pub fn compile_expr_core(&mut self, expr: &QuintEx) -> CompiledExpr {
         match expr {
-            QuintEx::QuintInt { id: _, value } => {
-                let value = *value;
-                CompiledExpr::new(move |_| Ok(Value::int(value)))
-            }
+            QuintEx::QuintInt { id: _, value } => CompiledExpr::constant(Value::int(*value)),
 
-            QuintEx::QuintBool { id: _, value } => {
-                let value = *value;
-                CompiledExpr::new(move |_| Ok(Value::bool(value)))
-            }
+            QuintEx::QuintBool { id: _, value } => CompiledExpr::constant(Value::bool(*value)),
 
-            QuintEx::QuintStr { id: _, value } => {
-                let value = value.clone();
-                CompiledExpr::new(move |_| Ok(Value::str(value.clone())))
-            }
+            QuintEx::QuintStr { id: _, value } => CompiledExpr::constant(Value::str(value.clone())),
 
             QuintEx::QuintName { id, name } => {
                 if let Some(def) = self.table.get(id).cloned() {
@@ -562,7 +562,7 @@ impl Interpreter {
             } => {
                 let body = self.compile(expr);
                 let lambda = self.mk_lambda(params.to_vec(), body);
-                CompiledExpr::new(move |_| Ok(lambda.clone()))
+                CompiledExpr::constant(lambda)
             }
 
             QuintEx::QuintApp { id, opcode, args } => {
@@ -576,7 +576,8 @@ impl Interpreter {
                     self.compile_under_context(&var_def, |interpreter| {
                         interpreter.create_var(var_def.id(), var_def.name());
                         let register = interpreter.get_next_var(var_def.id());
-                        let expr = interpreter.compile(&args[1]);
+                        // The RHS was already compiled above, in the caller's context
+                        let expr = compiled_args[1].clone();
 
                         CompiledExpr::new(move |env| {
                             let value = expr.execute(env)?;
@@ -787,16 +788,14 @@ impl Interpreter {
 
 fn builtin_value(name: &str) -> CompiledExpr {
     match name {
-        "true" => CompiledExpr::new(move |_| Ok(Value::bool(true))),
-        "false" => CompiledExpr::new(move |_| Ok(Value::bool(false))),
-        "Bool" => CompiledExpr::new(move |_| {
-            Ok(Value::set(ImmutableSet::from(vec![
-                Value::bool(true),
-                Value::bool(false),
-            ])))
-        }),
-        "Int" => CompiledExpr::new(move |_| Ok(Value::infinite_int())),
-        "Nat" => CompiledExpr::new(move |_| Ok(Value::infinite_nat())),
+        "true" => CompiledExpr::constant(Value::bool(true)),
+        "false" => CompiledExpr::constant(Value::bool(false)),
+        "Bool" => CompiledExpr::constant(Value::set(ImmutableSet::from(vec![
+            Value::bool(true),
+            Value::bool(false),
+        ]))),
+        "Int" => CompiledExpr::constant(Value::infinite_int()),
+        "Nat" => CompiledExpr::constant(Value::infinite_nat()),
         "q::lastTrace" => CompiledExpr::new(|env| {
             Ok(Value::list(
                 env.trace.iter().map(|s| s.value.clone()).collect(),

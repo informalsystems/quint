@@ -6,7 +6,7 @@
 use crate::{
     evaluator::{CompiledExpr, Env},
     ir::{QuintError, QuintName},
-    value::{Value, ValueInner},
+    value::{Value, ValueRef},
 };
 use num_bigint::BigUint;
 use std::cell::RefCell;
@@ -75,7 +75,7 @@ pub fn eval_nondet_one_of(
         // Special handling for large PowerSet
         // These are too large to retry through, so just pick once
         if set.is_large_powerset() {
-            if let ValueInner::PowerSet(base_set) = set.0.as_ref() {
+            if let ValueRef::PowerSet(base_set) = set.view() {
                 let n = base_set.cardinality().map_err(|e| {
                     QuintError::new(
                         "QNT601",
@@ -132,7 +132,7 @@ pub fn eval_nondet_one_of(
             let result = body_expr.execute(env);
 
             // If result is false and we can retry, try next position
-            let should_retry = matches!(result, Ok(ref v) if matches!(v.0.as_ref(), ValueInner::Bool(false)))
+            let should_retry = matches!(result, Ok(ref v) if matches!(v.view(), ValueRef::Bool(false)))
                 && should_retry_set;
 
             if should_retry {

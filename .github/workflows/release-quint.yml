@@ -6,12 +6,21 @@ on:
       - "v*.*.*"
 
 jobs:
+  # Reusable workflows can't be granted more permissions than their caller has,
+  # and the org default token has no `pull-requests` access, which the
+  # `changes` jobs in these workflows request.
   unit-tests:
     uses: ./.github/workflows/test-quint.yml
+    permissions:
+      contents: read
+      pull-requests: read
 
   integration-tests:
     uses: ./.github/workflows/integration-tests.yml
     secrets: inherit
+    permissions:
+      contents: read
+      pull-requests: read
 
   release:
     needs: [unit-tests, integration-tests]
@@ -21,13 +30,16 @@ jobs:
         working-directory: ./quint
     permissions:
       contents: write
+      # Required for npm trusted publishing (OIDC) and provenance
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Install node
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          # npm trusted publishing requires npm >= 11.5.1, shipped with node 24
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
       - name: Compile
         run: npm ci
@@ -40,7 +52,7 @@ jobs:
           sed -n "/## v$version/,/## v/p" ../CHANGELOG.md | head -n -1 > ${{ github.workspace }}/release-notes.txt
       - name: Release
         # See https://github.com/softprops/action-gh-release#-external-release-notes
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           body_path: ${{ github.workspace }}/release-notes.txt
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -95,8 +107,10 @@ jobs:
         env:
           QUINT_VERSION: ${{ needs.wait-for-npm.outputs.version }}
         # can't use bash shell tricks, as it's not available on windows
+        # --min-dep-age=0: Deno refuses npm versions younger than 24h by
+        # default, and we are checking the version that was just published.
         run: |
-          deno run --allow-all --node-modules-dir=auto --allow-scripts "npm:@informalsystems/quint@${{ env.QUINT_VERSION }}" --version
+          deno run --min-dep-age=0 --allow-all --node-modules-dir=auto --allow-scripts "npm:@informalsystems/quint@${{ env.QUINT_VERSION }}" --version
   upload-binaries:
     needs: check-on-arch
     runs-on: ubuntu-latest

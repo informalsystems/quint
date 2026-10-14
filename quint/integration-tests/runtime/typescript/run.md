@@ -103,6 +103,15 @@ Tests that `quint run` works with nested setOfMaps and oneOf.
 <!-- !test check 1736 -->
     quint run --backend=typescript testFixture/bug1736setOfMaps.qnt
 
+### OK on run 2027
+
+Regression test for [#2027](https://github.com/quint-co/quint/issues/2027).
+Tests that `quint run` works when the right-hand side of an assignment to an
+instance variable reads a variable of the enclosing module.
+
+<!-- !test check 2027 -->
+    quint run --backend=typescript testFixture/bug2027instanceAssignRhs.qnt --invariant=inv
+
 ### OK on run nested parameterized calls with let
 
 Tests that `quint run` works with nested parameterized function calls with let bindings.

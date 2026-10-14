@@ -1,7 +1,7 @@
 //! Picking values out of sets without enumerating the elements.
 
 use crate::ir::QuintError;
-use crate::value::{powerset_at_index, powerset_at_index_large, ImmutableMap, Value, ValueInner};
+use crate::value::{powerset_at_index, powerset_at_index_large, ImmutableMap, Value, ValueRef};
 use num_bigint::BigUint;
 
 impl Value {
@@ -11,8 +11,8 @@ impl Value {
     /// The given indexes should have the same length as the length [`bounds`]
     /// for this value, and each value should be within its respective bound.
     pub fn pick<T: Iterator<Item = u64>>(&self, indexes: &mut T) -> Result<Value, QuintError> {
-        Ok(match self.0.as_ref() {
-            ValueInner::Set(set) => {
+        Ok(match self.view() {
+            ValueRef::Set(set) => {
                 let index = indexes
                     .next()
                     .expect("Internal error: too few positions. Report a bug");
@@ -22,7 +22,7 @@ impl Value {
                     .cloned()
                     .expect("Internal error: Index out of bounds. Report a bug")
             }
-            ValueInner::Interval(start, end) => {
+            ValueRef::Interval(start, end) => {
                 let index = indexes
                     .next()
                     .expect("Internal error: too few positions. Report a bug");
@@ -30,14 +30,14 @@ impl Value {
                 assert!(idx <= end - start);
                 Value::int(start + idx)
             }
-            ValueInner::CrossProduct(sets) => {
+            ValueRef::CrossProduct(sets) => {
                 let elements = sets
                     .iter()
                     .map(|value| value.pick(indexes))
                     .collect::<Result<_, _>>()?;
                 Value::tuple(elements)
             }
-            ValueInner::PowerSet(base_set) => {
+            ValueRef::PowerSet(base_set) => {
                 if self.is_large_powerset() {
                     // Large powerset: reassemble u32 digits into BigUint
                     let digits: Vec<u32> = indexes.map(|i| i as u32).collect();
@@ -53,7 +53,7 @@ impl Value {
                     powerset_at_index(base.as_ref(), index)
                 }
             }
-            ValueInner::MapSet(domain, range) => {
+            ValueRef::MapSet(domain, range) => {
                 let domain_size = domain.cardinality()?;
 
                 if domain_size == 0 {
@@ -64,15 +64,12 @@ impl Value {
 
                 // Check that range is non-empty for non-infinite sets
                 // Infinite sets (Int, Nat) will fail the cardinality check, which is fine
-                if !matches!(
-                    range.0.as_ref(),
-                    ValueInner::InfiniteInt | ValueInner::InfiniteNat
-                ) {
+                if !matches!(range.view(), ValueRef::InfiniteInt | ValueRef::InfiniteNat) {
                     let range_size = range.cardinality()?;
                     assert!(range_size > 0, "Range can't be zero");
                 }
 
-                let range_to_pick = if matches!(range.0.as_ref(), ValueInner::MapSet(_, _)) {
+                let range_to_pick = if matches!(range.view(), ValueRef::MapSet(_, _)) {
                     Value::set(range.as_set()?.into_owned())
                 } else {
                     range.clone()
@@ -89,7 +86,7 @@ impl Value {
 
                 Value::map(key_values)
             }
-            ValueInner::InfiniteInt => {
+            ValueRef::InfiniteInt => {
                 // Pick a random integer from the entire i64 range
                 let index = indexes
                     .next()
@@ -100,7 +97,7 @@ impl Value {
 
                 Value::int(value)
             }
-            ValueInner::InfiniteNat => {
+            ValueRef::InfiniteNat => {
                 // Pick a random natural number (>= 0)
                 // The bound is set to i64::MAX, so this is always non-negative
                 let index = indexes
@@ -119,14 +116,14 @@ impl Value {
     // (set1.pick(r1), set2.pick(r2), ..., setn.pick(rn)). The `bounds` function will return the list of
     // ranges (bounds) from which each of those numbers should be picked from.
     pub fn bounds(&self) -> Result<Vec<u64>, QuintError> {
-        Ok(match self.0.as_ref() {
-            ValueInner::Set(set) => vec![set.len() as u64],
-            ValueInner::Interval(_, _) => vec![self.cardinality()?],
-            ValueInner::CrossProduct(sets) => sets
+        Ok(match self.view() {
+            ValueRef::Set(set) => vec![set.len() as u64],
+            ValueRef::Interval(_, _) => vec![self.cardinality()?],
+            ValueRef::CrossProduct(sets) => sets
                 .iter()
                 .map(|set| set.cardinality())
                 .collect::<Result<Vec<_>, _>>()?,
-            ValueInner::PowerSet(base_set) => {
+            ValueRef::PowerSet(base_set) => {
                 if self.is_large_powerset() {
                     // Large powerset: return vectorized representation as u32 digits
                     // The caller will reassemble these into BigUint for random generation
@@ -142,7 +139,7 @@ impl Value {
                     vec![self.cardinality()?]
                 }
             }
-            ValueInner::MapSet(domain, range) => {
+            ValueRef::MapSet(domain, range) => {
                 // If the range is an infinite set, we handle it specially
                 let range_bounds = range.bounds()?;
                 let domain_card = domain.cardinality()? as usize;
@@ -150,12 +147,12 @@ impl Value {
                 // Repeat the range bounds for each element in the domain
                 range_bounds.repeat(domain_card)
             }
-            ValueInner::InfiniteInt => {
+            ValueRef::InfiniteInt => {
                 // For Int, we use the maximum u64 value as the bound
                 // This allows picking from the full i64 range via wrapping conversion
                 vec![u64::MAX]
             }
-            ValueInner::InfiniteNat => {
+            ValueRef::InfiniteNat => {
                 // For Nat, we bound to i64::MAX + 1 so values stay in [0,
                 // i64::MAX] when converted to i64 (which is necessary as the
                 // result of pick() must be a Value::Int and thus fit in i64).

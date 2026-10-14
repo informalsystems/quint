@@ -175,11 +175,11 @@ fn int_pick_can_be_negative() -> Result<(), Box<dyn std::error::Error>> {
         let input_def = parsed.find_definition_by_name("input")?;
         let input = interpreter.eval(&mut env, input_def.expr.clone())?;
 
-        if let quint_evaluator::value::ValueInner::Int(n) = input.0.as_ref() {
-            if *n < 0 {
+        if let quint_evaluator::value::ValueRef::Int(n) = input.view() {
+            if n < 0 {
                 found_negative = true;
             }
-            if *n > 0 {
+            if n > 0 {
                 found_positive = true;
             }
             if found_negative && found_positive {
@@ -228,8 +228,8 @@ fn nat_pick_is_non_negative() -> Result<(), Box<dyn std::error::Error>> {
         let input_def = parsed.find_definition_by_name("input")?;
         let input = interpreter.eval(&mut env, input_def.expr.clone())?;
 
-        if let quint_evaluator::value::ValueInner::Int(n) = input.0.as_ref() {
-            assert!(*n >= 0, "Nat.oneOf() returned a negative number: {}", n);
+        if let quint_evaluator::value::ValueRef::Int(n) = input.view() {
+            assert!(n >= 0, "Nat.oneOf() returned a negative number: {}", n);
         }
     }
 

@@ -22,7 +22,7 @@
 use crate::evaluator::{CompiledExprWithArgs, CompiledExprWithLazyArgs};
 use crate::ir::QuintError;
 use crate::itf::DebugMessage;
-use crate::value::{ImmutableMap, ImmutableSet, ImmutableVec, Value, ValueInner};
+use crate::value::{ImmutableMap, ImmutableSet, ImmutableVec, Value, ValueRef};
 use fxhash::FxHashSet;
 use itertools::Itertools;
 use num_bigint::BigUint;
@@ -136,8 +136,10 @@ pub fn compile_lazy_op(op: &str) -> CompiledExprWithLazyArgs {
             let (variant_label, variant_value) = matched_expr.as_variant();
             let cases = &args[1..];
 
-            let matching_case = cases.chunks_exact(2).find_map(|chunk| match chunk {
-                [case_label_expr, case_elim_expr] => {
+            let (case_pairs, _) = cases.as_chunks::<2>();
+            let matching_case = case_pairs
+                .iter()
+                .find_map(|[case_label_expr, case_elim_expr]| {
                     let case_label = case_label_expr.execute(env).ok()?;
                     if case_label.as_str() == *variant_label || case_label.as_str() == "_" {
                         // We found a matching case (or a wildcard "_")
@@ -145,9 +147,7 @@ pub fn compile_lazy_op(op: &str) -> CompiledExprWithLazyArgs {
                     } else {
                         None
                     }
-                }
-                _ => None,
-            });
+                });
 
             match matching_case {
                 Some(case_elim_expr) => {
@@ -167,7 +167,7 @@ pub fn compile_lazy_op(op: &str) -> CompiledExprWithLazyArgs {
 
             // Special handling for large PowerSet (base >= 64 elements)
             if set.is_large_powerset() {
-                if let ValueInner::PowerSet(base_set) = set.0.as_ref() {
+                if let ValueRef::PowerSet(base_set) = set.view() {
                     // Large powerset: bounds are u32 digits, reassemble to BigUint
                     let n = base_set.cardinality()?;
                     let cardinality = BigUint::from(1u64) << n;
@@ -311,14 +311,14 @@ pub fn compile_eager_op(op: &str) -> CompiledExprWithArgs {
             // Check if any argument is an infinite set (Int or Nat)
             // These cannot be enumerated
             for arg in &args {
-                match arg.0.as_ref() {
-                    ValueInner::InfiniteInt => {
+                match arg.view() {
+                    ValueRef::InfiniteInt => {
                         return Err(QuintError::new(
                             "QNT501",
                             "Infinite set Int is non-enumerable",
                         ))
                     }
-                    ValueInner::InfiniteNat => {
+                    ValueRef::InfiniteNat => {
                         return Err(QuintError::new(
                             "QNT501",
                             "Infinite set Nat is non-enumerable",
@@ -332,8 +332,10 @@ pub fn compile_eager_op(op: &str) -> CompiledExprWithArgs {
         "Rec" => |_env, args| {
             // Constructs a record from the given arguments. Arguments are lists like [key1, value1, key2, value2, ...]
             Ok(Value::record(
-                args.chunks_exact(2)
-                    .map(|chunk| (chunk[0].as_str(), chunk[1].clone()))
+                args.as_chunks::<2>()
+                    .0
+                    .iter()
+                    .map(|[key, value]| (key.as_str(), value.clone()))
                     .collect(),
             ))
         },

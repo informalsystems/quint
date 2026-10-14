@@ -18,7 +18,7 @@ import os from 'os'
 import chalk from 'chalk'
 import { rustEvaluatorDir } from '../config'
 
-export const QUINT_EVALUATOR_VERSION = 'v0.6.0'
+export const QUINT_EVALUATOR_VERSION = 'v0.7.0'
 
 interface GitHubRelease {
   tag_name: string
@@ -214,14 +214,15 @@ class GitHubClient {
   }
 
   async fetchRelease(version: string): Promise<GitHubRelease> {
-    const url = `https://api.github.com/repos/informalsystems/quint/releases`
-    const response = await this.fetch(url, 'application/vnd.github.v3+json')
-    const releases = (await response.json()) as GitHubRelease[]
-    const release = releases.find(release => release.tag_name === `evaluator/${version}`)
-    if (!release) {
-      throw new Error(`Release ${version} not found`)
+    // Fetch the release by tag directly, instead of listing releases, which is
+    // paginated and would eventually stop including older evaluator releases.
+    const url = `https://api.github.com/repos/quint-co/quint/releases/tags/evaluator/${version}`
+    try {
+      const response = await this.fetch(url, 'application/vnd.github.v3+json')
+      return (await response.json()) as GitHubRelease
+    } catch (err) {
+      throw new Error(`Release ${version} not found: ${err}`)
     }
-    return release
   }
 
   async downloadAsset(asset: GitHubAsset, path: string): Promise<string> {
