@@ -304,10 +304,10 @@ fn tictactoe_best_traces_quality_order() {
 
 /// Simulates `fixtures/stop_counter.qnt`, storing every run, and checks that
 /// the trace length statistics count each run once
-fn assert_trace_statistics_count_each_run_once(inv: Option<&str>) {
+fn assert_trace_statistics_count_each_run_once(inv: &str) {
     let file_path: &Path = Path::new("fixtures/stop_counter.qnt");
 
-    let parsed = helpers::parse_from_path(file_path, "init", "step", inv, None).unwrap();
+    let parsed = helpers::parse_from_path(file_path, "init", "step", Some(inv), None).unwrap();
     // Some runs cannot be extended after the first step, others reach the last step
     let samples = 100;
     let config = SimulationConfig {
@@ -333,10 +333,10 @@ fn assert_trace_statistics_count_each_run_once(inv: Option<&str>) {
 
 #[test]
 fn trace_statistics_count_runs_that_cannot_be_extended_once() {
-    assert_trace_statistics_count_each_run_once(None);
+    assert_trace_statistics_count_each_run_once("alwaysHolds");
 }
 
 #[test]
 fn trace_statistics_count_violating_runs_once() {
-    assert_trace_statistics_count_each_run_once(Some("notStopped"));
+    assert_trace_statistics_count_each_run_once("notStopped");
 }

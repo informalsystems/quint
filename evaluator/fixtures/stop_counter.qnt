@@ -6,6 +6,7 @@ module stopCounter {
   var stopped: bool
 
   def notStopped = not(stopped)
+  def alwaysHolds = true
 
   action init = all {
     x' = 0,
