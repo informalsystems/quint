@@ -68,8 +68,6 @@ This repository hosts all Quint pieces:
 - [vscode/quint-vscode/server](./vscode/quint-vscode/server) Quint's Language
   Server (LSP)
 - [docs](./docs) source code for Quint's website
-- [tlc](./tlc) scripts for running the TLC model checker with Quint specs, while
-  we don't have proper integration
 
 ## Developer docs
 
@@ -612,7 +610,7 @@ the Rust evaluator and the VSCode extension + the language server.
 
   This will trigger the release and publication of the package to npm and
   GitHub.
-  
+
 ### Evaluator
 
 The evaluator is the latest addition to the Quint repository, and it's release
