@@ -23,7 +23,7 @@ import { Trace } from '../runtime/impl/trace'
 import { ChildProcess, spawn } from 'child_process'
 import readline from 'readline'
 import JSONbig from 'json-bigint'
-import { reviveQuintError } from '../jsonHelper'
+import { parseJsonBig, reviveQuintError } from '../jsonHelper'
 import { bigintCheckerReplacer } from './helpers'
 import { ofItfValue } from '../itf'
 import { RuntimeValue, rv } from '../runtime/impl/runtimeValue'
@@ -151,7 +151,7 @@ export class ReplServerWrapper {
 
     this.stdout.on('line', (line: string) => {
       try {
-        const response: ReplResponse = JSONbig.parse(line)
+        const response: ReplResponse = parseJsonBig(line)
         if ('err' in response && response.err) {
           response.err = reviveQuintError(response.err)
         }

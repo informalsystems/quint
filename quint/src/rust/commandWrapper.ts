@@ -18,7 +18,7 @@ import { TraceHook } from '../cliReporting'
 import { debugLog } from '../verbosity'
 import JSONbig from 'json-bigint'
 import { LookupDefinition, LookupTable } from '../names/base'
-import { reviveQuintError } from '../jsonHelper'
+import { parseJsonBig, reviveQuintError } from '../jsonHelper'
 import { ItfState, ItfValue, diagnosticsOfItf, ofItf, pendingDiagnosticsOfItf } from '../itf'
 import { Presets, SingleBar } from 'cli-progress'
 import readline from 'readline'
@@ -114,7 +114,7 @@ export class CommandWrapper {
     const output = result.value
 
     try {
-      const parsed: Outcome = JSONbig.parse(output)
+      const parsed: Outcome = parseJsonBig(output)
       parsed.errors = parsed.errors.map(reviveQuintError)
 
       // Convert traces to ITF and ensure seed is bigint Note: When a
@@ -200,7 +200,7 @@ export class CommandWrapper {
     const output = result.value
 
     try {
-      const parsed: TestResult = JSONbig.parse(output)
+      const parsed: TestResult = parseJsonBig(output)
       parsed.errors = parsed.errors.map(reviveQuintError)
 
       // Convert seed to bigint
@@ -257,7 +257,7 @@ export class CommandWrapper {
     }
 
     try {
-      const parsed = JSONbig.parse(result.value)
+      const parsed = parseJsonBig(result.value)
       const values: ItfValue[] = []
       for (const r of parsed.results) {
         if (r.error) {
