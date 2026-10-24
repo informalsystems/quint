@@ -368,12 +368,12 @@ altInit == x' := 0
 (*
   @type: (() => Bool);
 *)
-step == x' := (x + 1)
+step == x' := x + 1
 
 (*
   @type: (() => Bool);
 *)
-altStep == x' := (x + 0)
+altStep == x' := x + 0
 
 (*
   @type: (() => Bool);
